@@ -63,6 +63,12 @@ export interface OwnerOverview {
   missed_demand: { detail: string; times: number }[];
   last_7_days: Record<string, number>;
 }
+export interface DemandMap {
+  days: number;
+  searches: number;
+  unserved_searches: number;
+  features: { feature: string; asked: number; unserved: number; unserved_share: number }[];
+}
 export interface Health { status: string; llm: "claude" | "mock"; model: string; fast_model: string }
 
 export const api = {
@@ -78,5 +84,8 @@ export const api = {
   owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`),
   propose: (id: string, instruction: string) => post<Proposal>(`/api/owner/${id}/propose`, { instruction }),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }),
+  verify: (card: Card) => post<{ signature_valid: boolean }>("/api/hive/verify", { card }),
+  demand: () => call<DemandMap>("/api/hive/demand"),
+  simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
 
 };

@@ -11,6 +11,7 @@ export default function CardPage() {
   const [units, setUnits] = useState<FreeUnit[] | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState("");
+  const [tamper, setTamper] = useState<{ original: boolean; tampered: boolean } | null>(null);
 
   useEffect(() => {
     api.card(slug).then(setCard).catch((e) => setError(e.message));
@@ -33,6 +34,16 @@ export default function CardPage() {
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+
+  // What an agent does with every card it reads: re-check the owner's signature.
+  async function tamperTest() {
+    if (!card) return;
+    const forged: Card = JSON.parse(JSON.stringify(card));
+    if (forged.units.length) forged.units[0].price_chf = 1;
+    else forged.features = [...forged.features, "free breakfast"];
+    const [original, tampered] = await Promise.all([api.verify(card), api.verify(forged)]);
+    setTamper({ original: original.signature_valid, tampered: tampered.signature_valid });
   }
 
   if (!card) return <p className={error ? "error" : "muted"}>{error || "Loading..."}</p>;
@@ -84,6 +95,21 @@ export default function CardPage() {
           </section>
         )}
       </div>
+      <section className="panel stack">
+        <h3>Can a scraper fake this card?</h3>
+        <p className="muted">
+          Agents re-check the owner's Ed25519 signature on every card. Try changing one fact without the owner's key.
+        </p>
+        <div className="row">
+          <button onClick={tamperTest}>{card.units.length ? "Set the first room to CHF 1 and verify" : "Add a fake perk and verify"}</button>
+          {tamper && (
+            <>
+              <span className={`chip ${tamper.original ? "ok" : "no"}`}>original: {tamper.original ? "valid" : "invalid"}</span>
+              <span className={`chip ${tamper.tampered ? "ok" : "no"}`}>tampered: {tamper.tampered ? "valid" : "rejected"}</span>
+            </>
+          )}
+        </div>
+      </section>
       <p className="muted">Card version {card.version}, published {card.published_at}. Agents read the same data at the Hive's MCP endpoint.</p>
     </div>
   );
