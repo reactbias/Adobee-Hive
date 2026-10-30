@@ -1,0 +1,14 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+// In dev, /api, /mcp and /.well-known are proxied to the FastAPI backend.
+const backend = process.env.VITE_DEV_BACKEND ?? "http://localhost:8000";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: true,
+    port: 5173,
+    proxy: { "/api": backend, "/mcp": backend, "/.well-known": backend },
+  },
+});
