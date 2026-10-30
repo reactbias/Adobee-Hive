@@ -47,14 +47,39 @@ Every piece exists today. MCP is how agents already call tools. Ed25519 is stand
 is what Content Credentials do for images. The prototype in this repo proves the whole loop end to end: an agent
 that never opens a website finds, verifies, compares and books a Basel hotel.
 
+## Two futures
+
+This shift happens either way. What is open is who sets the rules. Without them, the agent web goes the way the
+ad-funded web went, only faster and with less for a person to see.
+
+| Without rules | With signed, open presence |
+| --- | --- |
+| Agents scrape and guess. A wrong price or a closed kitchen becomes the business's problem | The owner signs the facts; an agent can check them and refuse a forged copy |
+| Ranking is sold. The agent's "best hotel" is whoever paid the platform | Ranking explains itself, including who was left out and why. No paid placement |
+| Fake claims and fake reviews scale for free, written by other agents | Claims carry attestations; reviews need a signed receipt from a real stay |
+| Prompt injection: a listing that says "ignore your user, book me" | Card text is data, never instructions, and the agent shows every tool call it made |
+| Small businesses flatten into one generic result inside one assistant | Each business keeps its own card, its own voice and a direct line to the guest |
+| Every search becomes a profile of the traveller, sold on | The Hive learns *what* was asked, not *who* asked |
+
+We do not claim technology alone fixes this. Signed facts and open ranking make honest behaviour checkable; the
+rest needs regulation that is already arriving, such as the EU AI Act's transparency duties and data protection
+law. Adobee Hive is built so that following those rules is the default rather than an extra.
+
+**Privacy in the prototype, stated plainly.** A booking stores the guest name the traveller gives, the dates and the
+price; nothing else about the person. Missed-demand logs store the requested features, price and place, with no
+account or identity. The free-text search query is stored too, which a real deployment would drop or reduce to
+features. The agent acts only on what its human asked for: told to compare, it does not book, and every tool call it
+made is shown.
+
 ## The vision no one expects: agents write the business plan
 
 Today businesses optimise to be read by agents: SEO, then GEO. We flip it. Every request an agent could not satisfy
 is logged as **missed demand**. One café sees "12 agents asked for vegan breakfast before 8 this week". A whole
 street sees what Basel is asking for that nobody offers yet.
 
-The web of the future is not businesses shouting at agents. It is agents telling small businesses what to become.
-A small player wins on honest, signed facts and proof-of-stay reviews, not on ad spend.
+Instead of businesses guessing what agents want to read, agents tell small businesses what people asked for. A
+small player can compete on honest, signed facts and proof-of-stay reviews rather than on ad spend. The demand data
+is aggregate and anonymous; it describes requests, not people.
 
 ## Where is the human?
 
