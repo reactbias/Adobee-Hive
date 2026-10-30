@@ -36,6 +36,8 @@ tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **o
 ## Before going on stage
 
 - `curl <backend>/api/health` says `"llm": "claude"` if the key is set.
-- For a clean slate locally, stop the backend, delete `code/backend/data/abh.duckdb` and start it again: the seed
-  reloads into an empty database. Otherwise run the demo once to warm up and accept the extra bookings.
+- Reset to a clean Basel after the warm-up run (Gare Central back to not dog-friendly, no bookings, no demand):
+  `curl -X POST -H "X-Demo-Token: $DEMO_RESET_TOKEN" <backend>/api/demo/reset`. Locally no token is needed.
+- Then click **Simulate 40 traveller searches** once on `/demand` so the map and Gare Central's missed demand have
+  data to show.
 - Keep the browser zoom at 125 % so the jury can read the timeline.

@@ -1,5 +1,7 @@
 """Fictional Basel businesses for the demo. Every name here is invented."""
 
+import copy
+
 from . import db, hive
 
 SBB, MESSE, MARKT, BADISCHER = "basel sbb", "messe basel", "marktplatz", "badischer bahnhof"
@@ -103,9 +105,20 @@ ATTESTATIONS = [
 
 def run() -> None:
     for card in CARDS:
-        hive.publish(card)
+        hive.publish(copy.deepcopy(card))  # publish stamps the dict; keep the seed pristine for reset()
     for card_id, claim, by in ATTESTATIONS:
         hive.attest(card_id, claim, by)
+
+
+TABLES = ("hive_events", "hive_reviews", "hive_bookings", "hive_attestations", "hive_keys", "hive_cards")
+
+
+def reset() -> None:
+    """Back to the seeded Basel: drop every booking, review, event and owner edit, then seed again."""
+    with db.write() as cur:
+        for table in TABLES:
+            cur.execute(f"DELETE FROM {table}")
+    run()
 
 
 def seed_if_empty() -> None:

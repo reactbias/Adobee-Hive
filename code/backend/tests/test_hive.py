@@ -101,3 +101,12 @@ def test_demand_map_counts_unserved_requests(client):
     assert out["searches"] >= 65
     pool = next(f for f in out["features"] if f["feature"] == "pool")
     assert pool["unserved"] == pool["asked"]  # no seeded business has a pool
+
+
+def test_demo_reset_restores_the_seed(client):
+    client.post("/api/owner/hotel-gare/publish", json={"proposed": {
+        **client.get("/api/hive/cards/hotel-gare").json(), "features": ["dog-friendly"]}})
+    assert client.post("/api/demo/reset").json()["cards"] == 6
+    card = client.get("/api/hive/cards/hotel-gare").json()
+    assert "dog-friendly" not in card["features"] and card["version"] == 1
+    assert card["trust"]["signature_valid"]

@@ -156,6 +156,15 @@ def demo_simulate(n: int = 40) -> dict[str, Any]:
     return simulate.run(min(n, 200))
 
 
+@app.post("/api/demo/reset")
+def demo_reset(request: Request) -> dict[str, Any]:
+    """Clean slate before going on stage: the seed cards, no bookings, no demand history."""
+    if config.DEMO_RESET_TOKEN and request.headers.get("x-demo-token") != config.DEMO_RESET_TOKEN:
+        raise HTTPException(403, "Reset needs the demo token.")
+    hive_seed.reset()
+    return {"cards": len(hive.list_cards())}
+
+
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest) -> dict[str, Any]:
     try:

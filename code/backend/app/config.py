@@ -19,6 +19,7 @@ DUCKDB_S3_URI = os.getenv("DUCKDB_S3_URI", "")
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
+DEMO_RESET_TOKEN = os.getenv("DEMO_RESET_TOKEN", "")  # when set, /api/demo/reset needs it as X-Demo-Token
 
 LLM_ENABLED = bool(ANTHROPIC_API_KEY)
 

@@ -48,7 +48,7 @@ Agents can find the endpoint from `/.well-known/hive.json`.
 
 `GET /api/health` · `GET /api/hive/cards[/{id}]` · `GET /api/hive/cards/{id}/availability` ·
 `POST /api/hive/cards/{id}/book` · `POST /api/hive/reviews` · `POST /api/hive/verify` · `GET /api/hive/demand` ·
-`POST /api/demo/simulate` · `POST /api/agent` · `POST /api/agent/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
+`POST /api/demo/simulate` · `POST /api/demo/reset` · `POST /api/agent` · `POST /api/agent/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
 `POST /api/owner/{id}/publish`
 
 The contract lives in `code/backend/app/main.py`; change an endpoint in one PR so the frontend follows.
