@@ -32,7 +32,7 @@ async def lifespan(_: FastAPI):
     db.close()
 
 
-app = FastAPI(title="AdoBee Hive", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Adobee Hive", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
@@ -67,7 +67,7 @@ def health() -> dict[str, Any]:
 def well_known(request: Request) -> dict[str, Any]:
     base = str(request.base_url).rstrip("/")
     return {
-        "name": "AdoBee Hive (Basel)",
+        "name": "Adobee Hive (Basel)",
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; public key in each card's trust block",
         "ranking_policy": "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement.",

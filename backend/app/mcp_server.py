@@ -12,9 +12,9 @@ from mcp.server.transport_security import TransportSecuritySettings
 from . import hive
 
 server = MCPServer(
-    name="AdoBee Hive",
+    name="Adobee Hive",
     instructions=(
-        "AdoBee Hive is a directory of signed, agent-facing business cards for Basel. "
+        "Adobee Hive is a directory of signed, agent-facing business cards for Basel. "
         "Use hive_discover to find businesses for the user's constraints, hive_get_card to read one card and "
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
         "Only state facts that come from cards. Tell the user why you picked a business (score_breakdown, why) "

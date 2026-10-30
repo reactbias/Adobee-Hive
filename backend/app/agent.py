@@ -17,7 +17,7 @@ from mcp import Client
 from . import config, hive, llm
 from .mcp_server import server as local_server
 
-AGENT_NAME = "AdoBee travel agent"
+AGENT_NAME = "Adobee travel agent"
 
 SYSTEM = """You are {name}, a personal travel agent acting for one traveller. Today is {today}.
 You reach businesses only through the Hive MCP tools. Work like this:

@@ -1,6 +1,6 @@
-# AdoBee Hive
+# Adobee Hive
 
-**On GitHub you find projects to work on. On AdoBee Hive, agents find businesses and people to work with.**
+**On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.**
 
 BaselHack 2026, team B6, for Adobe's challenge *The Post-Website Business*: how does a local business stay
 found, trusted and bookable when the first visitor is an AI agent, not a person on a website?
