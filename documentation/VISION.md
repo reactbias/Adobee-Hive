@@ -2,17 +2,11 @@
 
 > **On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.**
 
-## The challenge
+## The question
 
-Adobe's BaselHack 2026 challenge, *The Post-Website Business*: when the first visitor to a hotel, restaurant,
-café or shop is an AI agent and not a person on a website, how does a local business stay found, trusted and
-bookable, and stay in control of how it is presented?
-
-Adobe asks for two things: a believable picture of local presence 5 to 10 years from now, and a prototype where an
-agent genuinely discovers and completes a transaction end to end (for example, booking a fictional Basel hotel).
-Judging: vision and believability, innovation, execution and craft, plus a bonus for the
-**best vision no one expected**. BaselHack's own jury adds impact, technical depth, an AI review of code quality and
-commit history, fair play, the pitch, and whether the demo works live.
+When the first visitor to a hotel, café or shop is an AI agent and not a person on a website, how does a local
+business stay found, trusted and bookable, and stay in control of how it is presented? The full brief and the
+judging criteria are in [CHALLENGE.md](CHALLENGE.md).
 
 ## Who owns the front door
 

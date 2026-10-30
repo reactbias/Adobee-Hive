@@ -52,8 +52,8 @@ Docker, AWS auto-deploy and connecting Claude: [documentation/DEPLOY.md](documen
 | Folder | Contents |
 | --- | --- |
 | [`code/`](code) | `backend/` FastAPI + DuckDB + MCP + agents, `frontend/` React + Vite, `scripts/aws/`, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Vision](documentation/VISION.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
-| [`assets/`](assets) | Logo, wordmark and mascot exports for slides |
+| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Layout follows the BaselHack template. All businesses in the seed data are fictional.
 MIT licensed, see [license.txt](license.txt).
