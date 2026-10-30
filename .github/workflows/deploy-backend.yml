@@ -6,7 +6,7 @@ name: Deploy backend
 on:
   push:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/deploy-backend.yml"]
+    paths: ["code/backend/**", ".github/workflows/deploy-backend.yml"]
   workflow_dispatch:
 
 env:
@@ -33,5 +33,5 @@ jobs:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
           IMAGE="$REGISTRY/$ECR_REPOSITORY"
-          docker build -t "$IMAGE:${GITHUB_SHA::7}" -t "$IMAGE:latest" backend
+          docker build -t "$IMAGE:${GITHUB_SHA::7}" -t "$IMAGE:latest" code/backend
           docker push --all-tags "$IMAGE"

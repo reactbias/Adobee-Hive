@@ -1,8 +1,8 @@
-# AWS Amplify Hosting, monorepo app root "frontend". Set VITE_API_URL in the Amplify console
-# to the App Runner URL printed by scripts/aws/bootstrap.sh. Amplify redeploys on every push to main.
+# AWS Amplify Hosting, monorepo app root "code/frontend". Set VITE_API_URL in the Amplify console
+# to the App Runner URL printed by code/scripts/aws/bootstrap.sh. Amplify redeploys on every push to main.
 version: 1
 applications:
-  - appRoot: frontend
+  - appRoot: code/frontend
     frontend:
       phases:
         preBuild:
