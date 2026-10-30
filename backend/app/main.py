@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, hive, hive_seed, mcp_server, owner
+from . import agent, config, db, hive, hive_seed, mcp_server, owner, simulate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -128,6 +128,28 @@ def hive_book(card_id: str, body: BookRequest) -> dict[str, Any]:
 @app.post("/api/hive/reviews")
 def hive_review(body: ReviewRequest) -> dict[str, Any]:
     return _hive_call(hive.review, body.receipt, body.rating, body.text)
+
+
+class VerifyRequest(BaseModel):
+    card: dict[str, Any]
+
+
+@app.post("/api/hive/verify")
+def hive_verify(body: VerifyRequest) -> dict[str, Any]:
+    """Check a card against its own signature, as any agent would. Used by the tamper demo."""
+    card = dict(body.card)
+    trust = card.pop("trust", {}) or {}
+    return {"signature_valid": hive.verify(card, trust.get("signature", ""), trust.get("public_key", ""))}
+
+
+@app.get("/api/hive/demand")
+def hive_demand(days: int = 7) -> dict[str, Any]:
+    return hive.demand_map(days)
+
+
+@app.post("/api/demo/simulate")
+def demo_simulate(n: int = 40) -> dict[str, Any]:
+    return simulate.run(min(n, 200))
 
 
 @app.post("/api/agent")

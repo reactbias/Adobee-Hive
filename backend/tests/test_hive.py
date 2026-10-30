@@ -4,7 +4,7 @@ import asyncio
 
 from mcp import Client
 
-from app import agent, hive
+from app import agent, hive, simulate
 from app.mcp_server import server
 
 REQUEST = ("Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
@@ -72,3 +72,18 @@ def test_mcp_lists_the_hive_tools(client):
             return {t.name for t in (await c.list_tools()).tools}
 
     assert {"hive_discover", "hive_get_card", "hive_book", "hive_review"} <= asyncio.run(tools())
+
+
+def test_verify_endpoint_catches_tampering(client):
+    card = client.get("/api/hive/cards/rheinblick").json()
+    assert client.post("/api/hive/verify", json={"card": card}).json()["signature_valid"]
+    card["features"].append("pool")
+    assert not client.post("/api/hive/verify", json={"card": card}).json()["signature_valid"]
+
+
+def test_demand_map_counts_unserved_requests(client):
+    assert client.post("/api/demo/simulate?n=5").status_code == 200
+    out = simulate.run(60, seed=1)
+    assert out["searches"] >= 65
+    pool = next(f for f in out["features"] if f["feature"] == "pool")
+    assert pool["unserved"] == pool["asked"]  # no seeded business has a pool

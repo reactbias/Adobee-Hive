@@ -313,6 +313,10 @@ def discover(
         else:
             matches.append(summary)
             events.append((card["id"], "shown", query or "structured search"))
+    events.append(("*", "search", json.dumps({
+        "query": query, "features": features, "near": near, "max_price_chf": max_price_chf,
+        "guests": guests, "matched": len(matches),
+    })))
     _log_many(events)
     matches.sort(key=lambda m: m["score"], reverse=True)
     return {
@@ -397,6 +401,33 @@ def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------- owner side
+
+def demand_map(days: int = 7) -> dict[str, Any]:
+    """City-wide view of what agents asked for, and what nobody could offer.
+
+    The unexpected use of the Hive: agents' unmet requests tell local businesses what to become.
+    """
+    with db.cursor() as cur:
+        searches = [json.loads(r[0]) for r in cur.execute(
+            "SELECT detail FROM hive_events WHERE kind = 'search' AND created_at > ?",
+            [db.now() - timedelta(days=days)]).fetchall()]
+    asked: dict[str, dict[str, int]] = {}
+    for search in searches:
+        for feature in search["features"] or []:
+            row = asked.setdefault(feature, {"asked": 0, "unserved": 0})
+            row["asked"] += 1
+            row["unserved"] += search["matched"] == 0
+    features = sorted(
+        ({"feature": f, **v, "unserved_share": round(v["unserved"] / v["asked"], 2)} for f, v in asked.items()),
+        key=lambda r: (r["unserved"], r["asked"]), reverse=True,
+    )
+    return {
+        "days": days,
+        "searches": len(searches),
+        "unserved_searches": sum(1 for s in searches if s["matched"] == 0),
+        "features": features,
+    }
+
 
 def owner_overview(card_id: str) -> dict[str, Any]:
     card = get_card(card_id)
