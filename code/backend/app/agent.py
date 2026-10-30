@@ -92,6 +92,7 @@ async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
                 return await _run_claude(hives, messages)
             except anthropic.APIError:  # out of credit, rate limit, outage: the demo goes on offline
                 log.exception("Claude unavailable, falling back to the scripted planner")
+                return await _run_scripted(hives, messages[-1]["content"]) | {"fallback": "Claude unavailable"}
         return await _run_scripted(hives, messages[-1]["content"])
 
 

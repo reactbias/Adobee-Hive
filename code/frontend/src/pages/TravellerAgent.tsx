@@ -104,8 +104,10 @@ export default function TravellerAgent() {
         {result ? (
           <>
             <p className="muted">
-              {result.mode === "claude" ? "Claude" : "Offline planner"} talking to the Hive over MCP. You only see the
-              conversation; neither side opened a website.
+              <span className={`chip ${result.mode === "claude" ? "ok" : ""}`}>
+                {result.mode === "claude" ? "this run: Claude" : `this run: offline planner${result.fallback ? ` (${result.fallback})` : ""}`}
+              </span>{" "}
+              talking to the Hive over MCP. You only see the conversation; neither side opened a website.
             </p>
             <AgentTrace steps={result.steps} />
           </>

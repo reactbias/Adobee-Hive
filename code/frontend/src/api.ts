@@ -55,7 +55,7 @@ export interface Booking {
   total_chf: number; receipt: string; payment: string; cancellation?: string;
 }
 export interface Pending { tool: "hive_book"; input: Record<string, unknown> }
-export interface AgentResult { reply: string; steps: Step[]; pending: Pending | null; mode: string }
+export interface AgentResult { reply: string; steps: Step[]; pending: Pending | null; mode: string; fallback?: string }
 export interface Approval { reply: string; steps: Step[]; booking: Booking | null }
 export interface Change { field: string; before: unknown; after: unknown }
 export interface Proposal { card_id: string; proposed: Card; changes: Change[]; summary: string; mode: string }

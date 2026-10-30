@@ -122,4 +122,5 @@ def test_agent_falls_back_offline_when_claude_fails(client, monkeypatch):
     monkeypatch.setattr(agent.config, "LLM_ENABLED", True)
     monkeypatch.setattr(agent, "_run_claude", broken)
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
-    assert out["mode"] == "scripted" and out["pending"]["tool"] == "hive_book"
+    assert out["mode"] == "scripted" and out["fallback"] == "Claude unavailable"  # the UI must not claim Claude ran
+    assert out["pending"]["tool"] == "hive_book"
