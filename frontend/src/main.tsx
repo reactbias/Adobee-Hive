@@ -7,6 +7,7 @@ import TravellerAgent from "./pages/TravellerAgent";
 import OwnerStudio from "./pages/OwnerStudio";
 import CardPage from "./pages/CardPage";
 import DemandMap from "./pages/DemandMap";
+import B6Bee from "./components/B6Bee";
 import "./styles.css";
 
 function Nav() {
@@ -43,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/demand" element={<DemandMap />} />
         </Routes>
       </main>
+      <B6Bee />
     </BrowserRouter>
   </React.StrictMode>,
 );

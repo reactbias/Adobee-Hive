@@ -87,3 +87,16 @@ tr.clickable:hover { background: var(--honey-soft); }
 .hero-logo { margin: 0; text-align: center; }
 .hero-logo img { width: min(300px, 70vw); filter: drop-shadow(0 10px 14px rgba(90, 46, 26, 0.25)); }
 .hero-logo figcaption { font-family: var(--display); font-size: 1.15rem; color: var(--clay-dark); margin-top: 8px; }
+
+/* Footer and the Team B6 easter egg */
+.footer { max-width: 1180px; margin: -48px auto 0; padding: 0 20px 28px; display: flex; align-items: flex-end; gap: 2px; color: var(--ink-soft); font-size: 0.8rem; }
+.b6-perch { background: none; border: 0; padding: 0; border-radius: 0; cursor: pointer; line-height: 0; }
+.b6-perch img { width: 26px; transform: rotate(-12deg); opacity: 0.75; transition: opacity 0.3s, transform 0.3s; }
+.b6-perch:hover img { opacity: 1; transform: rotate(0deg) translateY(-2px); }
+.b6-perch img.away { opacity: 0; }
+.b6-flight { position: fixed; left: 0; bottom: 56px; z-index: 50; pointer-events: none; animation: b6-cross linear forwards; }
+.b6-bob { width: 64px; display: block; animation: b6-bob 0.9s ease-in-out infinite alternate; }
+.b6-six { position: fixed; z-index: 49; pointer-events: none; font-family: var(--display); font-weight: 700; font-size: 1.1rem; color: var(--clay); animation: b6-six 2.4s ease-out forwards; }
+@keyframes b6-cross { from { transform: translateX(-80px); } to { transform: translateX(calc(100vw + 20px)); } }
+@keyframes b6-bob { from { transform: translateY(-10px) rotate(-4deg); } to { transform: translateY(10px) rotate(4deg); } }
+@keyframes b6-six { 0% { opacity: 0; transform: scale(0.4); } 15% { opacity: 0.9; transform: scale(1); } 100% { opacity: 0; transform: translateY(-28px) rotate(-14deg); } }
