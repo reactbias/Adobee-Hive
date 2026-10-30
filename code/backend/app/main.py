@@ -80,6 +80,10 @@ class AgentRequest(BaseModel):
     messages: list[dict[str, str]] = Field(min_length=1)
 
 
+class ApproveRequest(BaseModel):
+    pending: dict[str, Any]
+
+
 class BookRequest(BaseModel):
     unit_id: str
     check_in: str
@@ -159,6 +163,15 @@ async def run_agent(body: AgentRequest) -> dict[str, Any]:
     except Exception as err:  # surface agent failures to the demo UI instead of a bare 500
         logging.exception("agent run failed")
         raise HTTPException(502, f"Agent failed: {err}") from err
+
+
+@app.post("/api/agent/approve")
+async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
+    """The human's yes: the agent sends the booking it held back."""
+    try:
+        return await agent.approve(body.pending)
+    except (ValueError, KeyError) as err:
+        raise HTTPException(400, str(err)) from err
 
 
 @app.get("/api/owner/{card_id}")

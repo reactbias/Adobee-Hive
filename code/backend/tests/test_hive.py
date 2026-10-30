@@ -13,11 +13,25 @@ REQUEST = ("Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 wit
 
 def test_agent_books_end_to_end_over_mcp(client):
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
-    assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability", "hive_book"]
-    booking = out["booking"]
+    assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability"]
+    assert out["pending"]["tool"] == "hive_book"  # nothing is booked until the traveller approves
+
+    done = client.post("/api/agent/approve", json={"pending": out["pending"]}).json()
+    assert [s["tool"] for s in done["steps"]] == ["hive_book"]
+    booking = done["booking"]
     assert booking["status"] == "confirmed"
     assert booking["business"] == "Hotel Rheinblick"
     assert booking["total_chf"] <= 2 * 200
+
+
+def test_agent_only_approves_bookings(client):
+    assert client.post("/api/agent/approve", json={"pending": {"tool": "hive_cancel", "input": {}}}).status_code == 400
+
+
+def test_agent_compares_without_booking_when_told(client):
+    ask = "Two of us near Messe Basel, parking, 3 nights from 2027-06-14. Just compare, don't book."
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": ask}]}).json()
+    assert out["pending"] is None
 
 
 def test_discover_explains_exclusions(client):
