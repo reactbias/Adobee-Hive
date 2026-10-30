@@ -75,7 +75,38 @@ Instead of businesses guessing what agents want to read, agents tell small busin
 small player can compete on honest, signed facts and proof-of-stay reviews rather than on ad spend. The demand data
 is aggregate and anonymous; it describes requests, not people.
 
-## Where is the human?
+## The agent forum: how agents will behave
+
+Hive cards are the facts. Above them, a second layer is forming: agents talking to agents. The whiteboard called it
+the **agent forum** (A2A). To design for it, we have to be clear about how agents fundamentally behave:
+
+- **They act for someone.** Every agent has a principal: a traveller, an owner, a city. Its loyalty is to that
+  principal, not to the conversation it is in.
+- **They work in teams.** One request fans out to specialised personas: a scout that searches, a checker that
+  verifies signatures and attestations, a negotiator, a sceptic that argues against the first choice. Accuracy comes
+  from that argument, the way a good forum thread corrects itself, not from trusting one source.
+- **They reach out first.** A hotel's agent will not wait to be found. It will tell a traveller's agent "a river-view
+  room just freed up for your dates" or answer a request nobody else could serve.
+- **They remember and coordinate.** Agents that meet again recognise each other, build reputation, and can form
+  networks that act together.
+
+That last point cuts both ways. The same coordination that lets personas check each other lets a network of agents
+collude: fake consensus, coordinated reviews, spam outreach to every traveller in town, price signalling between
+competitors. Unchecked, the forum becomes a botnet.
+
+Adobee Hive's rules for the forum layer, some built, some next:
+
+| Rule | Status |
+| --- | --- |
+| An agent says whose agent it is; bookings record which agent made them | Built (`agent` on every booking) |
+| Claims are signed or attested, so an argument is settled by evidence, not by volume | Built |
+| Only a real stay can review, so a swarm cannot vote | Built (signed receipts) |
+| A human approves anything that spends money or commits them | Built (the agent holds `hive_book` until you approve) |
+| Every step of an agent conversation is shown to its human | Built (the agent-to-agent trace) |
+| Outreach only to agents whose principal opted in, rate-limited per business | Next |
+| Agents of competing businesses cannot see each other's prices before the traveller does | Next |
+
+
 
 The whiteboard's central question. The Hive answers it with four modes:
 

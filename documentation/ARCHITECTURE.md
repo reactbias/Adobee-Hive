@@ -25,7 +25,7 @@ flowchart LR
 | `hive.py` | Hive cards, Ed25519 signing and verification, attestations, discovery and ranking, availability, booking with signed receipts, proof-of-stay reviews, missed demand and the city demand map |
 | `hive_seed.py` | Six fictional Basel businesses (five hotels, one café) with distances and attestations |
 | `mcp_server.py` | The MCP server agents connect to |
-| `agent.py` | The traveller agent: a Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself |
+| `agent.py` | The traveller agent: a Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
@@ -48,7 +48,7 @@ Agents can find the endpoint from `/.well-known/hive.json`.
 
 `GET /api/health` · `GET /api/hive/cards[/{id}]` · `GET /api/hive/cards/{id}/availability` ·
 `POST /api/hive/cards/{id}/book` · `POST /api/hive/reviews` · `POST /api/hive/verify` · `GET /api/hive/demand` ·
-`POST /api/demo/simulate` · `POST /api/agent` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
+`POST /api/demo/simulate` · `POST /api/agent` · `POST /api/agent/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
 `POST /api/owner/{id}/publish`
 
 The contract lives in `code/backend/app/main.py`; change an endpoint in one PR so the frontend follows.
