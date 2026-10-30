@@ -1,47 +1,12 @@
 import { useState } from "react";
-import { api, type AgentResult, type Step } from "../api";
+import { api, type AgentResult, type Booking } from "../api";
+import AgentTrace from "../components/AgentTrace";
 
 const EXAMPLES = [
   "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15. My name is Tobi Muster.",
   "Two of us for Art Basel week, close to Messe Basel, parking, 3 nights from 2027-06-14. Just compare, don't book.",
   "Cheapest bed in Basel for one night, 2026-11-20 to 2026-11-21, I bring my dog.",
 ];
-
-const TOOL_LABEL: Record<string, string> = {
-  hive_discover: "Searched the Hive",
-  hive_get_card: "Read and verified a card",
-  hive_check_availability: "Checked availability",
-  hive_book: "Booked",
-  hive_cancel: "Cancelled",
-  hive_review: "Left a verified review",
-};
-
-function StepView({ step }: { step: Step }) {
-  const out = step.output as Record<string, unknown>;
-  const matches = (out.matches as { name: string; score: number; why: string[] }[] | undefined) ?? [];
-  const excluded = (out.excluded as { name: string; why_not: string[] }[] | undefined) ?? [];
-  return (
-    <li>
-      <details>
-        <summary>
-          {TOOL_LABEL[step.tool] ?? step.tool}
-          {"error" in out && <span className="chip no">{String(out.error)}</span>}
-        </summary>
-        {step.tool === "hive_discover" && (
-          <div style={{ margin: "8px 0" }}>
-            {matches.map((m) => (
-              <div key={m.name}><span className="chip ok">{m.score}</span> {m.name}: {m.why.join(", ")}</div>
-            ))}
-            {excluded.map((e) => (
-              <div key={e.name} className="muted"><span className="chip no">out</span> {e.name}: {e.why_not.join(", ")}</div>
-            ))}
-          </div>
-        )}
-        <pre>{JSON.stringify({ input: step.input, output: step.output }, null, 2)}</pre>
-      </details>
-    </li>
-  );
-}
 
 export default function TravellerAgent() {
   const [input, setInput] = useState(EXAMPLES[0]);
@@ -51,12 +16,14 @@ export default function TravellerAgent() {
   const [error, setError] = useState("");
   const [review, setReview] = useState({ rating: 5, text: "Quiet room, the dog loved the river walk." });
   const [reviewed, setReviewed] = useState("");
+  const [booking, setBooking] = useState<Booking | null>(null);
 
   async function send() {
     const messages = [...history, { role: "user", content: input }];
     setBusy(true);
     setError("");
     setReviewed("");
+    setBooking(null);
     try {
       const out = await api.agent(messages);
       setResult(out);
@@ -69,10 +36,33 @@ export default function TravellerAgent() {
     }
   }
 
-  async function leaveReview() {
-    if (!result?.booking) return;
+  // The only step a human takes: say yes. The agent then sends the booking it held back.
+  async function approve() {
+    if (!result?.pending) return;
+    setBusy(true);
+    setError("");
     try {
-      const r = await api.review(result.booking.receipt, review.rating, review.text);
+      const done = await api.approve(result.pending);
+      setResult({ ...result, steps: [...result.steps, ...done.steps], pending: null });
+      setBooking(done.booking);
+      setHistory((h) => [...h, { role: "assistant", content: done.reply }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function decline() {
+    if (!result) return;
+    setResult({ ...result, pending: null });
+    setHistory((h) => [...h, { role: "assistant", content: "Understood, nothing booked." }]);
+  }
+
+  async function leaveReview() {
+    if (!booking) return;
+    try {
+      const r = await api.review(booking.receipt, review.rating, review.text);
       setReviewed(`Review ${r.review_id} stored as a verified stay.`);
     } catch (e) {
       setReviewed((e as Error).message);
@@ -84,8 +74,8 @@ export default function TravellerAgent() {
       <section className="stack">
         <h1>Traveller agent</h1>
         <p className="muted">
-          A personal agent that never opens a website. It reaches Basel businesses only through the Hive's MCP tools,
-          verifies each card's signature itself, and books.
+          You state the intent. Your agent talks to the businesses' side of the Hive over MCP, checks every signature
+          itself and negotiates. It only books when you say yes.
         </p>
         <div className="panel chat">
           {history.length === 0 && <p className="muted">Try one of the requests below.</p>}
@@ -97,7 +87,7 @@ export default function TravellerAgent() {
         <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Where do you want to stay?" />
         <div className="row">
           <button onClick={send} disabled={busy || !input.trim()}>Send to my agent</button>
-          <button className="ghost" onClick={() => { setHistory([]); setResult(null); }}>New trip</button>
+          <button className="ghost" onClick={() => { setHistory([]); setResult(null); setBooking(null); }}>New trip</button>
         </div>
         <div className="row">
           {EXAMPLES.map((ex) => (
@@ -110,26 +100,40 @@ export default function TravellerAgent() {
       </section>
 
       <section className="stack">
-        <h2>What the agent did</h2>
+        <h2>Agent to agent</h2>
         {result ? (
           <>
-            <p className="muted">Mode: {result.mode === "claude" ? "Claude tool use" : "offline scripted planner"}</p>
-            <ul className="timeline">
-              {result.steps.map((s, i) => <StepView key={i} step={s} />)}
-            </ul>
+            <p className="muted">
+              {result.mode === "claude" ? "Claude" : "Offline planner"} talking to the Hive over MCP. You only see the
+              conversation; neither side opened a website.
+            </p>
+            <AgentTrace steps={result.steps} />
           </>
         ) : (
-          <p className="muted">Each MCP tool call shows up here with its input and output.</p>
+          <p className="muted">The conversation between your agent and the businesses shows up here, call by call.</p>
         )}
-        {result?.booking && (
-          <div className="panel stack">
-            <h3>Confirmed: {result.booking.business}</h3>
+        {result?.pending && (
+          <div className="panel stack approval">
+            <h3>Your agent asks: book this?</h3>
             <div>
-              {result.booking.unit_name}, {result.booking.check_in} to {result.booking.check_out}, CHF {result.booking.total_chf}
+              {String(result.pending.input.unit_id)} at {String(result.pending.input.card_id)}, {String(result.pending.input.check_in)} to{" "}
+              {String(result.pending.input.check_out)}, for {String(result.pending.input.guest_name)}
             </div>
-            <div className="muted">{result.booking.payment}. {result.booking.cancellation}</div>
+            <div className="row">
+              <button onClick={approve} disabled={busy}>Approve booking</button>
+              <button className="ghost" onClick={decline} disabled={busy}>Not now</button>
+            </div>
+          </div>
+        )}
+        {booking && (
+          <div className="panel stack">
+            <h3>Confirmed: {booking.business}</h3>
+            <div>
+              {booking.unit_name}, {booking.check_in} to {booking.check_out}, CHF {booking.total_chf}
+            </div>
+            <div className="muted">{booking.payment}. {booking.cancellation}</div>
             <label>Signed receipt (proves the stay; needed to cancel or review)</label>
-            <pre style={{ maxHeight: 80 }}>{result.booking.receipt}</pre>
+            <pre style={{ maxHeight: 80 }}>{booking.receipt}</pre>
             <label>After the stay: leave a verified review</label>
             <div className="row">
               <select value={review.rating} onChange={(e) => setReview({ ...review, rating: Number(e.target.value) })} style={{ width: 80 }}>

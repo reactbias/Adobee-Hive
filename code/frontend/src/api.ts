@@ -49,12 +49,14 @@ export interface Card {
   trust: Trust;
   [key: string]: unknown;
 }
-export interface Step { tool: string; input: Record<string, unknown>; output: Record<string, unknown> }
+export interface Step { tool: string; input: Record<string, unknown>; output: Record<string, unknown>; ms?: number }
 export interface Booking {
   status: string; booking_id: string; business: string; unit_name: string; check_in: string; check_out: string;
   total_chf: number; receipt: string; payment: string; cancellation?: string;
 }
-export interface AgentResult { reply: string; steps: Step[]; booking: Booking | null; mode: string }
+export interface Pending { tool: "hive_book"; input: Record<string, unknown> }
+export interface AgentResult { reply: string; steps: Step[]; pending: Pending | null; mode: string }
+export interface Approval { reply: string; steps: Step[]; booking: Booking | null }
 export interface Change { field: string; before: unknown; after: unknown }
 export interface Proposal { card_id: string; proposed: Card; changes: Change[]; summary: string; mode: string }
 export interface OwnerOverview {
@@ -81,6 +83,7 @@ export const api = {
     post<Booking>(`/api/hive/cards/${id}/book`, body),
   review: (receipt: string, rating: number, text: string) => post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
   agent: (messages: { role: string; content: string }[]) => post<AgentResult>("/api/agent", { messages }),
+  approve: (pending: Pending) => post<Approval>("/api/agent/approve", { pending }),
   owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`),
   propose: (id: string, instruction: string) => post<Proposal>(`/api/owner/${id}/propose`, { instruction }),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }),
