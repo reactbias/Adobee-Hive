@@ -10,11 +10,11 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, extraction, hive, hive_seed, mcp_server, nl_query, owner, profiles, seed
+from . import agent, config, db, hive, hive_seed, mcp_server, owner
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,7 +26,6 @@ async def lifespan(_: FastAPI):
     db.init()
     hive.init()
     if config.SEED_ON_EMPTY:
-        seed.seed_if_empty()
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
         yield
@@ -153,135 +152,3 @@ async def owner_propose(card_id: str, body: OwnerEdit) -> dict[str, Any]:
 @app.post("/api/owner/{card_id}/publish")
 def owner_publish(card_id: str, body: OwnerApply) -> dict[str, Any]:
     return _hive_call(owner.apply, card_id, body.proposed)
-
-
-# ---------------------------------------------------------------- HR (companies hiring people)
-
-class QueryRequest(BaseModel):
-    question: str = Field(min_length=3, max_length=500)
-
-
-class StageUpdate(BaseModel):
-    stage: str
-
-
-class TextCV(BaseModel):
-    text: str = Field(min_length=20)
-    job_id: str | None = None
-    filename: str = "pasted.txt"
-
-
-@app.get("/api/jobs")
-def jobs() -> list[dict[str, Any]]:
-    return db.list_jobs()
-
-
-@app.get("/api/candidates")
-def candidates(job_id: str | None = None, stage: str | None = None) -> list[dict[str, Any]]:
-    return db.list_candidates(job_id, stage)
-
-
-@app.get("/api/candidates/{cid}")
-def candidate(cid: str) -> dict[str, Any]:
-    found = db.get_candidate(cid)
-    if not found:
-        raise HTTPException(404, "Candidate not found")
-    return found
-
-
-@app.patch("/api/candidates/{cid}")
-def update_candidate(cid: str, body: StageUpdate) -> dict[str, Any]:
-    if body.stage not in db.STAGES:
-        raise HTTPException(400, f"stage must be one of {db.STAGES}")
-    db.set_stage(cid, body.stage)
-    return candidate(cid)
-
-
-@app.get("/api/funnel")
-def funnel(job_id: str | None = None) -> list[dict[str, Any]]:
-    return db.funnel(job_id)
-
-
-def _ingest(text: str, filename: str, job_id: str | None) -> dict[str, Any]:
-    parsed = extraction.parse_cv(text)
-    cid = db.insert_candidate(parsed, job_id=job_id, raw_text=text, filename=filename,
-                              source="claude" if config.LLM_ENABLED else "mock")
-    return db.get_candidate(cid)
-
-
-@app.post("/api/cvs")
-async def upload_cvs(files: list[UploadFile] = File(...), job_id: str | None = Form(None)) -> list[dict[str, Any]]:
-    docs = [(f.filename or "cv", extraction.read_upload(f.filename or "", await f.read())) for f in files]
-    sem = asyncio.Semaphore(4)
-
-    async def one(name: str, text: str) -> dict[str, Any]:
-        async with sem:
-            try:
-                return await asyncio.to_thread(_ingest, text, name, job_id)
-            except Exception as err:
-                return {"filename": name, "error": str(err)}
-
-    return await asyncio.gather(*(one(n, t) for n, t in docs))
-
-
-@app.post("/api/cvs/text")
-async def upload_text(body: TextCV) -> dict[str, Any]:
-    return await asyncio.to_thread(_ingest, body.text, body.filename, body.job_id)
-
-
-@app.get("/api/schema")
-def schema() -> dict[str, str]:
-    return {"schema": db.schema_description()}
-
-
-@app.post("/api/query")
-async def query(body: QueryRequest) -> dict[str, Any]:
-    try:
-        return await asyncio.to_thread(nl_query.ask, body.question)
-    except nl_query.UnsafeQuery as err:
-        raise HTTPException(400, str(err)) from err
-    except Exception as err:
-        raise HTTPException(400, f"Query failed: {err}") from err
-
-
-# ---------------------------------------------------------------- applicants (people as Hive cards)
-
-class PitchRequest(BaseModel):
-    job_id: str
-
-
-@app.get("/api/profiles/{pid}")
-def get_profile(pid: str) -> dict[str, Any]:
-    return profiles.get(pid)
-
-
-@app.put("/api/profiles/{pid}")
-def put_profile(pid: str, body: dict[str, Any]) -> dict[str, Any]:
-    return profiles.save(pid, body)
-
-
-@app.get("/api/connectors")
-def connectors() -> dict[str, Any]:
-    return {k: {"label": v["label"], "description": v["description"]} for k, v in profiles.CONNECTORS.items()}
-
-
-@app.post("/api/profiles/{pid}/connectors/{connector}")
-def connect(pid: str, connector: str) -> dict[str, Any]:
-    try:
-        return profiles.connect(pid, connector)
-    except KeyError as err:
-        raise HTTPException(404, f"Unknown connector {connector}") from err
-
-
-@app.post("/api/profiles/{pid}/pitch")
-async def pitch(pid: str, body: PitchRequest) -> dict[str, Any]:
-    job = db.get_job(body.job_id)
-    if not job:
-        raise HTTPException(404, "Job not found")
-    return await asyncio.to_thread(profiles.pitch, pid, job)
-
-
-@app.post("/api/profiles/{pid}/publish")
-def publish_profile(pid: str) -> dict[str, Any]:
-    """Publish the applicant's shared fields as a signed person card in the Hive."""
-    return profiles.publish_card(pid)

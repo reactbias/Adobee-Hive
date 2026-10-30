@@ -79,41 +79,4 @@ export const api = {
   propose: (id: string, instruction: string) => post<Proposal>(`/api/owner/${id}/propose`, { instruction }),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }),
 
-  // ---------- HR ----------
-  jobs: () => call<Job[]>("/api/jobs"),
-  candidates: (jobId?: string) => call<Candidate[]>(`/api/candidates${jobId ? `?job_id=${jobId}` : ""}`),
-  candidate: (id: string) => call<Candidate>(`/api/candidates/${id}`),
-  setStage: (id: string, stage: string) => call<Candidate>(`/api/candidates/${id}`, { method: "PATCH", body: JSON.stringify({ stage }) }),
-  funnel: (jobId?: string) => call<{ stage: string; count: number }[]>(`/api/funnel${jobId ? `?job_id=${jobId}` : ""}`),
-  uploadCvs: (files: File[], jobId?: string) => {
-    const form = new FormData();
-    files.forEach((f) => form.append("files", f));
-    if (jobId) form.append("job_id", jobId);
-    return call<(Candidate | { filename: string; error: string })[]>("/api/cvs", { method: "POST", body: form });
-  },
-  query: (question: string) => post<QueryResult>("/api/query", { question }),
-
-  // ---------- applicants ----------
-  profile: (id: string) => call<Profile>(`/api/profiles/${id}`),
-  saveProfile: (id: string, p: Partial<Profile>) => call<Profile>(`/api/profiles/${id}`, { method: "PUT", body: JSON.stringify(p) }),
-  connectors: () => call<Record<string, { label: string; description: string }>>("/api/connectors"),
-  connect: (id: string, connector: string) => post<Profile>(`/api/profiles/${id}/connectors/${connector}`, {}),
-  pitch: (id: string, jobId: string) => post<{ message: string; shared_fields: string[]; mode: string }>(`/api/profiles/${id}/pitch`, { job_id: jobId }),
-  publishProfile: (id: string) => post<Card>(`/api/profiles/${id}/publish`, {}),
 };
-
-export interface Job { id: string; title: string; location: string; description: string }
-export interface Candidate {
-  id: string; job_id: string | null; full_name: string; email: string | null; location: string | null; headline: string | null;
-  current_role: string | null; current_company: string | null; years_experience: number | null; seniority: string | null;
-  skills: string[]; languages: string[]; highest_education: string | null; summary: string | null; stage: string;
-  experiences?: { company: string; role: string; start_year: number | null; end_year: number | null; description: string }[];
-}
-export interface QueryResult { question: string; sql: string; explanation: string; mode: string; columns: string[]; rows: Record<string, unknown>[] }
-export interface Profile {
-  id: string; display_name: string; headline: string; location: string; about: string; skills: string[];
-  looking_for: string; availability: string; contact_format: string;
-  visibility: Record<string, boolean>;
-  projects: { title: string; source: string; url: string; summary: string }[];
-  connectors: Record<string, { connected: boolean; label?: string }>;
-}

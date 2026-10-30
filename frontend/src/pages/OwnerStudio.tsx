@@ -17,7 +17,7 @@ export default function OwnerStudio() {
   const load = (id: string) => api.owner(id).then(setOverview).catch((e) => setError(e.message));
 
   useEffect(() => {
-    api.cards().then((all) => setCards(all.filter((c) => c.kind !== "person")));
+    api.cards().then(setCards);
   }, []);
   useEffect(() => {
     setProposal(null);

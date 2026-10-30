@@ -6,9 +6,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-# Main model: the booking agent and HR question-to-SQL.
+# Main model: the booking agent.
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-opus-5-5")
-# Cheap model for high-volume parsing (CVs, owner edits). The demo key has a fixed budget.
+# Cheap model for owner edits. The demo key has a fixed budget.
 CLAUDE_FAST_MODEL = os.getenv("CLAUDE_FAST_MODEL", "claude-haiku-5-5")
 # Server-side refusal fallbacks (beta). Set to "off" to disable.
 CLAUDE_FALLBACKS = os.getenv("CLAUDE_FALLBACKS", "default")

@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import hive, nl_query
+from . import hive
 
 server = MCPServer(
     name="AdoBee Hive",
@@ -84,16 +84,6 @@ def hive_cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
     """Leave a verified review (1-5) for a stay. Requires the booking's signed receipt."""
     return _safe(hive.review, receipt, rating, text)
-
-
-@server.tool()
-def hive_talent_search(question: str) -> dict[str, Any]:
-    """For company HR agents: ask a plain-language question over the candidate database
-    (e.g. 'Python developers in Basel with 3+ years'). Returns the SQL used and the rows."""
-    try:
-        return nl_query.ask(question)
-    except (nl_query.UnsafeQuery, ValueError) as err:
-        return {"error": str(err)}
 
 
 def http_app():

@@ -13,15 +13,14 @@ agents query and act on over MCP. The same card renders as a page for humans, an
 | Piece | What it does | Where |
 | --- | --- | --- |
 | Hive cards | Structured presence for six fictional Basel businesses, each version signed with the owner's Ed25519 key | `backend/app/hive.py`, `hive_seed.py` |
-| MCP server | `hive_discover`, `hive_get_card`, `hive_check_availability`, `hive_book`, `hive_cancel`, `hive_review`, `hive_talent_search` at `/mcp/` | `backend/app/mcp_server.py` |
+| MCP server | `hive_discover`, `hive_get_card`, `hive_check_availability`, `hive_book`, `hive_cancel`, `hive_review` at `/mcp/` | `backend/app/mcp_server.py` |
 | Traveller agent | Connects over MCP like any third-party agent, verifies signatures itself, compares and books end to end | `backend/app/agent.py`, `frontend/src/pages/TravellerAgent.tsx` |
 | Trust | Third-party attestations, proof-of-stay reviews (needs the signed booking receipt), explainable ranking with no paid placement | `hive.py` |
 | Owner studio | Type "add sauna, courtyard double is 165 francs", review the diff, sign and publish. See bookings and the demand you missed | `backend/app/owner.py`, `OwnerStudio.tsx` |
 | Human fallback | `/card/<slug>` renders the same card with direct booking | `CardPage.tsx` |
-| People, too | HR side: CVs parsed into DuckDB, recruiters ask in plain language (the model sees only the schema). Applicants keep a persona and publish it as a signed person card | `extraction.py`, `nl_query.py`, `profiles.py` |
 
-Without `ANTHROPIC_API_KEY` everything still runs: a scripted planner walks the same MCP tools, and parsing and
-search fall back to keyword rules. The nav bar shows "Claude live" or "offline mode".
+Without `ANTHROPIC_API_KEY` everything still runs: a scripted planner walks the same MCP tools, and owner
+edits fall back to simple rules ("add sauna"). The nav bar shows "Claude live" or "offline mode".
 
 ## Run it locally
 
@@ -30,7 +29,7 @@ search fall back to keyword rules. The nav bar shows "Claude live" or "offline m
 cd backend
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
-pytest -q                                   # 16 tests, incl. an end-to-end booking over MCP
+pytest -q                                   # includes an end-to-end booking over MCP
 ANTHROPIC_API_KEY=sk-ant-... uvicorn app.main:app --reload --port 8000
 
 # frontend (another terminal)
@@ -64,8 +63,8 @@ One-time setup, about 15 minutes:
 
 ## Cost guard for the demo key
 
-The booking agent and HR question-to-SQL use `claude-opus-5-5` at low or medium effort with prompt caching on the
-tool definitions; CV parsing and owner edits use `claude-haiku-5-5`. Change either with `CLAUDE_MODEL` /
+The booking agent uses `claude-opus-5-5` at low effort with prompt caching on the tool definitions; owner edits
+use `claude-haiku-5-5`. Change either with `CLAUDE_MODEL` /
 `CLAUDE_FAST_MODEL`. `AGENT_MAX_TURNS` caps each agent run.
 
 ## Repo map
@@ -77,4 +76,4 @@ scripts/aws/bootstrap.sh   one-time AWS setup
 amplify.yml, .github/workflows/   deploy and CI
 ```
 
-All businesses, people and CVs in the seed data are fictional. MIT licensed, see `LICENSE`.
+All businesses in the seed data are fictional. MIT licensed, see `LICENSE`.

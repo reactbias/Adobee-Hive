@@ -6,8 +6,6 @@ import Home from "./pages/Home";
 import TravellerAgent from "./pages/TravellerAgent";
 import OwnerStudio from "./pages/OwnerStudio";
 import CardPage from "./pages/CardPage";
-import HrPortal from "./pages/HrPortal";
-import ApplicantDashboard from "./pages/ApplicantDashboard";
 import "./styles.css";
 
 function Nav() {
@@ -23,8 +21,6 @@ function Nav() {
       </NavLink>
       <NavLink to="/agent" className={link}>Traveller agent</NavLink>
       <NavLink to="/owner" className={link}>Owner studio</NavLink>
-      <NavLink to="/hr" className={link}>HR portal</NavLink>
-      <NavLink to="/me" className={link}>My persona</NavLink>
       <span className="mode" title={health ? `${health.model} / ${health.fast_model}` : "backend unreachable"}>
         {health ? (health.llm === "claude" ? "Claude live" : "offline mode") : "backend down"}
       </span>
@@ -42,8 +38,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/agent" element={<TravellerAgent />} />
           <Route path="/owner" element={<OwnerStudio />} />
           <Route path="/card/:slug" element={<CardPage />} />
-          <Route path="/hr" element={<HrPortal />} />
-          <Route path="/me" element={<ApplicantDashboard />} />
         </Routes>
       </main>
     </BrowserRouter>

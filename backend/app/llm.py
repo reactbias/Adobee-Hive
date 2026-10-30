@@ -1,4 +1,4 @@
-"""Thin wrapper around the Claude API: one structured-JSON call and one text call.
+"""Thin wrapper around the Claude API for structured-JSON calls.
 
 Every call uses server-side refusal fallbacks (beta) unless CLAUDE_FALLBACKS=off,
 and checks stop_reason before reading the content.
@@ -71,14 +71,3 @@ def structured(system: str, user: str | list, schema: dict[str, Any], *, effort:
         output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
     )
     return json.loads(_text(response))
-
-
-def text(system: str, user: str, *, effort: str = "low", max_tokens: int = 4000) -> str:
-    response = _create(
-        model=config.CLAUDE_MODEL,
-        max_tokens=max_tokens,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-        output_config={"effort": effort},
-    )
-    return _text(response).strip()

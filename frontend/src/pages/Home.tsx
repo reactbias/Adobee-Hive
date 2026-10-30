@@ -6,7 +6,7 @@ import TrustBadge from "../components/TrustBadge";
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([]);
   useEffect(() => {
-    api.cards().then((all) => setCards(all.filter((c) => c.kind !== "person"))).catch(() => setCards([]));
+    api.cards().then(setCards).catch(() => setCards([]));
   }, []);
 
   return (
