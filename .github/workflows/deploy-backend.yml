@@ -1,0 +1,37 @@
+# Builds the backend image and pushes it to ECR. App Runner is created with auto-deploy on,
+# so a new :latest image rolls out by itself. Needs repo secrets AWS_ACCESS_KEY_ID and
+# AWS_SECRET_ACCESS_KEY (an IAM user allowed to push to the ECR repo).
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", ".github/workflows/deploy-backend.yml"]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_REPOSITORY: adobee-hive-backend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE="$REGISTRY/$ECR_REPOSITORY"
+          docker build -t "$IMAGE:${GITHUB_SHA::7}" -t "$IMAGE:latest" backend
+          docker push --all-tags "$IMAGE"
