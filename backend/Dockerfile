@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY data ./data
+RUN mkdir -p data
 
 # Non-root user; DuckDB lives in /app/data (snapshotted to S3 when DUCKDB_S3_URI is set).
 RUN useradd --create-home hive && chown -R hive /app
