@@ -36,22 +36,22 @@ human only sets intent and approves.
 
 | Time | Who | Says | Screen and action |
 | --- | --- | --- | --- |
-| 0:00 | Tobias | *"In five years, the first guest at a Basel hotel won't be a person. It will be an agent. And the hotel will answer with an agent of its own."* | Black slide. Two lines type in like a chat: `Tobi's agent: quiet, dog-friendly room near Basel SBB, 13–15 Nov, under CHF 200?` then `Hotel Rheinblick: Courtyard double, CHF 172. Signed.` [S1] |
+| 0:00 | Tobias | *"In five years, the first guest at a Basel hotel won't be a person. It will be an agent. And the hotel will answer with an agent of its own."* | Black slide. Two lines type in like a chat: `Tobi's agent: quiet, dog-friendly room near Basel SBB, 13–15 Nov, under CHF 200?` then `Hotel Rheinblick: Courtyard single, CHF 128 a night. Signed.` [S1] |
 | 0:10 | Tobias | *"No website in between. We are Team B6, and this is Adobee Hive."* | Logo fades in under the two lines. |
-| 0:15 | Driver | (silent) | [Clicks **Send to my agent** on `/agent` with example 1 already in the box. The run finishes off screen.] |
+| 0:15 | Driver | (silent) | [Clicks **Send to my agent** on `/agent` with example 1 already in the box. The run stops at the approval question off screen.] |
 | 0:15 | Speaker B | *"Agents already talk to each other. There are forums where only agents post, and humans can only watch. Next, business agents will reach out to us before we ask, and specialised agents will argue a question out, like experts on a panel, until the answer is right."* | Slide: the agent forum. Traveller, hotel, reviewer and city agents with arrows between them. [S2] |
 | 0:27 | Speaker B | *"That can go two ways. Without rules: agents scrape and guess, rankings are sold, botnets of agents collude and write fake reviews, and every search becomes a profile of you."* | Slide splits: left half "Without rules", items appear one by one. [S3] |
 | 0:37 | Speaker B | *"With Adobee Hive, every business signs its own facts. Agents check the signature, rankings explain themselves, and only real guests can review. Let me show you."* | Right half "With signed, open presence" fills in. |
-| 0:45 | Tobias | *"I gave my agent one sentence. It never opened a website. This is the conversation it had with the Hive."* | [Driver switches to `/agent`: request on the left, timeline on the right.] |
-| 0:53 | Tobias | *"It asked the Hive. Six Basel businesses answered. The ranking is open: here is each score, and here is why the others were left out."* | [Opens **Searched the Hive**: scores, excluded hotels with reasons, e.g. Gare Central "not dog-friendly", Muensterhof over budget.] |
-| 1:08 | Tobias | *"Before trusting anything, my agent checked Rheinblick's signature itself. Then it asked for a free room and booked it."* | [Opens **Read and verified a card**, then **Booked**.] |
-| 1:20 | Tobias | *"What came back is a signed receipt. Only that receipt can leave a review: proof of stay, no fake reviews. And this is real MCP. Claude itself can book through the same door."* | [Points at the receipt; nav bar shows **Claude live**.] |
+| 0:45 | Tobias | *"I gave my agent one sentence. It never opened a website. This is the conversation it had with the Hive."* | [Driver switches to `/agent`. The **Agent to agent** panel: bubbles from "Your agent" with the tool name, replies from "Hive" and "Hotel Rheinblick".] |
+| 0:53 | Tobias | *"It asked the Hive. Six Basel businesses answered. The ranking is open: here is each score, and here is why the others were left out."* | [Points at the Hive's reply to `hive_discover`: scores, and the excluded hotels, e.g. Gare Central "missing dog-friendly, quiet", Muensterhof "CHF 245 > budget CHF 200".] |
+| 1:05 | Tobias | *"Before trusting anything, my agent checked Rheinblick's signature itself. Then it stopped and asked me."* | [Points at the **signature valid** chip on Hotel Rheinblick's reply, then at "Your agent asks: book this?" and clicks **Approve booking**.] |
+| 1:20 | Tobias | *"Only after I approved did it book. Back comes a signed receipt, the only key to a review: proof of stay, no fake reviews. And this is real MCP. Claude itself can book through the same door."* | [Trace shows "You approved the booking", then the `hive_book` reply with the receipt. Nav bar shows **Claude live**.] |
 | 1:35 | Tobias | *"Now we play the attacker. One franc for the room."* | [`/card/rheinblick`, **Set the first room to CHF 1 and verify**.] |
 | 1:42 | Tobias | *"Original: valid. Forged: rejected. No agent books from a fake card."* | Green *valid*, red *rejected*, side by side. |
-| 1:50 | Speaker C | *"Now the other side of the desk. This is Gare Central's owner. Her studio shows something no website analytics could: this week, agents turned her away for one reason, dog-friendly."* | [`/owner`, Gare Central selected, missed demand visible.] |
-| 2:02 | Speaker C | *"She types one sentence, checks the change, and signs."* | [Types *add dog-friendly*, **Preview change**, diff, **Sign and publish**.] |
+| 1:50 | Speaker C | *"Now the other side of the desk. This is Gare Central's owner. Her studio shows something no website analytics could: what agents turned her away for this week. Top of the list: dog-friendly."* | [`/owner`, Gare Central selected, missed demand visible.] |
+| 2:02 | Speaker C | *"She types one sentence, checks the change, and signs. Only true facts, because her signature is on them."* | [Types *add dog-friendly*, **Preview change**, diff, **Sign and publish**.] |
 | 2:10 | Speaker C | *"Zoom out to the whole city: pool, vegan breakfast, coworking. Asked for, offered by nobody. Today businesses write for agents. Here, agents tell small businesses what to open."* | [`/demand`, simulated before the pitch. Unserved demand on top.] |
-| 2:20 | Speaker B | *"So where is the human? At both ends. You set the intent and you approve. The agents do the middle, and you see every call they made."* | Slide: A2A, A2H, H2A, H2H, the human at both ends of the chain. [S4] |
+| 2:20 | Speaker B | *"So where is the human? At both ends. You set the intent and you approve, as you just saw. The agents do the middle, and you see every call they made."* | Slide: A2A, A2H, H2A, H2H, the human at both ends of the chain. [S4] |
 | 2:30 | Speaker B | *"Card text is data, never instructions, so a listing can't hijack your agent. The Hive learns what was asked, not who asked. Code alone won't make agents honest, but it makes honesty checkable, which is what the EU AI Act will ask for anyway."* | Same slide, three lines: data not instructions; what, not who; checkable by default. |
 | 2:45 | Tobias | *"Any town or association can run its own Hive, so no platform owns the front door again. Next come people: on GitHub you find projects to work on. On Adobee Hive, agents find the people to work with."* | Closing slide: logo, tagline, team names, QR code to the repo. [S5] |
 | 2:57 | Tobias | *"We are Team B6. Thank you."* | The B6 bee flies across the bottom once, dropping six little 6s. |
@@ -62,10 +62,11 @@ human only sets intent and approves.
 
 - [ ] `curl <backend>/api/health` returns `"llm": "claude"`. If not, the agent runs offline: same MCP tools, same
   booking, scripted planner. Still real, say nothing.
-- [ ] Run the demo once as a warm-up; this logs the "dog-friendly" missed demand Gare Central's owner sees at 1:50.
-- [ ] Reset Gare Central to *not* dog-friendly after the warm-up (fresh database, see DEMO.md), then repeat one
-  search so the missed demand is back.
-- [ ] On `/demand`, click **Simulate 40 traveller searches** once.
+- [ ] Run the demo once as a warm-up, including **Approve booking**.
+- [ ] `POST <backend>/api/demo/reset` (with the `X-Demo-Token` header if `DEMO_RESET_TOKEN` is set): restores the
+  seed, so Gare Central is not dog-friendly again, and clears bookings and demand.
+- [ ] On `/demand`, click **Simulate 40 traveller searches** once. This fills the city map and logs Gare Central's
+  dog-friendly misses for 1:50.
 - [ ] Five tabs in order: slides, `/agent` (example 1 in the box, not sent), `/card/rheinblick`, `/owner` (Gare
   Central selected), `/demand`. Zoom 125 %. Notifications off, on power, projector tested.
 - [ ] A 50-second screen recording of beats 3 to 5 on the desktop and a USB stick. [S6]
@@ -91,7 +92,6 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | S4 | Where is the human: the four modes plus the three ethics lines | Emily, Saad | Sat 18:00 |
 | S5 | Closing slide: logo, tagline, 10 names, QR code to the public repo | Felix, Andrey | Sat 18:00 |
 | S6 | 50-second backup recording on the final build | Driver | Sun 10:00 |
-| — | Optional "agent wire" view on `/agent`: each MCP call as a chat line between "Tobi's agent" and "Hotel Rheinblick" | Tobias, Felix, Andrey | Sat 20:00 |
 | — | Names for Speaker B, Speaker C and the driver | Tobias | Sat 12:00 |
 
 ## Jury questions
