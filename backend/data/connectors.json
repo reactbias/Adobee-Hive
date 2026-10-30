@@ -1,0 +1,39 @@
+{
+  "linkedin": {
+    "label": "LinkedIn",
+    "description": "Work history, headline and endorsed skills",
+    "imports": {
+      "display_name": "Alex Muster",
+      "headline": "Full-stack developer who likes design systems",
+      "location": "Basel, Switzerland",
+      "skills": ["TypeScript", "React", "Python", "SQL"]
+    }
+  },
+  "github": {
+    "label": "GitHub",
+    "description": "Repositories, languages and contributions",
+    "imports": {
+      "skills": ["Python", "FastAPI", "Docker", "DuckDB"],
+      "projects": [
+        {"title": "duckdb-cv-parser", "source": "GitHub", "url": "https://github.com/", "summary": "Parses CVs into DuckDB with an LLM"}
+      ]
+    }
+  },
+  "adobe_cc": {
+    "label": "Adobe Creative Cloud",
+    "description": "Behance portfolio and design tools you use",
+    "imports": {
+      "skills": ["Figma", "Illustrator", "Photoshop", "After Effects"],
+      "projects": [
+        {"title": "Hive brand identity", "source": "Behance", "url": "https://www.behance.net/", "summary": "Logo and motion kit for a bee-themed startup"}
+      ]
+    }
+  },
+  "upload": {
+    "label": "Upload a file",
+    "description": "Old CV, certificates or a portfolio PDF",
+    "imports": {
+      "about": "Curious builder, happiest in small teams that ship weekly."
+    }
+  }
+}
