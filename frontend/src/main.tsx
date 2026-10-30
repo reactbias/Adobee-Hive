@@ -18,7 +18,7 @@ function Nav() {
   return (
     <nav className="nav">
       <NavLink to="/" className="brand">
-        <img src="/bee.svg" alt="" width={28} height={28} /> AdoBee Hive
+        <img src="/brand/logo.svg" alt="" width={36} height={36} /> Adobee Hive
       </NavLink>
       <NavLink to="/agent" className={link}>Traveller agent</NavLink>
       <NavLink to="/owner" className={link}>Owner studio</NavLink>

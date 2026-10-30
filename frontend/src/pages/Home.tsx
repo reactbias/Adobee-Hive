@@ -15,7 +15,7 @@ export default function Home() {
         <div>
           <h1>The website is not the front door anymore.</h1>
           <p className="lead">
-            The first visitor of a Basel hotel is now an AI agent. AdoBee Hive gives every local business a signed,
+            The first visitor of a Basel hotel is now an AI agent. Adobee Hive gives every local business a signed,
             agent-readable card that agents can search, trust and book through, and that the owner edits in plain words.
             One presence serves agents and humans.
           </p>
@@ -24,7 +24,12 @@ export default function Home() {
             <Link className="btn" to="/owner" style={{ background: "transparent" }}>I own a business</Link>
           </div>
         </div>
-        <div className="hero-hex hex">On GitHub you find projects to work on. On AdoBee Hive, agents find businesses and people to work with.</div>
+        <figure className="hero-logo">
+          <img src="/brand/logo.svg" alt="Adobee Hive: a clay-brick hexagon with a bee inside" />
+          <figcaption>
+            On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.
+          </figcaption>
+        </figure>
       </section>
 
       <section className="grid three" style={{ marginBottom: 28 }}>
