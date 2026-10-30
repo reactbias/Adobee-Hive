@@ -1,5 +1,7 @@
 # Demo and pitch script (5 minutes)
 
+Short version for the stage: [PITCH.md](PITCH.md).
+
 Everything below runs live. Without an API key the agent switches to a scripted planner that walks the same MCP
 tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **offline mode**.
 
