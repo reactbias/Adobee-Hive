@@ -153,7 +153,7 @@ def parse_request(text: str) -> dict[str, Any]:
         "check_out": check_out,
         "guests": int(guests.group(1)) if guests else (2 if re.search(r"\b(two of us|couple|my partner)\b", low) else 1),
         "guest_name": name.group(1) if name else "Demo Traveller",
-        "wants_booking": bool(re.search(r"\bbook\b|\breserve\b", low)),
+        "wants_booking": bool(re.search(r"\bbook\b|\breserve\b", low)) and not re.search(r"\b(don'?t|do not|no)\s+book", low),
     }
 
 
