@@ -110,3 +110,16 @@ def test_demo_reset_restores_the_seed(client):
     card = client.get("/api/hive/cards/hotel-gare").json()
     assert "dog-friendly" not in card["features"] and card["version"] == 1
     assert card["trust"]["signature_valid"]
+
+
+def test_agent_falls_back_offline_when_claude_fails(client, monkeypatch):
+    import anthropic
+    import httpx
+
+    async def broken(*_args, **_kwargs):
+        raise anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com"))
+
+    monkeypatch.setattr(agent.config, "LLM_ENABLED", True)
+    monkeypatch.setattr(agent, "_run_claude", broken)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["mode"] == "scripted" and out["pending"]["tool"] == "hive_book"

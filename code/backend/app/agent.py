@@ -9,6 +9,7 @@ The agent never spends money on its own: when it is ready to book, it holds the 
 """
 
 import json
+import logging
 import re
 import time
 from contextlib import AsyncExitStack
@@ -20,6 +21,8 @@ from mcp import Client
 
 from . import config, hive, llm
 from .mcp_server import server as local_server
+
+log = logging.getLogger(__name__)
 
 AGENT_NAME = "Adobee travel agent"
 
@@ -85,7 +88,10 @@ async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
     """messages: [{role: user|assistant, content: str}], last one from the user."""
     async with HiveConnections() as hives:
         if config.LLM_ENABLED:
-            return await _run_claude(hives, messages)
+            try:
+                return await _run_claude(hives, messages)
+            except anthropic.APIError:  # out of credit, rate limit, outage: the demo goes on offline
+                log.exception("Claude unavailable, falling back to the scripted planner")
         return await _run_scripted(hives, messages[-1]["content"])
 
 
