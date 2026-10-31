@@ -79,7 +79,7 @@ export default function OwnerStudio() {
   const card = overview?.card;
   const missed = overview?.missed_demand ?? [];
   const maxMissed = Math.max(1, ...missed.map((m) => m.times));
-  const week = Object.entries(overview?.last_7_days ?? {});
+  const week = overview ? Object.keys(WEEK_LABELS).map((k) => [k, overview.last_7_days[k] ?? 0] as const) : [];
 
   return (
     <div className="studio">
@@ -127,7 +127,7 @@ export default function OwnerStudio() {
           {week.map(([k, v]) => (
             <div key={k}>
               <dd className="num">{v}</dd>
-              <dt>{WEEK_LABELS[k] ? t(WEEK_LABELS[k]) : k.replace("_", " ")}</dt>
+              <dt>{t(WEEK_LABELS[k])}</dt>
             </div>
           ))}
         </dl>
@@ -234,7 +234,7 @@ export default function OwnerStudio() {
                           {b.unit_id} · {b.status} · {b.agent}
                         </div>
                       </td>
-                      <td>{stay(b.check_in, b.check_out, intl)}</td>
+                      <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
                       <td className="end">{b.total_chf}</td>
                     </tr>
                   ))}

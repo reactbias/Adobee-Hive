@@ -93,6 +93,48 @@ const en = {
   "owner.bookings.dates": "Dates",
   "owner.bookings.empty": "No bookings yet.",
 
+  // Human card page
+  "card.loading": "Loading the card",
+  "card.walkIn": "Walk-in guest",
+  "card.address": "Address",
+  "card.book.title": "Book directly",
+  "card.in": "Check-in",
+  "card.out": "Check-out",
+  "card.guests": "Guests",
+  "card.name": "Your name",
+  "card.check": "Check availability",
+  "card.full": "Fully booked for these dates.",
+  "card.bookFor": "Book for {price}",
+  "card.booked": "Booked: {unit}, reference {id}.",
+  "card.tamper.eyebrow": "Signed facts",
+  "card.tamper.title": "Can a scraper fake this card?",
+  "card.tamper.body":
+    "Agents re-check the owner's Ed25519 signature on every card they read. Change a single fact without the owner's key and see what an agent sees.",
+  "card.tamper.price": "Set the first room to CHF 1 and verify",
+  "card.tamper.perk": "Add a fake perk and verify",
+  "card.tamper.original": "Original",
+  "card.tamper.forged": "Forged copy",
+  "card.tamper.valid": "Valid",
+  "card.tamper.invalid": "Invalid",
+  "card.tamper.rejected": "Rejected",
+  "card.footer": "Card version {version}, published {date}. Agents read the same data at the Hive's MCP endpoint.",
+
+  // Demand map
+  "demand.eyebrow": "Demand map",
+  "demand.title": "What Basel's agents asked for.",
+  "demand.lead":
+    "Every search leaves a trace. When no business can serve it, that is not a lost booking. It is a business plan, written by agents and read by local owners.",
+  "demand.simulate": "Simulate 40 traveller searches",
+  "demand.simulated": "{n} simulated searches added. They run the real discovery; only the travellers are invented.",
+  "demand.kpi.searches": "agent searches, last {days} days",
+  "demand.kpi.unserved": "found no business at all",
+  "demand.kpi.top": "most unserved request",
+  "demand.chart.title": "Requested, and who could serve it",
+  "demand.legend.asked": "asked",
+  "demand.legend.unserved": "nobody could serve",
+  "demand.empty": "No searches yet. Run the traveller agent or simulate some traffic.",
+  "demand.ofAsked": "{unserved} of {asked} unserved",
+
   // Traveller agent
   "agent.eyebrow": "Traveller agent",
   "agent.title": "One sentence. One yes.",
