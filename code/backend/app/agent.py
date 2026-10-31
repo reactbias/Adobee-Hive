@@ -16,12 +16,14 @@ guard would do, and never sends that booking.
 import json
 import logging
 import re
+import secrets
 import time
 from contextlib import AsyncExitStack
 from datetime import date, timedelta
 from typing import Any
 
 import anthropic
+import httpx
 import openai
 from mcp import Client
 
@@ -37,8 +39,8 @@ AGENT_NAME = "Adobee travel agent"
 SYSTEM = """You are {name}, a personal travel agent acting for one traveller. Today is {today}.
 You reach businesses only through the Hive MCP tools. Work like this:
 1. hive_discover with the traveller's hard constraints as structured arguments (features use exact tags).
-2. Pick the best match. Read its card with hive_get_card and only trust it if trust.verified_by_agent is true;
-   that is your own signature check, while signature_valid is only the source's claim. If not, take the next match.
+2. Pick the best match. Read its card with hive_get_card and only trust it if trust.signature_valid is true
+   (your own check against the owner's pinned key). If not, take the next match.
 3. hive_check_availability, then hive_book if the traveller asked you to book. The booking is held for the
    traveller's approval; when the tool says so, do not call it again. Use the traveller's name if given,
    otherwise "Demo Traveller".
@@ -53,6 +55,20 @@ def _tool_result_text(result) -> str:
     if result.structured_content is not None:
         return json.dumps(result.structured_content, default=str)
     return "\n".join(getattr(c, "text", "") for c in result.content)
+
+
+async def _pinned_keys(target: Any) -> dict[str, str]:
+    """Owner keys from a Hive's registry: in-process for the local Hive, /.well-known/hive.json for a remote one."""
+    if not isinstance(target, str):
+        return hive.owner_keys()
+    origin = target.split("/mcp")[0].rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=5) as http:
+            keys = (await http.get(f"{origin}/.well-known/hive.json")).json().get("owner_keys", {})
+    except (httpx.HTTPError, ValueError, AttributeError):
+        log.warning("No key registry at %s; its cards will fail verification", origin)
+        return {}
+    return {k: v for k, v in keys.items() if isinstance(k, str) and isinstance(v, str)}
 
 
 class HiveConnections:
@@ -74,9 +90,12 @@ class HiveConnections:
         self.tools: list[dict[str, Any]] = []
         self.blocked: dict[tuple[str, str], dict[str, Any]] = {}
         self.last_source = ""
+        self.pins: dict[str, str] = {}  # card id -> the owner's pinned public key, from each Hive's registry
 
     async def __aenter__(self) -> "HiveConnections":
         targets = [(url, url) for url in config.HIVE_MCP_URLS] or [(LOCAL_HIVE, local_server)]
+        for _label, target in targets:  # keys are pinned from configured Hives only, never from extra sources
+            self.pins |= await _pinned_keys(target)
         for label, target in [*targets, *self.extra]:
             client = await self.stack.enter_async_context(Client(target))
             self.sources[label] = client
@@ -100,9 +119,10 @@ class HiveConnections:
         self.last_source = label
         text = _tool_result_text(await self.sources[label].call_tool(name, args))
         try:
-            return json.loads(text)
+            output = json.loads(text)
         except json.JSONDecodeError:
             return {"text": text}
+        return output
 
     async def call(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         """Call one MCP tool and return its JSON result; discovery fans out to every source."""
@@ -155,8 +175,9 @@ class HiveConnections:
 
     def _guard(self, name: str, output: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
         if name == "hive_get_card" and isinstance(output.get("trust"), dict):
-            valid = verify_card(output)  # on the bytes as received, before anything is withheld
-            output["trust"]["verified_by_agent"] = valid
+            valid = verify_card(output, self.pins)  # on the bytes as received, before anything is withheld
+            # The agent's own check replaces the source's word, for every planner and model alike.
+            output["trust"]["signature_valid"] = valid
             record["signature"] = "valid" if valid else "invalid"
             if not valid:
                 reason = "this copy does not match what the owner signed"
@@ -214,12 +235,13 @@ async def run(messages: list[dict[str, str]], scenario: str | None = None, rules
 
 
 async def approve(pending: dict[str, Any]) -> dict[str, Any]:
-    """The traveller said yes: send the held hive_book call, unchanged, over MCP."""
+    """The traveller said yes: send the held hive_book call, unchanged, over MCP. Each hold can be approved once."""
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
+    args = _take(str(pending.get("id", "")))
     steps: list[dict[str, Any]] = []
     async with HiveConnections() as hives:
-        booking = await hives.step(steps, "hive_book", dict(pending["input"]))
+        booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
         return {"reply": f"Booking failed: {booking.get('error')}", "steps": steps, "booking": None}
     return {
@@ -230,8 +252,30 @@ async def approve(pending: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Held bookings live here, not with the client: approve() books exactly what the agent held, once. In memory is
+# enough because the backend runs as one instance; a restart only means asking the agent again.
+_HELD: dict[str, tuple[float, dict[str, Any]]] = {}
+HOLD_TTL_S = 30 * 60
+MAX_HELD = 1000
+
+
 def _hold(args: dict[str, Any]) -> dict[str, Any]:
-    return {"tool": "hive_book", "input": args}
+    now = time.time()
+    for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
+        del _HELD[key]
+    while len(_HELD) >= MAX_HELD:
+        del _HELD[next(iter(_HELD))]  # the oldest hold
+    hold_id = secrets.token_urlsafe(16)
+    _HELD[hold_id] = (now, dict(args))
+    return {"id": hold_id, "tool": "hive_book", "input": args}
+
+
+def _take(hold_id: str) -> dict[str, Any]:
+    """Remove and return a held booking's arguments; it cannot be approved again."""
+    held = _HELD.pop(hold_id, None)
+    if held is None or time.time() - held[0] > HOLD_TTL_S:
+        raise ValueError("This booking was already approved or has expired. Ask your agent again.")
+    return held[1]
 
 
 def _call_tool(name: str, args: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -457,7 +501,7 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
     best = card = None
     for candidate in matches[:4]:  # the best match whose card is genuine and whose text is only data
         card = await step("hive_get_card", {"card_id": candidate["id"]})
-        if not hives.is_blocked(candidate) and card.get("trust", {}).get("verified_by_agent"):
+        if not hives.is_blocked(candidate) and card.get("trust", {}).get("signature_valid"):
             best = candidate
             break
     set_aside = "".join(
@@ -557,8 +601,9 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
         return base | {"reply": f"Rules off: {best['name']} has no room for those dates.", "unguarded": None}
     orders = _orders_in(best, card)
     unit = next((u for u in units if u["name"].lower() in orders.lower()), units[0])  # does what the text says
-    would = _hold(
-        {
+    would = {  # not _hold(): nothing is stored, so this call can never be approved
+        "tool": "hive_book",
+        "input": {
             "card_id": best["id"],
             "unit_id": unit["id"],
             "check_in": req["check_in"],
@@ -566,12 +611,12 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
             "guest_name": req["guest_name"],
             "guests": req["guests"],
             "agent": "Unguarded agent (demo)",
-        }
-    )
+        },
+    }
     broken = []
     if orders:
         broken.append({"code": "obeyed_listing", "text": "Followed instructions written into a listing."})
-    if not verify_card(card):
+    if not verify_card(card, hives.pins):
         broken.append({"code": "skipped_signature", "text": "Did not check the owner's signature; this copy fails it."})
     if best.get("source", hives.primary) != hives.primary:
         broken.append({"code": "unverified_source", "text": f"Trusted an unverified source: {best['source']}."})
@@ -596,8 +641,6 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
     }
 
 
-def verify_card(card: dict[str, Any]) -> bool:
-    """Client-side check an agent can run on any card it fetched."""
-    trust = card.get("trust", {})
-    data = {k: v for k, v in card.items() if k != "trust"}
-    return hive.verify(data, trust.get("signature", ""), trust.get("public_key", ""))
+def verify_card(card: dict[str, Any], pins: dict[str, str]) -> bool:
+    """Client-side check an agent runs on any card it fetched: a valid signature by the owner's pinned key."""
+    return hive.verify_pinned(card, pins)

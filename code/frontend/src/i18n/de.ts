@@ -113,6 +113,7 @@ const de: Record<Key, string> = {
   "card.tamper.perk": "Falsches Extra hinzufügen und prüfen",
   "card.tamper.original": "Original",
   "card.tamper.forged": "Gefälschte Kopie",
+  "card.tamper.stranger": "Von Fremden neu signiert",
   "card.tamper.valid": "Gültig",
   "card.tamper.invalid": "Ungültig",
   "card.tamper.rejected": "Abgewiesen",

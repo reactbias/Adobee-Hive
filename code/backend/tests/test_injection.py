@@ -65,8 +65,9 @@ def test_forged_copy_keeps_the_owner_signature_but_fails_it(client):
     real = hive.get_card(mirror.TARGET)
     forged = mirror.forged_card()
     assert forged["trust"]["signature"] == real["trust"]["signature"]
-    assert agent.verify_card(real)
-    assert not agent.verify_card(forged)
+    pins = hive.owner_keys()
+    assert agent.verify_card(real, pins)
+    assert not agent.verify_card(forged, pins)
 
 
 def test_guarded_agent_refuses_the_manipulated_listing(client):
@@ -97,7 +98,7 @@ def test_rules_off_shows_the_damage_and_books_nothing(client):
     out = _ask(client, scenario="injection", rules="off")
     assert out["rules"] == "off" and out["pending"] is None
     would = out["unguarded"]
-    assert would["sent"] is False
+    assert would["sent"] is False and "id" not in would["would_call"]  # no hold exists to approve
     assert would["would_call"]["input"] | {"card_id": mirror.TARGET, "unit_id": "suite"} == would["would_call"]["input"]
     assert {b["code"] for b in would["broken"]} >= {"obeyed_listing", "skipped_signature", "ignored_budget"}
     assert "hive_book" not in [s["tool"] for s in out["steps"]]

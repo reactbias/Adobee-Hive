@@ -53,9 +53,21 @@ def test_discover_explains_exclusions(client):
 
 def test_tampered_card_fails_verification(client):
     card = client.get("/api/hive/cards/rheinblick").json()
-    assert agent.verify_card(card)
+    pins = client.get("/.well-known/hive.json").json()["owner_keys"]
+    assert agent.verify_card(card, pins)
     card["units"][0]["price_chf"] = 1
-    assert not agent.verify_card(card)
+    assert not agent.verify_card(card, pins)
+
+
+def test_card_re_signed_by_a_stranger_is_rejected(client):
+    forged = client.post("/api/hive/demo/forge/hotel-rheinblick").json()
+    assert forged["units"][0]["price_chf"] == 1
+    # The signature is valid for the stranger's key, so only the pinned key catches it.
+    data = {k: v for k, v in forged.items() if k != "trust"}
+    assert hive.verify(data, forged["trust"]["signature"], forged["trust"]["public_key"])
+    assert client.post("/api/hive/verify", json={"card": forged}).json() == {"signature_valid": False}
+    original = client.get("/api/hive/cards/rheinblick").json()
+    assert client.post("/api/hive/verify", json={"card": original}).json() == {"signature_valid": True}
 
 
 def test_reviews_need_a_real_receipt(client):
@@ -293,3 +305,12 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
     assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
     assert all(k["store"] is False for k in seen)
+
+
+def test_a_held_booking_is_approved_once_and_as_held(client):
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    pending = out["pending"] | {"input": out["pending"]["input"] | {"unit_id": "river", "guest_name": "Mallory"}}
+    done = client.post("/api/agent/approve", json={"pending": pending}).json()
+    assert done["booking"]["unit_name"] != "River-view double"  # what the agent held, not what the client sent
+    again = client.post("/api/agent/approve", json={"pending": out["pending"]})
+    assert again.status_code == 400 and "already approved" in again.json()["detail"]

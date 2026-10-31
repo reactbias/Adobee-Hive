@@ -26,8 +26,8 @@ courtyard double is 165 francs"), reviews a diff, and signs.
 
 Trust is built in, not bolted on:
 
-- **Signed by the owner.** Every card version carries the owner's Ed25519 signature. Agents verify it themselves, so
-  a scraped or tampered copy is rejected.
+- **Signed by the owner.** Every card version carries the owner's Ed25519 signature. Agents verify it themselves against
+  the owner's key pinned in the Hive's registry, so a scraped, tampered or re-signed copy is rejected.
 - **Attested by third parties.** Single claims like "dog-friendly" can be vouched for by someone else (a dog owners'
   club, the city). This is Adobe's Content Credentials idea applied to business facts instead of images.
 - **Reviewed only by real guests.** A booking returns a signed receipt, and only that receipt can leave a review.

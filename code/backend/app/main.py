@@ -74,7 +74,8 @@ def well_known(request: Request) -> dict[str, Any]:
     return {
         "name": "Adobee Hive (Basel)",
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
-        "signature": "Ed25519 over canonical JSON; public key in each card's trust block",
+        "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
+        "owner_keys": hive.owner_keys(),
         "ranking_policy": hive.RANKING_POLICY,
     }
 
@@ -184,10 +185,15 @@ class VerifyRequest(BaseModel):
 
 @app.post("/api/hive/verify")
 def hive_verify(body: VerifyRequest) -> dict[str, Any]:
-    """Check a card against its own signature, as any agent would. Used by the tamper demo."""
-    card = dict(body.card)
-    trust = card.pop("trust", {}) or {}
-    return {"signature_valid": hive.verify(card, trust.get("signature", ""), trust.get("public_key", ""))}
+    """Check a card as any agent would: a valid signature by the owner's pinned key. Used by the tamper demo."""
+    return {"signature_valid": hive.verify_pinned(body.card, hive.owner_keys())}
+
+
+@app.post("/api/hive/demo/forge/{card_id}")
+def hive_forge_demo(card_id: str, request: Request) -> dict[str, Any]:
+    """Tamper demo: a changed copy re-signed by a stranger's key, which must fail verification."""
+    guard.simulations.check(request)
+    return _hive_call(hive.forge_demo, card_id)
 
 
 @app.get("/api/hive/demand")

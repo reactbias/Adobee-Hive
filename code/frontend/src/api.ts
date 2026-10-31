@@ -113,7 +113,7 @@ export interface Refusal {
 }
 /** Demo only, rules off: the booking an unguarded agent would have sent, and the rules it broke. Never sent. */
 export interface Unguarded {
-  would_call: Pending;
+  would_call: Omit<Pending, "id">; // no hold is stored, so there is nothing to approve
   total_chf: number;
   broken: { code: string; text: string; price_chf?: number; budget_chf?: number }[];
   sent: false;
@@ -136,6 +136,7 @@ export interface Booking {
   cancellation?: string;
 }
 export interface Pending {
+  id: string; // one-time: the server books what it held under this id, once
   tool: "hive_book";
   input: Record<string, unknown>;
 }
@@ -226,6 +227,7 @@ export const api = {
     post<Proposal>(`/api/owner/${id}/propose`, { instruction }, ownerHeaders()),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }, ownerHeaders()),
   verify: (card: Card) => post<{ signature_valid: boolean }>("/api/hive/verify", { card }),
+  forge: (cardId: string) => post<Card>(`/api/hive/demo/forge/${encodeURIComponent(cardId)}`, {}),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
 };

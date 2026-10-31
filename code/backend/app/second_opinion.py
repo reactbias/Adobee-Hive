@@ -45,8 +45,7 @@ def rule_check(request: dict[str, Any], booking: dict[str, Any], card: dict[str,
     """Check the held booking against the parsed request with plain rules: features, budget, signature."""
     if card is None:
         return {"verdict": "concern", "note": "The booking agent never read this card, so nothing was verified."}
-    trust = card.get("trust", {})
-    if not trust.get("verified_by_agent", trust.get("signature_valid")):  # the agent's own check beats a claim
+    if not card.get("trust", {}).get("signature_valid"):
         return {"verdict": "concern", "note": f"{card['name']}'s signature did not verify."}
     missing = sorted(set(request["features"]) - {f.lower() for f in card.get("features", [])})
     if missing:

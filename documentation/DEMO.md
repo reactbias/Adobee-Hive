@@ -27,7 +27,8 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
    Your agent stops and asks, on a paper card, whether to book the room it chose. Click **Approve booking**: only now does it send `hive_book`, and the
    hotel answers with a signed receipt. "The human states the intent and says yes. The agents do the rest."
 2. **Human card page** (`/card/rheinblick`). Same card, rendered for people, with direct booking.
-   Click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*.
+   Click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*, and a copy
+   re-signed by a stranger's key *rejected* too, because agents only accept the owner's pinned key.
 3. **Owner studio** (`/owner`), pick Gare Central. Show the missed demand ("dog-friendly" turned away). Type
    *"add dog-friendly"*, click **Preview change**, review the diff, **Sign and publish**. The card is re-signed as a new version, and agents
    that ask for dog-friendly now see Gare Central (the first example also asks for quiet, which it isn't).
