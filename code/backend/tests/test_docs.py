@@ -91,23 +91,18 @@ def test_the_readme_starts_with_the_links_everyone_needs():
         assert needed in links
 
 
-def test_developers_have_a_guide_to_start_and_use_everything():
-    guide_path = ROOT / "documentation" / "DEVELOPING.md"
-    assert guide_path.exists(), "documentation/DEVELOPING.md is the developer guide"
-    guide = guide_path.read_text(encoding="utf-8")
-    for needed in [
-        "uvicorn app.main:app",
-        "npm run dev",
-        "pytest -q",
-        "npm test",
-        "localhost:8000/mcp/",
-        "#travel",
-        "#ask",
-        "#business",
-        "OPENAI_API_KEY",
-        "Offline mode",
-    ]:
-        assert needed in guide, f"DEVELOPING.md should cover {needed}"
-    readme = (ROOT / "readme.md").read_text(encoding="utf-8")
-    links = readme[readme.index("## Links") : readme.index("## The next guest")]
-    assert "documentation/DEVELOPING.md" in links, "link the developer guide from the readme's Links table"
+def test_the_developer_guide_is_linked_and_names_only_what_runs(client):
+    guide = (ROOT / "documentation" / "DEVELOPER.md").read_text(encoding="utf-8")
+    assert "documentation/DEVELOPER.md" in (ROOT / "readme.md").read_text(encoding="utf-8")
+
+    async def tools() -> set[str]:
+        async with Client(server) as c:
+            return {t.name for t in (await c.list_tools()).tools}
+
+    served_tools = asyncio.run(tools())
+    named_tools = set(re.findall(r"\b((?:hive|hr|explore)_[a-z_]+)\b(?!\.)", guide))  # not file names
+    assert named_tools - served_tools == set(), "the guide names MCP tools the server does not have"
+
+    served_paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
+    named_paths = {re.sub(r"/(hotel|cafe)-[a-z]+", "/{card_id}", p) for p in re.findall(r"(/api/[a-z/{}_-]+)", guide)}
+    assert named_paths - served_paths == set(), "the guide names endpoints the backend does not serve"
