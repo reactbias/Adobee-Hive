@@ -2,6 +2,7 @@
 
 import asyncio
 
+import pytest
 from mcp import Client
 
 from app import agent, config, guard, hive, simulate
@@ -161,3 +162,39 @@ def test_bad_input_is_a_clear_400_not_a_crash(client):
     assert client.post(book, json=too_long).status_code == 400
     oversized = {"messages": [{"role": "user", "content": "x" * 5000}]}
     assert client.post("/api/agent", json=oversized).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, "
+        "13.11.2026 bis 15.11.2026. Mein Name ist Tobi Muster.",
+        "Réserve-moi un hôtel calme, accueillant les chiens, près de Basel SBB, à moins de CHF 200, arrivée tardive, "
+        "du 13.11.2026 au 15.11.2026. Je m'appelle Tobi Muster.",
+        "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, "
+        "dal 13.11.2026 al 15.11.2026. Mi chiamo Tobi Muster.",
+    ],
+)
+def test_offline_planner_reads_localized_requests(text):
+    req = agent.parse_request(text)
+    assert req["features"] == ["dog-friendly", "late check-in", "quiet"]
+    assert (req["check_in"], req["check_out"]) == ("2026-11-13", "2026-11-15")
+    assert req["max_price_chf"] == 200 and req["near"] == "basel sbb"
+    assert req["guest_name"] == "Tobi Muster" and req["wants_booking"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Zu zweit zur Art Basel, nahe Messe Basel, mit Parkplatz, 3 Nächte ab 14.06.2027. "
+        "Nur vergleichen, nicht buchen.",
+        "À deux pour Art Basel, près de Messe Basel, avec parking, 3 nuits dès le 14.06.2027. Compare seulement, "
+        "ne réserve pas.",
+        "In due per Art Basel, vicino a Messe Basel, con parcheggio, 3 notti dal 14.06.2027. Solo confrontare, "
+        "non prenotare.",
+    ],
+)
+def test_offline_planner_respects_localized_dont_book(text):
+    req = agent.parse_request(text)
+    assert not req["wants_booking"] and req["guests"] == 2
+    assert (req["check_in"], req["check_out"]) == ("2027-06-14", "2027-06-17")
