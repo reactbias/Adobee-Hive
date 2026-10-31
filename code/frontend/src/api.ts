@@ -366,6 +366,8 @@ export interface Health {
   llm: "openai" | "claude" | "mock";
   model: string;
   fast_model: string;
+  /** Which similarity provider discovery ranks with. "offline" needs no key and is the default. */
+  semantic: "offline" | "embeddings";
 }
 
 // ---------- Ask the Hive ----------

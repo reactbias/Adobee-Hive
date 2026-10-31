@@ -43,6 +43,7 @@ SUITE = [
     "tests/test_registration.py",
     "tests/test_semantic.py",
     "tests/test_limits.py",
+    "tests/test_semantic_search.py",
 ]
 
 
@@ -128,6 +129,30 @@ CURATED: list[Mutant] = [
     ),
     Mutant(
         "hive.py",
+        "being close to the ask stops counting, so a haircut search misses 'cut, wash and finish' again",
+        '"semantic": close[2] if close else 0,',
+        '"semantic": 0,',
+    ),
+    Mutant(
+        "hive.py",
+        "a merely similar entity is paid like one that really offers the thing, so literal stops winning",
+        "SEMANTIC_POINTS = 8",
+        "SEMANTIC_POINTS = 10",
+    ),
+    Mutant(
+        "hive.py",
+        "prose is paid like a structured claim, so saying it is worth as much as offering it",
+        "SEMANTIC_TEXT_POINTS = 4",
+        "SEMANTIC_TEXT_POINTS = 10",
+    ),
+    Mutant(
+        "hive.py",
+        "the semantic side ignores looking_for, so who offers a thing is answered with who wants it",
+        'sides = {"offers": offer_hits, "needs": need_hits} if looking_for == "any" else {looking_for: side_hits}',
+        'sides = {"offers": offer_hits, "needs": need_hits}',
+    ),
+    Mutant(
+        "hive.py",
         "looking_for is ignored, so a search for who offers a thing answers with who wants it",
         'need_hits = _side_hits(card, "needs", terms) if looking_for in ("needs", "any") else []',
         'need_hits = _side_hits(card, "needs", terms)',
@@ -159,7 +184,7 @@ CURATED: list[Mutant] = [
     Mutant(
         "semantic.py",
         "the concept table stops being consulted, so semantic search is substring search again",
-        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in _concept_index().get(root, ())]',
+        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in concepts]',
         "bag += []",
     ),
     Mutant(
