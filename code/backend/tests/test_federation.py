@@ -269,6 +269,63 @@ def test_the_http_transport_falls_back_to_the_url_when_a_peer_declares_no_hub_id
     assert profile["verification"] is None and profile["paid_placement"] is None
 
 
+def test_every_entity_carries_a_name_a_description_and_a_rating(client, net):
+    """The protocol says every entity has these three, so a hub and a business read the same way."""
+    found = hive.discover(**ASK)
+
+    assert found["matches"], "the seed must answer this ask"
+    for match in found["matches"] + found["excluded"]:
+        assert match["name"], "every business is named"
+        assert "description" in match and isinstance(match["description"], str)
+        assert "rating" in match and "rating_count" in match
+        assert match["rating"] is None or 0 <= match["rating"] <= 5
+
+
+def test_a_business_rating_stays_empty_until_a_signed_receipt_produces_one():
+    """No stay, no review, and therefore no rating. The field exists; it is simply not earned yet."""
+    fresh = [m for m in hive.discover(**ASK)["matches"] if m["rating_count"] == 0]
+
+    assert fresh, "the seed should hold at least one business nobody has reviewed"
+    assert all(m["rating"] is None for m in fresh), "an unreviewed business has no rating, not a zero"
+
+
+def test_the_discovery_document_names_and_describes_this_hive(client):
+    """A peer reads these to show who answered, so they travel with the federation block."""
+    doc = client.get("/.well-known/hive.json").json()
+
+    assert doc["name"] and doc["description"], "a Hive says who it is at its own door"
+    assert doc["federation"]["name"] == doc["name"]
+    assert doc["federation"]["description"] == doc["description"]
+
+
+def test_a_peer_cannot_declare_its_own_rating(client, net):
+    """The one field a peer may not set. A name and a description are its word; a rating is ours.
+
+    If a hub could publish `rating: 1.0` the whole trust layer would be decorative, so the parser
+    never reads a rating off the wire and the asked-peer entry carries what reputation.py computed.
+    """
+    liar = FakeHive("liar", cards=[_card("hotel-liar", "Hotel Liar (fictional)")])
+    liar_profile = liar.profile
+    liar.profile = lambda: {
+        **liar_profile(),
+        "name": "Totally Legitimate Hive",
+        "description": "The best Hive.",
+        "rating": 1.0,
+        "trust": 1.0,
+    }
+    net(liar)
+
+    found = hive.discover(**ASK, radius=1)
+    asked = found["federation"]["asked"]
+
+    assert asked, "the peer was asked"
+    entry = asked[0]
+    assert entry["name"] == "Totally Legitimate Hive", "a peer's own name is taken at its word"
+    assert entry["description"] == "The best Hive.", "so is its description"
+    assert entry["rating"] < 1.0, "but not its rating: an unproven peer starts at trust on first use"
+    assert entry["rating"] == pytest.approx(reputation.NEW_PEER_TRUST, abs=0.2)
+
+
 def test_a_forwarded_query_carries_the_whole_ask(client, net):
     """Found by tools/mutate.py: inverting the filter in hop_params() forwarded an empty ask."""
     params = federation.hop_params(ASK, radius=1, budget_ms=900, seen=["basel"])

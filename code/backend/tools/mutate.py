@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app"
 
 # The test files that should notice. Keeping the subset small keeps a run under a minute.
-SUITE = ["tests/test_federation.py", "tests/test_reputation.py", "tests/test_hive.py"]
+SUITE = ["tests/test_federation.py", "tests/test_reputation.py", "tests/test_hive.py", "tests/test_docs.py"]
 
 
 @dataclass
@@ -86,6 +86,18 @@ CURATED: list[Mutant] = [
         "breadth is unbounded, so reach 2 becomes a broadcast storm",
         "return peers[:PEERS_PER_HOP], skipped",
         "return peers, skipped",
+    ),
+    Mutant(
+        "federation.py",
+        "a peer's own claim about itself becomes its rating, so trust can be self-declared",
+        '"rating": trust,  # our own opinion of this peer, not its word for itself',
+        '"rating": 1.0,',
+    ),
+    Mutant(
+        "hive.py",
+        "an unreviewed business reports a rating of zero instead of none earned yet",
+        '"rating": trust["verified_reviews"]["average"],',
+        '"rating": 0,',
     ),
     Mutant(
         "reputation.py",

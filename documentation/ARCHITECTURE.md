@@ -82,7 +82,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown, and every excluded business with why; a federated match adds `provenance`, `hops` and the three federated rank factors. People never show up here, only through the HR tools |
+| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown, and every excluded business with why. Every entity carries `name`, `description` and `rating` (`rating` is null until a signed receipt earns one); a federated match adds `provenance`, `hops` and the three federated rank factors. People never show up here, only through the HR tools |
 | `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |

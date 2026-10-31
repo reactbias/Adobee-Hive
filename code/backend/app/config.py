@@ -54,6 +54,12 @@ HIVE_HUB_ID = os.getenv("HIVE_HUB_ID", "local")
 # What this hub declares about how it vets its members: "signed" (every card signed by its owner's pinned key),
 # "attested" (plus third-party attestations) or "none". Peers judge the declaration against what they observe.
 HIVE_VERIFICATION = os.getenv("HIVE_VERIFICATION", "signed")
+
+# What this Hive calls itself to its peers. A hub is an entity in the protocol like a business is, so it
+# carries the same three fields: a name, a description, and a rating. The rating of a hub is never
+# self-declared — each hub computes its own opinion of a peer in reputation.py.
+HIVE_NAME = os.getenv("HIVE_NAME", "Adobee Hive (Basel)")
+HIVE_DESCRIPTION = os.getenv("HIVE_DESCRIPTION", "Signed cards for Basel businesses: stays, tables and services.")
 # A model call that hangs must not leave the chat "thinking": one call gives up after LLM_TIMEOUT_S, a whole agent
 # run after AGENT_TIMEOUT_S, and the offline planner answers instead.
 LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "25"))

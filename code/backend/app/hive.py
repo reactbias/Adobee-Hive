@@ -537,6 +537,11 @@ def discover(
             "name": card["name"],
             "kind": card["kind"],
             "tagline": card.get("tagline"),
+            # The three fields every entity in the protocol carries, hub or business. The rating is the
+            # verified-review average and stays None until a signed receipt produces one: no stay, no rating.
+            "description": card.get("description") or "",
+            "rating": trust["verified_reviews"]["average"],
+            "rating_count": trust["verified_reviews"]["count"],
             "from_price_chf": price,
             "distance_m": dist,
             "score": round(sum(score.values()), 1),

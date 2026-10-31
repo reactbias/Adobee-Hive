@@ -368,7 +368,12 @@ export interface HubTrust {
 export interface HiveMatch {
   id: string;
   slug: string;
+  /** Every entity in the protocol carries a name, a description and a rating. */
   name: string;
+  description: string;
+  /** The verified-review average, null until a signed receipt earns one: no stay, no rating. */
+  rating: number | null;
+  rating_count: number;
   kind: string;
   tagline?: string | null;
   from_price_chf: number | null;
@@ -392,7 +397,8 @@ export interface FederationReport {
   seen: string[];
   budget_ms: number;
   elapsed_ms: number;
-  asked: { hub: string; url: string; trust: number }[];
+  /** A hub is an entity too: it declares a name and a description; the rating is this Hive's own. */
+  asked: { hub: string; name: string; description: string; rating: number; url: string; trust: number }[];
   dropped: { hub: string; reason: string }[];
   rejected: { hub: string; card_id: string; origin: string; reason: string }[];
   hub_trust: Record<string, HubTrust>;

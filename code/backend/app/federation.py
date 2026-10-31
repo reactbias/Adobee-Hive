@@ -75,6 +75,10 @@ class HttpTransport:
         declared = doc.get("federation") or {}
         return {
             "hub_id": str(declared.get("hub_id") or base_url.rstrip("/")),
+            # A hub is an entity like a business: it has a name and a description it declares, and a
+            # rating this hub works out for itself. Only the first two come off the wire.
+            "name": str(declared.get("name") or doc.get("name") or ""),
+            "description": str(declared.get("description") or doc.get("description") or ""),
             "verification": declared.get("verification"),
             "paid_placement": declared.get("paid_placement"),
             "ranking_policy": str(doc.get("ranking_policy") or ""),
@@ -316,7 +320,17 @@ async def search(
     elif hops >= 1:
         peers, skipped = await _choose_peers(trail, transport)
         report["dropped"] += skipped
-        report["asked"] = [{"hub": profile["hub_id"], "url": url, "trust": trust} for url, profile, trust in peers]
+        report["asked"] = [
+            {
+                "hub": profile["hub_id"],
+                "name": profile.get("name") or profile["hub_id"],
+                "description": profile.get("description") or "",
+                "rating": trust,  # our own opinion of this peer, not its word for itself
+                "url": url,
+                "trust": trust,
+            }
+            for url, profile, trust in peers
+        ]
         answers = await asyncio.gather(*[_ask_peer(url, ask, hops - 1, left, trail, transport) for url, _, _ in peers])
         for (url, profile, _), answer in zip(peers, answers, strict=False):
             if answer.get("code"):

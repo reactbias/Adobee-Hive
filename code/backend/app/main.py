@@ -90,7 +90,8 @@ def well_known(request: Request) -> dict[str, Any]:
     """Discovery document so agents can find this Hive's MCP endpoint and policies."""
     base = str(request.base_url).rstrip("/")
     return {
-        "name": "Adobee Hive (Basel)",
+        "name": config.HIVE_NAME,
+        "description": config.HIVE_DESCRIPTION,
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
         "owner_keys": hive.owner_keys(),
@@ -99,6 +100,8 @@ def well_known(request: Request) -> dict[str, Any]:
         # What peer Hives judge this hub by when a query reaches them over it (see reputation.py).
         "federation": {
             "hub_id": config.HIVE_HUB_ID,
+            "name": config.HIVE_NAME,
+            "description": config.HIVE_DESCRIPTION,
             "verification": config.HIVE_VERIFICATION,
             "paid_placement": False,
             "max_radius": federation.MAX_RADIUS,
