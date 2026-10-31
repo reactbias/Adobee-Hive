@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import domains, hive, waiting
+from . import domains, hive, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -37,6 +37,7 @@ def hive_discover(
     check_in: str | None = None,
     check_out: str | None = None,
     guests: int = 1,
+    ruleset: str | None = None,
 ) -> dict[str, Any]:
     """Find local businesses in the Hive.
 
@@ -44,8 +45,17 @@ def hive_discover(
     features: exact tags such as 'dog-friendly', 'late check-in', 'quiet', 'breakfast', 'parking'.
     Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
     businesses with why_not, so you can explain the choice to the user.
+    ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
     """
-    return _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests)
+    found = _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests)
+    return found if "error" in found or not ruleset else _safe(rulesets.apply, found, ruleset)
+
+
+@server.tool()
+def hive_rulesets() -> dict[str, Any]:
+    """List the rulesets a user can choose for hive_discover, each signed by its author (keys in
+    /.well-known/hive.json under ruleset_keys). A ruleset only narrows results; it never boosts a business."""
+    return rulesets.catalogue()
 
 
 @server.tool()

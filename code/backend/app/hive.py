@@ -125,18 +125,23 @@ def verify(data: dict[str, Any], signature: str, public_key: str) -> bool:
         return False
 
 
-def owner_keys() -> dict[str, str]:
-    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
-
-    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
-    it is signed by the key pinned here for that card id.
-    """
+def signing_keys() -> dict[str, str]:
+    """Every public key the Hive holds a signing key for: businesses by card id, ruleset authors as "ruleset:<id>"."""
     with db.cursor() as cur:
         rows = cur.execute("SELECT card_id, private_key FROM hive_keys ORDER BY card_id").fetchall()
     return {
         card_id: _public_b64(serialization.load_pem_private_key(pem.encode(), password=None))  # type: ignore[arg-type]
         for card_id, pem in rows
     }
+
+
+def owner_keys() -> dict[str, str]:
+    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
+
+    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
+    it is signed by the key pinned here for that card id.
+    """
+    return {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
 
 
 def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
