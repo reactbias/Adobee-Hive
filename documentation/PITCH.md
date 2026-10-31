@@ -94,7 +94,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | S1 | Hook slide: black, two agent lines typing in, logo fade | Emily, Saad | Sat 18:00 |
 | S2 | Agent forum slide: traveller, hotel, reviewer, city agents talking; one diagram, max 8 words | Emily, Saad | Sat 18:00 |
 | S3 | Two futures slide from VISION.md, 4 items per side, appear on click | Emily, Saad | Sat 18:00 |
-| S4 | Where is the human: the four modes plus the three ethics lines | Emily, Saad | Sat 18:00 |
+| S4 | Where is the human: the four modes plus the three ethics lines, and one closing line: "The rules are visible and chosen." | Emily, Saad | Sat 18:00 |
 | S5 | Closing slide: the use-case arc from VISION.md, then logo, tagline, 10 names, QR code to the public repo | Felix, Andrey | Sat 18:00 |
 | S6 | 50-second backup recording on the final build | Driver | Sun 10:00 |
 | S7 | Group chat on `/agent`: one avatar and entrance animation per participant (Tobi, Your agent, Hive, Hotel Rheinblick, the sceptic, the mirror, the owner); **Replay** takes about 35 s from Tobi's line to "book this?" so it fits 0:45–1:35 | UI polish thread | Sat 20:00 |
@@ -110,6 +110,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | What stops a fake hotel? | Third-party attestations, like Content Credentials for business facts, and reviews only from signed receipts. |
 | Prompt injection? | Card text reaches the agent as data, never instructions, and every tool call is shown to the human. |
 | Is the demo real? | Yes: the agent reaches hotels only through MCP tools, and Claude can book through the same URL as a connector. |
+| Whose idea of "right" or "healthy"? | It differs by person and by country, so the Hive never decides silently: the rules are visible and chosen, per interaction, with the local law as the floor. The mood selector on `/ask` is the first piece; per-jurisdiction rulesets are next. |
 | Where does Adobe fit? | Content Credentials provenance for business facts, and the owner studio as a tool for how a brand is seen by agents. |
 
 Guardrails for the widened story: HR is a starter (person cards, skills search, introductions only with consent),
