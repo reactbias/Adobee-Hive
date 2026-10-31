@@ -14,7 +14,10 @@ describe("routing a request", () => {
         expect(routeFor(d[k], false), d[k]).toBe("stay");
     });
     it(`sends the business examples to the cards (${lang})`, () => {
-      for (const k of ["ask.ex1", "ask.ex2"] as const) expect(routeFor(d[k], false), d[k]).toBe("ask");
+      for (const k of ["try.pasta", "try.coffee", "try.lockout"] as const)
+        expect(routeFor(d[k], false), d[k]).toBe("ask");
+      for (const k of ["try.tavern", "try.garden", "try.hostel"] as const)
+        expect(routeFor(d[k], false), d[k]).toBe("stay");
     });
   }
 

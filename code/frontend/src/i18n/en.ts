@@ -79,9 +79,6 @@ const en = {
   "demand.ofAsked": "{unserved} of {asked} unserved",
 
   // Traveller agent
-  "agent.eyebrow": "The front door, signed.",
-  "agent.title": "The next guest is *an agent.*",
-  "agent.lead": "A room, a plan, an answer: your agent asks Basel's businesses and books only with your yes.",
   "agent.intent": "Your request",
   "agent.followUp": "Reply to your agent",
   "agent.placeholder": "What do you need?",
@@ -94,6 +91,13 @@ const en = {
   "mic.listening": "Listening…",
   "mic.blocked": "Microphone blocked: allow it in the browser",
   "agent.try": "Try",
+  // Queries a person would type. The card they should find never uses these words. testdata/README.md
+  "try.tavern": "simple room over a tavern, under a hundred francs",
+  "try.garden": "bed and breakfast with a garden",
+  "try.hostel": "hostel with bunk beds for a school group",
+  "try.pasta": "italian restaurant with homemade noodles",
+  "try.coffee": "where to buy freshly roasted coffee beans",
+  "try.lockout": "I locked myself out of my apartment",
   "agent.example.1":
     "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15. My name is Mara Keller.",
   "agent.example.2":
@@ -254,8 +258,6 @@ const en = {
 
   // Ask the Hive
   "trust.unclaimed": "Unclaimed · hand-off only",
-  "ask.ex1": "What's going on at BaselHack this month?",
-  "ask.ex2": "Plan me an adventure under 500 CHF",
   "ask.empty": "No card answers this yet. That is recorded as missed demand, without your question.",
   "scout.call": "Nothing in the Hive answers this yet. I'll look beyond the Hive, on the public web.",
   "scout.found": "Found on the web and verified on their own websites: {n}. Added to the Hive as unclaimed cards.",
@@ -396,8 +398,6 @@ const en = {
   "card.count.one": "1 result",
   "card.count.other": "{n} results",
   "card.more": "More about {name}",
-  "card.try.person": "A designer for a dataviz sprint.",
-  "card.try.staff": "Seasonal front-desk staff.",
   // The instance finder (the first screen) and the hub admin panel
   "finder.title": "Choose a Hive",
   "finder.lead":

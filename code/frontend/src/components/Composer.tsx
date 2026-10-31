@@ -73,6 +73,17 @@ export default function Composer({
   const send = (text = value) => {
     if (text.trim() && !busy) onSend(text.trim());
   };
+  const actions = (
+    <div className={bar ? "composer-bar search-actions" : "composer-bar"}>
+      <span className="composer-actions">
+        {secondary}
+        <MicButton value={value} onChange={onChange} disabled={busy} />
+        <button className={busy ? "busy" : ""} onClick={() => send()} disabled={busy || !value.trim()}>
+          {busy ? busyLabel : sendLabel}
+        </button>
+      </span>
+    </div>
+  );
   return (
     <>
       <div className={bar ? "composer bar" : "composer"}>
@@ -92,15 +103,8 @@ export default function Composer({
           }}
           placeholder={placeholder}
         />
-        <div className="composer-bar">
-          <span className="composer-actions">
-            {secondary}
-            <MicButton value={value} onChange={onChange} disabled={busy} />
-            <button className={busy ? "busy" : ""} onClick={() => send()} disabled={busy || !value.trim()}>
-              {busy ? busyLabel : sendLabel}
-            </button>
-          </span>
-        </div>
+        {/* On the search bar the actions sit under the chips, so the field itself stays one row. */}
+        {!bar && actions}
       </div>
       {examples.length > 0 && (
         <div className="examples">
@@ -116,6 +120,7 @@ export default function Composer({
           </ul>
         </div>
       )}
+      {bar && actions}
     </>
   );
 }

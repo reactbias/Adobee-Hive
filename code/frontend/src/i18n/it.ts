@@ -77,10 +77,6 @@ const it: Record<Key, string> = {
   "demand.empty": "Ancora nessuna ricerca. Chieda una camera al Suo agente qui sopra.",
   "demand.ofAsked": "{unserved} su {asked} insoddisfatte",
 
-  "agent.eyebrow": "La porta d'ingresso, firmata.",
-  "agent.title": "Il prossimo ospite è *un agente.*",
-  "agent.lead":
-    "Una camera, un piano, una risposta: il Suo agente interroga le attività di Basilea e prenota solo con il Suo sì.",
   "agent.intent": "La Sua richiesta",
   "agent.followUp": "Risponda al Suo agente",
   "agent.placeholder": "Di che cosa ha bisogno?",
@@ -93,6 +89,12 @@ const it: Record<Key, string> = {
   "mic.listening": "In ascolto…",
   "mic.blocked": "Microfono bloccato: lo consenta nel browser",
   "agent.try": "Provi",
+  "try.tavern": "Una camera semplice sopra un'osteria, sotto i cento franchi",
+  "try.garden": "Camera con colazione e giardino",
+  "try.hostel": "Una camera in ostello con letti a castello per una classe",
+  "try.pasta": "Ristorante italiano con pasta fatta in casa",
+  "try.coffee": "Dove comprare chicchi di caffè appena tostati",
+  "try.lockout": "Mi sono chiuso fuori dal mio appartamento",
   "agent.example.1":
     "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, dal 13.11.2026 al 15.11.2026. Mi chiamo Mara Keller.",
   "agent.example.2":
@@ -255,8 +257,6 @@ const it: Record<Key, string> = {
 
   // Ask the Hive
   "trust.unclaimed": "Non rivendicata · solo inoltro",
-  "ask.ex1": "Che novità ci sono da BaselHack questo mese?",
-  "ask.ex2": "Pianifichi per me un'avventura sotto 500 CHF",
   "ask.empty": "Nessuna carta risponde ancora. Viene registrato come domanda mancata, senza la Sua domanda.",
   "scout.call": "Nessuna carta nell'Hive risponde ancora. Cerco oltre l'Hive, sul web pubblico.",
   "scout.found": "Trovate sul web e verificate sul loro sito: {n}. Aggiunte all'Hive come carte non rivendicate.",
@@ -398,8 +398,6 @@ const it: Record<Key, string> = {
   "card.count.one": "1 risultato",
   "card.count.other": "{n} risultati",
   "card.more": "Altro su {name}",
-  "card.try.person": "Una designer per uno sprint dataviz.",
-  "card.try.staff": "Personale di front-desk per la stagione.",
   // The instance finder (the first screen) and the hub admin panel
   "finder.title": "Scegliere un Hive",
   "finder.lead":

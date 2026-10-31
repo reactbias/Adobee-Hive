@@ -35,8 +35,8 @@ import Reach from "../components/Reach";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
-// The Try list: stays first, then any business; the same chat answers both.
-const TRY: Key[] = ["agent.example.1", "card.try.person", "card.try.staff", "agent.example.2", "ask.ex1", "ask.ex2"];
+// What a person would type, from the corpus answer key: the card never uses these words.
+const TRY: Key[] = ["try.tavern", "try.garden", "try.hostel", "try.pasta", "try.coffee", "try.lockout"];
 
 type Rec = Record<string, unknown>;
 
@@ -496,10 +496,6 @@ export default function TravellerAgent() {
       <Chapter
         id="travel"
         stack
-        headingLevel={1}
-        eyebrow={t("agent.eyebrow")}
-        heading="agent.title"
-        lead={t("agent.lead")}
         side={
           <div className="search-top">
             <Composer
@@ -514,7 +510,7 @@ export default function TravellerAgent() {
               busyLabel={searching ? t("card.searching") : t("agent.sending")}
               placeholder={t("agent.placeholder")}
               tryLabel={t("agent.try")}
-              examples={history.length || searching ? [] : TRY.map((k) => t(k))}
+              examples={TRY.map((k) => t(k))}
               boxRef={box}
               secondary={
                 history.length > 0 && (
