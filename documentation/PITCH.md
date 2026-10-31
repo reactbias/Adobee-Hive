@@ -64,6 +64,8 @@ human only sets intent and approves.
 
 - [ ] `curl <backend>/api/health` returns `"llm": "openai"` (`"mock"` means offline). If not, the agent runs offline: same MCP tools, same
   booking, scripted planner. Still real, say nothing.
+- [ ] Open the app with `?demo` (https://reactbias.github.io/Adobee-Hive/?demo): only then are **Stress test**,
+  **Simulate 40 traveller searches** and the tamper test on the page.
 - [ ] Run the demo once as a warm-up, including **Approve booking** and the stress test with rules on and off.
 - [ ] `POST <backend>/api/demo/reset` (with the `X-Demo-Token` header if `DEMO_RESET_TOKEN` is set): restores the
   seed, so Gare Central is not dog-friendly again, and clears bookings and demand.

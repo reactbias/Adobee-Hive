@@ -2542,3 +2542,11 @@ button.self-start {
   color: var(--st-ink);
   border-color: var(--st-line);
 }
+
+/* Inside a chapter's panel the figures sit on one row */
+.frame .kpis {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+.frame .kpis dd {
+  font-size: var(--t-xl);
+}

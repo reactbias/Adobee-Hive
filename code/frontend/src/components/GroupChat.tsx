@@ -3,6 +3,7 @@ import type { AskResult, Booking, Critic, Handoff, SecondOpinion, Step } from ".
 import { AskCard } from "./AskParts";
 import { useI18n } from "../i18n";
 import { delayFor, type Beat } from "../lib/pace";
+import { demoMode } from "../lib/demo";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
 
 // The traveller page as a group chat: people and agents in one conversation. Every message comes from real data,
@@ -294,10 +295,12 @@ export default function GroupChat({
                 <>
                   <Reply step={step} />
                   {step.guard && step.guard.length > 0 && <Withheld findings={step.guard} />}
-                  <details>
-                    <summary>{t("trace.raw")}</summary>
-                    <pre>{JSON.stringify({ input: step.input, output: step.output }, null, 2)}</pre>
-                  </details>
+                  {demoMode() && (
+                    <details>
+                      <summary>{t("trace.raw")}</summary>
+                      <pre>{JSON.stringify({ input: step.input, output: step.output }, null, 2)}</pre>
+                    </details>
+                  )}
                 </>
               ),
             });

@@ -5,6 +5,7 @@ import Display from "../components/Display";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, stay } from "../lib/format";
+import { demoMode } from "../lib/demo";
 
 // A miss is logged as "missing dog-friendly (asked: dog-friendly, near basel sbb)": the structured ask, never the
 // traveller's own words.
@@ -173,12 +174,7 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
             <tbody>
               {overview.bookings.map((b) => (
                 <tr key={b.id}>
-                  <td>
-                    {b.guest_name}
-                    <div className="muted">
-                      {b.unit_id} · {b.status} · {b.agent}
-                    </div>
-                  </td>
+                  <td>{b.guest_name}</td>
                   <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
                   <td className="end">{b.total_chf}</td>
                 </tr>
@@ -311,12 +307,16 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
               <span className="mono muted">v{card.version}</span>
             </div>
             <TrustBadge trust={card.trust} />
-            <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
-            <p className="muted small">
-              {t("owner.agents.mcp")} <code className="inline-code">{mcpUrl()}</code>
-            </p>
+            {demoMode() && (
+              <>
+                <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
+                <p className="muted small">
+                  {t("owner.agents.mcp")} <code className="inline-code">{mcpUrl()}</code>
+                </p>
+              </>
+            )}
           </section>
-          <TamperTest card={card} />
+          {demoMode() && <TamperTest card={card} />}
         </div>
       )}
     </div>

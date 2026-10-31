@@ -161,7 +161,8 @@ describe("traveller agent", () => {
     expect(screen.getByLabelText(en["agent.intent"])).toHaveValue(en["agent.example.1"]);
   });
 
-  it("sends the stress test with rules off, then reruns with rules on", async () => {
+  it("sends the stress test with rules off, then reruns with rules on (presenters, ?demo)", async () => {
+    window.history.replaceState(null, "", "/?demo");
     const unguarded: AgentResult = {
       ...RESULT,
       pending: null,

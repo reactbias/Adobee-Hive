@@ -204,11 +204,15 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
    then only hands you to the business's own site. Your agent, the critic and the verifier talk in a group chat while the
    MCP calls run; the chat follows the newest message, waits if you scroll up to reread, and offers *New messages*
    to jump back. The booking waits for **Approve**. After it: the signed receipt and next steps, including *Show the
-   hotel's side*. The stress test (a manipulated mirror listing, rules off) is folded under the examples.
+   hotel's side*.
 2. **The business (`#business`).** The demand map shows what Basel asked for that nobody offers (*Simulate 40 traveller
    searches* fills it). Below it you are the owner of the hotel just booked: the booking arrives, you type a change in
    plain words ("add sauna"), review the diff, then **sign and publish**. Waiting agents whose request now fits get a
    signed offer. The tamper test shows a forged card failing.
+
+Presenter tools stay off the public page: open it with `?demo` (for example
+`http://localhost:5173/?demo`) for the stress test (a manipulated mirror listing, rules off), *Simulate 40 traveller
+searches*, the tamper test and the raw MCP exchange in the chat (`lib/demo.ts`).
 
 Speech input is the browser's own Web Speech API (`components/MicButton.tsx`) in the page's language: no key and
 no service of ours. Chrome and Edge send the audio to their vendor's recogniser, Safari listens on the device, and

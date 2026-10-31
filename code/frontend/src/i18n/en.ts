@@ -17,7 +17,7 @@ const en = {
 
   // The owner's side, under the chat
   "owner.title": "Say what *changed.*",
-  "owner.lead": "Write the change, review it, sign it.",
+  "owner.lead": "Write a change in plain words, check what it alters, then sign and publish.",
   "owner.business": "Business",
   "owner.sample": "Add sauna. The courtyard double is 165 francs from today.",
   "owner.tokenNeeded": "This Hive lets only the owner edit cards. Enter your owner token.",
@@ -51,11 +51,11 @@ const en = {
   "owner.summary.added": "Added: {tag}",
   "owner.summary.removed": "Removed: {tag}",
   "owner.summary.price": "{unit} now {price}",
-  "owner.summary.none": "Nothing understood offline. Try “add sauna”, or connect the AI.",
+  "owner.summary.none": "Nothing understood. Try “add sauna”.",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Missed demand · last 7 days",
   "owner.missed.title": "What agents asked for that you don't offer",
-  "owner.missed.empty": "Nothing missed yet. Run a few searches with the traveller agent.",
+  "owner.missed.empty": "Nothing missed yet.",
   "owner.agents.title": "How agents see you",
   "owner.agents.mcp": "Any MCP client, Claude included, reads this card at",
   "owner.bookings.title": "Bookings",
@@ -79,7 +79,7 @@ const en = {
 
   // The demand map, under the chat
   "demand.title": "What Basel's agents *asked for.*",
-  "demand.lead": "Unserved searches are a business plan.",
+  "demand.lead": "What agents searched for in Basel this week, and what no business offers yet.",
   "demand.simulate": "Simulate 40 traveller searches",
   "demand.simulated": "{n} simulated searches added. They run the real discovery; only the travellers are invented.",
   "demand.kpi.searches": "agent searches, last {days} days",
@@ -88,7 +88,7 @@ const en = {
   "demand.chart.title": "Requested, and who could serve it",
   "demand.legend.asked": "asked",
   "demand.legend.unserved": "nobody could serve",
-  "demand.empty": "No searches yet. Run the traveller agent or simulate some traffic.",
+  "demand.empty": "No searches yet. Ask your agent for a room above.",
   "demand.ofAsked": "{unserved} of {asked} unserved",
 
   // Traveller agent

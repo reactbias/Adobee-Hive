@@ -16,7 +16,8 @@ const de: Record<Key, string> = {
   "trust.noReviews": "Noch keine belegten Aufenthalte",
 
   "owner.title": "Sagen Sie, was sich *geändert* hat.",
-  "owner.lead": "Änderung schreiben, prüfen, signieren.",
+  "owner.lead":
+    "Schreiben Sie eine Änderung in eigenen Worten, prüfen Sie, was sie ändert, dann signieren und veröffentlichen.",
   "owner.business": "Betrieb",
   "owner.sample": "Sauna hinzufügen. Das Courtyard-Doppelzimmer kostet ab heute 165 Franken.",
   "owner.tokenNeeded": "In diesem Hive darf nur der Inhaber Karten ändern. Bitte Inhaber-Token eingeben.",
@@ -51,11 +52,11 @@ const de: Record<Key, string> = {
   "owner.summary.added": "Hinzugefügt: {tag}",
   "owner.summary.removed": "Entfernt: {tag}",
   "owner.summary.price": "{unit} neu {price}",
-  "owner.summary.none": "Offline nichts verstanden. Versuchen Sie «Sauna hinzufügen» oder verbinden Sie die KI.",
+  "owner.summary.none": "Nichts verstanden. Versuchen Sie «Sauna hinzufügen».",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Verpasste Nachfrage · letzte 7 Tage",
   "owner.missed.title": "Wonach Agenten fragten, was Sie nicht anbieten",
-  "owner.missed.empty": "Noch nichts verpasst. Starten Sie ein paar Suchen mit dem Reise-Agenten.",
+  "owner.missed.empty": "Noch nichts verpasst.",
   "owner.agents.title": "So sehen Agenten Sie",
   "owner.agents.mcp": "Jeder MCP-Client, auch Claude, liest diese Karte unter",
   "owner.bookings.title": "Buchungen",
@@ -77,7 +78,7 @@ const de: Record<Key, string> = {
   "card.tamper.rejected": "Abgewiesen",
 
   "demand.title": "Wonach Basels Agenten *fragten.*",
-  "demand.lead": "Unbediente Suchen sind ein Businessplan.",
+  "demand.lead": "Wonach Agenten diese Woche in Basel gesucht haben, und was noch kein Betrieb anbietet.",
   "demand.simulate": "40 Reisende-Suchen simulieren",
   "demand.simulated":
     "{n} simulierte Suchen hinzugefügt. Sie laufen über die echte Suche; nur die Reisenden sind erfunden.",
@@ -87,7 +88,7 @@ const de: Record<Key, string> = {
   "demand.chart.title": "Gefragt, und wer es erfüllen konnte",
   "demand.legend.asked": "gefragt",
   "demand.legend.unserved": "niemand konnte es erfüllen",
-  "demand.empty": "Noch keine Suchen. Starten Sie den Reise-Agenten oder simulieren Sie Anfragen.",
+  "demand.empty": "Noch keine Suchen. Fragen Sie oben Ihren Agenten nach einem Zimmer.",
   "demand.ofAsked": "{unserved} von {asked} unerfüllt",
 
   "agent.eyebrow": "Die Eingangstür, signiert.",

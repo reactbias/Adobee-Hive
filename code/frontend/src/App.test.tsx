@@ -79,4 +79,27 @@ describe("the app", () => {
     screen.getByRole("link", { name: "Adobee Hive" }).click();
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
   });
+
+  it("shows visitors no presenter tools", async () => {
+    window.history.replaceState(null, "", "/");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.queryByText(en["agent.test.eyebrow"])).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["demand.simulate"] })).not.toBeInTheDocument();
+  });
+
+  it("gives presenters their tools with ?demo", async () => {
+    window.history.replaceState(null, "", "/?demo");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByText(en["agent.test.eyebrow"])).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
 });

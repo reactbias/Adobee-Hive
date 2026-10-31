@@ -79,7 +79,8 @@ describe("owner studio in every language", () => {
     expect(screen.queryByText(/Mock mode/)).not.toBeInTheDocument();
   });
 
-  it("shows the owner that a forged copy of the card is rejected", async () => {
+  it("shows the owner that a forged copy of the card is rejected (presenters, ?demo)", async () => {
+    window.history.replaceState(null, "", "/?demo");
     vi.spyOn(api, "forge").mockResolvedValue(CARD);
     vi.spyOn(api, "verify")
       .mockResolvedValueOnce({ signature_valid: true })
