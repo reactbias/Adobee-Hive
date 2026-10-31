@@ -51,9 +51,16 @@ def diff(old: dict[str, Any], new: dict[str, Any], prefix: str = "") -> list[dic
     return changes
 
 
+def _owned(card_id: str) -> dict[str, Any]:
+    card = hive.get_card(card_id)
+    if not card["trust"]["claimed"]:  # compiled from a public website; only the business itself could claim it
+        raise hive.HiveError("This card is unclaimed. Only the business can claim and edit it.")
+    return card
+
+
 def propose(card_id: str, instruction: str) -> dict[str, Any]:
     """Turn the owner's plain-language change into a proposed card, a diff and a summary. Publishes nothing."""
-    current = _strip(hive.get_card(card_id))
+    current = _strip(_owned(card_id))
     proposed = None
     if config.LLM_ENABLED:
         try:
@@ -115,7 +122,7 @@ def apply(card_id: str, proposed: dict[str, Any]) -> dict[str, Any]:
     """Sign and publish the approved card. Identity fields (LOCKED) always keep their current values."""
     if len(hive.canonical(proposed)) > MAX_CARD_BYTES:
         raise hive.HiveError(f"A card is at most {MAX_CARD_BYTES // 1000} kB.")
-    current = hive.get_card(card_id)
+    current = _owned(card_id)
     for key in LOCKED:
         proposed[key] = current.get(key)
     return hive.publish(_strip(proposed))

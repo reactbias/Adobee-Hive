@@ -232,9 +232,13 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
             )
         )
     published = rec["published_at"]
+    provenance = rec["data"].get("provenance")
     age_days = (datetime.now() - published).days if isinstance(published, datetime) else None
     return {
         "signature_valid": verify(rec["data"], rec["signature"], rec["public_key"]),
+        # A card compiled from public sources is signed by the Hive as compiler, not by the business.
+        "claimed": not (provenance and provenance.get("verified_by_owner") is False),
+        "provenance": provenance,
         "signature": rec["signature"],
         "public_key": rec["public_key"],
         "algorithm": "Ed25519 over canonical JSON (sorted keys, no spaces)",
@@ -319,6 +323,8 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
+# What discovery searches when no kind is given. Other domains (people, example cards) have their own tools.
+STAY_KINDS = ("hotel", "cafe")
 RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
 
 
@@ -369,7 +375,8 @@ def discover(
     )
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
-    for card in list_cards(kind):
+    cards = list_cards(kind) if kind else [c for k in STAY_KINDS for c in list_cards(k)]
+    for card in cards:
         reasons, misses = [], []
         card_feats = {f.lower() for f in card.get("features", [])}
         missing = [f for f in features if f not in card_feats]
