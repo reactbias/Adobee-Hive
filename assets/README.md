@@ -7,7 +7,6 @@ Everything the team shared while forming the idea, kept here so nothing lives on
 | File | What's on it |
 | --- | --- |
 | [whiteboard-1.jpg](whiteboard/whiteboard-1.jpg) | First sketch: dashboards, data extraction, "5. Future" (hotels, events, finds), and the tagline *"On GitHub you find projects to work on. On AdoBee Hive (ABH) you find people to work with!"* |
-| [whiteboard-2.jpg](whiteboard/whiteboard-2.jpg) | The team's names |
 | [whiteboard-3.jpg](whiteboard/whiteboard-3.jpg) | Name ideas (Adobee Hive, ADOB66, Ado Bee 6) and the first logo and bee |
 | [whiteboard-4.jpg](whiteboard/whiteboard-4.jpg) | *Where is the human?* A2A, A2H, H2A, H2H; B2B, B2C, C2C; centralised vs federated; what a personal agent needs to know |
 | [whiteboard-5.jpg](whiteboard/whiteboard-5.jpg) | Workstreams S1 to S6, DuckDB, and the note on LLM access and data protection |

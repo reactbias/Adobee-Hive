@@ -1,6 +1,6 @@
 """Explore domain: ask the Hive a question about any business and get an answer from its cards.
 
-Built: `ask()` answers questions such as "what's going on at Endress this month" or "plan me an adventure under
+Built: `ask()` answers questions such as "what's going on at BaselHack this month" or "plan me an adventure under
 500 CHF" from the example cards in `examples.py`, with reasons for every item left out. A mood the person picks
 (curious, stressed, planning, celebrating) changes what comes first; it is a visible preference, echoed back with
 its effects, and never inferred. Anything transactional is held: the person approves, then the Hive hands off to
