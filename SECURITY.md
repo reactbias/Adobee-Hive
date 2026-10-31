@@ -48,7 +48,4 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
   alike, as on any booking site. CORS is `*` for the same reason. MCP host-header checks are off because the host
   serves the public domain; the MCP surface exposes only these public actions.
-- **react-router 6.30.6** still has two moderate advisories that are fixed only in v7: one affects server-side
-  rendering, which we don't use, and the other affects links built from untrusted paths, which we don't build. The
-  move to v7 is scheduled for after the hackathon.
 - **Payments** are out of scope: bookings say "pay at the property".

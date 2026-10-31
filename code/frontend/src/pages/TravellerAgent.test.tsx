@@ -1,6 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type AgentResult, type Approval } from "../api";
 import { I18nProvider } from "../i18n";
@@ -74,9 +73,7 @@ const gateQuestion = en["agent.gate.question"]
 function setup() {
   render(
     <I18nProvider>
-      <MemoryRouter>
-        <TravellerAgent />
-      </MemoryRouter>
+      <TravellerAgent />
     </I18nProvider>,
   );
   return userEvent.setup();
@@ -91,7 +88,13 @@ async function skipAhead(user: ReturnType<typeof userEvent.setup>) {
 
 describe("traveller agent", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
+    // The business chapter reads the owner's view and the demand map as soon as the page opens.
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
   });
 
   it("asks the agent and stops at the gate without booking", async () => {
@@ -147,7 +150,7 @@ describe("traveller agent", () => {
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
 
     expect(await screen.findByText("Too many requests. Try again later.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue(en["agent.example.1"]);
+    expect(screen.getByLabelText(en["agent.intent"])).toHaveValue(en["agent.example.1"]);
   });
 
   it("sends the stress test with rules off, then reruns with rules on", async () => {
@@ -230,7 +233,13 @@ describe("traveller agent", () => {
       distances_m: { "basel sbb": 1900 },
     } as never);
     vi.spyOn(api, "cards").mockResolvedValue([
-      { id: "cafe-bienli", slug: "cafe-bienli", name: "Café Bienli", features: ["dog-friendly"] } as never,
+      {
+        id: "cafe-bienli",
+        slug: "cafe-bienli",
+        name: "Café Bienli",
+        features: ["dog-friendly"],
+        trust: { signature_valid: true },
+      } as never,
     ]);
     const user = setup();
 
@@ -240,12 +249,41 @@ describe("traveller agent", () => {
     await skipAhead(user);
 
     expect(await screen.findByRole("button", { name: en["next.calendar.cta"] })).toBeInTheDocument();
-    expect(screen.getByText("Café Bienli")).toBeInTheDocument();
+    expect(screen.getByText("Café Bienli", { selector: "b" })).toBeInTheDocument();
     expect(screen.getByText(en["next.coffee.because"].replace("{feature}", "dog-friendly"))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: en["next.route.cta"] })).toHaveAttribute(
       "href",
       expect.stringContaining("openstreetmap.org"),
     );
     expect(approve).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the city's missed demand under the chat, without a click", async () => {
+    vi.spyOn(api, "demand").mockResolvedValue({
+      days: 7,
+      searches: 40,
+      unserved_searches: 12,
+      features: [{ feature: "pool", asked: 9, unserved: 9 }],
+    } as never);
+    setup();
+
+    expect(await screen.findAllByText("pool")).not.toHaveLength(0);
+  });
+
+  it("turns to the hotel's side after the booking, with the booking reloaded", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
+    vi.spyOn(api, "card").mockResolvedValue({ id: "hotel-rheinblick", slug: "rheinblick" } as never);
+    const owner = vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await skipAhead(user);
+    owner.mockClear();
+    await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
+    await skipAhead(user);
+
+    expect(await screen.findByRole("button", { name: en["next.business.cta"] })).toBeInTheDocument();
+    expect(owner).toHaveBeenCalledWith("hotel-rheinblick");
   });
 });

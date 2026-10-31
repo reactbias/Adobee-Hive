@@ -65,5 +65,24 @@ describe("all four languages", () => {
   });
 });
 
+// No dead strings: every key is used by the app, by name or under a prefix the code fills in (`guard.${code}`).
+describe("every string", () => {
+  const code = Object.values(
+    import.meta.glob<string>(["../**/*.{ts,tsx}", "!../**/*.test.{ts,tsx}", "!../i18n/*.ts"], {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }),
+  ).join("\n");
+  const prefixes = [...code.matchAll(/`([a-z]+(?:\.[a-z]+)*\.)\$\{/g)].map((m) => m[1]);
+
+  it("is used somewhere", () => {
+    const unused = (Object.keys(en) as Key[]).filter(
+      (k) => !code.includes(`"${k}"`) && !prefixes.some((p) => k.startsWith(p)),
+    );
+    expect(unused).toEqual([]);
+  });
+});
+
 // Keys whose text is a name, not language.
 const SAME_EVERYWHERE = new Set<Key>(["footer.line"]);

@@ -81,8 +81,8 @@ Things to know about the free tier:
   runs by a few minutes). Delete the workflow or the variable after the event.
 - **Data resets.** The free disk is ephemeral: each deploy or restart starts from the seed data, so bookings and
   owner edits made during the demo are lost on the next push to `main`.
-- **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that, the router uses it
-  as `basename`, and `404.html` is a copy of `index.html` so deep links like `/card/rheinblick` load.
+- **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that (assets and
+  images load from it), and `404.html` is a copy of `index.html` so old links like `/agent` still load the one page.
 
 ## Cost guard for the demo key
 
