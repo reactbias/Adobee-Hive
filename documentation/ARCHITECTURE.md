@@ -67,6 +67,19 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
+## Pages
+
+Routes in `code/frontend/src/main.tsx`. `tests/test_docs.py` fails when a route has no row here.
+
+| Route | Page | What a person does there |
+| --- | --- | --- |
+| `/` | `Home.tsx` | The idea in one screen, and the way into each demo |
+| `/agent` | `TravellerAgent.tsx` | States a trip; watches the two agents negotiate; approves or declines the held booking; the stress test |
+| `/card/:slug` | `CardPage.tsx` | Reads a business's signed card as a page, books directly, runs the tamper test |
+| `/owner` | `OwnerStudio.tsx` | Edits a card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand |
+| `/demand` | `DemandMap.tsx` | Sees what Basel asked for that nobody offers; simulates a busy week |
+| `/ask` | `AskHive.tsx` | Asks about the example businesses with a chosen mood; approves any hand-off |
+
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
 | Tool | What it does |
@@ -87,14 +100,35 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 
 Agents can find the endpoint from `/.well-known/hive.json`.
 
-## REST API (for the web app)
+## REST API
 
-`GET /api/health` · `GET /api/hive/cards[/{id}]` · `GET /api/hive/cards/{id}/availability` ·
-`POST /api/hive/cards/{id}/book` · `POST /api/hive/reviews` · `POST /api/hive/verify` · `GET /api/hive/demand` ·
-`POST /api/demo/simulate` · `POST /api/demo/reset` · `POST /api/agent` · `POST /api/agent/approve` · `POST /api/ask` · `POST /api/ask/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
-`POST /api/owner/{id}/publish`
+The web app's contract, in `code/backend/app/main.py`. Every running backend also serves it interactively at
+`/docs` (Swagger UI) and as `/openapi.json`. Change an endpoint, `api.ts` and this table in one PR;
+`tests/test_docs.py` fails when a served endpoint has no row here.
 
-The contract lives in `code/backend/app/main.py`; change an endpoint in one PR so the frontend follows.
+| Endpoint | What it does | Guard |
+| --- | --- | --- |
+| `GET /api/health` | Up, and which model provider the agents use (`openai`, `claude` or `mock`) | |
+| `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
+| `GET /api/hive/cards` | All cards, optionally `?kind=` | |
+| `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
+| `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
+| `POST /api/hive/cards/{card_id}/book` | A person's direct booking from the card page; returns a signed receipt | |
+| `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
+| `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
+| `POST /api/hive/demo/forge/{card_id}` | Tamper demo: a copy re-signed by a stranger, which must fail | rate limit |
+| `GET /api/hive/demand` | The city demand map: what agents asked for, how often nobody could serve it | |
+| `POST /api/demo/simulate` | Up to 200 simulated traveller searches for the demand map | rate limit |
+| `POST /api/demo/reset` | Back to the seed cards, no bookings, no demand | `X-Demo-Token` |
+| `POST /api/agent` | Run the traveller agent over MCP; a booking comes back held, as `pending` | model rate limit |
+| `POST /api/agent/approve` | The traveller's yes: send the held booking, once | one-time hold |
+| `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
+| `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |
+| `GET /api/owner/{card_id}` | Owner studio data: bookings, missed demand, waiting requests; guest names as initials without the token | `X-Owner-Token` for names |
+| `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |
+| `POST /api/owner/{card_id}/publish` | Sign and publish the approved card as a new version; waiting agents get signed offers | `X-Owner-Token` |
+
+Rulesets, standing requests and "what was promised" are agent features, so they are MCP tools only (see above).
 
 ## Trust by design
 
