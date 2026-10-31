@@ -196,8 +196,7 @@ function price(raw: unknown): Price | undefined {
   return out;
 }
 
-const text = (value: unknown): string | undefined =>
-  typeof value === "string" && value.trim() ? value : undefined;
+const text = (value: unknown): string | undefined => (typeof value === "string" && value.trim() ? value : undefined);
 
 /** An address, or the most specific name a `location` object carries. */
 function placeOf(o: Record<string, unknown>): string | undefined {

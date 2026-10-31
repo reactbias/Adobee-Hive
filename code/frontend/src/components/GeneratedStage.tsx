@@ -38,6 +38,7 @@ export default function GeneratedStage({
       label={t("card.stage")}
       head={
         <div className="spread result-head">
+          <span className="result-query">{scene.query}</span>
           <span className="eyebrow">
             {shown < total || following
               ? t("card.drawing")
@@ -103,7 +104,7 @@ function CardHit({
   return (
     <article className="card-hit">
       <div className="card-step">
-        <header className="card-top">
+        <div className="card-top">
           <div>
             <span className="eyebrow">{t(card.kind === "person" ? "card.kind.person" : "card.kind.business")}</span>
             <h3>{card.name}</h3>
@@ -117,7 +118,7 @@ function CardHit({
               <span className="dim"> {t("card.rating.count", { n: card.rating_count })}</span>
             </p>
           )}
-        </header>
+        </div>
         <p className="card-description">{card.description}</p>
         {(why.length > 0 || card.features.length > 0) && (
           <ul className="chips">
