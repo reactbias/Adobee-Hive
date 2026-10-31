@@ -23,7 +23,6 @@ const de: Record<Key, string> = {
   "owner.week.shown": "Mal Agenten gezeigt",
   "owner.week.missed": "verpasste Anfragen",
   "owner.week.booked": "Buchungen",
-  "owner.week.cancelled": "Stornierungen",
   "owner.preview": "Änderung ansehen",
   "owner.noChange": "Keine Änderung erkannt.",
   "owner.publish": "Signieren und veröffentlichen",
@@ -254,5 +253,10 @@ const de: Record<Key, string> = {
   "owner.checking": "Wird geprüft…",
   "owner.asked.title": "Wonach Agenten Sie fragten",
   "owner.asked.empty": "Noch keine Anfragen.",
+  "owner.week.title": "Letzte 7 Tage",
+  "owner.week.read": "Mal von Agenten gelesen",
+  "chapter.business.leadUnclaimed":
+    "{name} hat seine Karte nicht beansprucht. Agenten haben sie aus öffentlichen Angaben erstellt.",
+  "owner.unclaimed": "Nur der Betrieb selbst kann diese Karte beanspruchen und bearbeiten.",
 };
 export default de;

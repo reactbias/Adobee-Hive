@@ -37,7 +37,7 @@ const OVERVIEW: OwnerOverview = {
     },
   ],
   missed_demand: [{ detail: "missing sauna (asked: sauna, quiet)", times: 3 }],
-  last_7_days: { shown: 4, booked: 1 },
+  last_7_days: { shown: 4, read: 3, booked: 1, explore_handoff: 1 },
   waiting: {
     agents: 2,
     budget_chf: 1750,
@@ -58,10 +58,25 @@ const PROPOSAL: Proposal = {
   mode: "mock",
 };
 
+const TAXI = {
+  ...CARD,
+  id: "x-taxi",
+  name: "Taxi Zentrale Basel",
+  trust: { ...TRUST, claimed: false },
+} as unknown as Card;
+const TAXI_OVERVIEW: OwnerOverview = {
+  ...OVERVIEW,
+  card: TAXI,
+  bookings: [],
+  missed_demand: [],
+  last_7_days: { shown: 7 },
+  waiting: { agents: 0, budget_chf: 0, asks: [], offers_sent: 0 },
+};
+
 function setup(locale: string) {
   localStorage.setItem("adobee-locale", locale);
-  vi.spyOn(api, "cards").mockResolvedValue([CARD]);
-  vi.spyOn(api, "owner").mockResolvedValue(OVERVIEW);
+  vi.spyOn(api, "cards").mockResolvedValue([CARD, TAXI]);
+  vi.spyOn(api, "owner").mockImplementation(async (id: string) => (id === "x-taxi" ? TAXI_OVERVIEW : OVERVIEW));
   vi.spyOn(api, "demand").mockResolvedValue({
     days: 7,
     searches: 46,
@@ -84,6 +99,27 @@ describe("the business chapter", () => {
     expect(screen.getByRole("tab", { name: en["business.tab.owner"] })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("Mara Keller")).toBeInTheDocument();
     expect(screen.getByText(en["chapter.business.lead"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
+  });
+
+  it("counts what agents did with this card: shown, read, booked or handed off", async () => {
+    setup("en");
+    const kpis = await screen.findByRole("group", { name: en["owner.week.title"] });
+    expect(within(kpis).getByText(en["owner.week.read"]).previousSibling).toHaveTextContent("3");
+    expect(within(kpis).getByText(en["owner.week.booked"]).previousSibling).toHaveTextContent("2");
+  });
+
+  it("lists every business in the Hive, unclaimed ones too, and shows the one picked", async () => {
+    const user = setup("en");
+    await screen.findByText("Mara Keller");
+    await user.selectOptions(screen.getByRole("combobox", { name: en["owner.business"] }), "x-taxi");
+    expect(
+      await screen.findByText(en["chapter.business.leadUnclaimed"].replace("{name}", "Taxi Zentrale Basel")),
+    ).toBeInTheDocument();
+    const kpis = screen.getByRole("group", { name: en["owner.week.title"] });
+    expect(within(kpis).getByText(en["owner.week.shown"]).previousSibling).toHaveTextContent("7");
+    // Nobody has claimed it, so there is nothing to edit: a line says so instead of the change box.
+    expect(screen.queryByRole("textbox", { name: en["owner.change"] })).not.toBeInTheDocument();
+    expect(screen.getByText(en["owner.unclaimed"])).toBeInTheDocument();
   });
 
   it("puts what agents asked for in one list, waiting first, with a Use for each", async () => {
