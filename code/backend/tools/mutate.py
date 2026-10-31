@@ -43,6 +43,9 @@ SUITE = [
     "tests/test_folders.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
+    "tests/test_admin_manage.py",
+    "tests/test_admin_peers.py",
+    "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
 ]
@@ -187,6 +190,66 @@ CURATED: list[Mutant] = [
         "the concept table stops being consulted, so semantic search is substring search again",
         'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in concepts]',
         "bag += []",
+    ),
+    Mutant(
+        "hive.py",
+        "a withdrawn entity is discoverable again, so kicking one off the hub does nothing",
+        "    if not include_withdrawn:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "a withdrawn entity can still be booked, so the hub sells what it no longer carries",
+        '    carried(card["id"])\n    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+        '    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+    ),
+    Mutant(
+        "peers.py",
+        "a peer an operator removed is asked again, so dropping a neighbour does nothing",
+        "    return [url for url, state in rows if state == ACTIVE]",
+        "    return [url for url, state in rows]",
+    ),
+    Mutant(
+        "peers.py",
+        "the environment wins over the stored list, so nothing an operator adds is ever asked",
+        "    if not rows:",
+        "    if True:",
+    ),
+    Mutant(
+        "peers.py",
+        "a peer change is accepted with no reason, so nobody can tell later why a hub was dropped",
+        '        raise PeerError("a peer change needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
+    ),
+    Mutant(
+        "services.py",
+        "a stored key comes back in the status call, so the panel shows the key it promised never to",
+        '        "fingerprint": str(row["fingerprint"]) if stored else "",',
+        '        "fingerprint": str(row["secret"]) if stored else "",',
+    ),
+    Mutant(
+        "services.py",
+        "a vendor's error keeps the key it echoed back, so a bad key is written into the database",
+        '    text = message.replace(secret, "[key]") if secret else message',
+        "    text = message",
+    ),
+    Mutant(
+        "services.py",
+        "an empty key is stored, so a service reads as configured and every call fails",
+        '    if not secret:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
+        '    if False:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
+    ),
+    Mutant(
+        "removals.py",
+        "a removal is accepted with no reason, so nobody can tell later why an entity is missing",
+        '        raise RemovalError("a removal needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
+    ),
+    Mutant(
+        "audit.py",
+        "the reason is dropped on the way into the ledger, so it records only that something happened",
+        '        "reason": (reason or "")[:MAX_REASON],',
+        '        "reason": "",',
     ),
     Mutant(
         "calibration.py",
@@ -391,6 +454,9 @@ TARGETS = [
     "sharing.py",
     "registration.py",
     "semantic.py",
+    "removals.py",
+    "audit.py",
+    "peers.py",
     "limits.py",
 ]
 

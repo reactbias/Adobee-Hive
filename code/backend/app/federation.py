@@ -8,6 +8,17 @@ already spent from `budget_ms` and refuses to forward when too little is left; p
 peer that misses the deadline is dropped from the answer, named in `federation.dropped`, and never fails the query.
 `PEERS_PER_HOP` caps the breadth at each hop, so fan-out cannot explode.
 
+*Which* peers exist comes from `peers.py`, which stores the list: an operator adds, edits or removes a neighbour
+while the hub runs and the very next query obeys, with `HIVE_PEER_URLS` only the seed a fresh hub starts from.
+*Who* a peer is, and whether it is answering, is this module's own book (`_ask`, `peer_row`, `keep_peers_fresh`).
+Peer URLs still never come from a request — only from configuration or an admin-authenticated change — so a
+stranger cannot use this hub to flood another.
+
+The peer list itself comes from `peers.py`, which stores it: an operator adds, edits or removes a neighbour while
+the hub runs, and `HIVE_PEER_URLS` is only the seed a fresh hub starts from. Peer URLs still never come from a
+request — only from configuration or from an admin-authenticated change — so a stranger cannot use this hub to
+flood another.
+
 Trust is not transitive here. **Signatures are verified at the destination, not taken from the carrier**: a card
 that arrives over a peer is checked with `hive.verify_pinned` against the key pinned in *its own* hub's registry,
 which this hub fetches directly from that hub, not through the relay. A relaying hub can therefore withhold a card
@@ -225,8 +236,10 @@ def peer_row(base_url: str) -> dict[str, Any]:
 
 
 def peer_rows() -> list[dict[str, Any]]:
-    """One row per configured peer, from the book alone. Never asks, so it never blocks and never hangs."""
-    return [peer_row(url) for url in config.HIVE_PEER_URLS]
+    """One row per peer on the stored list, from the book alone. Never asks, so it never blocks."""
+    from . import peers as peer_store
+
+    return [peer_row(url) for url in peer_store.urls()]
 
 
 async def ask_peers(transport: Transport | None = None) -> list[dict[str, Any]]:
@@ -235,7 +248,9 @@ async def ask_peers(transport: Transport | None = None) -> list[dict[str, Any]]:
     Concurrent, so a round costs the slowest peer rather than the sum of them, and each ask is capped at
     `PEER_ASK_TIMEOUT_S`. Nothing is raised: a peer that does not answer is recorded as not having answered.
     """
-    urls = list(config.HIVE_PEER_URLS)
+    from . import peers as peer_store
+
+    urls = peer_store.urls()
     if urls:
         await asyncio.gather(*[_ask(url, transport or DEFAULT_TRANSPORT) for url in urls])
     return peer_rows()
@@ -262,7 +277,12 @@ async def _choose_peers(
     seen: list[str], transport: Transport
 ) -> tuple[list[tuple[str, dict[str, Any], float]], list[dict[str, str]]]:
     """The peers worth asking at this hop: not in `seen`, readable, the `PEERS_PER_HOP` most trusted first."""
-    urls = list(config.HIVE_PEER_URLS)
+    # The stored peer list, not the environment: a neighbour an operator added is asked by the very
+    # next query, and one they removed is not (peers.py). Read per query, so there is no cache to
+    # invalidate and no restart to wait for.
+    from . import peers as peer_store  # local: peers.py is about which peers exist, this about who they are
+
+    urls = peer_store.urls()
     profiles = await asyncio.gather(*[_profile(url, transport) for url in urls])
     peers, skipped = [], []
     for url, profile in zip(urls, profiles, strict=False):

@@ -28,7 +28,7 @@ import httpx
 import openai
 from mcp import Client
 
-from . import config, critic, hive, injection, llm, mirror, second_opinion
+from . import config, critic, hive, injection, llm, mirror, second_opinion, services
 from .mcp_server import server as local_server
 from .replies import language_line, say
 
@@ -228,9 +228,9 @@ async def run(
         if rules == "off":
             return await _run_unguarded(hives, text, locale) | {"scenario": scenario}
         try:
-            if config.LLM_PROVIDER == "openai":
+            if services.provider() == "openai":
                 result = await asyncio.wait_for(_run_openai(hives, messages, locale), config.AGENT_TIMEOUT_S)
-            elif config.LLM_PROVIDER == "claude":
+            elif services.provider() == "claude":
                 result = await asyncio.wait_for(_run_claude(hives, messages, locale), config.AGENT_TIMEOUT_S)
             else:
                 req = parse_conversation(messages)
@@ -247,7 +247,7 @@ async def run(
                 result = await _run_scripted(hives, text, locale, req)
         # Out of credit, rate limit, outage, a hang or an unreadable answer: the demo goes on offline.
         except (*llm.FAILURES, TimeoutError):
-            vendor = "OpenAI" if config.LLM_PROVIDER == "openai" else "Claude"
+            vendor = "OpenAI" if services.provider() == "openai" else "Claude"
             log.exception("%s unavailable, falling back to the scripted planner", vendor)
             result = await _run_scripted(hives, text, locale) | {"fallback": f"{vendor} unavailable"}
         result["guard"] = hives.report()
@@ -325,7 +325,7 @@ HELD = {"status": "held_for_approval", "note": "The traveller confirms this book
 
 
 async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
-    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+    client = openai.AsyncOpenAI(api_key=services.key_for("openai"), timeout=config.LLM_TIMEOUT_S, max_retries=1)
     tools = [
         {
             "type": "function",
@@ -375,7 +375,9 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], lo
 
 
 async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
-    aclient = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+    aclient = anthropic.AsyncAnthropic(
+        api_key=services.key_for("anthropic"), timeout=config.LLM_TIMEOUT_S, max_retries=1
+    )
     tools = [dict(t) for t in hives.tools]
     tools[-1]["cache_control"] = {"type": "ephemeral"}  # cache system + tool definitions across turns
     convo: list[dict[str, Any]] = [{"role": m["role"], "content": m["content"]} for m in messages]

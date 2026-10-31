@@ -15,7 +15,7 @@ from typing import Any
 
 import openai
 
-from . import config
+from . import config, services
 from .replies import language_line, say
 
 log = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def rule_check(
 
 
 async def _ask_openai(text: str, booking: dict[str, Any], card: dict[str, Any], locale: str) -> dict[str, str]:
-    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+    client = openai.AsyncOpenAI(api_key=services.key_for("openai"), timeout=config.LLM_TIMEOUT_S, max_retries=1)
     response = await client.responses.create(
         model=config.OPENAI_MODEL,
         instructions=INSTRUCTIONS + language_line(locale),
@@ -87,7 +87,7 @@ async def review(
     started = time.perf_counter()
     card = _card_from(steps, booking.get("card_id", ""))
     opinion: dict[str, Any] | None = None
-    if config.OPENAI_API_KEY and card is not None:
+    if services.key_for("openai") and card is not None:
         try:
             opinion = await _ask_openai(text, booking, card, locale) | {"by": f"OpenAI {config.OPENAI_MODEL}"}
         except (openai.OpenAIError, ValueError):  # outage, quota, unknown model, malformed answer

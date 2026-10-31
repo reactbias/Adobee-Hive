@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import blocklist, calibration, config, connections, federation, registration, sharing
+from . import blocklist, calibration, config, connections, federation, registration, removals, sharing
 
 
 def settings() -> dict[str, Any]:
@@ -123,13 +123,16 @@ def settings() -> dict[str, Any]:
 
 def overview() -> dict[str, Any]:
     """Everything an admin front page shows: the three stores, counted, plus peer standing."""
+    from . import peers as store
+
     peers = calibration.ranked()
     return {
         "hub": config.HIVE_HUB_ID,
         "name": config.HIVE_NAME,
         "index": {"entities": _index_size()},
         "neighbours": {
-            "configured": len(config.HIVE_PEER_URLS),
+            # The live list, which is the stored one once anything has been stored (peers.py).
+            "configured": len(store.urls()),
             "blocked": len(blocklist.blocked_hubs()),
             "with_evidence": len([p for p in peers if p["error"] is not None]),
         },
@@ -169,21 +172,34 @@ def entities() -> dict[str, Any]:
     same call (`hive.list_cards`), so the two can never disagree about what the hub carries.
     Nothing here is a side channel: every field is already on the public card.
     """
-    rows = [_entity_row(card) for card in _cards()]
-    return {"entities": rows, "count": len(rows)}
+    withdrawn = {row["entity_id"]: row for row in removals.entries()}
+    rows = [_entity_row(card, withdrawn) for card in _cards()]
+    return {
+        "entities": rows,
+        # The count is what the hub carries, so a withdrawn entity is listed but not counted. The
+        # overview's number has to mean the same thing as this one.
+        "count": len([r for r in rows if r["carried"]]),
+        "withdrawn": len([r for r in rows if not r["carried"]]),
+    }
 
 
 def _cards() -> list[dict[str, Any]]:
+    """Every card in the index, what this hub has withdrawn included: administration sees both."""
     from . import hive
 
-    return hive.list_cards()
+    return hive.list_cards(include_withdrawn=True)
 
 
-def _entity_row(card: dict[str, Any]) -> dict[str, Any]:
+def _entity_row(card: dict[str, Any], withdrawn: dict[str, Any] | None = None) -> dict[str, Any]:
     """One row of the entity table: who it is, whether it claimed itself, and how it has been rated."""
     trust = card.get("trust") or {}
     reviews = trust.get("verified_reviews") or {}
+    removal = (withdrawn or {}).get(card["id"])
     return {
+        # Carried or withdrawn. A withdrawn entity keeps its card and its signed history; what
+        # changed is that this hub no longer offers it (removals.py).
+        "carried": removal is None,
+        "removal": removal,
         "id": card["id"],
         "slug": card.get("slug") or card["id"],
         "name": card.get("name") or card["id"],
@@ -217,8 +233,11 @@ def entity(entity_id: str) -> dict[str, Any]:
     card = hive.get_card(entity_id)
     trust = card.get("trust") or {}
     block = next((e for e in blocklist.entries(blocklist.ENTITY) if e["subject"] == card["id"]), None)
+    removal = next((r for r in removals.entries() if r["entity_id"] == card["id"]), None)
     return {
-        "entity": _entity_row(card),
+        "entity": _entity_row(card, {removal["entity_id"]: removal} if removal else {}),
+        "carried": removal is None,
+        "removal": removal,
         # The card exactly as the owner signed it. The trust block is reported separately because it
         # is this hub's reading of the card, not part of what was signed.
         "card": {k: v for k, v in card.items() if k != "trust"},
@@ -260,10 +279,12 @@ def _contact_rows(card: dict[str, Any], default: str) -> list[dict[str, Any]]:
 
 def neighbours() -> dict[str, Any]:
     """The peer list as a table: configured, blocked, and how each one's ratings have held up."""
+    from . import peers as store
+
     blocked = blocklist.blocked_hubs()
     standing = {p["hub"]: p for p in calibration.ranked()}
     rows = []
-    for url in config.HIVE_PEER_URLS:
+    for url in store.urls():
         # The peer's own id where it has told us one, so standing and the blocklist are looked up under the name
         # the peer actually answers to rather than under its address.
         hub_id = federation.peer_row(url)["hub"]
@@ -282,6 +303,53 @@ def neighbours() -> dict[str, Any]:
         )
     extra = [s for hub_id, s in standing.items() if hub_id not in {r["hub"] for r in rows}]
     return {"peers": rows + extra, "blocked_hubs": sorted(blocked)}
+
+
+def peer_table() -> dict[str, Any]:
+    """The peers an operator can act on: URL, hub id, name, whether it answers, calibration, state.
+
+    A database read joined with what the background asking already learned (`federation.peer_row`).
+    Nothing here fetches, so an unreachable neighbour cannot make this page slow or blank: it reads
+    as not answering, with the time it was last tried, which is the honest thing to show anyway.
+    """
+    from . import peers as store
+
+    standing = {p["hub"]: p for p in calibration.ranked()}
+    blocked = blocklist.blocked_hubs()
+    rows = []
+    for row in store.listing():
+        # Who the peer says it is, and whether it is answering, from federation's own book: asked in
+        # the background, read here without fetching. One fact, one store (see peers.py).
+        live = federation.peer_row(row["url"])
+        hub_id = row["hub_id"] or live["hub"]
+        cal = standing.get(hub_id, {})
+        rows.append(
+            {
+                **row,
+                **{k: v for k, v in live.items() if k not in ("url", "hub", "name")},
+                "hub": hub_id,
+                # What the operator typed wins over what a peer claims about itself; the peer's own
+                # name fills the gap when nobody has typed one.
+                "name": row["name"] or live["name"],
+                # Blocked is not removed: see peers.py. Both are shown, because an operator will
+                # otherwise reach for the wrong one.
+                "blocked": hub_id in blocked,
+                "error": cal.get("error"),
+                "error_stars": cal.get("error_stars"),
+                "evidence": cal.get("evidence", 0),
+                "verdict": cal.get("verdict", "unproven"),
+                "why": cal.get("why", "no introductions through this hub yet"),
+            }
+        )
+    return {
+        "peers": rows,
+        "live": store.urls(),
+        "seed": list(config.HIVE_PEER_URLS),
+        # True while nothing has been stored: the environment variable is still the live list, and
+        # the first change an operator makes is what takes the hub off it.
+        "from_environment": not rows,
+        "blocked_hubs": sorted(blocked),
+    }
 
 
 def directory() -> dict[str, Any]:

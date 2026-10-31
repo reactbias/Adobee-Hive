@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, type AdminContactRow, type AdminEntity, type AdminEntityDetail, type AdminSide } from "../api";
+import {
+  ApiError,
+  api,
+  type AdminContactRow,
+  type AdminEntity,
+  type AdminEntityDetail,
+  type AdminSide,
+  type AuditEntry,
+} from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { dayOf } from "../lib/format";
@@ -73,13 +81,120 @@ function Contact({ rows, fallback }: { rows: AdminContactRow[]; fallback: string
   );
 }
 
+// A destructive control says what it will do before it does it, and names the thing. Three acts are offered from
+// the entity view and they are not the same act, which is exactly why they are spelled out:
+//
+//   remove   this hub stops carrying it. Out of search, not bookable. Every signed version is kept.
+//   restore  carry it again.
+//   block    refuse it wherever it comes from, including over a peer hub that relays it.
+//
+// An operator will reach for the wrong one unless the screen says which is which, so the screen says it.
+
+type Act = "" | "remove" | "restore" | "block";
+
+const WORDS: Record<Exclude<Act, "">, { title: Key; will: Key; note: Key; go: Key }> = {
+  remove: {
+    title: "admin.remove.confirm",
+    will: "admin.remove.will",
+    note: "admin.remove.notBlock",
+    go: "admin.remove.do",
+  },
+  restore: {
+    title: "admin.restore.confirm",
+    will: "admin.restore.will",
+    note: "admin.restore.note",
+    go: "admin.restore.do",
+  },
+  block: {
+    title: "admin.block.confirm",
+    will: "admin.block.will",
+    note: "admin.block.notRemove",
+    go: "admin.block.do",
+  },
+};
+
+/** The one step between a click and an act: what will happen, to what, and a reason that is not optional. */
+function Confirm({
+  act,
+  name,
+  busy,
+  onCancel,
+  onGo,
+}: {
+  act: Exclude<Act, "">;
+  name: string;
+  busy: boolean;
+  onCancel: () => void;
+  onGo: (reason: string) => void;
+}) {
+  const { t } = useI18n();
+  const [reason, setReason] = useState("");
+  const words = WORDS[act];
+  const ready = reason.trim().length > 0;
+  return (
+    <section className="admin-card stack tight">
+      <h3>{t(words.title, { name })}</h3>
+      <p>{t(words.will)}</p>
+      <p className="muted small">{t(words.note)}</p>
+      <label htmlFor="act-reason">{t("admin.remove.reason")}</label>
+      <input id="act-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+      <div className="row">
+        <button onClick={() => onGo(reason.trim())} disabled={busy || !ready}>
+          {t(words.go)}
+        </button>
+        <button className="quiet" onClick={onCancel} disabled={busy}>
+          {t("admin.remove.cancel")}
+        </button>
+      </div>
+      {!ready && <p className="muted small">{t("admin.remove.reasonNeeded")}</p>}
+    </section>
+  );
+}
+
+/** What was changed here, when, why, and with which credential. Never a person: the hub cannot tell. */
+function Ledger({ rows }: { rows: AuditEntry[] }) {
+  const { t, intl } = useI18n();
+  return (
+    <section className="stack tight">
+      <p className="eyebrow">{t("admin.ledger")}</p>
+      {!rows.length ? (
+        <p className="muted small">{t("admin.ledger.empty")}</p>
+      ) : (
+        <ul className="rows tight">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <span className="stack tight">
+                <strong>{r.reason}</strong>
+                {/* The action is a code, not prose: set in mono like every other identifier (BRAND.md). */}
+                <span className="mono small">{r.action}</span>
+                <span className="muted small">
+                  {t("admin.ledger.who", {
+                    credential: t(
+                      r.credential === "static token" ? "admin.credential.token" : "admin.credential.session",
+                    ),
+                    date: dayOf(r.at, intl),
+                  })}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="muted small">{t("admin.ledger.whoLimit")}</p>
+    </section>
+  );
+}
+
 /** One entity in full. Everything an operator needs to decide what to do about it, in one screen. */
 function Detail({ id, onBack, onLost }: { id: string; onBack: () => void; onLost?: () => void }) {
   const { t, intl } = useI18n();
   const [out, setOut] = useState<AdminEntityDetail | null>(null);
+  const [ledger, setLedger] = useState<AuditEntry[]>([]);
+  const [act, setAct] = useState<Act>("");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api
       .adminEntity(id)
       .then(setOut)
@@ -87,9 +202,32 @@ function Detail({ id, onBack, onLost }: { id: string; onBack: () => void; onLost
         if (lost(e) && onLost) onLost();
         else setError((e as Error).message);
       });
+    api
+      .adminAudit(id)
+      .then((a) => setLedger(a.entries))
+      .catch(() => setLedger([]));
   }, [id, onLost]);
+  useEffect(load, [load]);
 
-  if (error) return <p className="error">{error}</p>;
+  async function run(reason: string) {
+    if (!out) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (act === "remove") await api.adminRemoveEntity(out.entity.id, reason);
+      else if (act === "restore") await api.adminRestoreEntity(out.entity.id, reason);
+      else if (act === "block") await api.adminBlock("entity", out.entity.id, reason);
+      setAct("");
+      load();
+    } catch (e) {
+      if (lost(e) && onLost) onLost();
+      else setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (error && !out) return <p className="error">{error}</p>;
   if (!out) return <p className="muted">{t("admin.loading")}</p>;
   const { entity, card, signature, trust } = out;
   return (
@@ -103,6 +241,9 @@ function Detail({ id, onBack, onLost }: { id: string; onBack: () => void; onLost
         {card.tagline ? <p>{String(card.tagline)}</p> : null}
         {card.description ? <p className="muted small">{String(card.description)}</p> : null}
         <div className="statuses">
+          <span className={out.carried ? "status ok" : "status no"}>
+            {out.carried ? t("admin.remove.carried") : t("admin.remove.removed")}
+          </span>
           <Claimed claimed={entity.claimed} />
           <span className={signature.valid ? "status ok" : "status no"}>
             {t(signature.valid ? "trust.signed" : "trust.invalid")}
@@ -111,10 +252,35 @@ function Detail({ id, onBack, onLost }: { id: string; onBack: () => void; onLost
             {out.blocked ? t("admin.entity.isBlocked") : t("admin.entity.notBlocked")}
           </span>
         </div>
+        {!out.carried && out.removal ? (
+          <p className="muted small">{t("admin.remove.why", { reason: out.removal.reason })}</p>
+        ) : null}
         {out.blocked && out.block ? (
           <p className="muted small">{t("admin.entity.blockedWhy", { reason: out.block.reason })}</p>
         ) : null}
       </section>
+
+      {error && <p className="error">{error}</p>}
+      {act ? (
+        <Confirm act={act} name={entity.name} busy={busy} onCancel={() => setAct("")} onGo={run} />
+      ) : (
+        <div className="row">
+          {out.carried ? (
+            <button className="quiet" onClick={() => setAct("remove")}>
+              {t("admin.remove.button")}
+            </button>
+          ) : (
+            <button className="quiet" onClick={() => setAct("restore")}>
+              {t("admin.restore.button")}
+            </button>
+          )}
+          {!out.blocked && (
+            <button className="quiet" onClick={() => setAct("block")}>
+              {t("admin.block.button")}
+            </button>
+          )}
+        </div>
+      )}
 
       <Side heading="admin.entity.offers" items={out.offers} />
       <Side heading="admin.entity.needs" items={out.needs} />
@@ -141,6 +307,8 @@ function Detail({ id, onBack, onLost }: { id: string; onBack: () => void; onLost
             : t("admin.entity.stale")}
         </span>
       </section>
+
+      <Ledger rows={ledger} />
     </div>
   );
 }
@@ -174,7 +342,7 @@ export default function EntitiesPanel({ onLost }: { onLost?: () => void }) {
         <p className="muted">{t("admin.entities.empty")}</p>
       ) : (
         <>
-          <p className="eyebrow">{t("admin.entities.count", { n: rows.length })}</p>
+          <p className="eyebrow">{t("admin.entities.count", { n: rows.filter((e) => e.carried).length })}</p>
           <ul className="rows">
             {rows.map((e) => (
               <li key={e.id}>
@@ -183,6 +351,7 @@ export default function EntitiesPanel({ onLost }: { onLost?: () => void }) {
                   <span className="muted small">{t("admin.entities.who", { id: e.id, kind: e.kind })}</span>
                 </span>
                 <span className="stack tight">
+                  {!e.carried && <span className="status no">{t("admin.remove.removed")}</span>}
                   <Claimed claimed={e.claimed} />
                   <span className="muted small">
                     {e.rating_count

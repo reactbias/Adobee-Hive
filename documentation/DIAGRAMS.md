@@ -104,6 +104,10 @@ flowchart TB
   SEM[semantic.py<br/>offline similarity · stems · compounds · concepts<br/>optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
+  RMV[removals.py<br/>withdrawn entities: the hub stops carrying, history stays]:::mod
+  AUD[audit.py<br/>the admin ledger: what changed, when, why]:::mod
+  PRS[peers.py<br/>the peer list, stored: env is only the seed]:::mod
+  SVC[services.py<br/>optional keys, write-only: in, never out]:::mod
   FLD[folders.py<br/>two agents link their folders: link · grant · read]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
@@ -130,6 +134,14 @@ flowchart TB
   HUB --> SHR
   REST --> ADM
   ADM --> BLK
+  ADM --> RMV
+  REST --> RMV --> AUD
+  HIVE --> RMV
+  REST --> PRS --> AUD
+  ADM --> PRS
+  FED --> PRS
+  REST --> SVC --> AUD
+  LLM --> SVC
   REST --> LIM
   ADM --> SHR
   ADM --> CAL
@@ -160,7 +172,7 @@ flowchart TB
   REST --> HIVE
   SEED --> HIVE
   HIVE -->|radius > 0| FED --> REP
-  FED -->|peer Hives, HTTP| PEERS([Peer Hives<br/>HIVE_PEER_URLS]):::guard
+  FED -->|peer Hives, HTTP| PEERS([Peer Hives<br/>stored list, HIVE_PEER_URLS seeds it]):::guard
   HIVE --> REP
   HIVE --> DB
 ```
@@ -348,7 +360,14 @@ flowchart LR
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
     D0 -. "X-Admin-Token" .-> D3
-    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id}"]:::door
+    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id} · GET /api/admin/audit"]:::door
+    D7["POST /api/admin/entities/{entity_id}/remove · POST /api/admin/entities/{entity_id}/restore"]:::held
+    D8["GET /api/admin/peers · GET /api/admin/services"]:::door
+    D10["POST /api/admin/services/{name} · DELETE /api/admin/services/{name} · POST /api/admin/services/{name}/check"]:::held
+    D0 -. "X-Admin-Token" .-> D10
+    D9["POST /api/admin/peers · PUT /api/admin/peers · POST /api/admin/peers/remove · POST /api/admin/peers/check"]:::held
+    D0 -. "X-Admin-Token" .-> D9
+    D0 -. "X-Admin-Token" .-> D7
     D4["GET /api/admin/applications"]:::door
     D5["POST /api/admin/applications/{application_id}"]:::held
   end
@@ -407,7 +426,7 @@ Four modules carry the hub's own side of that. [sharing.py](../code/backend/app/
 leave at all — `public`, `confirm`, `push` (held, but never searchable) or `never` — and the stricter of the item's flag
 and the entity's default always wins. [blocklist.py](../code/backend/app/blocklist.py) is the manual override an
 operator reaches for, blocking a peer hub or a single entity in both directions, with a reason that has to be readable
-six months later. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
+six months later. [peers.py](../code/backend/app/peers.py) holds the list of neighbours itself, so an operator adds or drops one while the hub runs and the next search obeys; `HIVE_PEER_URLS` is only what a fresh hub starts from. [removals.py](../code/backend/app/removals.py) is the other override, and it is deliberately not the same one: it takes an entity off *this* hub — out of discovery, not bookable — while keeping every signed version, so a receipt can still prove what the card promised. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
 weeks, for a person to score how the real meeting went; an introduction nobody scores goes stale rather than staying
 open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the only number that
 matters about a peer: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told
