@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db
+from . import db, reputation
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -301,7 +301,7 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
             "count": stats[0],
             "average": round(stats[1], 2) if stats[1] else None,
             "recent": recent,
-            "rule": "only guests with a signed booking receipt can review",
+            "rule": reputation.BOOKING_RECEIPT_RULE,
         },
         "freshness_days": age_days,
         "fresh": is_fresh(rec["data"]),
@@ -506,9 +506,8 @@ def discover(
             "constraints": 0 if misses else 50,
             "text_relevance": min(20, 5 * len(hits)),
             "proximity": 0 if dist is None else max(0, 15 - dist // 150),
-            "verified_reviews": round((trust["verified_reviews"]["average"] or 0) * 2, 1),
-            "attestations": min(5, len(trust["attestations"])),
-            "signature": 0 if trust["signature_valid"] else -100,
+            # What this one business earned: verified reviews, attestations, a valid signature (reputation.py).
+            **reputation.business_points(trust),
         }
         summary = {
             "id": card["id"],

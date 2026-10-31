@@ -99,6 +99,7 @@ flowchart TB
   SIM[simulate.py<br/>busy week for the demand map]:::mod
   ACT[activity.py<br/>live feed, one line per step]:::mod
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
+  REP[reputation.py<br/>peer hub trust · business trust]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
 
@@ -122,6 +123,7 @@ flowchart TB
   DOMAINS --> HIVE
   REST --> HIVE
   SEED --> HIVE
+  HIVE --> REP
   HIVE --> DB
 ```
 
