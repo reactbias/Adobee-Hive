@@ -60,11 +60,19 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Adobee Hive", version="0.1.0", lifespan=lifespan)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Chrome's Private Network Access: a page on a private address calling another private
+    # address preflights with `Access-Control-Request-Private-Network` and refuses unless the
+    # server answers it. Without this a LAN demo works in Safari, which never asks, and fails in
+    # Chrome — intermittently, because the preflight is cached for ten minutes. Starlette rejects
+    # it outright ("Disallowed CORS private-network") until this is set.
+    allow_private_network=True,
     expose_headers=["mcp-session-id"],
 )
 app.mount("/mcp", mcp_app)

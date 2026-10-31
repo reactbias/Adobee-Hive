@@ -34,12 +34,20 @@ VAULTS = ROOT / "testdata" / "vaults"
 #: Which vault belongs on which hub, so the two are not mirrors of each other. Federation is
 #: invisible when every hub holds the same thing.
 HOME = {
+    # basel — hospitality
     "hotel-krafft": "basel",
     "cafe-rhein": "basel",
+    # zurich — developer and freelance work
     "lena-hofmann": "zurich",
     "grid-ops": "zurich",
-    # A stay on the far hub, so a federated search has a room to return as well as people.
-    "pension-limmat": "zurich",
+    "niko-ferrer": "zurich",
+    "aylin-dervis": "zurich",
+    # bern — local services. A guesthouse sits here too, because a real hub is mixed: domain is
+    # what a hub mostly carries, never a rule it enforces.
+    "schnittwerk-bern": "bern",
+    "velowerk-bern": "bern",
+    "lichtfeld-foto": "bern",
+    "pension-limmat": "bern",
 }
 #: The kind each folder registers as. Only a filter now: discovery indexes what a card offers and
 #: needs, so a person is found by their skills in the same search that finds a room.
@@ -49,6 +57,11 @@ KIND = {
     "pension-limmat": "hotel",
     "lena-hofmann": "person",
     "grid-ops": "person",
+    "niko-ferrer": "person",
+    "aylin-dervis": "person",
+    "schnittwerk-bern": "service",
+    "velowerk-bern": "service",
+    "lichtfeld-foto": "service",
 }
 
 #: Words that mean something to `fit()`. Pulled out of the prose rather than typed twice, so the

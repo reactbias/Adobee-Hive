@@ -1,97 +1,10 @@
-INFO:     Started server process [417861]
+INFO:     Started server process [549113]
 INFO:     Waiting for application startup.
 StreamableHTTP session manager started
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8420 (Press CTRL+C to quit)
-INFO:     127.0.0.1:46298 - "GET /api/health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:46308 - "POST /api/hub/register HTTP/1.1" 200 OK
-INFO:     127.0.0.1:46322 - "POST /api/hub/register HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44540 - "GET /api/admin/applications?state=pending HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44554 - "GET /api/hive/discover?query=krafft HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44562 - "GET /api/admin/applications?state=pending HTTP/1.1" 200 OK
-INFO:     127.0.0.1:44574 - "POST /api/admin/applications/ap-44476f42aac6 HTTP/1.1" 403 Forbidden
-INFO:     127.0.0.1:44590 - "POST /api/admin/applications/ap-44476f42aac6 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45456 - "GET /api/hive/discover?query=krafft HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45466 - "GET /api/admin/applications?state=pending HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45470 - "POST /api/admin/applications/ap-1d2d22f47703 HTTP/1.1" 500 Internal Server Error
-ERROR:    Exception in ASGI application
-Traceback (most recent call last):
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
-    result = await app(  # type: ignore[func-returns-value]
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
-    return await self.app(scope, receive, send)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/applications.py", line 1194, in __call__
-    await super().__call__(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
-    raise exc
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
-    await self.app(scope, receive, _send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
-    await self.app(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 91, in __call__
-    await self.simple_response(scope, receive, send, request_headers=headers)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/middleware/cors.py", line 149, in simple_response
-    await self.app(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
-    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
-    await self.app(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
-    await self.middleware_stack(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
-    await route.handle(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
-    await super().handle(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
-    await self.app(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
-    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
-    raise exc
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
-    await app(scope, receive, sender)
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
-    response = await f(request)
-               ^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
-    raw_response = await run_endpoint_function(
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
-    return await run_in_threadpool(
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
-    return await anyio.to_thread.run_sync(func)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
-    return await get_async_backend().run_sync_in_worker_thread(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
-    return await future
-           ^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
-    result = context.run(func, *args)
-             ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
-    return function(**arguments)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/app/main.py", line 595, in admin_decide
-    return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/app/main.py", line 75, in _hive_call
-    return fn(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^
-  File "/home/ole/Documents/projects/BaselHack/work-backend/code/backend/app/registration.py", line 309, in decide
-    raise RegistrationError("a refusal needs a reason: the applicant is told it")
-app.registration.RegistrationError: a refusal needs a reason: the applicant is told it
-INFO:     127.0.0.1:45474 - "POST /api/admin/applications/ap-1d2d22f47703 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45490 - "POST /api/admin/blocklist HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45500 - "GET /api/hive/discover?query=basel HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45504 - "GET /api/admin/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44004 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44014 - "POST /api/hub/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44022 - "POST /api/hub/register HTTP/1.1" 200 OK
+INFO:     172.20.10.7:49902 - "OPTIONS /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40920 - "GET /api/health HTTP/1.1" 200 OK

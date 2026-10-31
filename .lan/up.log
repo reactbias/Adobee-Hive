@@ -1,34 +1,43 @@
-This machine: 192.168.21.123
+This machine: 172.20.10.7
 
 Starting hubs...
-  basel    http://192.168.21.123:8420
-  zurich   http://192.168.21.123:8421
+  basel    http://172.20.10.7:8420
+  zurich   http://172.20.10.7:8421
+  bern     http://172.20.10.7:8422
 
 Seeding the fake vaults through the real signup endpoint...
-  · cafe-rhein       pending   2 files  every application here is read by a person before it is admitted
-  · hotel-krafft     pending   3 files  every application here is read by a person before it is admitted
+  ✗ cafe-rhein       rejected  3 files  cafe-rhein is already registered here; choose another id
+  ✗ hotel-krafft     rejected  3 files  hotel-krafft is already registered here; choose another id
 
-2/2 on http://127.0.0.1:8420
-  · grid-ops         pending   2 files  every application here is read by a person before it is admitted
-  · lena-hofmann     pending   3 files  every application here is read by a person before it is admitted
-  · pension-limmat   pending   3 files  every application here is read by a person before it is admitted
+0/2 on http://127.0.0.1:8420
+  ✗ aylin-dervis     rejected  3 files  aylin-dervis is already registered here; choose another id
+  ✗ grid-ops         rejected  3 files  grid-ops is already registered here; choose another id
+  ✗ lena-hofmann     rejected  3 files  lena-hofmann is already registered here; choose another id
+  ✗ niko-ferrer      rejected  3 files  niko-ferrer is already registered here; choose another id
 
-3/3 on http://127.0.0.1:8421
+0/4 on http://127.0.0.1:8421
+  ✗ lichtfeld-foto   rejected  3 files  lichtfeld-foto is already registered here; choose another id
+  ✗ pension-limmat   rejected  3 files  pension-limmat is already registered here; choose another id
+  ✗ schnittwerk-bern rejected  3 files  schnittwerk-bern is already registered here; choose another id
+  ✗ velowerk-bern    rejected  3 files  velowerk-bern is already registered here; choose another id
 
-Building the app against http://192.168.21.123:8420 ...
+0/4 on http://127.0.0.1:8422
+
+Building the app same-origin, proxying /api to 127.0.0.1:8420 ...
 
 ────────────────────────────────────────────────────────────
   Sign up here, from any browser on this network:
 
-      http://192.168.21.123:8424
+      http://172.20.10.7:8440
 
   Laptop or phone, no install. Both hubs are on this machine.
 ────────────────────────────────────────────────────────────
 
-  hub directory   http://192.168.21.123:8420/api/hub/directory
-  what it asks    http://192.168.21.123:8420/api/hub/registration
-  API docs        http://192.168.21.123:8420/docs
-  second hub      http://192.168.21.123:8421
+  hub directory   http://172.20.10.7:8420/api/hub/directory
+  what it asks    http://172.20.10.7:8420/api/hub/registration
+  API docs        http://172.20.10.7:8420/docs
+  zurich hub      http://172.20.10.7:8421   developers and freelance work
+  bern hub        http://172.20.10.7:8422   local services
   logs            .lan/*.log
 
   Tell someone on another device to run:  ./lan.sh check  (or just open the URL)
