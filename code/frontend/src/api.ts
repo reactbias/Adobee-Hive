@@ -180,7 +180,7 @@ export const api = {
     post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
   agent: (messages: { role: string; content: string }[]) => post<AgentResult>("/api/agent", { messages }),
   approve: (pending: Pending) => post<Approval>("/api/agent/approve", { pending }),
-  owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`),
+  owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`, { headers: ownerHeaders() }),
   propose: (id: string, instruction: string) =>
     post<Proposal>(`/api/owner/${id}/propose`, { instruction }, ownerHeaders()),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }, ownerHeaders()),
