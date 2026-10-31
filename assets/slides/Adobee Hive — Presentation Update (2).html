@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Adobee Hive — Presentation Update</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Ubuntu:wght@400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F6F2EC;--card:#FCFAF6;--ink:#1c1714;--mut:#6b625a;--acc:#B06A08;--tint:#FAEBC8;--line:#e4ddd3;
+--serif:'Instrument Serif',Georgia,serif;--sans:'Ubuntu',system-ui,sans-serif;--mono:'Space Mono',ui-monospace,monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1613;--card:#231e1a;--ink:#f3ede5;--mut:#a89d92;--tint:#3b2e14;--line:#3a332d;--acc:#F0B04C}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+header{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:18px 32px;z-index:5;font-size:15px;color:var(--mut)}
+header b{font-weight:500;display:flex;gap:10px;align-items:center}
+header i{font:12px var(--mono);font-style:normal}
+.slide{position:absolute;inset:0;padding:84px 6vw 70px;display:none;flex-direction:column}
+.slide.on{display:flex}
+.kick{font:12px var(--mono);letter-spacing:.14em;color:var(--acc);text-transform:uppercase}
+h1,h2{font-family:var(--serif);font-weight:400;margin:.2em 0 .15em;line-height:1.02}
+h2{font-size:clamp(30px,4.6vw,56px)}
+.sub{color:var(--mut);font-size:clamp(15px,1.6vw,20px);margin:0 0 18px}
+ol.t{margin:0;padding:0;list-style:none;display:grid;gap:8px;font-size:clamp(14px,1.35vw,17px);max-width:560px}
+ol.t li{padding-left:22px;position:relative;line-height:1.35}
+ol.t li:before{content:"";position:absolute;left:0;top:.45em;width:9px;height:9px;background:var(--acc);clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%)}
+.mono{font-family:var(--mono)}
+.card{background:var(--card);border:1px solid var(--ink);padding:12px 14px;font:11.5px/1.5 var(--mono);border-radius:2px}
+.lbl{font:11px var(--mono);letter-spacing:.1em;color:var(--acc);text-transform:uppercase;margin-bottom:6px}
+nav{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:6vw;right:6vw;display:flex;align-items:center;gap:14px;z-index:5}
+.bar{flex:1;height:2px;background:var(--line)}.bar i{display:block;height:100%;background:var(--acc);width:0;transition:width .5s}
+nav button{font:12px var(--mono);background:none;border:1px solid var(--line);color:var(--mut);padding:6px 12px;cursor:pointer;border-radius:2px}
+nav button:hover{border-color:var(--acc);color:var(--acc)}
+/* slide 1 */
+#s1{align-items:center;justify-content:center;text-align:center}
+.stage{position:relative;width:min(440px,70vw);height:min(300px,38vh)}
+.stage svg.hex{position:absolute;left:50%;top:50%;width:150px;height:156px;margin:-78px 0 0 -75px;overflow:visible}
+.bl{fill:none;stroke:#B06A08;stroke-width:3;stroke-linecap:round}
+.seg{stroke-dasharray:1;stroke-dashoffset:1}
+.on .seg{animation:draw .45s forwards;animation-delay:calc(var(--i)*.07s)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.peek{opacity:0}
+.on .peek{animation:peek 1.2s .2s forwards}
+@keyframes peek{0%{opacity:0;transform:translateY(36px)}20%{opacity:1;transform:translateY(0)}75%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(36px)}}
+.wig{transform-origin:50px 67px;animation:wig .25s infinite alternate}@keyframes wig{to{transform:rotate(7deg)}}
+
+.bee{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;opacity:0}
+.on .bee{animation:fly 2s cubic-bezier(.5,0,.3,1) forwards;animation-delay:var(--d)}
+@keyframes fly{0%{opacity:0;transform:translate(var(--x0),var(--y0)) scale(.8)}10%{opacity:1}55%{opacity:1;transform:translate(var(--xm),var(--ym)) scale(1)}90%{opacity:1;transform:translate(0,0) scale(.9)}100%{opacity:0;transform:translate(0,0) scale(.3)}}
+.on .bee.first{--x0:0px;--y0:0px;--xm:-150px;--ym:-90px;--d:2.1s}
+.wing{animation:flap .12s infinite alternate;transform-origin:center}@keyframes flap{to{transform:scaleY(.5)}}
+.stage svg.logo{width:160px;height:155px;margin:-78px 0 0 -80px;overflow:visible}
+.on .logo .ring{stroke-dasharray:100;stroke-dashoffset:100;animation:dr 1s .2s forwards}@keyframes dr{to{stroke-dashoffset:0}}
+.on .logo .inner,.on .logo .ticks{opacity:0;animation:up .6s .7s forwards}
+
+.on .bm{transform-box:fill-box;transform-origin:center;opacity:0;animation:bin 5s .6s forwards}
+@keyframes bin{0%{opacity:0;transform:translate(-70px,-40px) scale(.5)}12%,30%{opacity:1;transform:none}40%,80%{opacity:0;transform:translate(-8px,-26px) scale(.3)}100%{opacity:1;transform:none}}
+.on .bob{animation:bob 1s ease-in-out infinite alternate}@keyframes bob{to{transform:translateY(-3px)}}
+.on .wg{transform-box:fill-box;transform-origin:80% 100%;animation:fl .14s infinite alternate}@keyframes fl{to{transform:rotate(-14deg) scaleY(.8)}}
+.on .eyes{transform-box:fill-box;transform-origin:center;animation:blink .25s 1.6s}@keyframes blink{50%{transform:scaleY(.1)}}
+.agent{position:absolute;left:50%;top:50%;width:160px;height:155px;margin:-78px 0 0 -80px;overflow:visible}
+.agent .ring{transform-box:fill-box;transform-origin:center;opacity:0}.on .agent .ring{animation:pulse 1.6s 4.7s 2}.agent text{opacity:0}.on .agent text{animation:up .6s 5s forwards}
+@keyframes pulse{0%{opacity:.5;transform:scale(1)}100%{opacity:0;transform:scale(1.7)}}
+.txt{opacity:0;transform:translateY(10px)}
+.on .txt{animation:up .8s forwards;animation-delay:var(--d)}
+@keyframes up{to{opacity:1;transform:none}}
+#s1 h1{font-size:clamp(44px,7vw,88px)}
+.slogan{font:13px var(--mono);letter-spacing:.12em;color:var(--acc);text-transform:uppercase}
+.punch{font-family:var(--serif);font-size:clamp(24px,3.4vw,42px);margin-top:18px}
+.punch em{color:var(--acc)}
+/* slide 2 */
+.tabs{display:flex;gap:8px;margin:0 0 16px}
+.tabs button{font:12px var(--mono);padding:7px 14px;border:1px solid var(--line);background:none;color:var(--mut);cursor:pointer;border-radius:2px}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.v{display:none;flex:1;gap:3vw;align-items:center;min-height:0}.v.on{display:flex;animation:up .5s forwards}
+.v>div{flex:1;min-width:0}
+.v svg{width:100%;max-height:44vh}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:start}
+.flow .arrow{display:none}
+.step .n{font:11px var(--mono);color:var(--acc);margin-bottom:6px}
+.stack{display:grid;gap:10px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cols .card.bad{opacity:.55;border-style:dashed;border-color:var(--mut)}
+@media(max-width:820px){.v.on{flex-direction:column;align-items:stretch;overflow:auto}.flow{grid-template-columns:1fr 1fr}.slide{padding-left:5vw;padding-right:5vw}}
+/* slide 3 */
+.tl{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3vw;position:relative;align-items:start;margin-top:8px}
+.tl:before{content:"";position:absolute;left:0;right:0;top:15px;height:2px;background:var(--line)}
+.tl .prog{position:absolute;left:0;top:15px;height:2px;background:var(--acc);width:0;transition:width 1.6s .3s}
+.on .tl .prog{width:100%}
+.stp{position:relative;padding-top:42px}
+.stp .dot{position:absolute;top:2px;left:0;width:28px;height:30px;background:var(--bg);display:grid;place-items:center}
+.stp h3{font-family:var(--serif);font-weight:400;font-size:clamp(22px,2.6vw,34px);margin:0 0 4px;line-height:1.1}
+.stp h3 em{color:var(--acc);font-style:normal}
+.mini{display:grid;gap:8px;margin:14px 0}
+.bub{padding:9px 12px;font-size:13px;border-radius:2px;max-width:92%}
+.bub.a{background:var(--tint)}.bub.b{background:var(--card);border:1px solid var(--line);margin-left:auto}
+.bub small{display:block;font:10px var(--mono);color:var(--acc);margin-bottom:2px}
+
+.fgrid{display:grid;grid-template-columns:1fr 30px 1fr 30px 1fr 30px 1fr;column-gap:clamp(6px,1vw,16px);width:100%;align-items:start;align-self:center}
+.fl{font:12px var(--mono);letter-spacing:.14em;color:var(--acc);text-transform:uppercase;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:14px}
+.fv{height:clamp(210px,34vh,280px)}.fv .card{height:100%;display:flex;flex-direction:column;justify-content:center;padding:16px 18px;border-width:1.5px;border-color:var(--mut)}
+.fv>svg{width:100%;height:100%;max-height:none}
+.fc{margin-top:16px;font-size:clamp(14px,1.5vw,20px);line-height:1.35}
+.ar{align-self:start;margin-top:calc(34px + clamp(95px,16vh,130px));color:var(--mut);width:30px}
+.fr{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:clamp(12px,1.1vw,14px)}.fr.in{padding-left:24px}
+.fr em{margin-left:auto;font-style:normal;color:var(--mut);font-size:.85em}
+.v svg.fi{width:14px;height:11px;max-height:none;fill:var(--mut);flex:none}.fr:first-child svg.fi{fill:var(--ink)}
+.ft{font:11px var(--mono);color:var(--mut);margin-top:10px;letter-spacing:.04em}
+.js{margin:0;font:clamp(10.5px,1vw,13px)/1.65 var(--mono);color:var(--ink);white-space:pre-wrap}.js .k{color:var(--mut)}
+.v.on{overflow:auto}
+.netw{flex:1.15!important}.netw svg{max-height:62vh!important}
+.big{list-style:none;margin:0;padding:0;display:grid;gap:clamp(8px,1.6vh,18px)}
+.big li{display:grid;grid-template-columns:clamp(44px,4vw,60px) 1fr;align-items:baseline;padding-bottom:clamp(8px,1.6vh,18px);border-bottom:1px solid var(--line)}
+.big li:last-child{border:0}
+.big span{font:clamp(13px,1.2vw,16px) var(--mono);color:var(--acc)}
+.big p{margin:0;font-size:clamp(19px,2.3vw,32px);line-height:1.22}
+.big b{font-weight:500;color:var(--acc)}
+@media(max-width:820px){.fgrid{grid-template-columns:1fr 1fr;row-gap:22px}.ar{display:none}}
+#s3 .stp h3{font-size:clamp(28px,3.6vw,52px);margin-bottom:10px}
+#s3 ol.t{max-width:none;gap:clamp(10px,1.8vh,18px);font-size:clamp(19px,2.1vw,29px);line-height:1.25}
+#s3 ol.t li{padding-left:30px}#s3 ol.t li:before{width:13px;height:13px;top:.4em}
+#s3 .bub{font-size:clamp(17px,1.8vw,24px);padding:12px 16px}#s3 .bub small{font-size:12px}
+#s3 .mini{gap:10px;margin:18px 0}
+#s3{overflow:auto}
+</style>
+</head>
+<body>
+<header><b><svg width="36" height="35" viewBox="-14 -10 128 124"><use href="#hx"/></svg>Adobee Hive</b><i id="sec"></i></header>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE07A"/><stop offset="1" stop-color="#EE9A2E"/></linearGradient>
+<clipPath id="bc"><ellipse cx="48" cy="58" rx="21" ry="17" transform="rotate(-28 48 58)"/></clipPath>
+<g id="hx"><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(50 52) scale(.86) translate(-50 -52)" fill="#FFFBF2" stroke="#C98A28" stroke-width="1.6" stroke-linejoin="round" class="inner"/><path class="ring" pathLength="100" d="M50 4l42 24v48L50 100 8 76V28z" fill="none" stroke="url(#gold)" stroke-width="6.5" stroke-linejoin="round"/><path class="ticks" d="M50-9V-1M50 103v8M-12 22l8 5 8-5M-4 27v18M-4 62v18M-12 85l8-5 8 5M112 22l-8 5-8-5M104 27v18M104 62v18M112 85l-8-5-8 5" stroke="#D9A845" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><g class="bm"><g class="bob"><g class="wg"><ellipse cx="36" cy="40" rx="10.5" ry="7" transform="rotate(-25 36 40)" fill="#FFF1CF" stroke="#3a2418" stroke-width="1.6"/><ellipse cx="45" cy="34" rx="5.5" ry="8" transform="rotate(12 45 34)" fill="#FBE3A8" stroke="#3a2418" stroke-width="1.6"/></g><path d="M31 65l-7 6 9 .6z" fill="#3a2418"/><path d="M44 73q-1 6-5 8M53 75q0 5-3 8M64 72q3 5 6 3" stroke="#3a2418" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="48" cy="58" rx="21" ry="17" transform="rotate(-28 48 58)" fill="#F9B93A" stroke="#3a2418" stroke-width="1.6"/><g clip-path="url(#bc)"><path d="M34 40Q44 58 38 78M46 38Q58 56 50 80" stroke="#3a2418" stroke-width="6" fill="none"/></g><circle cx="62" cy="52" r="15" fill="#FCD460" stroke="#3a2418" stroke-width="1.6"/><g class="eyes"><circle cx="57" cy="50" r="2.7" fill="#3a2418"/><circle cx="68" cy="49" r="2.7" fill="#3a2418"/><circle cx="57.8" cy="49.2" r=".9" fill="#fff"/><circle cx="68.8" cy="48.2" r=".9" fill="#fff"/></g><ellipse cx="53" cy="56.5" rx="2.6" ry="1.6" fill="#F2995A" opacity=".8"/><ellipse cx="72.5" cy="55" rx="2.6" ry="1.6" fill="#F2995A" opacity=".8"/><path d="M59 56Q62.5 59.5 66 56" stroke="#3a2418" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M56 38Q52 31 56 27M66 38Q68 31 74 29" stroke="#3a2418" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="56" cy="25.5" r="2.7" fill="#3a2418"/><circle cx="75" cy="28.5" r="2.7" fill="#3a2418"/></g></g></g>
+<g id="bee"><ellipse cx="14" cy="9" rx="6" ry="4" fill="#FFF1CF" stroke="#3a2418" stroke-width=".8"/><ellipse cx="21" cy="8" rx="4" ry="5" fill="#FBE3A8" stroke="#3a2418" stroke-width=".8"/><ellipse cx="17" cy="20" rx="10" ry="7.5" fill="#F9B93A" stroke="#3a2418" stroke-width="1"/><path d="M13 13.5q-2 6.5 0 13M19 13q-2 7 0 14" stroke="#3a2418" stroke-width="2.4" fill="none"/><circle cx="26" cy="18" r="5" fill="#FCD460" stroke="#3a2418" stroke-width="1"/><circle cx="27.5" cy="17" r="1" fill="#3a2418"/><path d="M25 13l-1-4M28 13l2-4" stroke="#3a2418" stroke-width=".8"/></g>
+<symbol id="fo" viewBox="0 0 14 11"><path d="M0 1.6Q0 0 1.6 0H5l1.6 1.6h5.8Q14 1.6 14 3.2v6.2Q14 11 12.4 11H1.6Q0 11 0 9.4z"/></symbol>
+<path id="hp" d="M50 4l42 24v48L50 100 8 76V28z"/>
+</defs></svg>
+
+<!-- SLIDE 1 -->
+<section class="slide" id="s1" data-sec="The vision">
+  <div class="stage">
+    <svg class="hex logo" viewBox="-14 -10 128 124"><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(50 52) scale(.86) translate(-50 -52)" fill="#FFFBF2" stroke="#C98A28" stroke-width="1.6" stroke-linejoin="round" class="inner"/><path class="ring" pathLength="100" d="M50 4l42 24v48L50 100 8 76V28z" fill="none" stroke="url(#gold)" stroke-width="6.5" stroke-linejoin="round"/><path class="ticks" d="M50-9V-1M50 103v8M-12 22l8 5 8-5M-4 27v18M-4 62v18M-12 85l8-5 8 5M112 22l-8 5-8-5M104 27v18M104 62v18M112 85l-8-5-8 5" stroke="#D9A845" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><g class="bm"><g class="bob"><g class="wg"><ellipse cx="36" cy="40" rx="10.5" ry="7" transform="rotate(-25 36 40)" fill="#FFF1CF" stroke="#3a2418" stroke-width="1.6"/><ellipse cx="45" cy="34" rx="5.5" ry="8" transform="rotate(12 45 34)" fill="#FBE3A8" stroke="#3a2418" stroke-width="1.6"/></g><path d="M31 65l-7 6 9 .6z" fill="#3a2418"/><path d="M44 73q-1 6-5 8M53 75q0 5-3 8M64 72q3 5 6 3" stroke="#3a2418" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="48" cy="58" rx="21" ry="17" transform="rotate(-28 48 58)" fill="#F9B93A" stroke="#3a2418" stroke-width="1.6"/><g clip-path="url(#bc)"><path d="M34 40Q44 58 38 78M46 38Q58 56 50 80" stroke="#3a2418" stroke-width="6" fill="none"/></g><circle cx="62" cy="52" r="15" fill="#FCD460" stroke="#3a2418" stroke-width="1.6"/><g class="eyes"><circle cx="57" cy="50" r="2.7" fill="#3a2418"/><circle cx="68" cy="49" r="2.7" fill="#3a2418"/><circle cx="57.8" cy="49.2" r=".9" fill="#fff"/><circle cx="68.8" cy="48.2" r=".9" fill="#fff"/></g><ellipse cx="53" cy="56.5" rx="2.6" ry="1.6" fill="#F2995A" opacity=".8"/><ellipse cx="72.5" cy="55" rx="2.6" ry="1.6" fill="#F2995A" opacity=".8"/><path d="M59 56Q62.5 59.5 66 56" stroke="#3a2418" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M56 38Q52 31 56 27M66 38Q68 31 74 29" stroke="#3a2418" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="56" cy="25.5" r="2.7" fill="#3a2418"/><circle cx="75" cy="28.5" r="2.7" fill="#3a2418"/></g></g></svg>
+    <svg class="bee first" viewBox="0 0 36 36"><use href="#bee"/></svg>
+    <svg class="bee" style="--x0:-230px;--y0:-130px;--xm:-70px;--ym:-30px;--d:2.4s" viewBox="0 0 36 36"><use href="#bee"/></svg>
+    <svg class="bee" style="--x0:230px;--y0:-120px;--xm:80px;--ym:-50px;--d:2.6s" viewBox="0 0 36 36"><use href="#bee"/></svg>
+    <svg class="bee" style="--x0:-210px;--y0:140px;--xm:-60px;--ym:60px;--d:2.8s" viewBox="0 0 36 36"><use href="#bee"/></svg>
+    <svg class="bee" style="--x0:220px;--y0:140px;--xm:70px;--ym:50px;--d:3.0s" viewBox="0 0 36 36"><use href="#bee"/></svg>
+    <svg class="agent" viewBox="-14 -10 128 124"><use class="ring" href="#hp" fill="none" stroke="#B06A08" stroke-width="1.5"/><text x="50" y="121" text-anchor="middle" font-family="Space Mono" font-size="7.5" letter-spacing="1.5" fill="#B06A08">ONE AGENT</text></svg>
+  </div>
+  <h1 class="txt" style="--d:5s">Adobee Hive</h1>
+  <div class="slogan txt" style="--d:5.3s">Buzzing with Autonomous Intelligence.</div>
+  <div class="punch txt" style="--d:5.7s">Websites are for humans. <em>Hives are for agents.</em></div>
+</section>
+
+<!-- SLIDE 2 -->
+<section class="slide" id="s2" data-sec="The vision">
+  <div class="kick">The vision · Version <span id="ver">A</span></div>
+  <h2>An internet agents can read.</h2>
+
+  <!-- A -->
+  <div class="v on">
+    <div class="fgrid">
+      <div class="fcol"><div class="fl">1 · Entity</div><div class="fv"><div class="card"><div class="fr" style="color:var(--ink)"><svg class="fi" viewBox="0 0 14 11"><use href="#fo"/></svg>hotel-krafft/</div><div class="fr in"><svg class="fi" viewBox="0 0 14 11"><use href="#fo"/></svg>rooms/<em>26 files</em></div><div class="fr in"><svg class="fi" viewBox="0 0 14 11"><use href="#fo"/></svg>rates/<em>8 files</em></div><div class="fr in"><svg class="fi" viewBox="0 0 14 11"><use href="#fo"/></svg>house/<em>5 files</em></div><div class="fr in"><svg class="fi" viewBox="0 0 14 11"><use href="#fo"/></svg>guests/<em>private</em></div><div class="ft">shape, never contents</div></div></div><div class="fc">A person or a business keeps its context in its own folders.</div></div>
+      <svg class="ar" viewBox="0 0 30 10" width="30"><path d="M0 5H27M22 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      <div class="fcol"><div class="fl">2 · Hive</div><div class="fv"><div class="card"><div class="ft" style="margin:0 0 6px">CARD</div><pre class="js">{
+  <span class="k">"name"</span>: "Hotel Krafft Basel",
+  <span class="k">"rating"</span>: 43,
+  <span class="k">"rating_count"</span>: 18,
+  <span class="k">"offers"</span>: ["room-booking"],
+  <span class="k">"needs"</span>: ["frontdesk-spring"],
+  <span class="k">"sig"</span>: "ed25519:f10a9c3b…"
+}</pre></div></div><div class="fc">The hive lists it as JSON, not as a website.</div></div>
+      <svg class="ar" viewBox="0 0 30 10" width="30"><path d="M0 5H27M22 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      <div class="fcol"><div class="fl">3 · Search</div><div class="fv"><svg viewBox="0 0 260 220" font-family="Space Mono">
+        <path d="M18 8V176" style="stroke:var(--acc)" stroke-width="1.2" stroke-dasharray="4 4" opacity=".6"/>
+        <path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(80 40) scale(0.5) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(80 105) scale(0.5) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(80 170) scale(0.5) translate(-50 -52)" style="fill:var(--card);stroke:var(--mut)" stroke-width="2" stroke-dasharray="7 5" stroke-linejoin="round"/>
+        <g style="fill:var(--ink)" font-size="11.5"><text x="118" y="38">hub.basel.swiss</text><text x="118" y="103">hotels.nordwest.ch</text><text x="118" y="168">hub.loerrach.de</text></g>
+        <g style="fill:var(--mut)" font-size="10"><text x="118" y="54">peer error 0</text><text x="118" y="119">peer error -3</text><text x="118" y="184">peer error +11</text></g>
+        <g opacity="0"><animateMotion dur="9s" repeatCount="indefinite" path="M18 8 L18 176" calcMode="linear" keyPoints="0;1;1" keyTimes="0;.85;1"/><animate attributeName="opacity" dur="9s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;.05;.82;.88;1"/><g transform="translate(-8 -8) scale(.45)"><use href="#bee"/></g></g>
+        <text x="0" y="213" font-size="10" style="fill:var(--mut)">several hives, one search</text></svg></div><div class="fc">A business agent searches several hives at once.</div></div>
+      <svg class="ar" viewBox="0 0 30 10" width="30"><path d="M0 5H27M22 1l5 4-5 4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      <div class="fcol"><div class="fl">4 · Match</div><div class="fv"><svg viewBox="0 0 260 220" font-family="Space Mono">
+        <path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(50 70) scale(0.8) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(210 70) scale(0.8) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/>
+        <g transform="translate(33 53) scale(0.95)"><use href="#bee"/></g><g transform="translate(193 53) scale(0.95)"><use href="#bee"/></g>
+        <path d="M95 70H165" style="stroke:var(--acc)" stroke-width="1.6" stroke-dasharray="5 4"><animate attributeName="stroke-dashoffset" from="18" to="0" dur="1.2s" repeatCount="indefinite"/></path><circle cx="130" cy="70" r="4" style="fill:var(--acc)"/>
+        <g style="fill:var(--mut)" font-size="11" text-anchor="middle"><text x="50" y="132">needs</text><text x="210" y="132">offers</text></g>
+        <text x="0" y="213" font-size="10.5" style="fill:var(--acc)">no website in between</text></svg></div><div class="fc">The matched entity becomes an agent, and the two talk.</div></div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="v">
+    <div class="netw"><svg viewBox="0 0 480 372" font-family="Space Mono">
+      <g style="stroke:var(--acc)" stroke-width="1.6" stroke-dasharray="6 6" fill="none" opacity=".55"><path d="M240 62L90 170M240 62L390 170M90 170L240 278M390 170L240 278M90 170L390 170"><animate attributeName="stroke-dashoffset" from="24" to="0" dur="2s" repeatCount="indefinite"/></path></g>
+      <path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(240 62) scale(0.9) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(90 170) scale(0.9) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(240 278) scale(0.9) translate(-50 -52)" style="fill:var(--card);stroke:var(--acc)" stroke-width="2.4" stroke-linejoin="round"/><path d="M50 4l42 24v48L50 100 8 76V28z" transform="translate(390 170) scale(0.9) translate(-50 -52)" style="fill:var(--card);stroke:var(--mut)" stroke-width="2" stroke-dasharray="7 5" stroke-linejoin="round"/>
+      <g font-family="Instrument Serif" font-size="30" text-anchor="middle" style="fill:var(--ink)"><text x="240" y="73">212</text><text x="90" y="181">34</text><text x="240" y="289">96</text><text x="390" y="181" style="fill:var(--mut)">140</text></g>
+      <g font-size="12" text-anchor="middle" style="fill:var(--ink)"><text x="240" y="120">hotels.nordwest.ch</text><text x="90" y="228">hub.basel.swiss</text><text x="240" y="336">basel.hotelverband.ch</text><text x="390" y="228" style="fill:var(--mut)">hub.loerrach.de</text></g>
+      <g font-size="10.5" text-anchor="middle" style="fill:var(--acc)"><text x="240" y="135">peer error −3</text><text x="90" y="243">peer error 0 · calibrated</text><text x="240" y="351">peer error +2</text><text x="390" y="243">peer error +11 · undersold</text></g>
+      <g opacity="0"><animateMotion dur="14s" repeatCount="indefinite" path="M240 62L90 170L240 278L390 170" calcMode="linear" keyPoints="0;1;1" keyTimes="0;.86;1"/><animate attributeName="opacity" dur="14s" repeatCount="indefinite" values="0;1;1;0;0" keyTimes="0;.04;.84;.9;1"/><g transform="translate(-12 -12) scale(.7)"><use href="#bee"/></g></g>
+    </svg></div>
+    <div><ol class="big">
+      <li><span>01</span><p>Hives interconnect into a <b>federation</b>, not a single platform.</p></li>
+      <li><span>02</span><p>Each hive rates its entities and the <b>hives it trusts</b>.</p></li>
+      <li><span>03</span><p><b>Reputation travels</b> with the entity across the network.</p></li>
+      <li><span>04</span><p>Agents roam freely and only meet what is <b>well-calibrated</b>.</p></li>
+    </ol></div>
+  </div>
+</section>
+
+<!-- SLIDE 3 -->
+<section class="slide" id="s3" data-sec="Use case · Hotel">
+  <div class="kick">Use case</div>
+  <h2>Hotel user journey.</h2>
+  <div class="tl"><div class="prog"></div>
+    <div class="stp"><div class="dot"><svg width="36" height="35" viewBox="-14 -10 128 124"><use href="#hx"/></svg></div>
+      <h3>A room near Basel SBB — <em>Her agent visits the hives</em></h3>
+      <div class="mini"><div class="bub a"><small>MAYA</small>Room near Basel SBB for Baselhack.</div><div class="bub b"><small>HER AGENT</small>On it.</div></div>
+      <ol class="t"><li><b>Scouting:</b> Her agent queries high-rated hotel hives.</li><li><b>Filtering:</b> Lean JSON matches her preferences.</li></ol>
+    </div>
+    <div class="stp"><div class="dot"><svg width="36" height="35" viewBox="-14 -10 128 124"><use href="#hx"/></svg></div>
+      <h3>One entity matches — <em>She says yes, then it books</em></h3>
+      <div class="mini"><div class="bub b"><small>HOTEL AGENT</small>Courtyard single, CHF 165.</div><div class="bub a"><small>MAYA</small>✓ Approved</div></div>
+      <ol class="t"><li><b>Negotiation:</b> Both agents settle dates and details.</li><li><b>Execution:</b> One approval, and the booking is done.</li></ol>
+    </div>
+  </div>
+</section>
+
+<nav><button id="prev">←</button><div class="bar"><i id="pb"></i></div><button id="next">→</button></nav>
+
+<script>
+const S=[...document.querySelectorAll('.slide')],V=[...document.querySelectorAll('#s2 .v')],pb=document.getElementById('pb'),sec=document.getElementById('sec'),ver=document.getElementById('ver');
+const steps=[[0,0],[1,0],[1,1],[2,0]];let i=0;
+function go(n){i=Math.max(0,Math.min(steps.length-1,n));const [si,vi]=steps[i];
+  S.forEach(s=>s.classList.remove('on'));void document.body.offsetWidth;
+  S[si].classList.add('on');
+  V.forEach((v,j)=>v.classList.toggle('on',j===vi));
+  if(si===1){ver.textContent='AB'[vi];V[vi].querySelectorAll('svg').forEach(x=>x.setCurrentTime&&x.setCurrentTime(0));}
+  sec.textContent=S[si].dataset.sec;pb.style.width=((i+1)/steps.length*100)+'%';}
+document.getElementById('next').onclick=()=>go(i+1);document.getElementById('prev').onclick=()=>go(i-1);
+addEventListener('keydown',e=>{if(['ArrowRight',' ','PageDown'].includes(e.key))go(i+1);if(['ArrowLeft','PageUp'].includes(e.key))go(i-1);});
+go(0);
+</script>
+</body>
+</html>
