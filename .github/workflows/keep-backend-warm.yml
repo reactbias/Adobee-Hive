@@ -1,0 +1,16 @@
+# Render's free tier sleeps after 15 idle minutes and takes about a minute to wake up.
+# Pinging the health check every 10 minutes keeps it awake for the demo. Set repo variable
+# BACKEND_URL (the Render URL) to turn it on; remove this file after the event.
+name: Keep backend warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    if: vars.BACKEND_URL != ''
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --retry 3 --retry-delay 20 --max-time 90 "${{ vars.BACKEND_URL }}/api/health"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Booking, SecondOpinion, Step } from "../api";
 import { useI18n } from "../i18n";
 import { delayFor, type Beat } from "../lib/pace";
-import { Ask, Reply, namesFrom } from "./TraceParts";
+import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
 
 // The traveller page as a group chat: people and agents in one conversation. Every message comes from real data,
 // the guest's words, an MCP call or its answer. Playback paces the messages so a room can follow who is talking.
@@ -18,7 +18,8 @@ export type Segment =
   | { kind: "agent"; text: string }
   | { kind: "consent" }
   | { kind: "receipt"; booking: Booking }
-  | { kind: "next" };
+  | { kind: "next" }
+  | { kind: "refused" };
 
 interface Msg {
   who: Who;
@@ -26,6 +27,8 @@ interface Msg {
   role: string;
   to?: string;
   tool?: string;
+  /** The source that answered, when it is not the configured Hive. */
+  via?: string;
   ms?: number;
   badge?: ReactNode;
   body: ReactNode;
@@ -34,14 +37,11 @@ interface Msg {
   chars?: number;
 }
 
-const AVATAR: Record<Who, string> = {
-  guest: "/personas/guest.svg",
-  agent: "/personas/agent.svg",
-  hive: "/personas/hive.svg",
-  business: "/personas/business.svg",
-  sceptic: "/personas/sceptic.svg",
-  mirror: "/personas/mirror.svg",
-};
+const WHO: Who[] = ["guest", "agent", "hive", "business", "sceptic", "mirror"];
+const AVATAR = Object.fromEntries(WHO.map((who) => [who, `${import.meta.env.BASE_URL}personas/${who}.svg`])) as Record<
+  Who,
+  string
+>;
 
 type Rec = Record<string, unknown>;
 
@@ -60,6 +60,7 @@ export default function GroupChat({
   pinned,
   receipt,
   followUp,
+  refused,
   meta,
 }: {
   segments: Segment[];
@@ -72,6 +73,8 @@ export default function GroupChat({
   receipt?: ReactNode;
   /** What the agent offers once the stay is booked. */
   followUp?: ReactNode;
+  /** The listings the agent's guard refused this run, told by the agent itself. */
+  refused?: ReactNode;
   meta: ReactNode;
 }) {
   const { t } = useI18n();
@@ -81,6 +84,8 @@ export default function GroupChat({
   const messages = useMemo(() => {
     const all = segments.flatMap((s) => (s.kind === "steps" ? s.steps : []));
     const names = namesFrom(all);
+    // With several sources, discovery names them all, the configured Hive first.
+    const primary = all.find((s) => s.tool === "hive_discover" && s.source)?.source?.split(", ")[0];
     const hive = t("chat.name.hive");
     const guest = { who: "guest" as const, name: guestName, role: t("chat.role.guest") };
     const agent = { who: "agent" as const, name: t("chat.name.agent"), role: t("chat.role.agent") };
@@ -127,6 +132,9 @@ export default function GroupChat({
             body: receipt,
           });
           break;
+        case "refused":
+          if (refused) out.push({ ...agent, beat: "think", body: refused });
+          break;
         case "next":
           if (followUp) out.push({ ...agent, beat: "say", chars: 60, body: followUp });
           break;
@@ -134,12 +142,13 @@ export default function GroupChat({
           for (const step of seg.steps) {
             const id = String((step.input as Rec).card_id ?? "");
             const business = names[id] ?? String(step.output.business ?? step.output.name ?? hive);
-            const sig =
-              step.tool === "hive_get_card" ? Boolean((step.output.trust as Rec | undefined)?.signature_valid) : null;
+            const sig = genuine(step);
+            // Anything not from the configured Hive is a copy nobody vouches for: it speaks as the mirror.
+            const foreign = Boolean(step.source && primary && step.source !== primary && step.tool !== "hive_discover");
             const speaker =
               step.tool === "hive_discover"
                 ? { who: "hive" as const, name: hive, role: t("chat.role.hive") }
-                : sig === false
+                : sig === false || foreign
                   ? { who: "mirror" as const, name: t("chat.name.mirror"), role: t("chat.role.mirror") }
                   : { who: "business" as const, name: business, role: t("chat.role.business") };
             out.push({
@@ -153,8 +162,11 @@ export default function GroupChat({
               ...speaker,
               ms: step.ms,
               beat: "reply",
+              via: foreign ? step.source : undefined,
               badge:
-                sig === null ? undefined : (
+                step.signature === "unchecked" ? (
+                  <span className="seal-badge warm">{t("trace.sig.unchecked")}</span>
+                ) : sig === null ? undefined : (
                   <span className={`seal-badge ${sig ? "ok" : "no"}`}>
                     <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
                       <path d="M12 2.8 19.8 7.3v9.4L12 21.2 4.2 16.7V7.3Z" />
@@ -166,6 +178,7 @@ export default function GroupChat({
               body: (
                 <>
                   <Reply step={step} />
+                  {step.guard && step.guard.length > 0 && <Withheld findings={step.guard} />}
                   <details>
                     <summary>{t("trace.raw")}</summary>
                     <pre>{JSON.stringify({ input: step.input, output: step.output }, null, 2)}</pre>
@@ -178,7 +191,7 @@ export default function GroupChat({
       }
     }
     return out;
-  }, [segments, guestName, receipt, followUp, t]);
+  }, [segments, guestName, receipt, followUp, refused, t]);
 
   // New messages after an approval continue from where the chat was; a new trip starts over.
   useEffect(() => {
@@ -255,6 +268,7 @@ export default function GroupChat({
                     <div className="msg-head">
                       <b>{m.name}</b>
                       <span className="role">{m.role}</span>
+                      {m.via && <span className="role mono">{t("trace.via", { source: m.via })}</span>}
                       {m.ms !== undefined && <span className="ms num">{m.ms} ms</span>}
                     </div>
                   )}

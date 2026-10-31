@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { api, type AgentResult, type Booking, type Card, type Step } from "../api";
+import {
+  api,
+  type AgentOptions,
+  type AgentResult,
+  type Booking,
+  type Card,
+  type Refusal,
+  type Step,
+  type Unguarded,
+} from "../api";
 import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
@@ -32,20 +41,24 @@ export default function TravellerAgent() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [hotel, setHotel] = useState<Card | null>(null);
   const [nearby, setNearby] = useState<ReturnType<typeof pickNearby>>(null);
+  // Demo only: plant a manipulated listing, and optionally run the agent without its rules.
+  const [mirror, setMirror] = useState(false);
+  const [rulesOff, setRulesOff] = useState(false);
 
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
-  async function send(text = input) {
-    const messages = [...history, { role: "user", content: text }];
+  async function send(text = input, base = history, off = rulesOff) {
+    const messages = [...base, { role: "user", content: text }];
+    const options: AgentOptions = mirror ? { scenario: "injection", rules: off ? "off" : "on" } : {};
     setBusy(true);
     setError("");
     setReviewed("");
     setBooking(null);
     setHistory(messages);
     setInput("");
-    const before = segments;
+    const before = base.length ? segments : [];
     setSegments([...before, { kind: "guest", text }]);
     try {
-      const out = await api.agent(messages);
+      const out = await api.agent(messages, options);
       setResult(out);
       setHistory([...messages, { role: "assistant", content: out.reply }]);
       const guest = String(out.pending?.input.guest_name ?? "").split(" ")[0];
@@ -57,11 +70,12 @@ export default function TravellerAgent() {
         { kind: "steps", steps: out.steps },
         ...(out.second_opinion ? [{ kind: "opinion", opinion: out.second_opinion } as Segment] : []),
         { kind: "agent", text: out.reply },
+        ...(out.guard?.length ? [{ kind: "refused" } as Segment] : []),
       ]);
     } catch (e) {
       setError((e as Error).message);
-      setHistory(history);
-      setSegments(before);
+      setHistory(base);
+      setSegments(segments);
       setInput(messages[messages.length - 1].content);
     } finally {
       setBusy(false);
@@ -107,6 +121,14 @@ export default function TravellerAgent() {
     setResult({ ...result, pending: null });
     setHistory((h) => [...h, { role: "assistant", content: t("agent.declined") }]);
     setSegments((seg) => [...seg, { kind: "agent", text: t("agent.declined") }]);
+  }
+
+  // From the rules-off result: the same request, now with the agent's rules on.
+  function rerunGuarded() {
+    const lastAsk = [...history].reverse().find((m) => m.role === "user");
+    if (!lastAsk) return;
+    setRulesOff(false);
+    send(lastAsk.content, [], false);
   }
 
   function reset() {
@@ -191,6 +213,30 @@ export default function TravellerAgent() {
             </ul>
           </div>
         )}
+        <fieldset className="stress">
+          <legend className="eyebrow">{t("agent.test.eyebrow")}</legend>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={mirror}
+              disabled={busy}
+              onChange={(e) => {
+                setMirror(e.target.checked);
+                if (!e.target.checked) setRulesOff(false);
+              }}
+            />
+            <span>{t("agent.test.injection")}</span>
+          </label>
+          <label className={`check danger${mirror ? "" : " off"}`}>
+            <input
+              type="checkbox"
+              checked={rulesOff}
+              disabled={busy || !mirror}
+              onChange={(e) => setRulesOff(e.target.checked)}
+            />
+            <span>{t("agent.test.rulesOff")}</span>
+          </label>
+        </fieldset>
         {error && <p className="error">{error}</p>}
       </section>
 
@@ -212,70 +258,76 @@ export default function TravellerAgent() {
               <span>{t("agent.mode.ready")}</span>
             )}
             <span>{t("agent.meta.mcp")}</span>
-            <span>{t("agent.meta.noWebsite")}</span>
+            {result?.scenario ? <span>{t("agent.meta.mirror")}</span> : <span>{t("agent.meta.noWebsite")}</span>}
+            {result?.rules === "off" && <span className="danger">{t("agent.meta.rulesOff")}</span>}
           </span>
         }
+        refused={result?.guard?.length ? <Refused refusals={result.guard} /> : undefined}
         pinned={
-          pending && (
-            <div className="gate">
-              <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
-              <h3>
-                {t("agent.gate.question", {
-                  unit: String(unit?.name ?? pending.unit_id),
-                  name: counterpart,
-                })}
-              </h3>
-              <dl className="facts">
-                <div>
-                  <dt>{t("agent.fact.dates")}</dt>
-                  <dd>{stay(pending.check_in, pending.check_out, intl)}</dd>
-                </div>
-                <div>
-                  <dt>{t("agent.fact.nights")}</dt>
-                  <dd>{nights(pending.check_in, pending.check_out)}</dd>
-                </div>
-                <div>
-                  <dt>{t("agent.fact.guest")}</dt>
-                  <dd>{String(pending.guest_name)}</dd>
-                </div>
-                {unit && (
+          result?.unguarded ? (
+            <RulesOff damage={result.unguarded} steps={steps} onRerun={rerunGuarded} />
+          ) : (
+            pending && (
+              <div className="gate">
+                <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
+                <h3>
+                  {t("agent.gate.question", {
+                    unit: String(unit?.name ?? pending.unit_id),
+                    name: counterpart,
+                  })}
+                </h3>
+                <dl className="facts">
                   <div>
-                    <dt>{t("agent.fact.total")}</dt>
-                    <dd>{chf(unit.total_chf, intl)}</dd>
+                    <dt>{t("agent.fact.dates")}</dt>
+                    <dd>{stay(pending.check_in, pending.check_out, intl)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("agent.fact.nights")}</dt>
+                    <dd>{nights(pending.check_in, pending.check_out)}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("agent.fact.guest")}</dt>
+                    <dd>{String(pending.guest_name)}</dd>
+                  </div>
+                  {unit && (
+                    <div>
+                      <dt>{t("agent.fact.total")}</dt>
+                      <dd>{chf(unit.total_chf, intl)}</dd>
+                    </div>
+                  )}
+                </dl>
+                {result?.second_opinion && (
+                  <div className={`opinion ${result.second_opinion.verdict}`}>
+                    <span className="label">
+                      {t("agent.opinion.from", { by: result.second_opinion.by })}
+                      {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}
+                    </span>
+                    <p>
+                      <span className={`status ${result.second_opinion.verdict === "agree" ? "ok" : "no"}`}>
+                        {t(result.second_opinion.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
+                      </span>{" "}
+                      {result.second_opinion.note}
+                    </p>
                   </div>
                 )}
-              </dl>
-              {result?.second_opinion && (
-                <div className={`opinion ${result.second_opinion.verdict}`}>
-                  <span className="label">
-                    {t("agent.opinion.from", { by: result.second_opinion.by })}
-                    {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}
-                  </span>
-                  <p>
-                    <span className={`status ${result.second_opinion.verdict === "agree" ? "ok" : "no"}`}>
-                      {t(result.second_opinion.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
-                    </span>{" "}
-                    {result.second_opinion.note}
-                  </p>
+                {why.length > 0 && (
+                  <div className="why">
+                    <span className="label">{t("agent.gate.why")}</span>
+                    <p>{why.join(" · ")}</p>
+                  </div>
+                )}
+                <div className="row gate-actions">
+                  <button onClick={approve}>{t("agent.approve")}</button>
+                  <button className="quiet" onClick={decline}>
+                    {t("agent.decline")}
+                  </button>
                 </div>
-              )}
-              {why.length > 0 && (
-                <div className="why">
-                  <span className="label">{t("agent.gate.why")}</span>
-                  <p>{why.join(" · ")}</p>
-                </div>
-              )}
-              <div className="row gate-actions">
-                <button onClick={approve}>{t("agent.approve")}</button>
-                <button className="quiet" onClick={decline}>
-                  {t("agent.decline")}
-                </button>
+                <p className="fine">
+                  {t("agent.gate.fine")}
+                  {policies.cancellation ? ` ${policies.cancellation}.` : ""}
+                </p>
               </div>
-              <p className="fine">
-                {t("agent.gate.fine")}
-                {policies.cancellation ? ` ${policies.cancellation}.` : ""}
-              </p>
-            </div>
+            )
           )
         }
         followUp={booking && <NextSteps booking={booking} hotel={hotel} nearby={nearby} />}
@@ -341,3 +393,70 @@ export default function TravellerAgent() {
 }
 
 const list = (v: unknown) => (Array.isArray(v) ? (v as Rec[]) : []);
+
+/** The listings the agent refused this run, and why: kept on the stage so the human sees the attempt. */
+function Refused({ refusals }: { refusals: Refusal[] }) {
+  const { t } = useI18n();
+  return (
+    <aside className="refused">
+      <span className="eyebrow">{t("agent.refused.eyebrow")}</span>
+      {refusals.map((r) => (
+        <div key={`${r.source}/${r.card_id}`}>
+          <h4>{t("agent.refused.from", { name: r.business ?? String(r.card_id), source: r.source })}</h4>
+          <ul>
+            {r.codes.map((c) => (
+              <li key={c}>{t(`guard.${c}` as Key)}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p className="fine">{t("agent.refused.fine")}</p>
+    </aside>
+  );
+}
+
+/** Demo only: what an agent without rules would have done. Clearly labelled; nothing here was sent. */
+function RulesOff(props: { damage: Unguarded; steps: Step[]; onRerun: () => void }) {
+  const { t, intl } = useI18n();
+  const input = props.damage.would_call.input as Rec;
+  const card = lastOutput(props.steps, "hive_get_card");
+  const unit = list(card?.units).find((u) => u.id === input.unit_id);
+  return (
+    <div className="gate unguarded">
+      <span className="eyebrow">{t("agent.unguarded.eyebrow")}</span>
+      <h3>
+        {t("agent.unguarded.title", {
+          unit: String(unit?.name ?? input.unit_id),
+          name: String(card?.name ?? input.card_id),
+        })}
+      </h3>
+      <dl className="facts">
+        <div>
+          <dt>{t("agent.fact.dates")}</dt>
+          <dd>{stay(input.check_in, input.check_out, intl)}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.total")}</dt>
+          <dd>{chf(props.damage.total_chf, intl)}</dd>
+        </div>
+      </dl>
+      <div>
+        <span className="label">{t("agent.unguarded.broken")}</span>
+        <ul className="broken">
+          {props.damage.broken.map((b) => (
+            <li key={b.code}>
+              {t(`broken.${b.code}` as Key, {
+                price: chf(b.price_chf, intl),
+                budget: chf(b.budget_chf, intl),
+              })}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="row gate-actions">
+        <button onClick={props.onRerun}>{t("agent.unguarded.rerun")}</button>
+      </div>
+      <p className="fine">{t("agent.unguarded.fine")}</p>
+    </div>
+  );
+}

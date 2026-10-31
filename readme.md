@@ -39,11 +39,14 @@ over MCP. Try it with any MCP client, Claude included.
 | MCP server: discover, get card, check availability, book, cancel, review | `code/backend/app/mcp_server.py` |
 | Traveller agent: an OpenAI or Claude model over MCP, verifies every signature, explains its choice, books only after you approve. You watch it play out as a group chat of named agents, and after the booking it offers next steps | `code/backend/app/agent.py`, `TravellerAgent.tsx`, `GroupChat.tsx` |
 | Owner studio: plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `OwnerStudio.tsx` |
-| Human card page with direct booking and a live tamper test | `CardPage.tsx` |
+| Trust: owner keys pinned in each Hive's registry (`/.well-known/hive.json`); the agent checks every card itself; a changed copy and a stranger-signed copy both fail the live tamper test | `hive.py`, `agent.verify_card`, `CardPage.tsx` |
+| Human card page with direct booking | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
+| Second opinion: a separate sceptic agent checks each held booking against the request and the signed card before you approve | `code/backend/app/second_opinion.py` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
-Without an API key everything still runs on a scripted planner over the same tools, so the demo never dies. The
+The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
+scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
 web app speaks English, German, French and Italian.
 
 ## Quick start

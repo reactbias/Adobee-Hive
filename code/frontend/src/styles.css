@@ -2457,3 +2457,132 @@ button.self-start {
     justify-self: start;
   }
 }
+
+/* Manipulation demo: the stress-test switches, what the guard withheld, and the rules-off counterfactual */
+.stress {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--s6) 0 0;
+  padding: var(--s4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.stress legend {
+  padding: 0;
+  float: left;
+  width: 100%;
+  margin-bottom: var(--s2);
+}
+.check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: start;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+  cursor: pointer;
+  margin: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.check input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 3px 0 0;
+  padding: 0;
+  accent-color: var(--ink);
+}
+.check.danger input {
+  accent-color: var(--bad);
+}
+.check.off {
+  opacity: 0.45;
+  cursor: default;
+}
+.stage-meta .danger {
+  color: #e8907e;
+}
+.ledger li.flagged .ledger-name {
+  text-decoration: line-through;
+  text-decoration-color: #e8907e;
+}
+.ledger li.flagged .ledger-why,
+.ledger li.flagged .ledger-score {
+  color: #e8907e;
+}
+.utter-head .status.warm {
+  color: var(--clay-glow);
+}
+.utter-head .via {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+}
+.withheld {
+  margin-top: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.withheld blockquote {
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border-left: 2px solid #e8907e;
+  background: rgba(232, 144, 126, 0.07);
+  color: var(--st-3);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+.refused {
+  margin-top: var(--s6);
+  padding: var(--s5) 0 0;
+  border-top: 1px solid rgba(232, 144, 126, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.refused .eyebrow {
+  color: #e8907e;
+}
+.refused h4 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: var(--t-lg);
+  color: var(--st-ink);
+}
+.refused ul {
+  margin: var(--s2) 0 0;
+  padding-left: 1.1em;
+  color: var(--st-2);
+  font-size: var(--t-sm);
+}
+.refused .fine {
+  color: var(--st-3);
+  border-top-color: var(--st-line);
+}
+.gate.unguarded {
+  border-top: 3px solid var(--bad);
+}
+.gate.unguarded > .eyebrow {
+  color: var(--bad);
+}
+.broken {
+  margin: 0;
+  padding-left: 1.1em;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.broken li + li {
+  margin-top: 2px;
+}
+.seal-badge.warm {
+  color: var(--clay-glow);
+}
+.msg-head .role.mono {
+  font-family: var(--mono);
+  letter-spacing: 0;
+}

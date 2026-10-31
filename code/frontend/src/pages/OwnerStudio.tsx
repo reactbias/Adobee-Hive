@@ -7,7 +7,8 @@ import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { stay } from "../lib/format";
 
-// A miss is logged as "missing dog-friendly, quiet (asked: <the traveller's request>)".
+// A miss is logged as "missing dog-friendly (asked: dog-friendly, near basel sbb)": the structured ask, never the
+// traveller's own words.
 function splitMiss(detail: string): [string, string] {
   const at = detail.indexOf(" (asked: ");
   return at < 0 ? [detail, ""] : [detail.slice(0, at), detail.slice(at + 9, -1)];

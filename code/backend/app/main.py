@@ -74,7 +74,8 @@ def well_known(request: Request) -> dict[str, Any]:
     return {
         "name": "Adobee Hive (Basel)",
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
-        "signature": "Ed25519 over canonical JSON; public key in each card's trust block",
+        "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
+        "owner_keys": hive.owner_keys(),
         "ranking_policy": hive.RANKING_POLICY,
     }
 
@@ -93,6 +94,10 @@ class AgentRequest(BaseModel):
     """A conversation with the traveller agent; the last message is the traveller's."""
 
     messages: list[Message] = Field(min_length=1, max_length=20)
+    # Demo only. "injection" adds an unverified mirror whose listing carries hidden instructions to agents.
+    scenario: Literal["injection"] | None = None
+    # Demo only. "off" runs an unguarded agent offline to show what it would do; it never books.
+    rules: Literal["on", "off"] = "on"
 
 
 class ApproveRequest(BaseModel):
@@ -180,10 +185,15 @@ class VerifyRequest(BaseModel):
 
 @app.post("/api/hive/verify")
 def hive_verify(body: VerifyRequest) -> dict[str, Any]:
-    """Check a card against its own signature, as any agent would. Used by the tamper demo."""
-    card = dict(body.card)
-    trust = card.pop("trust", {}) or {}
-    return {"signature_valid": hive.verify(card, trust.get("signature", ""), trust.get("public_key", ""))}
+    """Check a card as any agent would: a valid signature by the owner's pinned key. Used by the tamper demo."""
+    return {"signature_valid": hive.verify_pinned(body.card, hive.owner_keys())}
+
+
+@app.post("/api/hive/demo/forge/{card_id}")
+def hive_forge_demo(card_id: str, request: Request) -> dict[str, Any]:
+    """Tamper demo: a changed copy re-signed by a stranger's key, which must fail verification."""
+    guard.simulations.check(request)
+    return _hive_call(hive.forge_demo, card_id)
 
 
 @app.get("/api/hive/demand")
@@ -210,10 +220,10 @@ def demo_reset(request: Request) -> dict[str, Any]:
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
-    if config.LLM_ENABLED:
+    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
-        return await agent.run([m.model_dump() for m in body.messages])
+        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules)
     except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
         raise HTTPException(502, "The agent could not finish this request. Try again.") from err
@@ -229,9 +239,15 @@ async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
 
 
 @app.get("/api/owner/{card_id}")
-def owner_overview(card_id: str) -> dict[str, Any]:
-    """Return the owner studio data for one card."""
-    return _hive_call(hive.owner_overview, card_id)
+def owner_overview(card_id: str, request: Request) -> dict[str, Any]:
+    """Return the owner studio data for one card. Without the owner token, guest names show as initials."""
+    overview = _hive_call(hive.owner_overview, card_id)
+    try:
+        guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
+    except HTTPException:
+        for booking in overview["bookings"]:
+            booking["guest_name"] = hive.mask_name(booking["guest_name"] or "")
+    return overview
 
 
 @app.post("/api/owner/{card_id}/propose")

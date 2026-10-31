@@ -125,6 +125,41 @@ def verify(data: dict[str, Any], signature: str, public_key: str) -> bool:
         return False
 
 
+def owner_keys() -> dict[str, str]:
+    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
+
+    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
+    it is signed by the key pinned here for that card id.
+    """
+    with db.cursor() as cur:
+        rows = cur.execute("SELECT card_id, private_key FROM hive_keys ORDER BY card_id").fetchall()
+    return {
+        card_id: _public_b64(serialization.load_pem_private_key(pem.encode(), password=None))  # type: ignore[arg-type]
+        for card_id, pem in rows
+    }
+
+
+def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
+    """Check a card as an agent received it: signed, and signed by the key pinned for its id."""
+    trust = card.get("trust") or {}
+    key = trust.get("public_key", "")
+    data = {k: v for k, v in card.items() if k != "trust"}
+    return bool(key) and pins.get(card.get("id", "")) == key and verify(data, trust.get("signature", ""), key)
+
+
+def forge_demo(card_id: str) -> dict[str, Any]:
+    """For the tamper demo: a copy with a changed fact, re-signed by a stranger's fresh key. Agents must reject it."""
+    card = get_card(card_id)
+    data = {k: v for k, v in card.items() if k != "trust"}
+    if data.get("units"):
+        data["units"][0]["price_chf"] = 1
+    else:
+        data["features"] = [*data.get("features", []), "free breakfast"]
+    stranger = Ed25519PrivateKey.generate()
+    signature = base64.b64encode(stranger.sign(canonical(data))).decode()
+    return {**data, "trust": {**card["trust"], "signature": signature, "public_key": _public_b64(stranger)}}
+
+
 def _sign_receipt(card_id: str, payload: dict[str, Any]) -> str:
     sig = _key_for(card_id).sign(canonical(payload))
     return base64.urlsafe_b64encode(canonical(payload)).decode() + "." + base64.urlsafe_b64encode(sig).decode()
@@ -284,6 +319,8 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
+# People are found only through their own domain's tools (domains/hr.py), never in a search for businesses.
+NOT_DISCOVERABLE = {"person"}
 RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
 
 
@@ -325,9 +362,18 @@ def discover(
     """Find businesses for an agent. Returns matches with score breakdown and the near-misses."""
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
+    # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
+    asked = ", ".join(
+        [*features]
+        + ([f"near {near}"] if near else [])
+        + ([f"under CHF {max_price_chf:g}"] if max_price_chf else [])
+        + ([f"{guests} guests"] if guests > 1 else [])
+    )
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     for card in list_cards(kind):
+        if card["kind"] in NOT_DISCOVERABLE:
+            continue
         reasons, misses = [], []
         card_feats = {f.lower() for f in card.get("features", [])}
         missing = [f for f in features if f not in card_feats]
@@ -391,17 +437,16 @@ def discover(
         }
         if misses:
             excluded.append({**summary, "why_not": misses})
-            events.append((card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {query})" if query else "")))
+            events.append((card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {asked})" if asked else "")))
         else:
             matches.append(summary)
-            events.append((card["id"], "shown", query or "structured search"))
+            events.append((card["id"], "shown", asked or "open search"))
     events.append(
         (
             "*",
             "search",
             json.dumps(
                 {
-                    "query": query,
                     "features": features,
                     "near": near,
                     "max_price_chf": max_price_chf,
@@ -577,6 +622,11 @@ def demand_map(days: int = 7) -> dict[str, Any]:
         "unserved_searches": sum(1 for s in searches if s["matched"] == 0),
         "features": features,
     }
+
+
+def mask_name(name: str) -> str:
+    """Reduce a guest name to initials, for anyone who is not the owner: "Tobi Muster" -> "T. M."."""
+    return " ".join(part[0] + "." for part in name.split() if part) or "Guest"
 
 
 def owner_overview(card_id: str) -> dict[str, Any]:

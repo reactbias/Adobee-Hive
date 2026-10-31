@@ -27,7 +27,8 @@ SYSTEM = """You maintain a local business's Hive card: the structured profile AI
 Apply the owner's instruction to the card and return the complete updated card.
 - Change only what the instruction asks. Keep id, slug and kind unchanged. Keep every other field as is.
 - features are short lowercase tags (e.g. "dog-friendly", "late check-in", "vegan options").
-- Prices are numbers in CHF. Do not invent facts the owner did not state."""
+- Prices are numbers in CHF. Do not invent facts the owner did not state.
+- Keep related fields consistent: a dog-friendly card must not keep a "No pets" policy."""
 
 LOCKED = ("id", "slug", "kind", "version", "published_at")
 MAX_CARD_BYTES = 64_000
@@ -93,6 +94,13 @@ def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], s
         if verb == "remove" and tag in feats:
             feats.remove(tag)
             done.append(f"removed {tag}")
+        policies = card.get("policies")
+        if tag == "dog-friendly" and isinstance(policies, dict):  # keep the pets policy in line with the tag
+            pets = str(policies.get("pets", ""))
+            if verb == "add" and (not pets or pets.lower().startswith("no")):
+                policies["pets"] = "Dogs welcome"
+            if verb == "remove" and not pets.lower().startswith("no"):
+                policies["pets"] = "No pets"
     for unit in card.get("units", []):
         m = re.search(rf"{re.escape(unit['name'].lower())}\D+(\d+)", low)
         if m:

@@ -1,0 +1,23 @@
+# Render Blueprint for the backend: free web service built from code/backend/Dockerfile,
+# redeployed on every push to main. Render asks for OPENAI_API_KEY when the Blueprint is created.
+services:
+  - type: web
+    name: adobee-hive
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: code/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: OWNER_EDIT_TOKEN
+        generateValue: true
+      - key: DEMO_RESET_TOKEN
+        generateValue: true

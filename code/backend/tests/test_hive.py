@@ -8,7 +8,7 @@ import openai
 import pytest
 from mcp import Client
 
-from app import agent, config, guard, hive, llm, owner, second_opinion, simulate
+from app import agent, config, db, guard, hive, llm, owner, second_opinion, simulate
 from app.domains import hr
 from app.mcp_server import server
 
@@ -53,9 +53,21 @@ def test_discover_explains_exclusions(client):
 
 def test_tampered_card_fails_verification(client):
     card = client.get("/api/hive/cards/rheinblick").json()
-    assert agent.verify_card(card)
+    pins = client.get("/.well-known/hive.json").json()["owner_keys"]
+    assert agent.verify_card(card, pins)
     card["units"][0]["price_chf"] = 1
-    assert not agent.verify_card(card)
+    assert not agent.verify_card(card, pins)
+
+
+def test_card_re_signed_by_a_stranger_is_rejected(client):
+    forged = client.post("/api/hive/demo/forge/hotel-rheinblick").json()
+    assert forged["units"][0]["price_chf"] == 1
+    # The signature is valid for the stranger's key, so only the pinned key catches it.
+    data = {k: v for k, v in forged.items() if k != "trust"}
+    assert hive.verify(data, forged["trust"]["signature"], forged["trust"]["public_key"])
+    assert client.post("/api/hive/verify", json={"card": forged}).json() == {"signature_valid": False}
+    original = client.get("/api/hive/cards/rheinblick").json()
+    assert client.post("/api/hive/verify", json={"card": original}).json() == {"signature_valid": True}
 
 
 def test_reviews_need_a_real_receipt(client):
@@ -153,7 +165,7 @@ def test_owner_edits_need_the_owner_token_when_set(client, monkeypatch):
 def test_claude_calls_are_rate_limited(client, monkeypatch):
     monkeypatch.setattr(guard, "llm_calls", guard.RateLimiter(per_client=1, total=10))
     monkeypatch.setattr(config, "LLM_ENABLED", True)
-    monkeypatch.setattr(agent, "run", lambda _messages: asyncio.sleep(0, {"reply": "ok"}))
+    monkeypatch.setattr(agent, "run", lambda _messages, *_options: asyncio.sleep(0, {"reply": "ok"}))
     body = {"messages": [{"role": "user", "content": "hi"}]}
     assert client.post("/api/agent", json=body).status_code == 200
     assert client.post("/api/agent", json=body).status_code == 429
@@ -293,3 +305,45 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
     assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
     assert all(k["store"] is False for k in seen)
+
+
+def test_search_logs_never_store_the_travellers_words(client):
+    ask = "Book a dog-friendly hotel near Basel SBB for Anna Secret, 2026-11-13 to 2026-11-15"
+    client.post("/api/agent", json={"messages": [{"role": "user", "content": ask}]})
+    with db.cursor() as cur:
+        details = [r[0] for r in cur.execute("SELECT detail FROM hive_events").fetchall()]
+    assert details and not any("Anna" in d or "Secret" in d for d in details)
+
+
+def test_owner_overview_masks_guest_names_without_the_token(client, monkeypatch):
+    monkeypatch.setattr(config, "OWNER_EDIT_TOKEN", "s3cret")
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    client.post("/api/agent/approve", json={"pending": out["pending"]})
+    url = "/api/owner/hotel-rheinblick"
+    assert client.get(url).json()["bookings"][0]["guest_name"] == "T. M."
+    assert client.get(url, headers={"X-Owner-Token": "s3cret"}).json()["bookings"][0]["guest_name"] == "Tobi Muster"
+
+
+def test_a_held_booking_is_approved_once_and_as_held(client):
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    pending = out["pending"] | {"input": out["pending"]["input"] | {"unit_id": "river", "guest_name": "Mallory"}}
+    done = client.post("/api/agent/approve", json={"pending": pending}).json()
+    assert done["booking"]["unit_name"] != "River-view double"  # what the agent held, not what the client sent
+    again = client.post("/api/agent/approve", json={"pending": out["pending"]})
+    assert again.status_code == 400 and "already approved" in again.json()["detail"]
+
+
+def test_rule_edit_keeps_the_pets_policy_in_line():
+    card = {"features": ["wifi"], "policies": {"pets": "No pets"}}
+    added, _ = owner.mock_edit(card, "add dog-friendly")
+    assert "dog-friendly" in added["features"] and added["policies"]["pets"] == "Dogs welcome"
+    removed, _ = owner.mock_edit(added, "remove dog-friendly")
+    assert removed["policies"]["pets"] == "No pets"
+
+
+def test_business_discovery_never_lists_people(client):
+    hive.publish(dict(hr.EXAMPLE_CARD))
+    found = hive.discover(features=["dog-friendly"])
+    assert "person-mira" not in {c["id"] for c in found["matches"] + found["excluded"]}
+    assert not any(m["detail"] for m in client.get("/api/owner/person-mira").json()["missed_demand"])
+    assert hive.discover(kind="person")["matches"] == []  # not even when asked by kind
