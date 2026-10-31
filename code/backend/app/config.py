@@ -26,6 +26,16 @@ OWNER_EDIT_TOKEN = os.getenv("OWNER_EDIT_TOKEN", "")  # when set, owner edits ne
 # Running the hub itself: the blocklist and the neighbour list. Unlike the owner token this one
 # fails closed — an unset ADMIN_TOKEN refuses every write rather than leaving the blocklist open.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+# The same door for a person in a browser: POST the password to /api/admin/login for a short-lived session token,
+# which then travels in X-Admin-Token like the static one. No default, on purpose — unset means administration is
+# disabled, and a default password in the source would be a published one.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+# How long a session lasts. Short, because it is a bearer token and the only way to end one early is to sign out.
+ADMIN_SESSION_MINUTES = int(os.getenv("ADMIN_SESSION_MINUTES", "30"))
+# Guessing budget for the password endpoint, per client IP and for the whole backend, in one sliding window.
+ADMIN_LOGIN_PER_CLIENT = int(os.getenv("ADMIN_LOGIN_PER_CLIENT", "5"))
+ADMIN_LOGIN_TOTAL = int(os.getenv("ADMIN_LOGIN_TOTAL", "30"))
+ADMIN_LOGIN_WINDOW_S = int(os.getenv("ADMIN_LOGIN_WINDOW_S", "900"))
 
 # Who may join this hub. "open" admits anything that passes the checks, "vetted" puts every
 # application in front of a person, "invite" needs a token, "closed" accepts nobody. The default is
