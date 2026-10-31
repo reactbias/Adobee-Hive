@@ -65,6 +65,12 @@ export default function TravellerAgent() {
     const text = raw.trim();
     // An answer to the agent's question ("From where to where?") completes the request it asked about.
     if (!mirror && askResult?.clarify?.length) return askCards(text, `${askResult.question} ${text}`);
+    // Naming one of the businesses just shown ("Pax please") picks it: its hand-off is held for a yes.
+    const named =
+      askResult && askResult.replies.length > 1 && !askResult.pending
+        ? askResult.replies.find((x) => text.toLowerCase().includes(x.name.toLowerCase()))
+        : undefined;
+    if (!mirror && named && askResult) return askCards(text, `${askResult.question} ${text}`, true);
     if (!mirror && routeFor(text, Boolean(result)) === "ask") return askCards(text);
     setAskResult(null);
     const messages = [...base, { role: "user", content: text }];
@@ -105,7 +111,7 @@ export default function TravellerAgent() {
   }
 
   // Any business: one call to the Hive's cards. Nothing is done until the person says yes to a hand-off.
-  async function askCards(text: string, query = text) {
+  async function askCards(text: string, query = text, pick = false) {
     const before = history.length ? segments : [];
     setBusy(true);
     setError("");
@@ -115,7 +121,7 @@ export default function TravellerAgent() {
     setHistory([...history, { role: "user", content: text }]);
     setSegments([...before, { kind: "guest", text }]);
     try {
-      const r = await api.ask(query, null);
+      const r = pick ? await api.ask(query, null, true) : await api.ask(query, null);
       setAskResult(r);
       setHistory((h) => [
         ...h,
@@ -152,7 +158,7 @@ export default function TravellerAgent() {
     try {
       const handoff = await api.askApprove(held.id);
       setAskResult({ ...askResult, pending: null });
-      setSegments((seg) => [...seg, { kind: "consent" }, { kind: "handoff", handoff }]);
+      setSegments((seg) => [...seg, { kind: "consent", handoff: true }, { kind: "handoff", handoff }]);
     } catch (e) {
       setError((e as Error).message);
     } finally {

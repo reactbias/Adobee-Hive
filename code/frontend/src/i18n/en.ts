@@ -149,6 +149,8 @@ const en = {
   "chat.role.mirror": "Agent · unverified copy",
   "chat.ask.call": "Who can answer this? {question}",
   "chat.ask.found": "Businesses with an answer on their card: {n}.",
+  "chat.ask.handoff_only":
+    "These cards are unclaimed, so I can't book with them. Name one and I'll send you to its own site.",
   "clarify.route_time": "From where to where, and when?",
   "clarify.route": "From where to where?",
   "clarify.time": "And when?",
@@ -235,7 +237,7 @@ const en = {
   "trace.sig.unchecked": "Signature not checked",
 
   // Ask the Hive
-  "trust.unclaimed": "Unclaimed, from the public website",
+  "trust.unclaimed": "Unclaimed · hand-off only",
   "ask.ex1": "What's going on at BaselHack this month?",
   "ask.ex2": "Plan me an adventure under 500 CHF",
   "ask.empty": "No card answers this yet. That is recorded as missed demand, without your question.",

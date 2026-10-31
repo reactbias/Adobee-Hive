@@ -364,7 +364,9 @@ export const api = {
   forge: (cardId: string) => post<Card>(`/api/hive/demo/forge/${encodeURIComponent(cardId)}`, {}),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
-  ask: (question: string, mood: Mood | null) => post<AskResult>("/api/ask", { question, mood }),
+  /** pick: the person named one business from the last answer, so its hand-off is held for a yes. */
+  ask: (question: string, mood: Mood | null, pick = false) =>
+    post<AskResult>("/api/ask", pick ? { question, mood, pick } : { question, mood }),
   scout: (question: string) => post<ScoutResult>("/api/ask/scout", { question }),
   askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
   activity: (after = 0) => call<ActivityFeed>(`/api/activity?after=${after}`),
