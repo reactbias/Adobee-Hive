@@ -1,12 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type AskResult, type Handoff } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
-import AskPanel from "./AskPanel";
+import TravellerAgent from "./TravellerAgent";
 
-// /ask as a person sees it: a mood they set, answers marked unclaimed, and a yes before any hand-off. api.ts is mocked.
+// One agent chat for everything: a question about any business goes to the Hive's cards, and the businesses answer
+// in the same conversation as the hotels. Any action still waits for a yes. api.ts is mocked.
 
 const PENDING = {
   id: "hold-1",
@@ -77,77 +78,70 @@ const HANDOFF: Handoff = {
 function setup() {
   render(
     <I18nProvider>
-      <AskPanel />
+      <TravellerAgent />
     </I18nProvider>,
   );
   return userEvent.setup();
 }
 
-describe("ask the Hive", () => {
+async function skipAhead(user: ReturnType<typeof userEvent.setup>) {
+  await act(async () => {});
+  const skip = screen.queryByRole("button", { name: en["chat.skip"] });
+  if (skip) await user.click(skip);
+}
+
+describe("any business, in the agent chat", () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
   });
 
-  it("asks without a mood picker, and shows the answers and the rules", async () => {
+  it("asks the cards, not the booking agent, and the business answers in the chat", async () => {
     const ask = vi.spyOn(api, "ask").mockResolvedValue(RESULT);
+    const agent = vi.spyOn(api, "agent");
     const user = setup();
 
-    expect(screen.queryByRole("group", { name: /mood/i })).not.toBeInTheDocument();
-    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
+    await skipAhead(user);
 
     expect(ask).toHaveBeenCalledWith(en["ask.ex2"], null);
-    expect(await screen.findByText(en["ask.rule.yes_before_action"])).toBeInTheDocument();
+    expect(agent).not.toHaveBeenCalled();
+    expect(await screen.findByText("Maasai Mara safari")).toBeInTheDocument();
+    expect(screen.getAllByText("BeKenya").length).toBeGreaterThan(0);
     expect(screen.getByText(en["trust.unclaimed"])).toBeInTheDocument();
-    expect(screen.getByText("EUR 1350 per person is over your budget of CHF 500")).toBeInTheDocument();
+    // The critic names what was left out, and why.
+    expect(screen.getByText(/EUR 1350 per person is over your budget of CHF 500/)).toBeInTheDocument();
   });
 
-  it("sends the question as written", async () => {
-    const ask = vi.spyOn(api, "ask").mockResolvedValue({ ...RESULT, pending: null });
-    const user = setup();
-
-    await user.click(screen.getByRole("button", { name: en["ask.ex1"] }));
-
-    expect(ask).toHaveBeenCalledWith(en["ask.ex1"], null);
-  });
-
-  it("hands off only after the yes, and says nothing was sent", async () => {
+  it("hands off only after the yes", async () => {
     vi.spyOn(api, "ask").mockResolvedValue(RESULT);
     const approve = vi.spyOn(api, "askApprove").mockResolvedValue(HANDOFF);
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
-    await screen.findByText(en["ask.pending.title"]);
+    await skipAhead(user);
+    expect(await screen.findByText(en["ask.pending.title"])).toBeInTheDocument();
     expect(approve).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: en["ask.pending.approve"] }));
-
     expect(approve).toHaveBeenCalledWith("hold-1");
-    expect(await screen.findByText(en["ask.handoff"].replace("{business}", "BeKenya"))).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Plan your safari/ })).toHaveAttribute("href", "https://bekenya.com");
+    await skipAhead(user);
+    const link = await screen.findByRole("link", { name: en["ask.continue"].replace("{action}", "Plan your safari") });
+    expect(link).toHaveAttribute("href", "https://bekenya.com");
   });
 
-  it("hands off nothing when the person declines", async () => {
+  it("does nothing when the person says not now", async () => {
     vi.spyOn(api, "ask").mockResolvedValue(RESULT);
     const approve = vi.spyOn(api, "askApprove");
     const user = setup();
-
     await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
+    await skipAhead(user);
     await user.click(await screen.findByRole("button", { name: en["ask.pending.decline"] }));
-
     expect(screen.queryByText(en["ask.pending.title"])).not.toBeInTheDocument();
     expect(approve).not.toHaveBeenCalled();
-  });
-
-  it("asks on Enter", async () => {
-    const ask = vi.spyOn(api, "ask").mockResolvedValue({ ...RESULT, pending: null });
-    const user = setup();
-    await user.type(screen.getByRole("textbox", { name: en["ask.label"] }), "Anything for kids?{Enter}");
-    expect(ask).toHaveBeenCalledWith("Anything for kids?", null);
-  });
-
-  it("shows where the answers will appear before the first question", () => {
-    setup();
-    expect(screen.getByText(en["ask.stage.title"])).toBeInTheDocument();
   });
 });

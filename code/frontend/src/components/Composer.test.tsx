@@ -42,7 +42,6 @@ describe("composer", () => {
     const onSend = vi.fn();
     const user = setup({ onSend });
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
-    expect(box).toHaveAccessibleDescription(en["agent.hint"]);
     await user.type(box, "  a quiet room{Shift>}{Enter}{/Shift}");
     expect(onSend).not.toHaveBeenCalled();
     await user.keyboard("{Enter}");

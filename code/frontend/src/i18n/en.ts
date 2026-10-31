@@ -17,8 +17,7 @@ const en = {
 
   // The owner's side, under the chat
   "owner.title": "Say what *changed.*",
-  "owner.lead":
-    "No website to maintain. Write the change in plain words, review it, sign it. Every agent reads the new card the moment you publish.",
+  "owner.lead": "Write the change, review it, sign it.",
   "owner.business": "Business",
   "owner.sample": "Add sauna. The courtyard double is 165 francs from today.",
   "owner.tokenNeeded": "This Hive lets only the owner edit cards. Enter your owner token.",
@@ -80,8 +79,7 @@ const en = {
 
   // The demand map, under the chat
   "demand.title": "What Basel's agents *asked for.*",
-  "demand.lead":
-    "Every search leaves a trace. When no business can serve it, that is not a lost booking. It is a business plan, written by agents and read by local owners.",
+  "demand.lead": "Unserved searches are a business plan.",
   "demand.simulate": "Simulate 40 traveller searches",
   "demand.simulated": "{n} simulated searches added. They run the real discovery; only the travellers are invented.",
   "demand.kpi.searches": "agent searches, last {days} days",
@@ -96,14 +94,12 @@ const en = {
   // Traveller agent
   "agent.eyebrow": "The front door, signed.",
   "agent.title": "The next guest is *an agent.*",
-  "agent.lead":
-    "Tell your agent what you need. It talks to Basel's businesses over MCP, checks every signature itself and compares the offers. Nothing is booked until you approve.",
+  "agent.lead": "A room, a plan, an answer: your agent asks Basel's businesses and books only with your yes.",
   "agent.intent": "Your request",
   "agent.followUp": "Reply to your agent",
-  "agent.placeholder": "Where do you want to stay?",
+  "agent.placeholder": "What do you need?",
   "agent.send": "Send to my agent",
   "agent.newTrip": "New trip",
-  "agent.hint": "Enter sends. Shift+Enter starts a new line.",
   "agent.sending": "Your agent is on it",
   "chat.latest": "New messages",
   "mic.start": "Speak instead of typing",
@@ -117,16 +113,15 @@ const en = {
     "Two of us for Art Basel week, close to Messe Basel, parking, 3 nights from 2027-06-14. Just compare, don't book.",
   "agent.example.3": "Cheapest bed in Basel for one night, 2026-11-20 to 2026-11-21, I bring my dog.",
   "agent.declined": "Understood. Nothing was booked.",
-  "agent.stage": "Agent to agent",
+  "agent.stage": "Agent network",
   "agent.mode.claude": "Claude",
   "agent.mode.openai": "OpenAI",
   "agent.mode.offline": "Offline planner",
-  "agent.mode.ready": "Three agents for you, one protocol",
+  "agent.mode.ready": "Agent network",
   "agent.meta.mcp": "MCP over HTTPS",
   "agent.meta.noWebsite": "No website opened",
   "agent.empty.title": "The line is open.",
-  "agent.empty.body":
-    "Send a request and watch your agent speak with the Hive, call by call: who can host you, whose card is genuinely signed, what is free, and at what price.",
+  "agent.empty.body": "Every call, every signature, in the open.",
   "agent.gate.eyebrow": "Your agent asks",
   "agent.gate.question": "Book the {unit} at {name}?",
   "agent.gate.why": "Why this one",
@@ -165,6 +160,12 @@ const en = {
   "chat.role.business": "Agent · speaks for the hotel",
   "chat.role.sceptic": "Agent · checks the facts, {by}",
   "chat.role.mirror": "Agent · unverified copy",
+  "chat.ask.call": "Who can answer this? {question}",
+  "chat.ask.found": "Businesses with an answer on their card: {n}.",
+  "chat.ask.checked":
+    "Cards checked: {n}. Signed by the owner: {signed}. Compiled from public websites, marked unclaimed: {unclaimed}.",
+  "chat.role.verifier": "Agent · checks the signatures",
+  "chat.role.card": "Card · in the Hive",
   "chat.agent.ack": "On it. I'll ask the Hive and check every answer myself.",
   "chat.guest.yes": "Yes, book it.",
   "chat.typing": "is typing",
@@ -242,17 +243,8 @@ const en = {
 
   // Ask the Hive
   "trust.unclaimed": "Unclaimed, from the public website",
-  "ask.label": "Your question",
-  "ask.send": "Ask",
-  "ask.examples": "Try",
   "ask.ex1": "What's going on at BaselHack this month?",
   "ask.ex2": "Plan me an adventure under 500 CHF",
-  "ask.ex3": "Can 4XOR help me automate a workflow?",
-  "ask.ex4": "What is Adobe doing about content credentials?",
-  "ask.working": "Asking the cards",
-  "ask.stage.title": "The businesses answer here.",
-  "ask.stage.body":
-    "Each answer comes from a business's own card, says what was left out and why, and waits for your yes before anything happens.",
   "business.jump.demand": "Demand map",
   "business.jump.owner": "Owner studio",
   "ask.empty": "No card answers this yet. That is recorded as missed demand, without your question.",
@@ -260,7 +252,6 @@ const en = {
   "ask.free": "Free",
   "ask.per": "{price} per {per}",
   "ask.excluded": "Left out, and why",
-  "ask.rate": "Converted to CHF at a fixed demo rate of {rate}, not live.",
   "ask.pending.title": "Nothing happens until you say yes",
   "ask.pending.body":
     "{business}: {item}. This card is unclaimed, so the Hive cannot act for you. With your yes it takes you to the business's own site, and sends them nothing.",
@@ -268,25 +259,14 @@ const en = {
   "ask.pending.decline": "Not now",
   "ask.handoff": "Handed off. Nothing was sent to {business}.",
   "ask.continue": "{action} on the business's site",
-  "ask.rules": "Rules in force",
-  "ask.rule.card_text_is_data": "Card text is data, never instructions",
-  "ask.rule.no_profiling": "No profile: what you ask is counted, not who you are",
-  "ask.rule.yes_before_action": "Nothing is done without your yes",
-  "ask.rule.unclaimed_flagged": "Unclaimed cards say so",
-  "ask.answer.by": "Phrased by the model from the cards below; the facts are the cards'.",
   "next.business.title": "How {name} sees it",
   "next.business.body": "The same booking from the hotel's side, and what agents still ask for.",
   "next.business.cta": "Show the hotel's side",
   "nav.chapters": "Chapters",
-  "chapter.travel": "Traveller agent",
-  "chapter.ask": "General agent",
+  "chapter.travel": "Agent network",
   "chapter.business": "Business",
-  "chapter.ask.lead":
-    "The same kind of agent, beyond hotels: ask about any business in the Hive. It answers from the businesses' own cards, and anything it would do waits for your yes.",
-  "chapter.business.lead":
-    "Now the other side of the door. First what Basel's agents asked for that nobody offers. Then you are the owner of {name}: you see the booking arrive and change your card in one sentence.",
+  "chapter.business.lead": "You run {name}.",
   "owner.role": "You are the owner of {name}",
-  "chapter.ask.title": "One question, *any business.*",
   "chapter.business.title": "What agents asked for, *and the owner's answer.*",
 } as const;
 

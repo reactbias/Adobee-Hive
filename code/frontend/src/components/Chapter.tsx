@@ -3,12 +3,12 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import Display from "./Display";
 
-// The page tells one story in three chapters: the traveller's agent, the same agent for any business, then the
-// business's side. Every chapter has the same shape: a brief on paper (heading, lead, the input) beside one panel of
-// the screen's height, where everything generated appears and scrolls inside, so the page never grows with it.
+// The page tells one story in two chapters: your agent in a network of agents, then the business's side. Every
+// chapter has the same shape: a brief on paper (heading, lead, the input) beside one panel of the screen's height,
+// where everything generated appears and scrolls inside, so the page never grows with it.
 
-export type ChapterId = "travel" | "ask" | "business";
-export const CHAPTERS: ChapterId[] = ["travel", "ask", "business"];
+export type ChapterId = "travel" | "business";
+export const CHAPTERS: ChapterId[] = ["travel", "business"];
 
 export default function Chapter({
   id,

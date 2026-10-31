@@ -31,7 +31,7 @@ describe("the app", () => {
     expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
-  it("tells one story in three chapters: the traveller, any business, then the business's side", () => {
+  it("tells one story in two chapters: your agent, then the business's side", () => {
     render(
       <I18nProvider>
         <App />
@@ -39,10 +39,9 @@ describe("the app", () => {
     );
 
     const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
-    expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#ask", "#business"]);
+    expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
     expect(screen.getByRole("heading", { name: en["owner.title"].replace(/\*/g, "") })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: en["demand.title"].replace(/\*/g, "") })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: en["ask.label"] })).toBeInTheDocument();
   });
 
   it("gives every chapter the same layout: a brief beside one fixed-height panel", () => {
@@ -51,14 +50,12 @@ describe("the app", () => {
         <App />
       </I18nProvider>,
     );
-    for (const id of ["travel", "ask", "business"]) {
+    for (const id of ["travel", "business"]) {
       const grid = container.querySelector(`section#${id} > .chapter-grid`);
       expect(grid, id).not.toBeNull();
       expect(grid!.querySelector(":scope > .brief"), id).not.toBeNull();
       expect(grid!.querySelector(":scope > .frame"), id).not.toBeNull();
     }
-    // Chapters 1 and 2 take their request through the same input.
-    expect(container.querySelectorAll("section#travel .brief .composer, section#ask .brief .composer")).toHaveLength(2);
   });
 
   it("lets the business chapter jump between the demand map and the owner studio", () => {

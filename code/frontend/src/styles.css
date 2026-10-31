@@ -946,10 +946,6 @@ th.end {
   gap: var(--s3);
   flex-wrap: wrap;
 }
-.composer-bar .hint {
-  font-size: var(--t-xs);
-  color: var(--ink-3);
-}
 .composer-actions {
   display: flex;
   align-items: center;
@@ -2512,4 +2508,37 @@ button.self-start {
     min-height: 44px;
     padding: 0 var(--s3);
   }
+}
+
+/* A business's answer inside the agent chat */
+.chat-stage .ask-card {
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--st-line);
+  border-radius: var(--radius-sm);
+  background: rgba(239, 233, 222, 0.03);
+}
+.chat-stage .ask-items li {
+  border-top-color: var(--st-line);
+}
+.chat-stage .ask-items li:first-child {
+  border-top: 0;
+}
+.chat-stage .ask-items h4 {
+  color: var(--st-ink);
+}
+.chat-stage .ask-card .fine,
+.chat-stage .ask-card .dim {
+  color: var(--st-2);
+}
+.chat-stage .left-out {
+  margin: var(--s2) 0 0;
+  padding-left: var(--s4);
+  color: var(--st-2);
+  font-size: var(--t-sm);
+}
+.chat-stage .msg-body .btn.ghost {
+  margin-top: var(--s3);
+  color: var(--st-ink);
+  border-color: var(--st-line);
 }

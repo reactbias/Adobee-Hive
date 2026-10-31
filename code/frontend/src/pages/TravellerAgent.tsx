@@ -3,6 +3,7 @@ import {
   api,
   type AgentOptions,
   type AgentResult,
+  type AskResult,
   type Booking,
   type Card,
   type Refusal,
@@ -14,15 +15,17 @@ import Composer from "../components/Composer";
 import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
-import AskPanel from "../panels/AskPanel";
 import DemandPanel from "../panels/DemandPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
 import { pickNearby } from "../lib/next";
+import { routeFor } from "../lib/route";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
+// The Try list: stays first, then any business; the same chat answers both.
+const TRY: Key[] = ["agent.example.1", "agent.example.2", "ask.ex1", "ask.ex2"];
 
 type Rec = Record<string, unknown>;
 
@@ -35,6 +38,8 @@ export default function TravellerAgent() {
   const [input, setInput] = useSample(EXAMPLES);
   const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
   const [result, setResult] = useState<AgentResult | null>(null);
+  // A question about any business: the Hive's cards answer in the same chat.
+  const [askResult, setAskResult] = useState<AskResult | null>(null);
   const [segments, setSegments] = useState<Segment[]>([]);
   const [guestName, setGuestName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,6 +69,8 @@ export default function TravellerAgent() {
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
   async function send(raw = input, base = history, off = rulesOff) {
     const text = raw.trim();
+    if (!mirror && routeFor(text, Boolean(result)) === "ask") return askCards(text);
+    setAskResult(null);
     const messages = [...base, { role: "user", content: text }];
     const options: AgentOptions = mirror ? { scenario: "injection", rules: off ? "off" : "on" } : {};
     setBusy(true);
@@ -99,6 +106,61 @@ export default function TravellerAgent() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // Any business: one call to the Hive's cards. Nothing is done until the person says yes to a hand-off.
+  async function askCards(text: string) {
+    const before = history.length ? segments : [];
+    setBusy(true);
+    setError("");
+    setInput("");
+    setResult(null);
+    setBooking(null);
+    setHistory([...history, { role: "user", content: text }]);
+    setSegments([...before, { kind: "guest", text }]);
+    try {
+      const r = await api.ask(text, null);
+      setAskResult(r);
+      setHistory((h) => [
+        ...h,
+        { role: "assistant", content: r.answer ?? t("chat.ask.found", { n: r.replies.length }) },
+      ]);
+      setSegments([
+        ...before,
+        { kind: "guest", text },
+        ...(before.length ? [] : [{ kind: "ack" } as Segment]),
+        { kind: "ask", result: r },
+      ]);
+    } catch (e) {
+      setError((e as Error).message);
+      setHistory(history);
+      setSegments(segments);
+      setInput(text);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function approveAsk() {
+    const held = askResult?.pending;
+    if (!askResult || !held) return;
+    setBusy(true);
+    setError("");
+    try {
+      const handoff = await api.askApprove(held.id);
+      setAskResult({ ...askResult, pending: null });
+      setSegments((seg) => [...seg, { kind: "consent" }, { kind: "handoff", handoff }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function declineAsk() {
+    if (!askResult) return;
+    setAskResult({ ...askResult, pending: null });
+    setSegments((seg) => [...seg, { kind: "agent", text: t("agent.declined") }]);
   }
 
   // The only step a human takes: say yes. The agent then sends the booking it held back.
@@ -153,6 +215,7 @@ export default function TravellerAgent() {
   function reset() {
     setHistory([]);
     setResult(null);
+    setAskResult(null);
     setSegments([]);
     setGuestName("");
     setBooking(null);
@@ -210,7 +273,7 @@ export default function TravellerAgent() {
               busyLabel={t("agent.sending")}
               placeholder={t("agent.placeholder")}
               tryLabel={t("agent.try")}
-              examples={history.length ? [] : EXAMPLES.map((k) => t(k))}
+              examples={history.length ? [] : TRY.map((k) => t(k))}
               boxRef={box}
               secondary={
                 <button
@@ -280,7 +343,21 @@ export default function TravellerAgent() {
           }
           refused={result?.guard?.length ? <Refused refusals={result.guard} /> : undefined}
           pinned={
-            result?.unguarded ? (
+            askResult?.pending ? (
+              <div className="gate">
+                <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
+                <h3>{t("ask.pending.title")}</h3>
+                <p>{t("ask.pending.body", { business: askResult.pending.business, item: askResult.pending.item })}</p>
+                <div className="row gate-actions">
+                  <button onClick={approveAsk} disabled={busy}>
+                    {t("ask.pending.approve")}
+                  </button>
+                  <button className="quiet" onClick={declineAsk}>
+                    {t("ask.pending.decline")}
+                  </button>
+                </div>
+              </div>
+            ) : result?.unguarded ? (
               <RulesOff damage={result.unguarded} steps={steps} onRerun={rerunGuarded} />
             ) : (
               pending && (
@@ -420,7 +497,6 @@ export default function TravellerAgent() {
           }
         />
       </Chapter>
-      <AskPanel />
       <Chapter
         id="business"
         heading="chapter.business.title"

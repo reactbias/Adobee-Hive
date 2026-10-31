@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode, type RefObject } from "react";
-import { useI18n } from "../i18n";
 import MicButton from "./MicButton";
 
 /** About eight lines of request text; past that the box scrolls instead of growing. */
@@ -42,7 +41,6 @@ export default function Composer({
   boxRef?: RefObject<HTMLTextAreaElement>;
   maxLength?: number;
 }) {
-  const { t } = useI18n();
   const own = useRef<HTMLTextAreaElement>(null);
   const box = boxRef ?? own;
 
@@ -85,12 +83,8 @@ export default function Composer({
             send();
           }}
           placeholder={placeholder}
-          aria-describedby={`${id}-hint`}
         />
         <div className="composer-bar">
-          <span id={`${id}-hint`} className="hint">
-            {t("agent.hint")}
-          </span>
           <span className="composer-actions">
             {secondary}
             <MicButton value={value} onChange={onChange} disabled={busy} />

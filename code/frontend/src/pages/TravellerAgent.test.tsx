@@ -334,7 +334,6 @@ describe("traveller agent", () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
-    expect(box).toHaveAccessibleDescription(en["agent.hint"]);
 
     await user.click(box);
     await user.keyboard("{Shift>}{Enter}{/Shift}");
