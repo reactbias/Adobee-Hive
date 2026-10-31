@@ -32,6 +32,48 @@ describe("discovery reaches as far as the person asked, and no further", () => {
   });
 });
 
+describe("introductions: connect, confirm, score", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("posts a connection request with who is asking and through which hub", async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ id: "cx-1", state: "open" }));
+    vi.stubGlobal("fetch", fetch);
+    await api.connect({ requester: "traveller-ab12", entity_id: "pension-limmat", target_hub: "zurich" });
+    const [url, init] = fetch.mock.calls[0];
+    expect(url).toBe("/api/hub/connect");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({
+      requester: "traveller-ab12",
+      entity_id: "pension-limmat",
+      target_hub: "zurich",
+    });
+  });
+
+  it("scores in tenths of a star, never as a POST that could be retried", async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetch);
+    await expect(api.score("cx-1", 43)).rejects.toThrow(OFFLINE);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][0]).toBe("/api/hub/connections/cx-1/score");
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ rating: 43, note: "" });
+  });
+
+  it("reads only this person's introductions, and the owner's yes and no go to their own paths", async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ awaiting_rating: [], awaiting_confirmation: [] }));
+    vi.stubGlobal("fetch", fetch);
+    await api.connections({ requester: "traveller-ab12" });
+    await api.connections({ target: "lena-hofmann" });
+    await api.confirmConnection("cx-2");
+    await api.declineConnection("cx-3");
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual([
+      "/api/hub/connections?requester=traveller-ab12",
+      "/api/hub/connections?target=lena-hofmann",
+      "/api/hub/connections/cx-2/confirm",
+      "/api/hub/connections/cx-3/decline",
+    ]);
+  });
+});
+
 // Render's free backend sleeps: the first request after a while can fail or hang. The chat retries once, then says
 // so in the person's language instead of a raw "Failed to fetch".
 
