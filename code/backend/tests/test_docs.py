@@ -1,4 +1,4 @@
-"""The team docs stay impersonal: the pitch has roles, not people, and the team page counts heads instead of naming them."""
+"""Team docs stay impersonal: the pitch names roles, not people, and the team page counts heads."""
 
 from pathlib import Path
 
