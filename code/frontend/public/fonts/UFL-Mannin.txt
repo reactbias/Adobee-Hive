@@ -1,7 +1,9 @@
-Mannin derivative Adobee Bold is a Latin subset of Mannin Bold, converted to WOFF2 and renamed as the
-licence requires for a modified version (clause 2c). Mannin: Dalton Maag Ltd, Canonical, Cristiano Sobral.
+Mannin derivative Adobee is a Latin subset of the Mannin variable font (width fixed at 100, weight 300 to 700),
+converted to WOFF2 and renamed as the licence requires for a modified version (clause 2c).
+Mannin: Dalton Maag Ltd, Canonical, Cristiano Sobral; the Mannin Project Authors.
 
-Copyright 2011, 2022, 2023 Canonical Ltd. Licensed under the Ubuntu Font Licence 1.0
+Copyright 2024 The Mannin Project Authors
+Copyright 2011, 2022, 2023 Canonical Ltd
 
 -------------------------------
 UBUNTU FONT LICENCE Version 1.0

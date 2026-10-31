@@ -84,13 +84,10 @@ Type, all bundled with their licence texts in `code/frontend/public/fonts/`:
 
 - **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in clay*
   (write it as `*text*` in a string; `components/Display.tsx` sets it).
-- **Geist** for text and UI.
+- **Mannin** for text, UI and the brand name in the nav and wordmark: the font from the whiteboard, a humanist sans
+  that stays readable small. Bundled under the Ubuntu Font Licence 1.0 as *Mannin derivative Adobee*, a Latin subset
+  of the variable font (weights 300 to 700), renamed as that licence asks; see `code/frontend/public/fonts/README.md`.
 - **Geist Mono** for tool names, signatures and the run's mode line.
-
-- **Mannin Bold** for the brand name only: the nav and the wordmark, next to the mark. It is the font from the
-  whiteboard, bundled under the Ubuntu Font Licence 1.0 as *Mannin derivative Adobee* (a Latin subset, renamed as
-  that licence asks; see `code/frontend/public/fonts/README.md`). The set we have has no upright regular, so it is
-  not used for text.
 
 Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
 
