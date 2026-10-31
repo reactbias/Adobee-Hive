@@ -140,7 +140,7 @@ class Vault:
         """One line: how many files of what, and how many are withheld."""
         spread = ", ".join(f"{count} {ext}" for ext, count in self.kinds.items()) or "nothing"
         held = f", {self.withheld} withheld" if self.withheld else ""
-        return f"{len(self.served)} files ({spread}){held}"
+        return f"{len(self.served)} file{'' if len(self.served) == 1 else 's'} ({spread}){held}"
 
     def resolve(self, relative: str) -> Path | None:
         """The file for one served path, or None. The allowlist decides; the filesystem never does."""

@@ -72,6 +72,17 @@ shows.
 
 ## Running a hub
 
+**A federated search in the first half minute of a fresh `lan.sh up` comes back local-only, and the peers do not
+recover.** Each hub asks its peers who they are at startup, before the corpus is seeded, and caches a profile
+whose `owner_keys` is empty. `federation._profile` reuses that cache until the background refresh replaces it
+(`PEER_ASK_SECONDS`, 30 s), so until then every relayed card fails `hive.verify_pinned` — and `_verified` charges
+each failure to the carrier through `reputation.record_invalid`. Because reputation is a module-level dict, that
+verdict lasts for the life of the process: a peer reads `trust 0.05` with "41 of 82 relayed cards failed
+verification here", and the same match's `federated_score` drops from 4.39 to 0.36. Poll
+`GET /api/hub/directory` until a peer's `entities` is non-zero before the first federated search, or restart the
+hubs if it has already happened. Reproduced twice; see
+[SEARCH_API.md](SEARCH_API.md#where-the-docs-and-the-code-disagree).
+
 **One shared password, no audit trail.** `ADMIN_PASSWORD` is a single secret for the whole hub, like the owner
 token. There are no operator accounts, so an admitted or refused application records `decided_by: "admin"` and
 nothing about which person decided it. Sessions are bearer tokens in `sessionStorage`.

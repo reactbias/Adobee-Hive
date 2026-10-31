@@ -111,6 +111,44 @@ bern 20
 Those twelve are the reason `basel` reads 32 and not 20, and they are also a source of ranking noise
 — see [Scoring, and the `why`](#scoring-and-the-why).
 
+### Wait ~20 seconds before your first federated search
+
+**This one will waste your afternoon if you do not know it.** `lan.sh` starts the hubs, each hub
+immediately asks its peers who they are, and *then* the corpus is seeded. So the first peer profile
+each hub caches was fetched while the peer still had **zero** entities and therefore an **empty**
+`owner_keys` map. Until that cache is refreshed — `PEER_ASK_SECONDS` is 30, in practice under 20
+seconds — every card a peer relays fails verification here, because no key is pinned for it.
+
+Measured on a fresh stack, a `radius: 1` search run immediately:
+
+```json
+"matches": 32,                 // local only: all 41 remote cards were thrown away
+"rejected": [ { "hub": "zurich", "card_id": "anouk-pfister", "origin": "zurich",
+                "reason": "this copy does not match what the owner signed, or no key is pinned for it" },
+              "… 40 more …" ]
+```
+
+And `GET /api/hub/directory` is the tell — `"entities": 0` for a peer that plainly has 21:
+
+```
+  basel  entities= 32  last_asked= None
+  zurich entities= 0   last_asked= 2026-10-31T20:06:23+00:00
+  bern   entities= 0   last_asked= 2026-10-31T20:06:23+00:00
+```
+
+Poll that until the peer counts appear, then search:
+
+```bash
+until curl -s http://127.0.0.1:8520/api/hub/directory | grep -q '"entities": *21'; do sleep 3; done
+```
+
+**It does not fully heal.** Those 41 rejections are charged against the peers' reputation, and
+`reputation.py` keeps its observations in a module-level dict, so for the rest of that process the
+peers read *"41 of 82 relayed cards failed verification here"* and their trust sits at **0.05**
+instead of **~0.61**. Federation then works but ranks almost nothing: the same match scored
+`federated_score: 0.36` on a poisoned stack and `4.19` on a clean one — a factor of twelve.
+If it happens, restart the hubs. Listed under the bugs below.
+
 ### Seeding on its own
 
 The seeder is a normal client: it builds a Card from each folder and `POST`s it to
@@ -634,25 +672,37 @@ Every federated match carries this:
 ```json
 {
   "id": "schnittwerk-bern",
+  "name": "Schnittwerk Bern",
+  "kind": "service",
+  "score": 8,
   "hops": 1,
-  "federated_score": 4.41,
+  "federated_score": 4.39,
   "provenance": {
     "path": ["bern", "basel"],
     "hops": 1,
     "origin": "bern",
     "origin_url": "http://192.168.21.123:8522",
     "also_reached_by": [
-      { "path": ["bern", "zurich", "basel"], "hops": 2, "hub_path_trust": 0.4043 }
+      { "path": ["bern", "zurich", "basel"], "hops": 2, "hub_path_trust": 0.4147 }
     ]
   },
-  "score_breakdown": { "…": "…", "local_relevance": 8.0, "hub_path_trust": 0.623, "hop_decay": 0.885 },
+  "score_breakdown": {
+    "constraints": 0, "text_relevance": 0, "offers_needs": 0, "semantic": 8,
+    "proximity": 0, "verified_reviews": 0, "attestations": 0, "signature": 0,
+    "local_relevance": 8.0, "hub_path_trust": 0.645, "hop_decay": 0.85
+  },
   "why": [
     "offers something close to 'haircut': Cut, wash and finish",
-    "reached through bern (hub path trust 0.623)"
+    "reached through bern (hub path trust 0.645)"
   ],
   "card": { "…the full signed Card, which it was verified against…" }
 }
 ```
+
+`hop_decay` is `reputation.HOP_DECAY ** hops` with `HOP_DECAY = 0.85`, so it is the one factor that
+is deterministic: `1.0`, `0.85`, `0.7225`, `0.6141`. Note also that the `hub_path_trust` on a match
+(`reputation.path_trust` over the carriers) and the one in `federation.hub_trust` (a per-hub report)
+are computed differently and will not be the same number.
 
 | Read this | To answer |
 | --- | --- |
@@ -671,12 +721,18 @@ Every federated match carries this:
 - `["bern", "zurich", "basel"]` — two hops, relayed by `zurich`
 
 Both are shown. The shorter one wins the row and the longer one is kept in `also_reached_by`, so a
-consumer can display *both* hubs that carried it. Measured, from the run above:
+consumer can display *both* hubs that carried it. Measured on a clean warm stack:
 
 ```
-schnittwerk-bern  fed=4.41  hops=1  path=['bern','basel']    also=[{'path': ['bern','zurich','basel'], 'hops': 2, 'hub_path_trust': 0.4043}]
-svenja-aebi       fed=2.76  hops=1  path=['zurich','basel']  also=[{'path': ['zurich','bern','basel'], 'hops': 2, 'hub_path_trust': 0.4212}]
+schnittwerk-bern  score=8  fed=4.39  hops=1  path=['bern','basel']    also=[{'path': ['bern','zurich','basel'], 'hops': 2, 'hub_path_trust': 0.4147}]
+svenja-aebi       score=5  fed=2.60  hops=1  path=['zurich','basel']  also=[{'path': ['zurich','bern','basel'], 'hops': 2, 'hub_path_trust': 0.377}]
 ```
+
+**Do not pin a test to `federated_score` or `hub_path_trust`.** Both move with this hub's live
+observations of its peers — latency, answers, timeouts, cards that failed verification here — so the
+same query gave `4.19`, `4.39` and `4.41` on three consecutive runs of this stack. `score`, `hops`,
+`provenance.path` and `hop_decay` are stable; the trust factors are opinions formed at runtime, and
+they are not persisted — a restart returns every peer to trust on first use.
 
 **Local results carry provenance too.** A `radius: 0` search returns no `provenance` at all — the
 key is simply absent — but any search at `radius ≥ 1` dresses the local matches as zero-hop
@@ -858,9 +914,10 @@ in the numbers. Noted below.)
    one that actually offers the thing. Listed in [LIMITS.md](LIMITS.md#discovery).
 5. **`rating: null` is not `0`.** Render "no rating yet". Every seeded card is `null`, because a
    rating needs a signed booking receipt and seeding cannot manufacture one.
-6. **`claimed: false` is a lead, not a business.** The subject never agreed to anything. Three in
-   the corpus: `villa-hirzbrunnen`, `imbiss-rheinbord`, `hundesalon-wankdorf`. Never book one, never
-   present one as having agreed.
+6. **`claimed: false` is a lead, not a business.** The subject never agreed to anything. Never book
+   one, never present one as having agreed; a hand-off to its own site needs a human yes first.
+   Nine on a live stack: three from the corpus (`villa-hirzbrunnen`, `imbiss-rheinbord` on `basel`,
+   `hundesalon-wankdorf` on `bern`) and the six `x-*` example cards on `basel`.
 7. **An item marked `push` or `never` is absent, not flagged.** `sharing.py`: four flags —
    `public`, `confirm`, `push`, `never` — and the **stricter of the entity default and the item's own
    flag always wins**. Only `public` and `confirm` are searchable at all. An absent `contact` channel
@@ -969,6 +1026,18 @@ contents are for a handshaked peer. The default serves both, because that is the
 reads (`seed_vaults.readable`, which turns these files into the Card's `offers` and `needs`) and the
 set whose paths and digests the Card already publishes.
 
+Be warned what `--strict` leaves: only the paths an owner wrote an explicit `public` rule for, which
+in these three folders is four PDFs and nothing else.
+
+```
+wirtshaus-anker    1 file (1 pdf), 10 withheld      # hausordnung.pdf
+jonas-brun         1 file (1 pdf),  9 withheld      # portfolio.pdf
+elektro-mattenhof  2 files (2 pdf), 7 withheld      # preisliste.pdf, zertifikat-nin.pdf
+```
+
+That is the right answer to "what may a complete stranger read", and it is not enough material to
+test an agent on. Use the default for the agent, `--strict` to prove the stricter reading holds.
+
 ### Expected answers — how to tell whether your agent works
 
 Three questions per folder, with the answer and the file it has to come from. They are deliberately
@@ -1065,6 +1134,20 @@ what is documented above.
 
 ### Bugs found, left for their own PR
 
+- **A fresh `lan.sh up` rejects every federated result for the first ~20 seconds, and the peers
+  never recover their reputation.** Each hub asks its peers who they are at startup, *before* the
+  corpus is seeded, and caches a profile whose `owner_keys` is `{}`. `federation._profile` reuses
+  that cache while it is younger than `PEER_STALE_AFTER_S` (120 s; the background refresh at
+  `PEER_ASK_SECONDS` = 30 gets there first). Every relayed card then fails `hive.verify_pinned` with
+  *"no key is pinned for it"*, and `_verified` charges each one to the carrier via
+  `reputation.record_invalid`. Reputation lives in a module-level dict, so the damage lasts for the
+  life of the process: peers read `trust 0.05` with *"41 of 82 relayed cards failed verification
+  here"*, and `federated_score` for the same match drops from `4.39` to `0.36`. Measured twice,
+  reproducibly. The honest fix is probably for `_profile` to treat a profile with empty `owner_keys`
+  as not yet read, or for `_verified` not to blame a carrier for a registry this hub has not
+  refreshed. **Worth fixing before the pitch:** anyone who runs a federated search in the first half
+  minute of a fresh stack sees local-only results and a broken-looking ranking for the rest of the
+  session.
 - **`tools/eval_search.py --sweep` marks every row `<- in use`.** It compares the loop variable to
   `semantic.SIMILARITY_FLOOR` *after* assigning the loop variable to it, so the comparison is always
   true. It should compare against the saved `in_use`. The numbers are right; only the marker is
