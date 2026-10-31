@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "../i18n";
 
 // Team B6 easter egg: the whiteboard bee crosses the bottom of the screen and drops six little 6s.
 // It flies once after a minute of idling, or when someone clicks the sleepy bee in the footer.
@@ -8,6 +9,7 @@ const IDLE_MS = 60000;
 type Six = { id: number; x: number; y: number };
 
 export default function B6Bee() {
+  const { t } = useI18n();
   const [flying, setFlying] = useState(false);
   const [sixes, setSixes] = useState<Six[]>([]);
   const bee = useRef<HTMLImageElement>(null);
@@ -60,8 +62,8 @@ export default function B6Bee() {
   return (
     <>
       <footer className="footer">
-        <span>Adobee Hive · BaselHack 2026 · Team B</span>
-        <button className="b6-perch" onClick={fly} aria-label="Wake the B6 bee" title="6">
+        <span>{t("footer.line")}</span>
+        <button className="b6-perch" onClick={fly} aria-label={t("footer.wake")} title="6">
           <img src="/brand/mascot.svg" alt="" className={flying ? "away" : ""} />
         </button>
       </footer>
