@@ -23,7 +23,6 @@ const fr: Record<Key, string> = {
   "owner.week.shown": "fois présenté aux agents",
   "owner.week.missed": "demandes manquées",
   "owner.week.booked": "réservations",
-  "owner.week.cancelled": "annulations",
   "owner.preview": "Prévisualiser",
   "owner.noChange": "Aucune modification détectée.",
   "owner.publish": "Signer et publier",
@@ -271,5 +270,10 @@ const fr: Record<Key, string> = {
   "owner.checking": "Vérification…",
   "owner.asked.title": "Ce que les agents vous ont demandé",
   "owner.asked.empty": "Aucune demande pour l'instant.",
+  "owner.week.title": "7 derniers jours",
+  "owner.week.read": "lectures de la carte par des agents",
+  "chapter.business.leadUnclaimed":
+    "{name} n'a pas revendiqué sa carte. Des agents l'ont composée à partir d'informations publiques.",
+  "owner.unclaimed": "Seule l'entreprise peut revendiquer cette carte et la modifier.",
 };
 export default fr;

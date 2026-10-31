@@ -27,6 +27,14 @@ server = MCPServer(
 _safe = domains.safe
 
 
+def _counted(out: dict[str, Any], kind: str) -> dict[str, Any]:
+    """Count an agent's call against the card it touched, so its owner sees it; errors count for nothing."""
+    card_id = out.get("card_id") or out.get("id")
+    if "error" not in out and card_id:
+        hive.record_event(card_id, kind, "agent")
+    return out
+
+
 @server.tool()
 def hive_discover(
     query: str = "",
@@ -69,13 +77,13 @@ def hive_rulesets() -> dict[str, Any]:
 def hive_get_card(card_id: str) -> dict[str, Any]:
     """Read one business's full Hive card: offering, units and prices, policies, contact, and trust
     (signature, public key, third-party attestations, proof-of-stay reviews)."""
-    return _safe(hive.get_card, card_id)
+    return _counted(_safe(hive.get_card, card_id), "read")
 
 
 @server.tool()
 def hive_check_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
     """List the units (rooms) free for these ISO dates and guest count, cheapest first, with totals in CHF."""
-    return _safe(hive.check_availability, card_id, check_in, check_out, guests)
+    return _counted(_safe(hive.check_availability, card_id, check_in, check_out, guests), "checked")
 
 
 @server.tool()

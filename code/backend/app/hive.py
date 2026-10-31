@@ -333,6 +333,11 @@ def record_event(card_id: str, kind: str, detail: str) -> None:
     _log(card_id, kind, detail)
 
 
+def record_events(events: list[tuple[str, str, str]]) -> None:
+    """Log several (card_id, kind, detail) events in one write."""
+    _log_many(events)
+
+
 def _log_many(events: list[tuple[str, str, str]]) -> None:
     if not events:
         return

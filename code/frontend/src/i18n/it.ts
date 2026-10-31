@@ -23,7 +23,6 @@ const it: Record<Key, string> = {
   "owner.week.shown": "volte mostrata agli agenti",
   "owner.week.missed": "richieste mancate",
   "owner.week.booked": "prenotazioni",
-  "owner.week.cancelled": "cancellazioni",
   "owner.preview": "Anteprima della modifica",
   "owner.noChange": "Nessuna modifica rilevata.",
   "owner.publish": "Firma e pubblica",
@@ -272,5 +271,10 @@ const it: Record<Key, string> = {
   "owner.checking": "Verifica in corso…",
   "owner.asked.title": "Che cosa Le hanno chiesto gli agenti",
   "owner.asked.empty": "Ancora nessuna richiesta.",
+  "owner.week.title": "Ultimi 7 giorni",
+  "owner.week.read": "letture della scheda da agenti",
+  "chapter.business.leadUnclaimed":
+    "{name} non ha rivendicato la sua scheda. Gli agenti l'hanno composta da informazioni pubbliche.",
+  "owner.unclaimed": "Solo l'azienda può rivendicare questa scheda e modificarla.",
 };
 export default it;

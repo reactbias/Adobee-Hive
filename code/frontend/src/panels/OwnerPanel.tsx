@@ -21,12 +21,14 @@ const missedTags = (detail: string) =>
     .split("; ")
     .filter((m) => m.startsWith("missing "))
     .map((m) => m.slice(8));
-const WEEK_LABELS: Record<string, Key> = {
-  shown: "owner.week.shown",
-  missed_demand: "owner.week.missed",
-  booked: "owner.week.booked",
-  cancelled: "owner.week.cancelled",
-};
+// What agents did with this card in the last 7 days, counted from the Hive's events. A hand-off from Ask the Hive
+// counts as a booking: it is the business's yes-moment on any card, claimed or not.
+const WEEK: [Key, string[]][] = [
+  ["owner.week.shown", ["shown"]],
+  ["owner.week.read", ["read"]],
+  ["owner.week.booked", ["booked", "explore_handoff"]],
+  ["owner.week.missed", ["missed_demand"]],
+];
 
 type T = ReturnType<typeof useI18n>["t"];
 type Tab = "owner" | "demand";
@@ -74,11 +76,14 @@ export default function OwnerPanel({
   // The backend only asks for a token when OWNER_EDIT_TOKEN is set; only then does the prompt appear.
   const needsToken = error.includes("X-Owner-Token");
 
-  useEffect(() => {
+  // Every business in the Hive, unclaimed ones too; refetched on focus, so a card agents just added is there.
+  const loadCards = () =>
     api
       .cards()
-      .then((all) => setCards(all.filter((c) => c.trust.claimed !== false)))
+      .then((all) => setCards([...all].sort((a, b) => a.name.localeCompare(b.name))))
       .catch(() => setCards([]));
+  useEffect(() => {
+    loadCards();
   }, []);
   useEffect(() => {
     setProposal(null);
@@ -125,7 +130,10 @@ export default function OwnerPanel({
 
   const card = overview?.card;
   const name = card?.name ?? cards.find((c) => c.id === cardId)?.name ?? "Hotel Rheinblick";
-  const week = overview ? Object.keys(WEEK_LABELS).map((k) => [k, overview.last_7_days[k] ?? 0] as const) : [];
+  const unclaimed = card?.trust.claimed === false;
+  const week = overview
+    ? WEEK.map(([label, kinds]) => [label, kinds.reduce((n, k) => n + (overview.last_7_days[k] ?? 0), 0)] as const)
+    : [];
   // Waiting agents first: an edit wins them now. Then what agents were turned away for this week.
   const asks: Ask[] = [
     ...(overview?.waiting.asks ?? []).map((a) => ({
@@ -165,13 +173,13 @@ export default function OwnerPanel({
     <Chapter
       id="business"
       heading="chapter.business.title"
-      lead={t("chapter.business.lead", { name })}
+      lead={t(unclaimed ? "chapter.business.leadUnclaimed" : "chapter.business.lead", { name })}
       sectionRef={sectionRef}
       side={
         <div className="stack">
           <div className="picker">
             <label htmlFor="business-pick">{t("owner.business")}</label>
-            <select id="business-pick" value={cardId} onChange={(e) => setCardId(e.target.value)}>
+            <select id="business-pick" value={cardId} onFocus={loadCards} onChange={(e) => setCardId(e.target.value)}>
               {cards.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -179,16 +187,20 @@ export default function OwnerPanel({
               ))}
             </select>
           </div>
-          <Composer
-            id="owner-change"
-            label={t("owner.change")}
-            value={instruction}
-            onChange={setInstruction}
-            onSend={propose}
-            busy={busy}
-            sendLabel={t("owner.preview")}
-            busyLabel={t("owner.checking")}
-          />
+          {unclaimed ? (
+            <p className="muted">{t("owner.unclaimed")}</p>
+          ) : (
+            <Composer
+              id="owner-change"
+              label={t("owner.change")}
+              value={instruction}
+              onChange={setInstruction}
+              onSend={propose}
+              busy={busy}
+              sendLabel={t("owner.preview")}
+              busyLabel={t("owner.checking")}
+            />
+          )}
           {error && <p className="error">{needsToken ? t("owner.tokenNeeded") : error}</p>}
           {needsToken && (
             <div className="row token">
@@ -257,11 +269,11 @@ export default function OwnerPanel({
               </div>
 
               {week.length > 0 && (
-                <dl className="kpis">
-                  {week.map(([k, v]) => (
-                    <div key={k}>
-                      <dd className="num">{v}</dd>
-                      <dt>{t(WEEK_LABELS[k])}</dt>
+                <dl className="kpis" role="group" aria-label={t("owner.week.title")}>
+                  {week.map(([label, n]) => (
+                    <div key={label}>
+                      <dd className="num">{n}</dd>
+                      <dt>{t(label)}</dt>
                     </div>
                   ))}
                 </dl>
@@ -303,7 +315,7 @@ export default function OwnerPanel({
                           <span>{a.what}</span>
                           <span className="muted small">{a.meta}</span>
                         </span>
-                        {a.tags.length > 0 && (
+                        {a.tags.length > 0 && !unclaimed && (
                           <button className="quiet" onClick={() => use(a.tags)}>
                             {t("owner.waiting.use")}
                           </button>
