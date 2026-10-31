@@ -33,7 +33,7 @@
   --sunk: #efebe3;
   --ink: #17140f;
   --ink-2: #4b443a;
-  --ink-3: #857c6f;
+  --ink-3: #6b6255;
   --line: #e4ded3;
   --line-strong: #cec6b8;
   --clay: #a24f2c;
@@ -538,8 +538,34 @@ label {
   .nav .brand span {
     display: none;
   }
+  /* Brand and language on the first line, the four pages on one swipeable second line */
+  .nav-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    row-gap: 0;
+    padding-bottom: 0;
+  }
+  .nav-end {
+    justify-self: end;
+    min-width: 0;
+    gap: var(--s2);
+  }
+  .nav-end .locales button {
+    min-width: 40px;
+  }
   .nav-links {
-    gap: var(--s4);
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    gap: var(--s5);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin: 0 calc(-1 * var(--s4));
+    padding: 0 var(--s4);
+  }
+  .nav-links a.link {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
@@ -722,7 +748,7 @@ th.end {
 .locales button {
   min-height: 28px;
   padding: 0 6px;
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.08em;
   background: none;
   border: 0;
@@ -985,7 +1011,7 @@ th.end {
   padding-bottom: var(--s4);
   border-bottom: 1px solid var(--st-line);
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.04em;
   color: var(--st-3);
 }
@@ -1034,7 +1060,7 @@ th.end {
 .turn-idx {
   grid-row: span 2;
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
   padding-top: 3px;
 }
@@ -1073,13 +1099,13 @@ th.end {
   letter-spacing: 0.02em;
 }
 .utter-head code {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
 }
 .utter-head .ms {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
 }
 .utter-head .status {
   font-size: var(--t-xs);
@@ -1114,7 +1140,7 @@ th.end {
   margin-top: var(--s2);
 }
 .utter summary {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.04em;
   color: var(--st-3);
   cursor: pointer;
@@ -1137,7 +1163,7 @@ th.end {
   margin-top: var(--s2);
   background: rgba(0, 0, 0, 0.28);
   color: var(--st-2);
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
   max-height: 280px;
 }
 
@@ -1161,7 +1187,7 @@ th.end {
 }
 .ledger-rank {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--clay-glow);
 }
 .ledger-name {
@@ -1299,7 +1325,7 @@ th.end {
 }
 .signature code {
   display: block;
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   line-height: 1.6;
   color: var(--ink-2);
   background: var(--sunk);
@@ -1394,7 +1420,7 @@ th.end {
   color: var(--clay-glow);
 }
 .hero .lead {
-  color: rgba(246, 243, 237, 0.72);
+  color: rgba(246, 243, 237, 0.86);
   max-width: 32em;
 }
 .hero-actions {
@@ -1431,7 +1457,7 @@ button.light:hover:not(:disabled) {
 }
 .hero-facts dt {
   font-size: var(--t-xs);
-  color: rgba(246, 243, 237, 0.5);
+  color: rgba(246, 243, 237, 0.72);
   letter-spacing: 0.02em;
 }
 .hero-facts dd {
@@ -1470,7 +1496,7 @@ button.light:hover:not(:disabled) {
 .nav.on-dark a.link,
 .nav.on-dark .locales button,
 .nav.on-dark .status {
-  color: rgba(246, 243, 237, 0.55);
+  color: rgba(246, 243, 237, 0.74);
 }
 .nav.on-dark a.link:hover,
 .nav.on-dark .locales button:hover:not(:disabled) {
@@ -1539,7 +1565,7 @@ button.light:hover:not(:disabled) {
   gap: var(--s3);
 }
 .specimen-seal code {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--ink-3);
 }
 .hero .specimen-card {
@@ -1549,7 +1575,7 @@ button.light:hover:not(:disabled) {
     0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 .hero .specimen figcaption {
-  color: rgba(246, 243, 237, 0.5);
+  color: rgba(246, 243, 237, 0.72);
 }
 .specimen figcaption {
   max-width: 34em;
@@ -1947,7 +1973,7 @@ button.self-start {
 .chat-stage {
   --st-ink: #efe9de;
   --st-2: #b9af9e;
-  --st-3: #8a8070;
+  --st-3: #9d9381;
   --st-line: rgba(239, 233, 222, 0.08);
   position: sticky;
   top: 88px;
@@ -2012,7 +2038,7 @@ button.self-start {
 }
 .roster i {
   font-style: normal;
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
 }
 .roster li.typing i {
@@ -2141,26 +2167,26 @@ button.self-start {
   font-size: var(--t-base);
 }
 .msg-head .role {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.04em;
   color: var(--st-3);
 }
 .msg-head .ms {
   margin-left: auto;
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
 }
 .msg-call {
   display: flex;
   gap: var(--s2);
   align-items: baseline;
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
   margin: 2px 0 4px;
 }
 .msg-call code {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--clay-glow);
 }
 .msg-body p {
@@ -2189,7 +2215,7 @@ button.self-start {
   margin-top: var(--s2);
 }
 .msg-body summary {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   color: var(--st-3);
   cursor: pointer;
   list-style: none;
@@ -2208,7 +2234,7 @@ button.self-start {
   margin-top: var(--s2);
   background: rgba(0, 0, 0, 0.3);
   color: var(--st-2);
-  font-size: 0.72rem;
+  font-size: var(--t-xs);
   max-height: 260px;
 }
 .msg-body .ledger li {
@@ -2354,7 +2380,7 @@ button.self-start {
   color: var(--st-2);
 }
 .next-steps li .label {
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--clay-glow);
@@ -2407,7 +2433,7 @@ button.self-start {
     flex-wrap: nowrap;
   }
   .roster-meta .stage-meta {
-    font-size: 0.625rem;
+    font-size: var(--t-xs);
   }
   /* The run's mode stays: it says honestly who planned it. The transport notes wait for a wider screen. */
   .roster-meta .stage-meta > span + span {
@@ -2518,7 +2544,7 @@ button.self-start {
 }
 .utter-head .via {
   font-family: var(--mono);
-  font-size: 0.6875rem;
+  font-size: var(--t-xs);
 }
 .withheld {
   margin-top: var(--s3);
@@ -2632,4 +2658,33 @@ button.self-start {
 }
 .ask-items p {
   margin: 0 0 var(--s1);
+}
+
+/* Touch screens: every control gets a full fingertip (44 px, Apple's guideline), whatever its visual size */
+@media (pointer: coarse), (max-width: 1000px) {
+  .locales button,
+  .nav .brand,
+  .nav a.link {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .example {
+    min-height: 44px;
+  }
+  .check {
+    min-height: 44px;
+    align-items: center;
+  }
+  .check input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
+  .roster-meta .controls button {
+    min-height: 44px;
+    padding: 0 var(--s3);
+  }
 }

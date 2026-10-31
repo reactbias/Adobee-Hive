@@ -9,14 +9,17 @@ the Hive is what local businesses build together. Short form ABH.
 
 ## Logo
 
-A hexagon of hand-moulded clay bricks with the bee in its recess, from the whiteboard sketch. Clay because adobe
-means clay; a hexagon because it is the honeycomb cell.
+The bee in an open hexagon, drawn straight from the whiteboard sketch (`assets/whiteboard/name-and-logo-sketch.png`):
+one clay line, no texture, so it reads at 16 px in a browser tab and on a phone. The hexagon is left open at the
+corners like the marker sketch; the bee is two wings and a striped body. Clay because adobe means clay; a hexagon
+because it is the honeycomb cell.
 
 | File | Use |
 | --- | --- |
-| `code/frontend/public/brand/logo.svg` | Master logo (clay texture via SVG filters) |
-| `code/frontend/public/brand/favicon.svg` | Simplified, no filters, for small sizes |
-| `code/frontend/public/brand/wordmark.svg` | Logo plus name, self-contained |
+| `code/frontend/public/brand/logo.svg` | The mark in clay, on paper |
+| `code/frontend/public/brand/logo-light.svg` | The same mark in lit clay, on dark grounds (the landing hero's bar) |
+| `code/frontend/public/brand/favicon.svg` | The mark itself; simple enough for tab size |
+| `code/frontend/public/brand/wordmark.svg` | Mark plus name, self-contained |
 | `assets/brand/*.png` | Exports for slides |
 
 ## Mascot: the B6 bee
@@ -99,3 +102,7 @@ Motion is purposeful only. The agent stage plays like a group chat: whoever spea
 thinking* (before a tool call or a judgement) or *is typing* (before a line), each message waits a beat timed to
 its length (`lib/pace.ts`), the seal's tick draws itself on a valid signature, the approval question rises and stays
 pinned, and the receipt lands like a stamp. Nothing moves with `prefers-reduced-motion`.
+
+Readability: text and small labels meet WCAG AA contrast on paper and on the dark stage (`--ink-3` and the stage's
+quiet grey were darkened for it), nothing is set below 12 px, and the display serif is only used at headline sizes.
+On touch screens every control has a 44 px target, and the page links scroll sideways on one line.

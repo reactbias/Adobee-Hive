@@ -22,7 +22,12 @@ function Nav() {
       .catch(() => setHealth(null));
   }, []);
   // The landing page opens on a dark hero; the bar joins it there.
-  const onDark = useLocation().pathname === "/";
+  const { pathname } = useLocation();
+  const onDark = pathname === "/";
+  // On a phone the page links scroll sideways; keep the current one in view.
+  useEffect(() => {
+    document.querySelector(".nav-links .active")?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+  }, [pathname]);
   const link = ({ isActive }: { isActive: boolean }) => `link${isActive ? " active" : ""}`;
   const mode =
     health === undefined ? null : health === null ? (
@@ -39,7 +44,12 @@ function Nav() {
     <nav className={`nav${onDark ? " on-dark" : ""}`}>
       <div className="nav-inner">
         <NavLink to="/" className="brand">
-          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
+          <img
+            src={`${import.meta.env.BASE_URL}brand/${onDark ? "logo-light" : "logo"}.svg`}
+            alt=""
+            width={30}
+            height={30}
+          />
           <span>Adobee Hive</span>
         </NavLink>
         <div className="nav-links">
