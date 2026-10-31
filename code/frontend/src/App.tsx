@@ -5,8 +5,10 @@ import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
 import Onboarding from "./panels/Onboarding";
+import OwnerPanel from "./panels/OwnerPanel";
+import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
-import { CHAPTERS } from "./components/Chapter";
+import { SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
 
@@ -14,32 +16,35 @@ const here = () => new URL(typeof window === "undefined" ? "http://localhost/" :
 /** `?admin` opens the hub's own panel instead of the app. Nothing on the public page links to it. */
 const adminMode = () => viewIn(here().search) === "admin";
 /**
- * `?hub=<id>` picks a Hive and skips the instance finder, so the pitch runbook can open straight into a booking
- * run. `?hub` on its own means the same thing for whatever this backend serves.
+ * `?hub=<id>` points the app at a Hive, as the pitch runbook does. `?hub` on its own means whatever this backend
+ * serves. Without it the app runs on the Hive this build was deployed against, until a person picks another.
  */
 const hubFromUrl = () => hubIn(here().search);
+/** Which screen the address asks for: the owner's, the live hub network, else the traveller's. */
+const screenFromHash = (): ScreenId =>
+  here().hash === "#business" ? "business" : here().hash === "#network" ? "network" : "travel";
 
 /** Rewrite the address without reloading. Used only to make it agree with what is on screen. */
 const rewrite = (to: string) => history.replaceState(null, "", to);
 
 /**
- * Forget the hub and go back to the finder with nothing selected. `?hub=` has to come out of the address too:
- * left in, a reload would re-apply it and bounce straight past the finder, which is exactly what it looked like
- * when Change Hive seemed to do nothing.
+ * Forget the chosen hub and go back to the build's own. `?hub=` has to come out of the address too: left in, a
+ * reload would re-apply it, which is exactly what it looked like when Change Hive seemed to do nothing.
  */
 function forgetHub() {
   setChosenHub("");
   rewrite(without(here(), "hub"));
 }
 
-// One page in three chapters. The header names them, says whether the AI is live, and switches the language.
+// Two screens, one for each person the Hive serves. The header switches between them, says whether the AI is
+// live, and switches the language.
 function Header({
-  onChangeHub,
+  screen,
   onLeaveAdmin,
   hub,
   onHealth,
 }: {
-  onChangeHub?: () => void;
+  screen?: ScreenId;
   onLeaveAdmin?: () => void;
   hub?: string;
   onHealth?: (reached: boolean) => void;
@@ -84,24 +89,17 @@ function Header({
             else rewrite(window.location.pathname + window.location.search);
           }}
         >
-          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
+          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
           <span>Adobee Hive</span>
         </a>
         <nav className="nav-links" aria-label={t("nav.chapters")}>
-          {CHAPTERS.map((c, i) => (
-            <a key={c} className="link" href={`#${c}`}>
-              <span className="num">{i + 1}</span> {t(`chapter.${c}` as Key)}
+          {SCREENS.map((c) => (
+            <a key={c} className="link" href={`#${c}`} aria-current={screen === c ? "page" : undefined}>
+              {t(`chapter.${c}` as Key)}
             </a>
           ))}
         </nav>
         <div className="nav-end">
-          {/* Which Hive you are on, always visible, so nobody has to guess which one answered. */}
-          {hub && <span className="muted small nav-hub-name">{t("nav.onHub", { hub })}</span>}
-          {onChangeHub && (
-            <button className="quiet nav-hub" onClick={onChangeHub}>
-              {t("finder.change")}
-            </button>
-          )}
           {mode}
           <div className="locales" role="group" aria-label={t("nav.language")}>
             {LOCALES.map((l: Locale) => (
@@ -124,10 +122,16 @@ function Header({
 }
 
 export default function App() {
-  // Which Hive the app runs against. The finder sets it; `?hub=` in the address skips the finder entirely.
+  // Which Hive the app runs against: "" is the build's own. `?hub=` in the address or a pick in this tab sets it.
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
+  // The finder is a view a person opens with Change Hive, never a gate on the way in.
+  const [choosing, setChoosing] = useState(false);
   // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
   const [admin, setAdmin] = useState(adminMode);
+  // The screen on show, from the hash. Both screens stay mounted, so a booking survives a look at the other.
+  const [screen, setScreen] = useState<ScreenId>(screenFromHash);
+  // The business the owner's screen opens on: the one just booked, when the traveller turns the page to it.
+  const [business, setBusiness] = useState<string | undefined>(undefined);
   // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
   const [reached, setReached] = useState(true);
   // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
@@ -144,16 +148,27 @@ export default function App() {
     // The address is the one source of truth for the view, so back and forward change what is on screen.
     const sync = () => {
       setAdmin(adminMode());
+      setScreen(screenFromHash());
       setHub((chosen) => chosen || hubFromUrl() || chosenHub());
     };
+    // A screen opens at its top. The browser has just scrolled to the anchor, which sits under the sticky
+    // header; a screen is not an anchor on a long page, so that jump is undone.
+    const switched = () => {
+      sync();
+      window.scrollTo?.({ top: 0 });
+    };
     window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    window.addEventListener("hashchange", switched);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", switched);
+    };
   }, []);
 
   useEffect(() => {
     if (!admin) return;
-    // A hash is an anchor on the app's one page and the panel has none of its own, so any hash while the panel is
-    // open is in-app navigation: `#travel` means "show me the traveller app", and now it does.
+    // A hash is one of the app's two screens and the panel has none of its own, so any hash while the panel is
+    // open is in-app navigation: `#travel` means "show me the traveller's screen", and now it does.
     const navigated = () => window.location.hash.length > 1 && leaveAdmin(true);
     window.addEventListener("hashchange", navigated);
     // A pasted `?admin#travel` claims two views at once. It resolves to the panel, with the stray anchor dropped,
@@ -173,7 +188,7 @@ export default function App() {
       </>
     );
 
-  if (!hub)
+  if (choosing)
     return (
       <>
         <Header />
@@ -187,38 +202,73 @@ export default function App() {
                 setChosenHub(picked, row && !row.home ? row.url || "" : "");
                 setJoining(null);
                 setHub(picked);
+                setChoosing(false);
               }}
             />
           ) : (
-            <InstanceFinder onPick={setHub} onJoin={setJoining} />
+            <InstanceFinder
+              onPick={(picked) => {
+                setHub(picked);
+                setChoosing(false);
+                setReached(true);
+              }}
+              onJoin={setJoining}
+            />
           )}
         </main>
       </>
     );
 
-  const leaveHub = () => {
+  // Change Hive: drop the current pick, so the finder opens with nothing selected and the build's own backend.
+  const changeHub = () => {
     forgetHub();
     setHub("");
     setReached(true);
+    setChoosing(true);
+  };
+
+  // The traveller turns the page to the business just booked: its owner sees the booking arrive.
+  const openBusiness = (cardId: string) => {
+    setBusiness(cardId);
+    window.location.hash = "business";
+    window.scrollTo?.({ top: 0 });
   };
 
   return (
     <>
-      <Header hub={hub} onChangeHub={leaveHub} onHealth={setReached} />
+      <Header screen={screen} hub={hub} onHealth={setReached} />
       <main>
         {/* A chosen Hive that cannot be reached says so and offers the way back, rather than a dead page. */}
         {!reached && (
           <p className="error hub-unreachable" role="status">
             {t("app.hubUnreachable")}{" "}
-            <button className="quiet" onClick={leaveHub}>
+            <button className="quiet" onClick={changeHub}>
               {t("finder.change")}
             </button>
           </p>
         )}
         {/* Keyed by the hub and its URL, so picking a different one starts the page over against that backend. */}
-        <TravellerAgent key={`${hub}@${chosenHubUrl()}`} />
+        <div hidden={screen !== "travel"}>
+          <TravellerAgent key={`${hub}@${chosenHubUrl()}`} onOpenBusiness={openBusiness} />
+        </div>
+        <div hidden={screen !== "business"}>
+          <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
+        </div>
+        {/* The hub network, live: its own screen, reached from the footer, so the two tabs stay for people. */}
+        <div hidden={screen !== "network"}>
+          <NetworkPanel key={`${hub}@${chosenHubUrl()}`} />
+        </div>
       </main>
-      <B6Bee />
+      <B6Bee>
+        {/* Which Hive answered, always visible, and the one way to pick another. */}
+        {hub && <span className="nav-hub-name">{t("nav.onHub", { hub })}</span>}
+        <a className="btn quiet nav-hub" href="#network" aria-current={screen === "network" ? "page" : undefined}>
+          {t("nav.network")}
+        </a>
+        <button className="quiet nav-hub" onClick={changeHub}>
+          {t("finder.change")}
+        </button>
+      </B6Bee>
     </>
   );
 }
