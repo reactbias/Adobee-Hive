@@ -188,8 +188,17 @@ async def _ask(base_url: str, transport: Transport) -> dict[str, Any]:
 
 
 def _fresh(record: dict[str, Any]) -> bool:
-    """True while an answer we already have is young enough to reuse without asking again."""
-    return bool(record["profile"]) and (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
+    """True while an answer we already have is young enough to reuse without asking again.
+
+    A profile whose `owner_keys` is empty does not count as an answer. A hub that is still starting serves its
+    discovery document before it has registered anything, so a peer asked in that window answers honestly with an
+    empty registry - and caching that for PEER_STALE_AFTER_S would make every card it later relays unverifiable
+    until the cache expired. Treat it as not yet read and ask again.
+    """
+    profile = record["profile"]
+    if not profile or not profile.get("owner_keys"):
+        return False
+    return (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
 
 
 async def _profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
@@ -396,6 +405,7 @@ async def _verified(
         provenance = match.get("provenance") or {}
         claimed = [str(p) for p in (provenance.get("path") or [carrier["hub_id"]])][:MAX_RADIUS]
         path = [*claimed, hub]
+        blameless = False
         origin_url = str(provenance.get("origin_url") or carrier_url)
         card = match.get("card")
         origin = await _profile(origin_url, transport) if isinstance(card, dict) else None
@@ -404,6 +414,11 @@ async def _verified(
             reason = "no card to check against the owner's key"
         elif origin is None:
             reason = f"no key registry at {origin_url}"
+        elif not origin["owner_keys"]:
+            # The origin published no keys - it was probably still starting when we asked. We cannot verify the
+            # card, so it does not pass; but this is our ignorance, not the carrier's doing, so nobody is charged.
+            reason = f"the key registry at {origin_url} is empty, so this card cannot be checked yet"
+            blameless = True
         elif not hive.verify_pinned(card, origin["owner_keys"]):
             reason = "this copy does not match what the owner signed, or no key is pinned for it"
         else:
@@ -412,7 +427,12 @@ async def _verified(
         report["rejected"].append(
             {"hub": carrier["hub_id"], "card_id": match["id"], "origin": claimed[0], "reason": reason}
         )
-        reputation.record_invalid(carrier["hub_id"], 1, str(match["id"]))
+        # Reputation is the one judgement here that outlives the request, so it is only ever charged for something
+        # the carrier controls: a card it altered, or a key its own hub will not back up. A registry we could not
+        # read is neither, and blaming it there is how one slow start used to cost a peer its trust for the rest of
+        # the process.
+        if not blameless:
+            reputation.record_invalid(carrier["hub_id"], 1, str(match["id"]))
     for left_out in (out.get("excluded") or [])[:MAX_PEER_EXCLUSIONS]:
         if isinstance(left_out, dict) and left_out.get("id"):
             route = [str(p) for p in ((left_out.get("provenance") or {}).get("path") or [carrier["hub_id"]])]

@@ -36,6 +36,7 @@ from . import (
     removals,
     replies,
     rulesets,
+    semantic,
     services,
     simulate,
     waiting,
@@ -120,12 +121,19 @@ def _hive_call(fn, *args, **kwargs):
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    """Report whether the backend is up and which model vendor the agents use."""
+    """Report whether the backend is up, which model vendor the agents use and which similarity provider ranks.
+
+    The page shows "AI live" or "Offline mode" from this, so it has to be true: `semantic` names the provider
+    discovery is actually ranking with, which is the offline one unless a key is configured. The vendor is read
+    from `services` rather than from the environment, because an operator can set a key while the hub runs and
+    the environment would then be stale. Never anything about a credential - this endpoint is public.
+    """
     claude = services.provider() == "claude"
     return {
         "status": "ok",
         # The vendor in use, never a key and never a fingerprint: /api/health is public.
         "llm": services.provider() if services.enabled() else "mock",
+        "semantic": semantic.status()["provider"],
         "model": config.CLAUDE_MODEL if claude else config.OPENAI_MODEL,
         "fast_model": config.CLAUDE_FAST_MODEL if claude else config.OPENAI_MODEL,
         "hives": config.HIVE_MCP_URLS or ["local"],

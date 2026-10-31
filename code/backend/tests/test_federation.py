@@ -69,6 +69,7 @@ class FakeHive:
         paid: bool = False,
         tamper=(),
         match: dict | None = None,
+        starting_up: bool = False,
     ):
         self.hub_id = hub_id
         self.url = f"https://{hub_id}.example/"
@@ -80,6 +81,9 @@ class FakeHive:
         self.paid = paid
         self.tamper = set(tamper)
         self.match = match or {}
+        # A hub serves /.well-known/hive.json from the moment it binds, which is before seed_vaults has
+        # registered anything, so for a second or two it honestly answers with an empty key registry.
+        self.starting_up = starting_up
         self.asks: list[dict] = []
 
     def _sign(self, data: dict) -> dict:
@@ -105,7 +109,7 @@ class FakeHive:
             "verification": "signed",
             "paid_placement": self.paid,
             "ranking_policy": "Sponsored first." if self.paid else "No paid placement.",
-            "owner_keys": {c["id"]: c["trust"]["public_key"] for c in self.cards},
+            "owner_keys": {} if self.starting_up else {c["id"]: c["trust"]["public_key"] for c in self.cards},
         }
 
     def _match(self, card: dict) -> dict:
@@ -686,3 +690,51 @@ def test_a_card_that_travelled_verifies_against_the_origin_registry(client):
 
     for match in forwarded["matches"]:
         assert hive.verify_pinned(match["card"], pins), f"{match['id']} would be rejected by a peer"
+
+
+def test_a_peer_still_starting_costs_nobody_their_reputation(client, net):
+    """The bug this guards: a fresh three-hub stack rejected every relayed card and blamed the carrier.
+
+    A hub answers /.well-known/hive.json as soon as it binds, which is before it has registered anything, so a
+    peer asked in that window gets a real profile with an empty key registry. Nothing can be verified against it.
+    That much is correct - an unverifiable card must not pass. What was wrong is who paid for it: the carrier was
+    charged `record_invalid` per card, and because reputation outlives the request, a peer that happened to be
+    asked half a second early wore `trust 0.05` and "41 of 82 relayed cards failed verification here" for the
+    rest of the process, which dropped a real match's federated score from 4.39 to 0.36.
+    """
+    waking = FakeHive("waking", cards=[_card("hotel-waking", "Hotel Waking (fictional)")], starting_up=True)
+    net(waking)
+
+    found = hive.discover(**ASK, radius=1)
+
+    assert "hotel-waking" not in _ids(found), "a card we cannot check does not pass"
+    rejected = found["federation"]["rejected"]
+    assert [r["card_id"] for r in rejected] == ["hotel-waking"]
+    assert "empty" in rejected[0]["reason"], f"the reason should name the real cause, got {rejected[0]['reason']!r}"
+    assert reputation.observed("waking").invalid == 0, "a registry we could not read is not the carrier's fault"
+    assert reputation.hub_trust("waking", waking.profile())["factors"]["disputes"] == 0
+
+
+def test_a_tamper_is_still_charged_even_though_a_slow_start_is_not(client, net):
+    """The other half: making the empty case blameless must not make tampering free."""
+    liar = FakeHive("liar", cards=[_card("hotel-liar", "Hotel Liar (fictional)")], tamper=["hotel-liar"])
+    net(liar)
+
+    hive.discover(**ASK, radius=1)
+
+    assert reputation.observed("liar").invalid == 1, "altering a signed card is still the carrier's doing"
+
+
+def test_an_empty_key_registry_is_not_a_cached_answer(client, net):
+    """Asking again is the whole recovery path: if an empty registry counted as read, it would stick."""
+    waking = FakeHive("waking", cards=[_card("hotel-waking", "Hotel Waking (fictional)")], starting_up=True)
+    transport = net(waking)
+
+    hive.discover(**ASK, radius=1)
+    asked_once = transport.profiles.count(waking.url) if isinstance(transport.profiles, list) else 1
+    waking.starting_up = False  # the hub finishes seeding
+    found = hive.discover(**ASK, radius=1)
+
+    assert "hotel-waking" in _ids(found), "once the peer publishes its keys the card verifies, with no restart"
+    assert reputation.observed("waking").invalid == 0
+    assert asked_once >= 1

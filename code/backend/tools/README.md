@@ -6,7 +6,7 @@ Coverage proves a line ran. It does not prove a test would fail if that line wer
 `mutate.py` makes deliberate changes to the eight modules the design rests on — `app/hive.py`,
 `federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `registration.py`,
 `sharing.py` and `semantic.py` — runs the suite, and reports every change that **survived**, because
-a surviving mutant is a missing assertion, named and located. There are 35 curated mutants.
+a surviving mutant is a missing assertion, named and located. There are 39 curated mutants.
 
 ```bash
 cd code/backend && source .venv/bin/activate
