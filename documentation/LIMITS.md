@@ -9,17 +9,15 @@ better than it does.
 
 ## Discovery
 
-**Matching is literal.** `hive.discover` scores a card by substring: a query term appears in the card's name,
-tagline, description, features, `offers` or `needs`, or it does not. So "haircut" misses *"Cut, wash and
-finish"*, and "hotel" misses *"Gästehaus"*. The corpus in [`testdata/`](../testdata/README.md) is built to show
-exactly where this gives up, with an answer key of queries that share no word with their target.
+**Similarity is bounded, not general language understanding.** Discovery combines literal matching with the
+offline similarity provider (stems, a four-language concept table and character trigrams). The concept vocabulary
+is hand-built; unseen language and inference can still miss. The optional embedding provider is not implemented.
 
-**Semantic search is built and not connected.** `app/semantic.py` is a working similarity provider — accent-folded
-stems, a four-language concept table, character trigrams, cosine above a named floor, no key and no network — with
-its own tests. Nothing in `app/` imports it. It is not a score component in `hive.discover`, and `GET /api/health`
-does not report which provider is in use. Connecting it means calling `semantic.best` from `discover` and
-scoring the hit; until that lands, the sentence to say out loud is "the module is there, the search does not use
-it yet".
+**Room intent is conservative.** The REST discovery door recognises explicit hotel/room language and reuses
+the stay parser for stated constraints, excluding a declared guest name from ranking. Explicit parameters win;
+absent dates are not filled with the planner's default weekend. Generic transport, service and needs requests
+stay generic. This is a lexical intent boundary, not a general parser; API/MCP callers should supply structured
+constraints when available.
 
 **Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
 reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on
