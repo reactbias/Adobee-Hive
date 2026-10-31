@@ -725,16 +725,22 @@ def test_a_tamper_is_still_charged_even_though_a_slow_start_is_not(client, net):
     assert reputation.observed("liar").invalid == 1, "altering a signed card is still the carrier's doing"
 
 
-def test_an_empty_key_registry_is_not_a_cached_answer(client, net):
-    """Asking again is the whole recovery path: if an empty registry counted as read, it would stick."""
-    waking = FakeHive("waking", cards=[_card("hotel-waking", "Hotel Waking (fictional)")], starting_up=True)
+def test_an_empty_registry_is_read_once_per_query_and_recovers_next_time(client, net):
+    """A startup miss must not fetch the same registry for every relayed card or poison the next search."""
+    cards = [_card(f"hotel-waking-{i}", f"Hotel Waking {i} (fictional)") for i in range(12)]
+    waking = FakeHive("waking", cards=cards, starting_up=True)
     transport = net(waking)
 
-    hive.discover(**ASK, radius=1)
-    asked_once = transport.profiles.count(waking.url) if isinstance(transport.profiles, list) else 1
-    waking.starting_up = False  # the hub finishes seeding
     found = hive.discover(**ASK, radius=1)
 
-    assert "hotel-waking" in _ids(found), "once the peer publishes its keys the card verifies, with no restart"
+    assert not {card["id"] for card in cards} & _ids(found)
+    assert {r["card_id"] for r in found["federation"]["rejected"]} == {card["id"] for card in cards}
+    assert transport.profiles.count(waking.url) == 1
     assert reputation.observed("waking").invalid == 0
-    assert asked_once >= 1
+
+    waking.starting_up = False
+    recovered = hive.discover(**ASK, radius=1)
+
+    assert {card["id"] for card in cards} <= _ids(recovered)
+    assert transport.profiles.count(waking.url) == 2
+    assert reputation.observed("waking").invalid == 0

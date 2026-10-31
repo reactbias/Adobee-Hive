@@ -45,6 +45,8 @@ FEDERATED_RANKING_POLICY = (
     "placement is downweighted."
 )
 
+_ProfileLookups = dict[str, asyncio.Task[dict[str, Any] | None]]
+
 
 def hop_params(ask: dict[str, Any], radius: int, budget_ms: float, seen: list[str]) -> dict[str, Any]:
     """The query string one hub sends another: the ask, the radius left, the time left and where it has been."""
@@ -190,8 +192,15 @@ def _fresh(record: dict[str, Any]) -> bool:
     return (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
 
 
-async def _profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
-    """A peer's discovery document, from the book or from the peer itself. None when it has never been read."""
+async def _profile(base_url: str, transport: Transport, lookups: _ProfileLookups) -> dict[str, Any] | None:
+    """Read each origin once per query, including an empty or unavailable registry."""
+    if base_url not in lookups:
+        lookups[base_url] = asyncio.create_task(_load_profile(base_url, transport))
+    return await lookups[base_url]
+
+
+async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
+    """Reuse a fresh peer profile, or ask again so a later query can recover after startup."""
     record = _peers.get(base_url)
     if record and _fresh(record):
         return record["profile"]
@@ -259,11 +268,11 @@ async def keep_peers_fresh() -> None:
 
 
 async def _choose_peers(
-    seen: list[str], transport: Transport
+    seen: list[str], transport: Transport, lookups: _ProfileLookups
 ) -> tuple[list[tuple[str, dict[str, Any], float]], list[dict[str, str]]]:
     """The peers worth asking at this hop: not in `seen`, readable, the `PEERS_PER_HOP` most trusted first."""
     urls = list(config.HIVE_PEER_URLS)
-    profiles = await asyncio.gather(*[_profile(url, transport) for url in urls])
+    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in urls])
     peers, skipped = [], []
     for url, profile in zip(urls, profiles, strict=False):
         if profile is None:
@@ -375,7 +384,13 @@ def _dedup(arrivals: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 async def _verified(
-    out: dict[str, Any], carrier: dict[str, Any], carrier_url: str, hub: str, transport: Transport, report: dict
+    out: dict[str, Any],
+    carrier: dict[str, Any],
+    carrier_url: str,
+    hub: str,
+    transport: Transport,
+    report: dict,
+    lookups: _ProfileLookups,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Take a peer's answer apart: verify every card against its own hub's registry, drop what fails."""
     arrivals, excluded = [], []
@@ -388,7 +403,7 @@ async def _verified(
         blameless = False
         origin_url = str(provenance.get("origin_url") or carrier_url)
         card = match.get("card")
-        origin = await _profile(origin_url, transport) if isinstance(card, dict) else None
+        origin = await _profile(origin_url, transport, lookups) if isinstance(card, dict) else None
         # The carrier's word counts for nothing here: the key comes from the card's own hub, fetched directly.
         if not isinstance(card, dict):
             reason = "no card to check against the owner's key"
@@ -439,6 +454,7 @@ async def search(
     """
     started = perf_counter()
     transport = transport or DEFAULT_TRANSPORT
+    lookups: _ProfileLookups = {}
     budget = float(budget_ms or DEFAULT_BUDGET_MS)
     hub = config.HIVE_HUB_ID
     trail = [*(seen or [])]
@@ -464,7 +480,7 @@ async def search(
             {"hub": "*", "reason": f"budget spent: {left:.0f} ms left, {MIN_FORWARD_MS:.0f} ms needed to forward"}
         )
     elif hops >= 1:
-        peers, skipped = await _choose_peers(trail, transport)
+        peers, skipped = await _choose_peers(trail, transport, lookups)
         report["dropped"] += skipped
         report["asked"] = [
             {
@@ -486,7 +502,7 @@ async def search(
                 continue
             out = answer["out"]
             reputation.record_answer(profile["hub_id"], answer["ms"], relayed=len(out.get("matches") or []))
-            found, left_out = await _verified(out, profile, url, hub, transport, report)
+            found, left_out = await _verified(out, profile, url, hub, transport, report, lookups)
             arrivals += found
             excluded += left_out
 
