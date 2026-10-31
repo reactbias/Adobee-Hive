@@ -12,19 +12,29 @@ Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule i
 | `zurich` | developers, designers, freelance technical work | a bike courier, a guesthouse in the woods |
 | `bern` | local services and trades | a café, a developer who keeps COBOL alive |
 
+## What is in it
+
+61 entities: 20 on `basel`, 21 on `zurich`, 20 on `bern`. 11 of them take bookings (the stays, parsed
+out of `rooms.md`), 43 carry a real `## What I need`, and between them they publish 178 offers and 47
+needs. Contact sharing is mixed on purpose: 20 folders gate a channel behind `ask first` and 13 keep
+one off the card entirely. Prose is in English, German, French and Italian.
+
+41 query-to-entity pairs in the answer key below, plus four near-misses and twelve cross-hub
+need-to-offer matches.
+
 ## Why this corpus exists
 
 Today `hive.discover` scores a card by substring: a query term either appears in the card's text,
 offers or needs, or it does not. So a search for **haircut** misses *"Cut, wash and finish"*, and a
 search for **hotel** misses *"Gästehaus"*. That gap is built in here deliberately:
 
-- owners write their own words — *"Siedfleisch am Donnerstag"*, *"builds interfaces"*, *"Cut and
-  finish"* — and guests type theirs;
+- owners write their own words — *"Siedfleisch am Donnerstag"*, *"Oberflächen für Maschinen"*,
+  *"Cut, wash and finish"* — and guests type theirs;
 - four languages, because a Basel hub really does hold a German, a French and an Italian card;
 - near-misses that must rank **below** the real answer: a card that *mentions* a thing versus one
   that *offers* it;
-- roughly half of the entities carry a real `## What I need`, so `looking_for=needs` has substance,
-  and some needs are answered by an entity on another hub.
+- two thirds of the entities carry a real `## What I need`, so `looking_for=needs` has substance, and
+  twelve of those needs are answered by an entity on another hub.
 
 ## The answer key
 
@@ -133,7 +143,16 @@ Varied on purpose, because a real directory is mostly unrated:
 
 ```bash
 cd code/backend
-python tools/make_corpus.py            # write the folders from the table
-python tools/make_corpus.py --check     # fail if a folder drifted from the table
+python tools/make_corpus.py               # write the folders from the table
+python tools/make_corpus.py --check       # fail if a folder drifted from the table
 python tools/make_corpus.py --print-maps  # the HOME, KIND and UNCLAIMED entries for seed_vaults.py
 ```
+
+Adding an entity is three steps: a row in the table, `make_corpus.py`, then paste `--print-maps`
+into `seed_vaults.py`. A test fails until the two agree, so the paste cannot be forgotten.
+
+## Seeding time
+
+All 61, signed and posted one at a time through the real `POST /api/hub/register` on three hubs:
+**1.4 seconds** cold, three interpreter starts included (0.37 s basel, 0.45 s zurich, 0.48 s bern).
+A restart is not a reason to shrink the corpus.
