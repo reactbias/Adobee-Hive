@@ -77,3 +77,30 @@ describe("group chat scrolling", () => {
     expect(scrollTo).toHaveBeenCalled();
   });
 });
+
+// A request no card covers gets an honest answer: nobody offers it yet, and the critic says why no card was forced.
+describe("a request no card covers", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("says so instead of showing the nearest card", () => {
+    const result = {
+      question: "book me a taxi",
+      preference: { mood: null, effects: [], source: "chosen by you" },
+      replies: [],
+      excluded: [],
+      budget_chf: null,
+      rate: null,
+      pending: null,
+      rules: [],
+      answer: null,
+      mode: "offline",
+      unserved: true,
+      relevance: { by: "offline", reason: null },
+    };
+    setup([{ kind: "guest", text: "book me a taxi" }, { kind: "ack" }, { kind: "ask", result }]);
+    for (let i = 0; i < 40; i++) act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByText(en["ask.empty"])).toBeInTheDocument();
+    expect(screen.getByText(en["chat.ask.uncovered"])).toBeInTheDocument();
+  });
+});

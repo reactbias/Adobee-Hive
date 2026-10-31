@@ -145,6 +145,9 @@ const en = {
   "chat.role.mirror": "Agent · unverified copy",
   "chat.ask.call": "Who can answer this? {question}",
   "chat.ask.found": "Businesses with an answer on their card: {n}.",
+  "chat.ask.uncovered":
+    "No card covers this, so I won't send you the nearest one. Asked often enough, it shows a business what to offer next.",
+  "error.offline": "The backend is waking up or out of reach. Please try again in a moment.",
   "chat.ask.checked":
     "Cards checked: {n}. Signed by the owner: {signed}. Compiled from public websites, marked unclaimed: {unclaimed}.",
   "chat.role.verifier": "Agent · checks the signatures",

@@ -144,6 +144,9 @@ const fr: Record<Key, string> = {
   "chat.role.mirror": "Agent · copie non vérifiée",
   "chat.ask.call": "Qui peut répondre ? {question}",
   "chat.ask.found": "Commerces avec une réponse sur leur carte : {n}.",
+  "chat.ask.uncovered":
+    "Aucune carte ne couvre cela, je ne vous envoie donc pas la plus proche. Demandé assez souvent, cela montre à un commerce quoi proposer ensuite.",
+  "error.offline": "Le serveur démarre ou est injoignable. Réessayez dans un instant.",
   "chat.ask.checked":
     "Cartes vérifiées : {n}. Signées par le propriétaire : {signed}. Compilées depuis des sites publics, marquées non revendiquées : {unclaimed}.",
   "chat.role.verifier": "Agent · vérifie les signatures",

@@ -145,6 +145,9 @@ const it: Record<Key, string> = {
   "chat.role.mirror": "Agente · copia non verificata",
   "chat.ask.call": "Chi può rispondere? {question}",
   "chat.ask.found": "Attività con una risposta sulla propria scheda: {n}.",
+  "chat.ask.uncovered":
+    "Nessuna carta copre questo, quindi non Le mando la più vicina. Se richiesto spesso, mostra a un'attività cosa offrire.",
+  "error.offline": "Il server si sta avviando o non è raggiungibile. Riprovi tra un momento.",
   "chat.ask.checked":
     "Schede verificate: {n}. Firmate dal titolare: {signed}. Compilate da siti pubblici, segnate come non rivendicate: {unclaimed}.",
   "chat.role.verifier": "Agente · verifica le firme",

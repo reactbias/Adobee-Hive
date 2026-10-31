@@ -222,6 +222,7 @@ export default function GroupChat({
                 </>
               ),
             });
+          if (r.unserved) out.push({ ...critic, beat: "think", body: <p>{t("chat.ask.uncovered")}</p> });
           if (r.replies.length) {
             const signed = r.replies.filter((x) => x.signature_valid && x.claimed).length;
             const unclaimed = r.replies.filter((x) => x.signature_valid && !x.claimed).length;
