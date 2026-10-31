@@ -55,6 +55,20 @@ app. One limit no header can lift — the Pages site is HTTPS, and a browser wil
 `http://` hub, so the finder refuses such a hub with that reason instead of appearing to switch. A LAN demo where
 every hub is plain HTTP is unaffected: the page is served over HTTP too.
 
+### What the deployed backend deliberately does not have
+
+`render.yaml` sets five environment variables and no more, so on https://adobee-hive.onrender.com:
+
+| Unset | What that means there |
+| --- | --- |
+| `HIVE_PEER_URLS` | no peers, so a search from this hub stays local whatever reach a person chooses, and the node view draws one hub |
+| `ADMIN_TOKEN`, `ADMIN_PASSWORD` | administration is **disabled**, not open: every admin write answers 503 and the panel has nothing to sign in to. Set `ADMIN_PASSWORD` in the Render dashboard to turn it on |
+| `ADMISSION_POLICY` | falls back to `vetted`, so an application through `POST /api/hub/register` waits for a person, who has no panel to read it in until the line above is done |
+| `HIVE_HUB_ID`, `HIVE_NAME` | the hub calls itself `local` and "Adobee Hive (Basel)" to anyone who asks |
+
+None of that is a bug; it is what one free instance with no second hub can honestly be. The full list of gaps is
+[LIMITS.md](LIMITS.md).
+
 **Cost:** GitHub Pages and Render's free plan cost nothing. The only running cost is OpenAI usage, capped by the
 limits in [Cost guard](#cost-guard-for-the-demo-key).
 

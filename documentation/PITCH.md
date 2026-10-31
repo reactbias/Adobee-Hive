@@ -76,6 +76,10 @@ human only sets intent and approves.
 - [ ] In chapter 1, both **Stress test** boxes unticked, so the run at 0:15 is the clean one.
 - [ ] Two tabs: slides, and the app at the top of chapter 1 (example 1 in the box, not sent). Zoom 125 %. Notifications off, on power, projector tested.
 - [ ] A 50-second screen recording of the live beats on the desktop and a USB stick. [S6]
+- [ ] Optional, only if federation comes up in questions: `./lan.sh up` on the driver's laptop beforehand gives
+  three real peered hubs, a hub directory with three rows that each described themselves, and the node view with
+  edges. The deployed backend has no peers, so a reach above "This Hive" changes nothing there
+  ([DEVELOPER.md](DEVELOPER.md#three-hubs-on-one-machine-lansh)).
 
 **If something fails on stage:**
 
@@ -107,7 +111,11 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | Question | Answer |
 | --- | --- |
 | Isn't this schema.org with extra steps? | Schema.org describes; a Hive card is signed, bookable over MCP, and its ranking explains itself. |
-| Who holds the signing keys? | The server, for the demo. In the real thing the owner, for example in their Adobe account. |
+| Who holds the signing keys? | The server, for the demo. An application can bring its own public key, and we pin it and record `custody: "owner"` — but the card is still signed by a key the hub holds, so the honest answer is unchanged. In the real thing the owner, for example in their Adobe account. ([LIMITS.md](LIMITS.md#trust)) |
+| Who owns the Hive? | Nobody alone. Any town or association runs one, a card is the business's and moving means republishing one file, and a Hive in the middle of a search can withhold a card but never forge one — the agent at the end verifies against the key pinned in the card's *own* hub. That is what makes the operator replaceable. ([FEDERATION.md](FEDERATION.md)) |
+| What stops a hub lying about its members? | Its own interest. We score a peer on `published − realised`: what it claimed at the introduction against what our person reported after the real meeting, in tenths of a star, lower better. Over-promise and every entity it carries ranks lower here. It cannot be bought, because every input comes from our users. ([FEDERATION.md](FEDERATION.md#two-levels-of-trust)) |
+| How does a business get on a Hive? | One signed JSON document to `POST /api/hub/register`. Five checks in order, then the hub's admission policy: open, vetted, invite or closed. A refusal is an answer with a reason and a next step, not an error. ([REGISTRATION.md](REGISTRATION.md)) |
+| What does it not do yet? | We keep the list: matching is still literal, there is no second hub in the cloud, calibration does not reach the search rank, the admin is one shared password with no audit trail, and `verification` never rises above `signed` because nothing confirms a proof. ([LIMITS.md](LIMITS.md)) |
 | Why would a small hotel bother? | One card replaces the website, and it shows demand they lose today without knowing. |
 | What stops a fake hotel? | Third-party attestations, like Content Credentials for business facts, and reviews only from signed receipts. |
 | Prompt injection? | Card text reaches the agent as data, never instructions, and every tool call is shown to the human. |
@@ -116,8 +124,12 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | Whose idea of "right" or "healthy"? | It differs by person and by country, so the Hive never decides silently: the rules are visible and chosen, per interaction, with the local law as the floor. Signed rulesets a person picks per search are the first piece; per-jurisdiction rulesets are next. |
 
 Guardrails for the widened story: HR is a starter (person cards, skills search, introductions only with consent),
-not a finished flow. We never claim AGI, only point at the horizon. If asked who owns the Hive: nobody alone; any
-town or association can run one, and an agent searches several at once.
+not a finished flow. We never claim AGI, only point at the horizon. And do not say the search understands
+synonyms — the module is written and tested, the search does not call it yet.
+
+If a jury member pushes on something the demo cannot show live, name it and point at the page rather than
+improvising: [LIMITS.md](LIMITS.md) exists for exactly that moment, and a project that names its own gaps is
+worth more than one that is caught not having.
 
 Spare beat, only if rehearsal timing leaves 10 seconds: right after the owner signs, the driver asks *"a dog-friendly
 hotel near Basel SBB, 2026-11-20 to 2026-11-21, just compare"*, and Gare Central now ranks first.
