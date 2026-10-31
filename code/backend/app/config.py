@@ -18,6 +18,20 @@ DUCKDB_PATH = Path(os.getenv("DUCKDB_PATH", str(BASE_DIR / "data" / "abh.duckdb"
 # so data survives redeploys on hosts without a persistent disk. Empty = local file only.
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 
+# The folder link (folders.py): how two agents connect their private folders before a booking is made.
+# "local" links the folders in testdata/vaults/ in this process — no network, no key, no new dependency — and is
+# what the demo runs on. "claudeconnect" uses the real ClaudeConnect library when it is installed and reachable,
+# and falls back to local with a reason, reported in /api/health, when it is not.
+FOLDER_LINK = os.getenv("FOLDER_LINK", "local")
+FOLDER_ROOT = Path(os.getenv("FOLDER_ROOT", str(BASE_DIR.parent.parent / "testdata" / "vaults")))
+# Where the real ClaudeConnect lives, when FOLDER_LINK=claudeconnect. Empty uses the library's own default
+# (https://claudeconnect.io); a local instance of its sync server is a URL here. CC_HANDLE is the handle this hub
+# claims for itself, and CC_TOKEN the bot token it was issued (see documentation/ARCHITECTURE.md).
+CC_SERVER = os.getenv("CLAUDECONNECT_SERVER", "")
+CC_HANDLE = os.getenv("CC_HANDLE", "")
+CC_TOKEN = os.getenv("CC_TOKEN", "")
+CC_TIMEOUT_S = float(os.getenv("CC_TIMEOUT_S", "2"))  # what one unreachable claudeconnect.io costs us
+
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
 DEMO_RESET_TOKEN = os.getenv("DEMO_RESET_TOKEN", "")  # when set, /api/demo/reset needs it as X-Demo-Token

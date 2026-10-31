@@ -40,6 +40,7 @@ SUITE = [
     "tests/test_hive.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
+    "tests/test_folders.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
     "tests/test_admin_manage.py",
@@ -281,6 +282,24 @@ CURATED: list[Mutant] = [
         "if False:",
     ),
     Mutant(
+        "folders.py",
+        "a hidden or private file becomes readable, which is the one thing the folder link must never do",
+        'if entry["visibility"] not in ADMITTED:',
+        "if False:",
+    ),
+    Mutant(
+        "folders.py",
+        "a grant needs only a link that was asked for, which makes the other side's yes decorative",
+        'if link is None or link["state"] != ESTABLISHED:',
+        "if link is None:",
+    ),
+    Mutant(
+        "folders.py",
+        "an unmarked file is published, so a folder opens itself by saying nothing",
+        "DEFAULT_VISIBILITY = PUBLIC_SUMMARY",
+        "DEFAULT_VISIBILITY = PUBLIC",
+    ),
+    Mutant(
         "sharing.py",
         "the looser of the two flags wins, so opening a default unseals closed items",
         "return max(flags, key=strictness)",
@@ -428,6 +447,7 @@ SWAPS = [
 ]
 TARGETS = [
     "federation.py",
+    "folders.py",
     "reputation.py",
     "calibration.py",
     "connections.py",

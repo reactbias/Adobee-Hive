@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from "react";
+import { useEffect, useState } from "react";
 import {
   api,
   OFFLINE,
@@ -10,9 +10,9 @@ import {
   type Proposal,
   type SummaryItem,
 } from "../api";
-import Chapter, { Frame } from "../components/Chapter";
 import Composer from "../components/Composer";
 import ConnectionRequests from "../components/ConnectionRequests";
+import Display from "../components/Display";
 import TrustBadge from "../components/TrustBadge";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -21,30 +21,19 @@ import { demoMode } from "../lib/demo";
 import { readable } from "../lib/diff";
 import DemandPanel from "./DemandPanel";
 
-// The business's side of the same booking, built like the agent chapter: the owner's input in the brief, everything
-// it produces in the panel. The panel opens on the owner's dashboard; the city's demand map is one tab away.
+// The business's screen: the card as agents read it, a box to change it in plain words, the bookings that
+// arrived and what agents asked for. The city's demand map is one tab away.
 
-// A miss is logged as "missing dog-friendly (asked: dog-friendly, near basel sbb)": the structured ask, never the
-// traveller's own words. The studio shows the missing tags only.
 const missedTags = (detail: string) =>
   detail
     .split(" (asked: ")[0]
     .split("; ")
     .filter((m) => m.startsWith("missing "))
     .map((m) => m.slice(8));
-// What agents did with this card in the last 7 days, counted from the Hive's events. A hand-off from Ask the Hive
-// counts as a booking: it is the business's yes-moment on any card, claimed or not.
-const WEEK: [Key, string[]][] = [
-  ["owner.week.shown", ["shown"]],
-  ["owner.week.read", ["read"]],
-  ["owner.week.booked", ["booked", "explore_handoff"]],
-  ["owner.week.missed", ["missed_demand"]],
-];
 
 type T = ReturnType<typeof useI18n>["t"];
 type Tab = "owner" | "demand";
 
-// Offline edits come back as items, so the summary reads in the page's language rather than the backend's English.
 function summarise(p: Proposal, t: T, intl: string): string {
   if (!p.summary_items) return p.summary;
   if (!p.summary_items.length) return t("owner.summary.none");
@@ -64,14 +53,8 @@ interface Ask {
   meta: string;
 }
 
-/** Chapter 2: the owner says what changed in plain words, checks the diff, signs, and sees the new version live. */
-export default function OwnerPanel({
-  initial = "hotel-rheinblick",
-  sectionRef,
-}: {
-  initial?: string;
-  sectionRef?: RefObject<HTMLElement>;
-}) {
+/** The business's screen: say what changed, check the diff, sign, and see the new version live. */
+export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?: string }) {
   const { t, intl } = useI18n();
   const [tab, setTab] = useState<Tab>("owner");
   const [cards, setCards] = useState<Card[]>([]);
@@ -114,9 +97,6 @@ export default function OwnerPanel({
     setTab("owner");
     try {
       setProposal(await api.propose(cardId, text));
-      // On a phone the panel sits under the box: bring the diff into view, as the chat does with its messages.
-      if (window.matchMedia?.("(max-width: 1000px)").matches)
-        document.getElementById("business-tabpanel")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     } catch (e) {
       setError(shownError((e as Error).message));
     } finally {
@@ -146,15 +126,6 @@ export default function OwnerPanel({
   const unclaimed = card?.trust.claimed === false;
   // Nothing to book here (no rooms, no bookings): its yes-moment is a hand-off to the business's own site.
   const handsOff = !!overview && !overview.card.units?.length && !overview.bookings.length;
-  const week = overview
-    ? WEEK.map(
-        ([label, kinds]) =>
-          [
-            handsOff && label === "owner.week.booked" ? ("owner.week.handedOff" as Key) : label,
-            kinds.reduce((n, k) => n + (overview.last_7_days[k] ?? 0), 0),
-          ] as const,
-      )
-    : [];
   // Waiting agents first: an edit wins them now. Then what agents were turned away for this week.
   const asks: Ask[] = [
     ...(overview?.waiting.asks ?? []).map((a) => ({
@@ -176,6 +147,8 @@ export default function OwnerPanel({
     setInstruction(text);
     propose(text);
   };
+  // The card's policies, a few at a time: what a guest's agent reads first.
+  const policies = Object.entries(card?.policies ?? {}).slice(0, 4);
 
   const tabs = (
     <div className="tabs" role="tablist" aria-label={t("chapter.business")}>
@@ -196,72 +169,128 @@ export default function OwnerPanel({
   );
 
   return (
-    <Chapter
-      id="business"
-      heading="chapter.business.title"
-      lead={t(unclaimed ? "chapter.business.leadUnclaimed" : "chapter.business.lead", { name })}
-      sectionRef={sectionRef}
-      side={
-        <div className="stack">
-          <div className="picker">
-            <label htmlFor="business-pick">{t("owner.business")}</label>
-            <select id="business-pick" value={cardId} onFocus={loadCards} onChange={(e) => setCardId(e.target.value)}>
-              {cards.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          {unclaimed ? (
-            <p className="muted">{t("owner.unclaimed")}</p>
-          ) : (
-            <Composer
-              id="owner-change"
-              label={t("owner.change")}
-              value={instruction}
-              onChange={setInstruction}
-              onSend={propose}
-              busy={busy}
-              placeholder={t("owner.placeholder")}
-              sendLabel={card ? t("owner.previewVersion", { version: card.version + 1 }) : t("owner.preview")}
-              busyLabel={t("owner.checking")}
-            />
-          )}
-          {error && (
-            <p className="error">
-              {needsToken ? t("owner.tokenNeeded") : error === OFFLINE ? t("error.offline") : error}
-            </p>
-          )}
-          {needsToken && (
-            <div className="row token">
-              <input
-                type="password"
-                placeholder={t("owner.token")}
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-              />
-              <button
-                onClick={() => {
-                  setOwnerToken(token);
-                  setError("");
-                }}
-                disabled={!token}
-              >
-                {t("owner.useToken")}
-              </button>
-            </div>
-          )}
+    <section id="business" className="screen screen-business" aria-labelledby="business-title">
+      <div className="screen-head spread">
+        <div className="stack tight">
+          <h1 id="business-title">
+            <Display text={t("chapter.business.title")} />
+          </h1>
+          <p className="lead">{t(unclaimed ? "chapter.business.leadUnclaimed" : "chapter.business.lead", { name })}</p>
         </div>
-      }
-    >
-      <Frame label={t("chapter.business")} head={tabs}>
-        <div id="business-tabpanel" role="tabpanel" aria-labelledby={`business-tab-${tab}`} className="stack loose">
-          {tab === "demand" ? (
+        <div className="picker">
+          <label htmlFor="business-pick">{t("owner.business")}</label>
+          <select id="business-pick" value={cardId} onFocus={loadCards} onChange={(e) => setCardId(e.target.value)}>
+            {cards.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {tabs}
+      <div id="business-tabpanel" role="tabpanel" aria-labelledby={`business-tab-${tab}`}>
+        {tab === "demand" ? (
+          <div className="panel">
             <DemandPanel />
-          ) : (
-            <>
-              <div aria-live="polite">
+          </div>
+        ) : (
+          <div className="owner-grid">
+            {/* The card as agents read it: the facts that decide a booking, and the seal on them. */}
+            {card && (
+              <section className="panel card-preview stack">
+                <div className="spread">
+                  <h2>{t("owner.agents.title")}</h2>
+                  <span className={published ? "version fresh mono" : "version mono muted"}>v{card.version}</span>
+                </div>
+                <TrustBadge trust={card.trust} />
+                {(card.tagline || card.description) && <p>{card.tagline ?? card.description}</p>}
+                {card.features.length > 0 && (
+                  <ul className="chips">
+                    {card.features.map((f) => (
+                      <li key={f} className="chip">
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {card.units.length > 0 && (
+                  <ul className="units">
+                    {card.units.map((u) => (
+                      <li key={u.id}>
+                        <span>{u.name}</span>
+                        <span className="num">{t("trace.perNight", { price: chf(u.price_chf, intl) })}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {policies.length > 0 && (
+                  <dl className="facts">
+                    {policies.map(([key, value]) => (
+                      <div key={key}>
+                        <dt>{key.replace(/_/g, " ")}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+                {demoMode() && (
+                  <details className="presenter">
+                    <summary>{t("owner.agents.mcp")}</summary>
+                    <p className="muted small">
+                      <code className="inline-code">{mcpUrl()}</code>
+                    </p>
+                    <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
+                  </details>
+                )}
+              </section>
+            )}
+
+            {/* The one thing an owner does here: say what changed, read the diff, sign. */}
+            <section className="panel owner-change stack">
+              {unclaimed ? (
+                <>
+                  <h2>{t("owner.change")}</h2>
+                  <p className="muted">{t("owner.unclaimed")}</p>
+                </>
+              ) : (
+                <Composer
+                  id="owner-change"
+                  label={t("owner.change")}
+                  value={instruction}
+                  onChange={setInstruction}
+                  onSend={propose}
+                  busy={busy}
+                  placeholder={t("owner.placeholder")}
+                  sendLabel={card ? t("owner.previewVersion", { version: card.version + 1 }) : t("owner.preview")}
+                  busyLabel={t("owner.checking")}
+                />
+              )}
+              {error && (
+                <p className="error">
+                  {needsToken ? t("owner.tokenNeeded") : error === OFFLINE ? t("error.offline") : error}
+                </p>
+              )}
+              {needsToken && (
+                <div className="row token">
+                  <input
+                    type="password"
+                    placeholder={t("owner.token")}
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                  />
+                  <button
+                    onClick={() => {
+                      setOwnerToken(token);
+                      setError("");
+                    }}
+                    disabled={!token}
+                  >
+                    {t("owner.useToken")}
+                  </button>
+                </div>
+              )}
+              <div aria-live="polite" className="stack">
                 {proposal && (
                   <section className="change reveal stack">
                     <p className="change-summary">{summarise(proposal, t, intl)}</p>
@@ -298,111 +327,98 @@ export default function OwnerPanel({
                   </p>
                 )}
               </div>
+            </section>
 
-              {week.length > 0 && (
-                <dl className="kpis" role="group" aria-label={t("owner.week.title")}>
-                  {week.map(([label, n]) => (
-                    <div key={label}>
-                      <dd className="num">{n}</dd>
-                      <dt>{t(label)}</dt>
-                    </div>
-                  ))}
-                </dl>
-              )}
-
-              {handsOff ? (
-                <section className="stack">
-                  <h3>{t("owner.handoffs.title")}</h3>
-                  {overview.handoffs?.length ? (
-                    <ul className="rows compact">
-                      {overview.handoffs.map((h, i) => (
-                        <li key={`${h.created_at}/${i}`} className="spread">
-                          <span>{h.item}</span>
-                          <span className="muted small nowrap">{day(h.created_at.slice(0, 10), intl)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="muted">{t("owner.handoffs.empty")}</p>
-                  )}
-                </section>
-              ) : (
-                <section className="stack">
-                  <h3>{t("owner.bookings.title")}</h3>
-                  {overview?.bookings.length ? (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>{t("owner.bookings.guest")}</th>
-                          <th>{t("owner.bookings.dates")}</th>
-                          <th className="end">CHF</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {overview.bookings.map((b) => (
-                          <tr key={b.id}>
-                            <td>{b.guest_name}</td>
-                            <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
-                            <td className="end">{b.total_chf}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p className="muted">{t("owner.bookings.empty")}</p>
-                  )}
-                </section>
-              )}
-
-              <section className="stack">
-                <h3 id="owner-asked">{t("owner.asked.title")}</h3>
-                {asks.length ? (
-                  <ul className="rows compact" aria-labelledby="owner-asked">
-                    {asks.map((a) => (
-                      <li key={`${a.what}/${a.meta}`} className="spread">
-                        <span className="stack tight">
-                          <span>{a.what}</span>
-                          <span className="muted small">{a.meta}</span>
-                        </span>
-                        {a.tags.length > 0 && !unclaimed && (
-                          <button className="quiet" onClick={() => use(a.tags)}>
-                            {t("owner.waiting.use")}
-                          </button>
-                        )}
+            {/* What arrived: bookings, or hand-offs for a card nothing can be booked on. */}
+            {handsOff ? (
+              <section className="panel stack">
+                <h2>
+                  {t("owner.handoffs.title")}{" "}
+                  <span className="count num" aria-hidden>
+                    {overview?.handoffs?.length ?? 0}
+                  </span>
+                </h2>
+                {overview?.handoffs?.length ? (
+                  <ul className="rows compact">
+                    {overview.handoffs.map((h, i) => (
+                      <li key={`${h.created_at}/${i}`} className="spread">
+                        <span>{h.item}</span>
+                        <span className="muted small nowrap">{day(h.created_at.slice(0, 10), intl)}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="muted">{t("owner.asked.empty")}</p>
+                  <p className="muted">{t("owner.handoffs.empty")}</p>
                 )}
               </section>
+            ) : (
+              <section className="panel stack">
+                <h2>
+                  {t("owner.bookings.title")}{" "}
+                  <span className="count num" aria-hidden>
+                    {overview?.bookings.length ?? 0}
+                  </span>
+                </h2>
+                {overview?.bookings.length ? (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t("owner.bookings.guest")}</th>
+                        <th>{t("owner.bookings.dates")}</th>
+                        <th className="end">CHF</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overview.bookings.map((b) => (
+                        <tr key={b.id}>
+                          <td>{b.guest_name}</td>
+                          <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
+                          <td className="end">{b.total_chf}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="muted">{t("owner.bookings.empty")}</p>
+                )}
+              </section>
+            )}
 
-              <ConnectionRequests target={cardId} />
-
-              {card && (
-                <section className="stack">
-                  <div className="spread">
-                    <h3>{t("owner.agents.title")}</h3>
-                    <span className={published ? "version fresh mono" : "version mono muted"}>v{card.version}</span>
-                  </div>
-                  <TrustBadge trust={card.trust} />
-                  {demoMode() && (
-                    <details className="presenter">
-                      <summary>{t("owner.agents.mcp")}</summary>
-                      <p className="muted small">
-                        <code className="inline-code">{mcpUrl()}</code>
-                      </p>
-                      <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
-                    </details>
-                  )}
-                  {demoMode() && <TamperTest card={card} />}
-                </section>
+            {/* Missed demand, per business: each row is one edit away from a booking. */}
+            <section className="panel stack">
+              <h2 id="owner-asked">
+                {t("owner.asked.title")}{" "}
+                <span className="count num" aria-hidden>
+                  {asks.length}
+                </span>
+              </h2>
+              {asks.length ? (
+                <ul className="rows compact" aria-labelledby="owner-asked">
+                  {asks.map((a) => (
+                    <li key={`${a.what}/${a.meta}`} className="spread">
+                      <span className="stack tight">
+                        <span>{a.what}</span>
+                        <span className="muted small">{a.meta}</span>
+                      </span>
+                      {a.tags.length > 0 && !unclaimed && (
+                        <button className="ghost small" onClick={() => use(a.tags)}>
+                          {t("owner.waiting.use")}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted">{t("owner.asked.empty")}</p>
               )}
-            </>
-          )}
-        </div>
-      </Frame>
-    </Chapter>
+            </section>
+
+            <ConnectionRequests target={cardId} />
+            {demoMode() && card && <TamperTest card={card} />}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
