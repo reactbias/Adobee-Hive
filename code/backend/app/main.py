@@ -14,6 +14,7 @@ from typing import Annotated, Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import (
@@ -26,6 +27,7 @@ from . import (
     connections,
     db,
     federation,
+    folder_keys,
     folders,
     guard,
     hive,
@@ -60,6 +62,7 @@ async def lifespan(_: FastAPI):
     activity.init()
     blocklist.init()
     folders.init()
+    folder_keys.init()
     connections.init()
     registration.init()
     audit.init()
@@ -533,8 +536,16 @@ class ConnectBody(BaseModel):
 
     requester: str = Field(..., min_length=1, max_length=200, description="Who is asking, as their hub knows them")
     entity_id: str = Field(..., min_length=1, max_length=200, description="What they want to be connected to")
-    target_hub: str = Field("", max_length=200)
+    target_hub: str = Field("", max_length=200, description="The hub id that carries it, if not this one")
     via_hub: str = Field("", max_length=200)
+    card: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "For an entity on another hub: the signed card the federated search returned for it. This hub"
+            " verifies it against the key that entity's own hub pinned and refuses it otherwise. Ignored for"
+            " an entity this hub carries, whose own copy always wins"
+        ),
+    )
 
 
 class ScoreBody(BaseModel):
@@ -559,9 +570,22 @@ class BlockBody(BaseModel):
 
 @app.post("/api/hub/connect")
 def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
-    """Ask to be introduced, and log it. A public item opens at once; one marked `confirm` waits."""
+    """Ask to be introduced, and log it. A public item opens at once; one marked `confirm` waits.
+
+    An entity on a **peer** works too: pass `card`, the signed card the federated search returned,
+    and `target_hub`, the hub id its provenance names. This hub checks that card against the key
+    that hub pinned for it and refuses it otherwise — an introduction is this hub's to record even
+    when the entity is not its own, but who the entity *is* is never taken on the carrier's word.
+    """
     guard.federated.check(request)
-    return _hive_call(hub.connect, body.requester, body.entity_id, target_hub=body.target_hub, via_hub=body.via_hub)
+    return _hive_call(
+        hub.connect,
+        body.requester,
+        body.entity_id,
+        target_hub=body.target_hub,
+        via_hub=body.via_hub,
+        card=body.card,
+    )
 
 
 @app.post("/api/hub/connections/{connection_id}/score")
@@ -872,6 +896,283 @@ def admin_audit(subject: str = "", action: str = "", limit: int = 200, _: str = 
         "entries": audit.entries(subject=subject, action_prefix=action, limit=limit),
         "who_limit": audit.WHO_LIMIT,
     }
+
+
+# ---------------------------------------------------------------- folders: the read surface
+
+#: The one thing a refused read ever says. A hidden file, a private file, a file in a folder this
+#: link has no grant on, and a file that never existed all get this sentence and this status. Two
+#: different refusals would let a caller map a folder it cannot read by the shape of the noes it
+#: collects, which is the leak the whole visibility model exists to prevent.
+NO_SUCH_FILE = "No such file here, or none this link may read."
+#: The same idea for the two things a caller may name by id rather than by path.
+NO_SUCH_GRANT = "No such grant on this link."
+NO_SUCH_LINK = "No such folder link."
+
+
+FolderBearer = Annotated[
+    str | None,
+    Header(
+        alias="Authorization",
+        description="`Bearer <link secret>`, from POST /api/hub/connect or POST /api/folders/keys.",
+    ),
+]
+
+
+def folder_caller(authorization: FolderBearer = None) -> dict[str, Any]:
+    """Who is asking, from the link secret they presented. The identity every folder read needs.
+
+    Both read endpoints take their owner and viewer from here and **no handle parameter at all**, so
+    a caller cannot ask about a folder it holds no link to and there is nothing to enumerate.
+    `folder_keys.resolve` re-reads the link's state on every request, so a revoked link stops
+    reading here rather than at a cache expiry.
+    """
+    key = folder_keys.resolve(folder_keys.bearer(authorization or ""))
+    if key is None:
+        raise HTTPException(
+            401,
+            "This needs a folder link secret in Authorization: Bearer. Missing, wrong, revoked and "
+            "expired all say this, because telling them apart would be an oracle.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return key
+
+
+#: The caller of every folder read, resolved from the bearer by `folder_caller`.
+FolderCaller = Annotated[dict[str, Any], Depends(folder_caller)]
+
+
+@app.get("/api/folders/status")
+def folders_status() -> dict[str, Any]:
+    """Which folder link is in use, what was asked for, why they differ, and what a read costs.
+
+    No credential: it says nothing about any folder, only about this hub's own configuration. The
+    `root` that `folders.status()` carries is left out — a server path is nobody's business — and
+    `honest` is the line a panel should print, because on `local` both folders are on one disk.
+    """
+    state = folders.status()
+    return {
+        "folder_link": state["folder_link"],
+        "requested": state["requested"],
+        "why": state["why"],
+        "served_visibilities": sorted(folders.SERVED),
+        "max_read_bytes": config.FOLDER_READ_MAX_BYTES,
+        "reads_per_link_hour": config.FOLDER_READS_PER_LINK_HOUR,
+        "ranges": "not supported; a read is the whole file or a 413",
+        "honest": (
+            "On the local folder link the handshake and the grants are real and enforced, and both "
+            "folders are on one disk. Nothing here crosses a machine."
+            if state["folder_link"] == "local"
+            else "Folders are held by ClaudeConnect; this hub decides nothing about where they live."
+        ),
+    }
+
+
+@app.get("/api/folders/manifest")
+def folders_manifest(caller: FolderCaller) -> dict[str, Any]:
+    """The peer's folder as this link may see it: paths, sizes, digests, and a count of the rest.
+
+    Contents are a separate, granted act — see the file route. `withheld` is a number and never a
+    name: a `private` or `hidden` path is not in this answer under any flag.
+
+    `readable` is narrowed to what the file route will actually serve, so a client is never told it
+    may read a byte this hub would then refuse (`folders.SERVED`).
+    """
+    folder_keys.touch(caller["id"])
+    out = _hive_call(folders.manifest, caller["peer"], caller["handle"])
+    files = [{**f, "readable": bool(f["readable"]) and f["visibility"] in folders.SERVED} for f in out["files"]]
+    return {**out, "files": files, "link": caller["link"], "viewer": caller["handle"]}
+
+
+@app.get("/api/folders/file")
+def folders_file(
+    request: Request,
+    caller: FolderCaller,
+    path: Annotated[str, Query(min_length=1, max_length=1024, description="One path inside the peer's folder")],
+) -> StreamingResponse:
+    """The bytes of one granted file, streamed. Every refusal is the same 404.
+
+    The path is relative to the peer's folder, because the bearer already said whose folder this is.
+    It arrives as `?path=` rather than as path segments so that nothing between the client and here
+    is tempted to normalise it: an HTTP client collapses `../` inside a *path* before sending it,
+    and a check that only ever sees the collapsed form is checking a string the server never
+    resolved. In the query it arrives exactly as it was written, percent-encoding and all.
+
+    It is never joined to a filesystem path here: `folders.split_path` owns that, refuses anything
+    with a `..` segment in it, and the refusal lands in the same 404 as a missing file — so a
+    traversal attempt cannot be told apart from a typo either.
+
+    No `Range`. A read is the whole file or a 413 over `FOLDER_READ_MAX_BYTES`, and the response
+    says `Accept-Ranges: none` rather than leaving a client to discover that by guessing.
+    """
+    guard.folder_reads.check(request, key=caller["link"])
+    ref = f"{caller['peer']}/{path}"
+    try:
+        entry = folders.entry(ref)
+        allowed = folders.can_read(ref, caller["handle"])
+    except folders.FolderError:
+        # A path that leaves the folder, or a handle that is not one. Same answer as a typo.
+        raise HTTPException(404, NO_SUCH_FILE) from None
+    if entry is None or not allowed or entry["visibility"] not in folders.SERVED:
+        raise HTTPException(404, NO_SUCH_FILE)
+    if entry["bytes"] > config.FOLDER_READ_MAX_BYTES:
+        raise HTTPException(
+            413,
+            f"That file is {entry['bytes']} bytes and this hub serves at most "
+            f"{config.FOLDER_READ_MAX_BYTES}. A read is the whole file; there is no Range.",
+        )
+    try:
+        stream = folders.open_read(ref, caller["handle"])
+    except folders.FolderError:
+        raise HTTPException(404, NO_SUCH_FILE) from None
+    folder_keys.touch(caller["id"])
+    # The owner granted this path; they should be able to see it was used. The ledger gets the
+    # handle, the path and the key id, and never the secret (audit.py says why this actor is real).
+    audit.record(
+        "folder.read",
+        ref,
+        f"read over folder link {caller['link']}",
+        credential="link secret",
+        detail=f"key {caller['id']}",
+        actor=caller["handle"],
+    )
+    return StreamingResponse(
+        stream,
+        media_type=entry["media_type"],
+        headers={
+            "Content-Length": str(entry["bytes"]),
+            "ETag": f'"{entry["digest"]}"',
+            "Accept-Ranges": "none",
+            "Cache-Control": "private, no-store",
+            "X-Folder-Link": caller["link"],
+        },
+    )
+
+
+class FolderKeyBody(BaseModel):
+    """An operator minting a link secret for one party to an established link."""
+
+    link: str = Field(..., min_length=1, max_length=200, description="The folder link id")
+    handle: str = Field(..., min_length=1, max_length=200, description="Which party to it the secret is for")
+
+
+@app.post("/api/folders/keys")
+def folders_mint_key(body: FolderKeyBody, _: str = Depends(admin_only)) -> dict[str, Any]:
+    """Mint a link secret for one party to an established link. The secret is in this answer only.
+
+    **This is the hub's own token, and it does not prove per-owner identity** — this hub has one
+    shared operator credential and no accounts, so what it says is "the operator of this hub asked
+    for a secret on behalf of this handle". That is honest on a single-operator hub and is not an
+    authorization model; `SECURITY.md` and `documentation/FOLDER_API.md` say so. The door a party
+    walks through itself is `POST /api/hub/connect`, which speaks for the requester it names.
+
+    Fails closed, like every other admin write: no ADMIN_TOKEN and no ADMIN_PASSWORD refuses.
+    """
+    try:
+        return _hive_call(folder_keys.mint, body.link, body.handle)
+    except folder_keys.KeyError_ as err:
+        raise HTTPException(400, str(err)) from err
+
+
+class FolderGrantBody(BaseModel):
+    """An owner opening one path of their own folder to the peer on the other end of this link."""
+
+    path: str = Field(
+        ...,
+        min_length=1,
+        max_length=1024,
+        description="One path inside the caller's own folder. One path, not a pattern",
+    )
+
+
+@app.get("/api/folders/grants")
+def folders_grants(caller: FolderCaller) -> dict[str, Any]:
+    """Both halves of this link's grants: what I have opened to my peer, and what they opened to me.
+
+    The two are kept apart in the answer, because they are two different decisions and an owner
+    looking at a screen needs to know which of them is theirs to take back.
+    """
+    return {
+        "link": caller["link"],
+        "handle": caller["handle"],
+        "peer": caller["peer"],
+        "given": _hive_call(folders.grants, caller["handle"], caller["peer"]),
+        "received": _hive_call(folders.grants, caller["peer"], caller["handle"]),
+    }
+
+
+@app.post("/api/folders/grants")
+def folders_grant(body: FolderGrantBody, caller: FolderCaller) -> dict[str, Any]:
+    """Open one path of the caller's own folder to the peer on this link. Read-only, and per path.
+
+    **The owner is the bearer, never a parameter.** A key names a side of a link, so "whose folder"
+    and "to whom" are both already decided and the body carries neither — which is what makes this
+    a per-owner write on a hub that has no owner accounts. A caller can only ever grant from the
+    folder it holds the key for.
+
+    **No wildcards.** One path and one handle, checked here as well as in `folders.grant`: a `*`,
+    an empty path and a bare handle (which would be the whole folder) are all refused. A named
+    sub-folder is allowed, because that is one path; a pattern is not a path.
+    """
+    path = body.path.strip().strip("/")
+    if not path or "*" in path or "?" in path:
+        raise HTTPException(
+            400,
+            "A grant names one path inside your folder and nothing else: no pattern, no wildcard, "
+            "and not the whole folder.",
+        )
+    return _hive_call(folders.grant, f"{caller['handle']}/{path}", caller["peer"])
+
+
+@app.delete("/api/folders/grants/{grant_id}")
+def folders_revoke_grant(grant_id: str, caller: FolderCaller) -> dict[str, Any]:
+    """Take one grant back. Only the owner who gave it may, and the ledger keeps the decision.
+
+    A grant that belongs to somebody else is refused as *not found*, in the same words as a grant id
+    that never existed — a caller must not be able to learn which ids are real by deleting them.
+    """
+    try:
+        grant = folders.get_grant(grant_id)
+    except folders.FolderError:
+        raise HTTPException(404, NO_SUCH_GRANT) from None
+    if grant["owner"] != caller["handle"]:
+        raise HTTPException(404, NO_SUCH_GRANT)
+    gone = _hive_call(folders.revoke_grant, grant_id)
+    audit.record(
+        "folder.grant.revoke",
+        gone["ref"],
+        f"the owner took this grant back from {gone['to']}",
+        credential="link secret",
+        detail=f"grant {grant_id} on folder link {caller['link']}",
+        actor=caller["handle"],
+    )
+    return {**gone, "revoked": True}
+
+
+@app.delete("/api/folders/links/{link_id}")
+def folders_revoke_link(link_id: str, caller: FolderCaller) -> dict[str, Any]:
+    """Withdraw a folder link, and with it every secret and every read it allowed.
+
+    Either party may; a link is not one side's to keep. The secrets die because `folder_keys.resolve`
+    re-reads the link's state on every request, so this takes effect on the next call rather than
+    when something expires. The grants stay in the table and stay dead: `can_read` needs an
+    established link before it looks at one, so re-establishing the link would be a second decision.
+    """
+    if link_id != caller["link"]:
+        # A link id is not a capability. Refusing in the same words as an unknown id keeps a caller
+        # from mapping which links exist by trying to withdraw them.
+        raise HTTPException(404, NO_SUCH_LINK)
+    row = _hive_call(folders.revoke_link, link_id)
+    keys = folder_keys.revoke_for_link(link_id)
+    audit.record(
+        "folder.link.revoke",
+        link_id,
+        f"{caller['handle']} withdrew the folder link with {caller['peer']}",
+        credential="link secret",
+        detail=f"{keys} secret(s) retired with it",
+        actor=caller["handle"],
+    )
+    return {**row, "revoked": True, "secrets_retired": keys}
 
 
 # ---------------------------------------------------------------- joining this hub

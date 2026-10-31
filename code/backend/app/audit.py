@@ -9,8 +9,14 @@ stored with them rather than left in an operator's memory.
 has one shared `ADMIN_PASSWORD` and one shared `ADMIN_TOKEN`, so there are no operator accounts and
 no way to tell two operators apart. What can be recorded is recorded: the time, the action, the
 subject, the reason, and *which credential* was used — the static token (curl, CI) or a browser
-session minted from the password. `actor` is therefore always `admin`, which is a limit of the
-design, not of the ledger. Per-operator accounts are the fix, and `SECURITY.md` says so.
+session minted from the password. For an operator's decision `actor` is therefore always `admin`,
+which is a limit of the design, not of the ledger. Per-operator accounts are the fix, and
+`SECURITY.md` says so.
+
+The one kind of row that *can* name who acted is a folder read (`folders.py`, `folder_keys.py`):
+there the caller presented a secret bound to one link, which identifies a handle rather than an
+operator. Those rows carry that handle as their `actor`, because an owner who grants a path should
+be able to see who used it. `WHO_LIMIT` says which is which.
 
 Nothing in here is ever deleted or rewritten. A withdrawal that was a mistake is undone by a
 restore, which is its own row; the mistake stays visible, because a ledger that can be tidied is
@@ -43,8 +49,9 @@ ACTOR = "admin"
 
 #: What the ledger can and cannot prove, in one line an interface can print next to the rows.
 WHO_LIMIT = (
-    "This hub has one shared admin password, so every row reads 'admin'. The time, the reason and "
-    "which credential was used are real; the person is not recorded, because the hub cannot tell."
+    "This hub has one shared admin password, so every operator row reads 'admin'. The time, the "
+    "reason and which credential was used are real; the person is not recorded, because the hub "
+    "cannot tell. A folder read names its actor, because a link secret identifies a handle."
 )
 
 MAX_REASON = 500
@@ -62,12 +69,16 @@ def record(
     reason: str,
     credential: str = "unknown",
     detail: str = "",
+    actor: str = ACTOR,
 ) -> dict[str, Any]:
     """Append one decision to the ledger and return the row as written.
 
     `action` is a short code (`peer.add`, `entity.remove`), `subject` the thing it was done to,
     `reason` the operator's own words. Callers check the reason before getting here; this stores
     whatever it is given, because a ledger that edits its entries is worth nothing.
+
+    `actor` defaults to the one operator this hub can name. A folder read passes the handle that
+    presented the link secret instead — see the module docstring for why that one is real.
     """
     row = {
         "id": db.new_id(),
@@ -75,7 +86,7 @@ def record(
         "action": action,
         "subject": subject,
         "reason": (reason or "")[:MAX_REASON],
-        "actor": ACTOR,
+        "actor": actor or ACTOR,
         "credential": credential or "unknown",
         "detail": detail[:MAX_REASON],
     }

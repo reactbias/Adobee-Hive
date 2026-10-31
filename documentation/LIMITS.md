@@ -86,9 +86,34 @@ the folders in [`testdata/vaults/`](../testdata/README.md) inside this process w
 DuckDB, so no key is exchanged and nothing is encrypted. `FOLDER_LINK=claudeconnect` is accepted and falls back to
 local with the reason in `GET /api/health`, because the adapter for the real library is not built yet.
 
-**Nothing in the app drives it.** There is no `/api/folders/*` surface. A link is made by `POST /api/hub/connect`,
-which does the handshake itself and returns the manifest it opened; a grant can only be given from Python. The
-endpoints a panel would need are proposed in issue #116.
+**A client can open a link, read the manifest and read a granted file; it cannot yet drive the rest.**
+`GET /api/folders/manifest` and `GET /api/folders/file` are built, authenticated by a secret bound to the
+link ([FOLDER_API.md](FOLDER_API.md)), and `POST /api/hub/connect` hands the requester that secret in the same
+answer. What has no endpoint yet is claiming a handle, requesting and accepting a link by hand, **giving a
+grant**, and revoking either: those can still only be done from Python, so the demo's grants are made by the
+seeder and not by an owner clicking. Issue #116 has the shape; the routes are the remaining slice.
+
+**The read surface serves less than the link admits.** A linked peer *sees* a `shared` file in the manifest —
+that is the folder link's whole point, since the Card never said it existed — but `GET /api/folders/file`
+hands over bytes only for `public` and `public-summary` paths (`folders.SERVED`), so a read can never be the
+first time a byte of a file left the folder. Granted `shared` reads are one constant away and are not switched
+on.
+
+## Reaching an entity on another hub
+
+**It works, and the introduction is recorded here, but this hub cannot complete it.** A federated
+search finds an entity on a peer and `POST /api/hub/connect` will now connect to it: the caller
+passes the signed card the search returned, and this hub checks it against the key the entity's
+*own* hub pinned for it, read from a registry this hub fetched itself from a URL on its own peer
+list. A card that cannot be checked is refused with a reason, never admitted on the carrier's word.
+
+Three honest limits on that. A remote `confirm` entity's connection stays `requested` for good as
+far as this hub is concerned — `connections.confirm` refuses it, because the owner's yes happens
+where the owner is, and this hub has no way to ask them or to hear the answer. The remote entity's
+folder is on its own hub, so the manifest the link opens is empty; the link itself is a real local
+fact and nothing more. And the card can only be checked when its hub is on this hub's peer list and
+has already answered — an origin two hops away, or a hub in the first `PEER_ASK_SECONDS` of a fresh
+stack, is refused rather than trusted.
 
 ## Running a hub
 
