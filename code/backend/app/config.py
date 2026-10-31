@@ -76,6 +76,13 @@ HIVE_HUB_ID = os.getenv("HIVE_HUB_ID", "local")
 # "attested" (plus third-party attestations) or "none". Peers judge the declaration against what they observe.
 HIVE_VERIFICATION = os.getenv("HIVE_VERIFICATION", "signed")
 
+# How this hub keeps up with who its peers are. It asks each peer's /.well-known/hive.json on a timer, so a hub
+# with peers configured knows their names without waiting for someone to run a federated search. A read of the
+# directory is served from that cache and never fans out, because one slow peer must not make the picker slow.
+PEER_ASK_SECONDS = float(os.getenv("PEER_ASK_SECONDS", "30"))  # 0 turns the background asking off
+PEER_ASK_TIMEOUT_S = float(os.getenv("PEER_ASK_TIMEOUT_S", "2"))  # what one unreachable peer costs, in the background
+PEER_STALE_AFTER_S = float(os.getenv("PEER_STALE_AFTER_S", "120"))  # past this, a cached answer is shown as stale
+
 # What this Hive calls itself to its peers. A hub is an entity in the protocol like a business is, so it
 # carries the same three fields: a name, a description, and a rating. The rating of a hub is never
 # self-declared — each hub computes its own opinion of a peer in reputation.py.

@@ -14,7 +14,7 @@ import {
 } from "../api";
 import Chapter from "../components/Chapter";
 import Composer from "../components/Composer";
-import GeneratedStage from "../components/GeneratedStage";
+import GeneratedStage, { type Deal } from "../components/GeneratedStage";
 import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
@@ -30,6 +30,7 @@ import { reasonText } from "../lib/reasons";
 import JourneyLog, { useActivityLog } from "../components/JourneyLog";
 import { sceneFor, type Scene } from "../lib/cardView";
 import { hubScene } from "../lib/hubScene";
+import Reach from "../components/Reach";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
@@ -38,8 +39,12 @@ const TRY: Key[] = ["agent.example.1", "card.try.person", "card.try.staff", "age
 
 type Rec = Record<string, unknown>;
 
+function lastStep(steps: Step[], tool: string): Step | undefined {
+  return [...steps].reverse().find((s) => s.tool === tool);
+}
+
 function lastOutput(steps: Step[], tool: string): Rec | undefined {
-  return [...steps].reverse().find((s) => s.tool === tool)?.output;
+  return lastStep(steps, tool)?.output;
 }
 
 export default function TravellerAgent() {
@@ -57,6 +62,8 @@ export default function TravellerAgent() {
   const [busy, setBusy] = useState(false);
   // The hubs are being asked; the agent is not involved yet.
   const [searching, setSearching] = useState(false);
+  // How far the hubs are asked: this one only until the person chooses further.
+  const [radius, setRadius] = useState(0);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
@@ -97,7 +104,7 @@ export default function TravellerAgent() {
     if (!live && !mirror) {
       setSearching(true);
       setError("");
-      const drawn = await hubScene(text)
+      const drawn = await hubScene(text, radius)
         .catch(() => null)
         .then((found) => found ?? sceneFor(text))
         .finally(() => setSearching(false));
@@ -267,6 +274,15 @@ export default function TravellerAgent() {
     send(lastAsk.content, [], false);
   }
 
+  // The drawn request has been handed to the agent: its run is what both the cards and Details show.
+  const asked = Boolean(scene && segments.some((s) => s.kind === "guest" && s.text === scene.query));
+
+  /** Hand the drawn request to the agent once; the cards' yes and Details share that one run. */
+  function askAgent() {
+    if (!scene || busy || asked) return;
+    void send(scene.query, history.slice(0, -1), rulesOff, true);
+  }
+
   function openDetails() {
     if (!scene) return;
     if (details) {
@@ -277,8 +293,7 @@ export default function TravellerAgent() {
     setDetails(true);
     // The log and the chat start together. Neither waits for the other.
     void pullLog();
-    const already = segments.some((s) => s.kind === "guest" && s.text === scene.query);
-    if (!already) void send(scene.query, history.slice(0, -1), rulesOff, true);
+    askAgent();
   }
 
   function reset() {
@@ -294,6 +309,7 @@ export default function TravellerAgent() {
     setNearby(null);
     setReviewed("");
     setError("");
+    setRadius(0);
   }
 
   async function leaveReview() {
@@ -322,6 +338,155 @@ export default function TravellerAgent() {
 
   // The business chapter opens on the hotel just booked, so its owner sees the booking arrive.
   const owner = hotel?.id ? hotel : null;
+
+  // One gate and one receipt, drawn under the card and in Details alike: approving in either is the same yes.
+  const gate = pending && (
+    <div className="gate">
+      <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
+      {result?.consensus !== undefined && (
+        <p className={`status ${result.consensus ? "ok" : "no"}`}>
+          {t(result.consensus ? "chat.consensus.agree" : "chat.consensus.split")}
+        </p>
+      )}
+      <h3>
+        {t("agent.gate.question", {
+          unit: String(unit?.name ?? pending.unit_id),
+          name: counterpart,
+        })}
+      </h3>
+      <dl className="facts">
+        <div>
+          <dt>{t("agent.fact.dates")}</dt>
+          <dd>{stay(pending.check_in, pending.check_out, intl)}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.nights")}</dt>
+          <dd>{nights(pending.check_in, pending.check_out)}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.guest")}</dt>
+          <dd>{String(pending.guest_name)}</dd>
+        </div>
+        {unit && (
+          <div>
+            <dt>{t("agent.fact.total")}</dt>
+            <dd>{chf(unit.total_chf, intl)}</dd>
+          </div>
+        )}
+      </dl>
+      {result?.second_opinion && (
+        <div className={`opinion ${result.second_opinion.verdict}`}>
+          <span className="label">
+            {t("agent.opinion.from", { by: result.second_opinion.by })}
+            {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}
+          </span>
+          <p>
+            <span className={`status ${result.second_opinion.verdict === "agree" ? "ok" : "no"}`}>
+              {t(result.second_opinion.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
+            </span>{" "}
+            {result.second_opinion.note}
+          </p>
+        </div>
+      )}
+      {result?.critic?.verdict === "concern" && (
+        <div className="opinion concern">
+          <span className="label">{t("chat.name.critic")}</span>
+          <p>{result.critic.note}</p>
+        </div>
+      )}
+      {why.length > 0 && (
+        <div className="why">
+          <span className="label">{t("agent.gate.why")}</span>
+          <p>{why.map((w) => reasonText(t, w)).join(" · ")}</p>
+        </div>
+      )}
+      <div className="row gate-actions">
+        <button onClick={approve}>{t("agent.approve")}</button>
+        <button className="quiet" onClick={decline}>
+          {t("agent.decline")}
+        </button>
+      </div>
+      <p className="fine">
+        {t("agent.gate.fine")}
+        {policies.cancellation ? ` ${policies.cancellation}.` : ""}
+      </p>
+    </div>
+  );
+  const receipt = booking && (
+    <article className="receipt">
+      <header className="spread">
+        <span className="status ok">{t("agent.receipt.eyebrow")}</span>
+        <span className="mono dim">{booking.booking_id}</span>
+      </header>
+      <h3>{booking.business}</h3>
+      <dl className="facts">
+        <div>
+          <dt>{t("agent.fact.room")}</dt>
+          <dd>{booking.unit_name}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.dates")}</dt>
+          <dd>{stay(booking.check_in, booking.check_out, intl)}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.total")}</dt>
+          <dd>{chf(booking.total_chf, intl)}</dd>
+        </div>
+      </dl>
+      <p className="dim small">
+        {booking.payment}. {booking.cancellation}
+      </p>
+      <div className="signature">
+        <span className="label">{t("agent.receipt.signature")}</span>
+        <code>{booking.receipt}</code>
+      </div>
+      <div className="review">
+        <span className="label">{t("agent.review.title")}</span>
+        <div className="stars" role="radiogroup" aria-label={t("agent.review.rating")}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              role="radio"
+              aria-checked={rating === n}
+              aria-label={String(n)}
+              className={n <= rating ? "on" : ""}
+              onClick={() => setRating(n)}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+        <div className="row">
+          <input value={reviewText} onChange={(e) => setReviewText(e.target.value)} className="field" />
+          <button className="ghost" onClick={leaveReview} disabled={!reviewText.trim()}>
+            {t("agent.review.send")}
+          </button>
+        </div>
+        {reviewed && <p className="dim small">{reviewed}</p>}
+      </div>
+    </article>
+  );
+  const followUp = booking && (
+    <NextSteps booking={booking} hotel={hotel} nearby={nearby} onOpenBusiness={openBusiness} />
+  );
+  const lastSaid = [...segments].reverse().find((s) => s.kind === "agent");
+  const deal: Deal = asked
+    ? {
+        heldFor: pending ? String(pending.card_id) : undefined,
+        heldName: counterpart,
+        gate,
+        bookedFor: booking ? String(lastStep(steps, "hive_book")?.input.card_id ?? "") : undefined,
+        receipt: (
+          <>
+            {receipt}
+            {followUp}
+          </>
+        ),
+        answer: !busy && !pending && !booking && lastSaid?.kind === "agent" ? lastSaid.text : undefined,
+        working: busy,
+        onAsk: askAgent,
+      }
+    : { working: false, onAsk: askAgent };
 
   return (
     <>
@@ -363,6 +528,7 @@ export default function TravellerAgent() {
                 )
               }
             />
+            <Reach radius={radius} disabled={busy || searching} onChange={setRadius} />
             {/* The manipulation demo stays one tap away, folded so the brief fits the screen. */}
             {demoMode() && (
               <details className="stress">
@@ -406,7 +572,9 @@ export default function TravellerAgent() {
           </div>
         )}
         <div className={scene && details ? "journey split" : "journey"}>
-          {scene && <GeneratedStage key={scene.query} scene={scene} onDetails={openDetails} detailsOpen={details} />}
+          {scene && (
+            <GeneratedStage key={scene.query} scene={scene} onDetails={openDetails} detailsOpen={details} deal={deal} />
+          )}
           {(details || (!scene && history.length > 0)) && (
             <div className="journey-side" ref={sideRef}>
               <GroupChat
@@ -464,143 +632,11 @@ export default function TravellerAgent() {
                   ) : result?.unguarded ? (
                     <RulesOff damage={result.unguarded} steps={steps} onRerun={rerunGuarded} />
                   ) : (
-                    pending && (
-                      <div className="gate">
-                        <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
-                        {result?.consensus !== undefined && (
-                          <p className={`status ${result.consensus ? "ok" : "no"}`}>
-                            {t(result.consensus ? "chat.consensus.agree" : "chat.consensus.split")}
-                          </p>
-                        )}
-                        <h3>
-                          {t("agent.gate.question", {
-                            unit: String(unit?.name ?? pending.unit_id),
-                            name: counterpart,
-                          })}
-                        </h3>
-                        <dl className="facts">
-                          <div>
-                            <dt>{t("agent.fact.dates")}</dt>
-                            <dd>{stay(pending.check_in, pending.check_out, intl)}</dd>
-                          </div>
-                          <div>
-                            <dt>{t("agent.fact.nights")}</dt>
-                            <dd>{nights(pending.check_in, pending.check_out)}</dd>
-                          </div>
-                          <div>
-                            <dt>{t("agent.fact.guest")}</dt>
-                            <dd>{String(pending.guest_name)}</dd>
-                          </div>
-                          {unit && (
-                            <div>
-                              <dt>{t("agent.fact.total")}</dt>
-                              <dd>{chf(unit.total_chf, intl)}</dd>
-                            </div>
-                          )}
-                        </dl>
-                        {result?.second_opinion && (
-                          <div className={`opinion ${result.second_opinion.verdict}`}>
-                            <span className="label">
-                              {t("agent.opinion.from", { by: result.second_opinion.by })}
-                              {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}
-                            </span>
-                            <p>
-                              <span className={`status ${result.second_opinion.verdict === "agree" ? "ok" : "no"}`}>
-                                {t(
-                                  result.second_opinion.verdict === "agree"
-                                    ? "agent.opinion.agree"
-                                    : "agent.opinion.concern",
-                                )}
-                              </span>{" "}
-                              {result.second_opinion.note}
-                            </p>
-                          </div>
-                        )}
-                        {result?.critic?.verdict === "concern" && (
-                          <div className="opinion concern">
-                            <span className="label">{t("chat.name.critic")}</span>
-                            <p>{result.critic.note}</p>
-                          </div>
-                        )}
-                        {why.length > 0 && (
-                          <div className="why">
-                            <span className="label">{t("agent.gate.why")}</span>
-                            <p>{why.map((w) => reasonText(t, w)).join(" · ")}</p>
-                          </div>
-                        )}
-                        <div className="row gate-actions">
-                          <button onClick={approve}>{t("agent.approve")}</button>
-                          <button className="quiet" onClick={decline}>
-                            {t("agent.decline")}
-                          </button>
-                        </div>
-                        <p className="fine">
-                          {t("agent.gate.fine")}
-                          {policies.cancellation ? ` ${policies.cancellation}.` : ""}
-                        </p>
-                      </div>
-                    )
+                    gate
                   )
                 }
-                followUp={
-                  booking && <NextSteps booking={booking} hotel={hotel} nearby={nearby} onOpenBusiness={openBusiness} />
-                }
-                receipt={
-                  booking && (
-                    <article className="receipt">
-                      <header className="spread">
-                        <span className="status ok">{t("agent.receipt.eyebrow")}</span>
-                        <span className="mono dim">{booking.booking_id}</span>
-                      </header>
-                      <h3>{booking.business}</h3>
-                      <dl className="facts">
-                        <div>
-                          <dt>{t("agent.fact.room")}</dt>
-                          <dd>{booking.unit_name}</dd>
-                        </div>
-                        <div>
-                          <dt>{t("agent.fact.dates")}</dt>
-                          <dd>{stay(booking.check_in, booking.check_out, intl)}</dd>
-                        </div>
-                        <div>
-                          <dt>{t("agent.fact.total")}</dt>
-                          <dd>{chf(booking.total_chf, intl)}</dd>
-                        </div>
-                      </dl>
-                      <p className="dim small">
-                        {booking.payment}. {booking.cancellation}
-                      </p>
-                      <div className="signature">
-                        <span className="label">{t("agent.receipt.signature")}</span>
-                        <code>{booking.receipt}</code>
-                      </div>
-                      <div className="review">
-                        <span className="label">{t("agent.review.title")}</span>
-                        <div className="stars" role="radiogroup" aria-label={t("agent.review.rating")}>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <button
-                              key={n}
-                              role="radio"
-                              aria-checked={rating === n}
-                              aria-label={String(n)}
-                              className={n <= rating ? "on" : ""}
-                              onClick={() => setRating(n)}
-                            >
-                              ★
-                            </button>
-                          ))}
-                        </div>
-                        <div className="row">
-                          <input value={reviewText} onChange={(e) => setReviewText(e.target.value)} className="field" />
-                          <button className="ghost" onClick={leaveReview} disabled={!reviewText.trim()}>
-                            {t("agent.review.send")}
-                          </button>
-                        </div>
-                        {reviewed && <p className="dim small">{reviewed}</p>}
-                      </div>
-                    </article>
-                  )
-                }
+                followUp={followUp}
+                receipt={receipt}
               />
               {scene && details && <JourneyLog events={log} />}
             </div>

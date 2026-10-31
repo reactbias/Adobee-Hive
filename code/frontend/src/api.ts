@@ -521,10 +521,22 @@ export interface DirectoryHub {
   name: string;
   description: string;
   admission?: string;
-  accepting?: boolean;
+  /** Three states: true, false, and null for "we have not asked". Null is never rendered as "not accepting". */
+  accepting?: boolean | null;
   verification?: string;
-  entities?: number;
+  /** null means the peer has not published a count. Never shown as 0: zero is a claim we do not have. */
+  entities?: number | null;
   apply_at?: string;
+  /** True once the peer has answered at least once, so its name and description are its own words. */
+  known?: boolean;
+  /** ISO 8601 UTC of the last ask, successful or not. null means genuinely never asked. */
+  last_asked?: string | null;
+  /** Whether that last ask was answered. null alongside a null `last_asked`. */
+  last_asked_ok?: boolean | null;
+  /** When the answer being shown arrived, which differs from `last_asked` once an ask has failed. */
+  last_answered?: string | null;
+  /** The last ask failed, so what is shown is an older answer rather than the current one. */
+  stale?: boolean;
   error: number | null;
   error_stars: number | null;
   evidence: number;
@@ -533,6 +545,10 @@ export interface DirectoryHub {
 }
 export interface Directory {
   hubs: DirectoryHub[];
+  /** Seconds between rounds of asking the peers, so a row can explain why a count is two minutes old. */
+  asked_every_seconds?: number;
+  /** Scored introductions a verdict needs, so "unproven" can say how far off it is. */
+  min_evidence?: number;
 }
 
 /** A peer and how closely its published ratings matched what our people found. Lower `error` is better. */
@@ -567,6 +583,64 @@ export interface SettingsField {
 export interface AdminSettings {
   fields: SettingsField[];
   calibration: { lower_is_better: boolean; help: string; min_evidence: number; half_life_days: number };
+}
+/** One row of the hub's entity list. Every field is on the public card too; the list is the operator's view. */
+export interface AdminEntity {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  /** False for a card compiled from public information: a lead, never a business that agreed. */
+  claimed: boolean;
+  /** Null until a signed receipt earns one. Zero would read as a bad business, not a new one. */
+  rating: number | null;
+  rating_count: number;
+  published_at: string | null;
+  version: number | null;
+  signature_valid: boolean;
+  bookable: boolean;
+}
+export interface AdminEntities {
+  entities: AdminEntity[];
+  count: number;
+}
+/** One side of the market an entity is indexed by: what it offers, or what it needs. */
+export interface AdminSide {
+  title?: string;
+  summary?: string;
+  tags?: string[];
+  sharing?: string;
+  [key: string]: unknown;
+}
+/** One contact channel with the sharing flag that actually applies: the stricter of two. */
+export interface AdminContactRow {
+  channel: string;
+  value: string;
+  sharing: string;
+  searchable: boolean;
+}
+/** One entity in full, as the operator deciding what to do about it needs to see it. */
+export interface AdminEntityDetail {
+  entity: AdminEntity;
+  card: Card;
+  offers: AdminSide[];
+  needs: AdminSide[];
+  contact: AdminContactRow[];
+  contact_sharing: Record<string, string>;
+  sharing_default: string;
+  trust: Trust;
+  signature: {
+    valid: boolean;
+    signature: string;
+    public_key: string;
+    algorithm: string;
+    fresh: boolean;
+    valid_until: string | null;
+    version: number | null;
+  };
+  /** Blocked is not the same as removed: blocking refuses it wherever it comes from. */
+  blocked: boolean;
+  block: BlockEntry | null;
 }
 export interface AdminNeighbours {
   peers: Peer[];
@@ -644,6 +718,11 @@ export const api = {
   adminOverview: () => call<AdminOverview>("/api/admin/overview"),
   adminSettings: () => call<AdminSettings>("/api/admin/settings"),
   adminNeighbours: () => call<AdminNeighbours>("/api/admin/neighbours"),
+  /** What this hub carries. Behind the admin token: the whole membership in one call is an operator's view. */
+  adminEntities: () => call<AdminEntities>("/api/admin/entities", { headers: adminHeaders() }),
+  /** One entity in full: the signed card, its offers and needs, contact flags, trust and signature. */
+  adminEntity: (id: string) =>
+    call<AdminEntityDetail>(`/api/admin/entities/${encodeURIComponent(id)}`, { headers: adminHeaders() }),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

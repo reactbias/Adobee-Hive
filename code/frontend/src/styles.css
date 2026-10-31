@@ -910,6 +910,10 @@ th.end {
   all: unset;
   cursor: pointer;
 }
+/* The row paints the hover; the name keeps clear of button:hover's dark fill. */
+.card-row h3 button:hover:not(:disabled) {
+  background: none;
+}
 .card-row h3 button::after {
   content: "";
   position: absolute;
@@ -931,8 +935,27 @@ th.end {
   margin: 0;
   white-space: nowrap;
 }
+.card-row .card-from {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.card-row .card-rating .status {
+  margin-right: var(--s3);
+}
 .card-body {
   padding: 0 var(--s4) var(--s4);
+}
+/* How far the search went, and what the other hubs did: quiet lines above the results, never a banner. */
+.reach-notes {
+  margin: 0 0 var(--s3);
+  padding: 0 var(--s4);
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.reach-notes p {
+  margin: 0;
 }
 .card-hit.open .card-row .card-tagline {
   white-space: normal;
@@ -1134,6 +1157,15 @@ th.end {
   border-radius: 24px;
   background: var(--surface);
   box-shadow: var(--lift);
+  transition:
+    border-color 0.2s var(--ease),
+    box-shadow 0.2s var(--ease);
+}
+.search-top .composer.bar:focus-within {
+  border-color: var(--clay);
+  box-shadow:
+    var(--lift),
+    0 0 0 4px rgba(162, 79, 44, 0.12);
 }
 .search-top .composer.bar label {
   position: absolute;
@@ -1166,10 +1198,24 @@ th.end {
 .search-top .composer.bar .composer-bar {
   margin: 0;
 }
+/* The label and its chips on one line, set off from the bar above. */
+.search-top .examples {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin-top: var(--s4);
+  padding: 0 var(--s2);
+}
+.search-top .examples .eyebrow {
+  flex: none;
+  color: var(--ink-3);
+}
 .search-top .examples .rows {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
+  margin: 0;
+  min-width: 0;
 }
 .search-top .examples .rows li {
   padding: 0;
@@ -1178,11 +1224,51 @@ th.end {
 }
 .search-top .examples .example {
   width: auto;
-  max-width: 36rem;
+  max-width: 26rem;
   margin: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--t-sm);
+  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition:
+    color 0.2s var(--ease),
+    border-color 0.2s var(--ease),
+    background 0.2s var(--ease),
+    transform 0.2s var(--ease);
+}
+@media (pointer: coarse), (max-width: 1000px) {
+  .search-top .examples .example {
+    padding-block: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .search-top .examples {
+    flex-direction: column;
+    gap: var(--s2);
+  }
+}
+.search-top .reach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}
+.search-top .reach .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.reach-steps {
+  flex-wrap: wrap;
+  row-gap: var(--s2);
+}
+.reach-steps button.tab {
+  white-space: normal;
 }
 .search-top .error {
   margin: var(--s3) 0 0;
@@ -1215,6 +1301,7 @@ th.end {
 }
 .result-head {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--s4);
@@ -1555,6 +1642,16 @@ button.mic.blocked {
 .example:focus-visible {
   outline: 2px solid var(--clay-glow);
   outline-offset: 4px;
+}
+.search-top .examples .example:hover:not(:disabled) {
+  border-color: var(--clay);
+  background: var(--clay-tint);
+  color: var(--clay-dark);
+  transform: translateY(-1px);
+}
+.search-top .examples .example:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .stage {
@@ -2033,17 +2130,15 @@ button.mic.blocked {
 }
 .signature code {
   display: block;
-  font-size: var(--t-xs);
-  line-height: 1.6;
-  color: var(--ink-2);
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--ink-3);
   background: var(--sunk);
-  border-radius: 8px;
-  padding: var(--s3);
-  word-break: break-all;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  border-radius: 6px;
+  padding: var(--s1) var(--s2);
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .review {
   border-top: 1px solid var(--line);
@@ -3301,6 +3396,11 @@ button.self-start {
 .admin-fields li,
 .rows.tight li {
   align-items: flex-start;
+}
+/* An Ed25519 public key is one unbroken base64 word. Let it wrap rather than widen the page. */
+.key-line {
+  overflow-wrap: anywhere;
+  color: var(--ink-3);
 }
 
 @media (max-width: 480px) {

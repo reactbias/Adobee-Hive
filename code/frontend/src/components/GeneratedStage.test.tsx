@@ -1,9 +1,9 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
-import { sceneFor, sceneFromDiscovery } from "../lib/cardView";
-import GeneratedStage from "./GeneratedStage";
+import { sceneFor, sceneFromDiscovery, type Scene } from "../lib/cardView";
+import GeneratedStage, { type Deal } from "./GeneratedStage";
 
 const beat = () =>
   act(() => {
@@ -131,55 +131,168 @@ describe("generated card", () => {
     expect(screen.queryByText("version")).not.toBeInTheDocument();
   });
 
-  it("goes on after the yes: the next steps, then the rating, then the score the person gave", () => {
-    vi.useFakeTimers();
-    const onDetails = vi.fn();
-    const scene = sceneFor(en["agent.example.1"]);
-    render(
+  describe("the yes, from the agent's own data", () => {
+    const scene = () => sceneFor(en["agent.example.1"])!;
+    const KRAFFT = scene().hits[0].card.id;
+    const deal = (over: Partial<Deal> = {}): Deal => ({ working: false, onAsk: () => {}, ...over });
+    const draw = (d: Deal, onDetails = () => {}) => (
       <I18nProvider>
-        <GeneratedStage scene={scene!} onDetails={onDetails} />
-      </I18nProvider>,
+        <GeneratedStage scene={scene()} onDetails={onDetails} deal={d} />
+      </I18nProvider>
     );
-    open("Hotel Krafft Basel");
-    beat();
-    fireEvent.click(screen.getByRole("button", { name: /Room reservation/ }));
-    for (let i = 0; i < 6 && !screen.queryByRole("button", { name: en["card.yes"] }); i += 1) beat();
+    const pickRoom = () => {
+      open("Hotel Krafft Basel");
+      fireEvent.click(screen.getByRole("button", { name: /Room reservation/ }));
+    };
+    afterEach(() => {
+      window.matchMedia = undefined as never;
+    });
+    const still = () => (window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never);
 
-    fireEvent.click(screen.getByRole("button", { name: en["card.yes"] }));
-    expect(screen.queryByText(en["card.yes.done"])).not.toBeInTheDocument();
-    beat();
-    expect(screen.getByText(en["card.yes.done"])).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: en["card.next.agent"] })).not.toBeInTheDocument();
+    it("hands the yes to the agent, and books nothing itself", () => {
+      still();
+      const onAsk = vi.fn();
+      render(draw(deal({ onAsk })));
+      pickRoom();
 
-    beat();
-    expect(screen.getByText(en["card.next.title"])).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: en["card.next.agent"] }));
-    expect(onDetails).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("radiogroup", { name: en["card.rate.ask"] })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: en["card.yes"] }));
+      expect(onAsk).toHaveBeenCalledTimes(1);
+    });
 
-    beat();
-    fireEvent.click(screen.getByRole("radio", { name: "4" }));
-    expect(screen.queryByText("4.0 / 5")).not.toBeInTheDocument();
-    beat();
-    expect(screen.getByText("4.0 / 5")).toBeInTheDocument();
-    expect(screen.getByText(en["card.rate.yours"])).toBeInTheDocument();
+    it("says the agent is checking while it works", () => {
+      still();
+      render(draw(deal({ working: true })));
+      pickRoom();
+
+      expect(screen.getByText(en["card.asking"].replace("{name}", "Hotel Krafft Basel"))).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+    });
+
+    it("shows the agent's own question under the card it holds, and marks the row", () => {
+      still();
+      render(draw(deal({ heldFor: KRAFFT, gate: <h3>Approve the River room?</h3> })));
+      expect(screen.getByText(en["card.status.held"])).toBeInTheDocument();
+      pickRoom();
+
+      expect(screen.getByRole("heading", { name: "Approve the River room?" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+    });
+
+    it("names the card the agent holds when it is another, and opens Details from there", () => {
+      still();
+      const onDetails = vi.fn();
+      render(draw(deal({ heldFor: "hotel-rheinblick", heldName: "Hotel Rheinblick" }), onDetails));
+      pickRoom();
+
+      expect(screen.getByText(en["card.held.other"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+      fireEvent.click(screen.getAllByRole("button", { name: en["card.details"] }).at(-1)!);
+      expect(onDetails).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows what the agent answered when it held nothing", () => {
+      still();
+      render(draw(deal({ answer: "Nothing fits those dates." })));
+      pickRoom();
+
+      expect(screen.getByText("Nothing fits those dates.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+    });
+
+    it("shows the signed receipt under the booked card, and marks the row booked", () => {
+      still();
+      render(draw(deal({ bookedFor: KRAFFT, receipt: <p>Receipt bk_123</p> })));
+      expect(screen.getByText(en["card.status.booked"])).toBeInTheDocument();
+      pickRoom();
+
+      expect(screen.getByText("Receipt bk_123")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+    });
+
+    it("steps back from a no to the other offerings", () => {
+      still();
+      render(draw(deal()));
+      pickRoom();
+
+      fireEvent.click(screen.getByRole("button", { name: en["agent.decline"] }));
+      expect(screen.getByRole("button", { name: /Room reservation/ })).toHaveAttribute("aria-pressed", "false");
+      expect(screen.queryByRole("button", { name: en["card.yes"] })).not.toBeInTheDocument();
+    });
+  });
+});
+
+// Where an answer came from: a result from another hub says so under its name, a local one says nothing extra,
+// and a hub that did not answer or a copy that was refused is shown rather than swallowed.
+describe("results from other hubs", () => {
+  afterEach(() => {
+    window.matchMedia = undefined as never;
   });
 
-  it("lets the person step back from a yes to the other offerings", () => {
+  function stage(federation: Scene["federation"], hops = 1) {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
-    const scene = sceneFor(en["agent.example.1"]);
+    const scene = sceneFromDiscovery(
+      "quiet hotel",
+      [
+        { id: "limmat", hops, provenance: { path: ["zurich", "basel"], origin: "zurich" } },
+        { id: "rhein", hops: 0 },
+      ],
+      {
+        limmat: hubCard("limmat", "Pension Limmat", "Quiet rooms on the Limmat"),
+        rhein: hubCard("rhein", "Hotel Rheinblick", "Quiet rooms over the Rhine"),
+      },
+    )!;
     render(
       <I18nProvider>
-        <GeneratedStage scene={scene!} onDetails={() => {}} />
+        <GeneratedStage scene={{ ...scene, federation }} onDetails={() => {}} />
       </I18nProvider>,
     );
-    open("Hotel Krafft Basel");
-    fireEvent.click(screen.getByRole("button", { name: /Room reservation/ }));
-    fireEvent.click(screen.getByRole("button", { name: en["card.yes"] }));
+  }
 
-    fireEvent.click(screen.getByRole("button", { name: en["card.next.other"] }));
-    expect(screen.queryByText(en["card.yes.done"])).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Room reservation/ })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: /Small event on the Rhine terrace/ })).toBeInTheDocument();
+  const zurich = { radius: 1, asked: [{ hub: "zurich", name: "Hive Zürich" }], dropped: [], rejected: [] };
+
+  it("names the hub and the distance for a result that travelled, and nothing for a local one", () => {
+    stage(zurich);
+    const rows = screen.getAllByRole("article");
+    expect(rows[0]).toHaveTextContent("from Hive Zürich, 1 hop away");
+    expect(rows[1]).not.toHaveTextContent(/hop/);
+    // The hub's order stands: distance is already in its score.
+    expect(rows[0]).toHaveTextContent("Pension Limmat");
+  });
+
+  it("says hops past one", () => {
+    stage(zurich, 2);
+    expect(screen.getByText("from Hive Zürich, 2 hops away")).toBeInTheDocument();
+  });
+
+  it("counts the hubs it asked, and says so plainly when there were none", () => {
+    stage(zurich);
+    expect(screen.getByText("1 Hive asked")).toBeInTheDocument();
+    cleanup();
+
+    stage({ radius: 1, asked: [], dropped: [], rejected: [] }, 0);
+    expect(screen.getByText(en["reach.none"])).toBeInTheDocument();
+    expect(screen.queryByText(/Hives? asked/)).not.toBeInTheDocument();
+  });
+
+  it("shows a hub that did not answer, and a copy that did not match what the owner signed", () => {
+    stage({
+      ...zurich,
+      dropped: [
+        { hub: "zurich", reason: "deadline exceeded: 12 ms left for this hop" },
+        { hub: "geneva", reason: "no key registry: its cards could not be verified here" },
+      ],
+      rejected: [{ hub: "zurich", card_id: "hotel-liar", reason: "this copy does not match what the owner signed" }],
+    });
+    expect(screen.getByText("Hive Zürich did not answer in time")).toBeInTheDocument();
+    expect(
+      screen.getByText("geneva was left out: no key registry: its cards could not be verified here"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("A copy from Hive Zürich did not match what the owner signed")).toBeInTheDocument();
+  });
+
+  it("says nothing about other hubs when the person searched this one only", () => {
+    stage(undefined, 0);
+    expect(screen.queryByText(en["reach.none"])).not.toBeInTheDocument();
+    expect(screen.queryByText(/asked/)).not.toBeInTheDocument();
   });
 });

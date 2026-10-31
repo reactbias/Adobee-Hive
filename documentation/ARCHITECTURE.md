@@ -57,6 +57,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
+| `components/Reach.tsx`, `lib/hubScene.ts` | How far a search goes (this Hive, nearby Hives, further: discover radius 0, 1 or 3) and the live search that draws the result cards, each saying which hub it came from and how many hops away, with any hub that did not answer or copy that was refused |
 | `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB, and the hotel's side further down. None of them books or pays |
 | `components/Icon.tsx`, `components/Display.tsx` | Our icon set; headlines with one italic phrase |
 | `panels/` | The parts of chapters 2 and 3, one file each; see [The page](#the-page) |
@@ -85,7 +86,8 @@ Two screens sit beside that story rather than inside it, because neither belongs
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the entity list (`EntitiesPanel.tsx`), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `EntitiesPanel.tsx` | `?admin` only (`#admin`, Entities tab) | What this hub carries, as a list an operator can scan: id, name, kind, claimed or unclaimed, rating and count, when it was published. Open one and the detail view shows the whole signed card, its offers and needs, every contact channel with the sharing flag that actually applies, the trust block, the signature and the key it was checked against, and whether this hub has blocked it |
 | `NetworkPanel.tsx` | after 2, always (`#network`) | The live node view of the hub network: this hub in the centre of a honeycomb, each configured peer a cell around it with an edge coloured by its calibration, a blocked peer still drawn and visibly cut. Four counts above it, the same hubs as rows below, and the rows alone on a phone. Open to anyone, built from `GET /api/admin/overview` and `/api/admin/neighbours`, with names and entity counts from `/api/hub/directory` where it is deployed; a hub we have not asked reads as unknown, never as zero. Polls every 10 s, only while on screen |
 | `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use, instances.social style: what each hub carries, whether it is accepting members, its admission policy, how many entities, and how closely its published ratings matched what people found. Deliberately a plain first pass, and it says so on screen. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
@@ -147,6 +149,8 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
 | `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
 | `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
+| `GET /api/admin/entities` | Every entity this hub carries: id, name, kind, claimed, rating and count, published at | `X-Admin-Token`, fails closed |
+| `GET /api/admin/entities/{entity_id}` | One entity in full: the signed card, its offers and needs, contact with the sharing flag that applies to each channel, its trust block, its signature state, and whether it is blocked | `X-Admin-Token`, fails closed |
 | `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |

@@ -108,7 +108,7 @@ export default function Composer({
           <ul className="rows compact">
             {examples.map((text) => (
               <li key={text}>
-                <button className="example" onClick={() => send(text)} disabled={busy}>
+                <button className="example" title={text} onClick={() => send(text)} disabled={busy}>
                   {text}
                 </button>
               </li>
