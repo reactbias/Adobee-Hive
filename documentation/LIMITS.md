@@ -61,6 +61,20 @@ introductions, and a score only exists after a person has gone to a real meeting
 On a fresh hub every peer therefore reads **unproven**, which is honest and is also most of what the directory
 shows.
 
+## The folder link
+
+**It links two folders on one disk.** `app/folders.py` is the step between the index and the booking, and it is
+real: a link is handle to handle and carries no content, a linked peer sees the `shared` files the Card never
+mentioned, a grant is per path, and `private` and `hidden` paths are counted and never named — not in a manifest,
+not in a refusal. What it is not is two machines. The only implementation today is `LocalFolderLink`, which links
+the folders in [`testdata/vaults/`](../testdata/README.md) inside this process with its links and grants in
+DuckDB, so no key is exchanged and nothing is encrypted. `FOLDER_LINK=claudeconnect` is accepted and falls back to
+local with the reason in `GET /api/health`, because the adapter for the real library is not built yet.
+
+**Nothing drives it yet.** There is no `/api/folders/*` surface, and no caller inside the hub: a link and a grant
+can only be made from Python. The booking path starts requiring a link in the change after this one, and the
+endpoints a panel would need are proposed in issue #116.
+
 ## Running a hub
 
 **One shared password, no audit trail.** `ADMIN_PASSWORD` is a single secret for the whole hub, like the owner
