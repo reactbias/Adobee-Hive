@@ -970,7 +970,8 @@ Adobee Hive · three vaults as plain files
 
 Options: `--port` (default `8600`), `--host` (default `127.0.0.1`; `0.0.0.0` to reach it from
 another device), `--vault NAME` (repeatable, any folder in `testdata/vaults/`), `--strict`,
-`--list` (print and exit). Standard-library HTTP server, GET and HEAD only, no writes.
+`--list` (print and exit). Standard-library HTTP server, GET and HEAD only; `POST`, `PUT` and
+`DELETE` answer `501` and nothing is ever written.
 
 ### Why these three
 

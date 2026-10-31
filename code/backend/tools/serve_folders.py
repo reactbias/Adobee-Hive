@@ -205,7 +205,7 @@ def vault_page(vault: Vault) -> bytes:
 
 
 class Handler(BaseHTTPRequestHandler):
-    """Read-only GET/HEAD over the allowlist. Anything else is 404 or 405."""
+    """Read-only GET and HEAD over the allowlist. Any other method answers 501, nothing is written."""
 
     server_version = "AdobeeHiveVaults/1"
     vaults: dict[str, Vault] = {}
