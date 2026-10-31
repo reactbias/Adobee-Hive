@@ -31,7 +31,7 @@ open a `task` issue that links the photo, then a branch.
 | [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): A2A, A2H, H2A, H2H | Agent-to-agent stage, human approval, second opinion | Opt-in outreach from a hotel's agent to a traveller's agent (Agents) |
 | [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): centralised vs federated | `HIVE_MCP_URLS`, each Hive publishes its key registry | A second Hive in the demo, owner-held keys (Hive core) |
 | [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): what a personal agent knows about its human | Request parsing in four languages | A traveller profile the human controls, never stored by the Hive (Agents) |
-| [whiteboard-5](assets/whiteboard/whiteboard-5.jpg): S1 to S6, DuckDB, LLM data protection | DuckDB with S3 snapshots; no free text in logs; `store=false` | Retention limits for bookings and events (Hive core) |
+| [whiteboard-5](assets/whiteboard/whiteboard-5.jpg): S1 to S6, DuckDB, LLM data protection | DuckDB with a Postgres snapshot; no free text in logs; `store=false` | Retention limits for bookings and events (Hive core) |
 
 ## Add a use case
 

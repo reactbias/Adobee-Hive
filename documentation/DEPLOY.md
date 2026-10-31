@@ -63,6 +63,7 @@ Browser only, no local terminal. Every push to `main` redeploys both parts.
 | Frontend | GitHub Pages, `https://<owner>.github.io/<repo>/` | Push to `main` under `code/frontend/` | `.github/workflows/deploy-frontend-pages.yml` |
 | Backend | Render free web service from `code/backend/Dockerfile` | Render watches `main` | `render.yaml` |
 | LLM key | `OPENAI_API_KEY`, entered in the Render dashboard only | Set once | Never in the repo |
+| Data | Render free Postgres `adobee-hive-db`, `DATABASE_URL` wired in by the Blueprint | Created with the Blueprint | `render.yaml` |
 | Keep-warm | Health ping every 10 minutes | GitHub Actions cron | `.github/workflows/keep-backend-warm.yml` |
 
 One-time setup, about 10 minutes:
@@ -79,8 +80,15 @@ Things to know about the free tier:
 - **Cold start.** A free Render service sleeps after 15 idle minutes and needs about a minute to wake. The
   keep-warm workflow pings `/api/health` every 10 minutes while `BACKEND_URL` is set (GitHub may delay scheduled
   runs by a few minutes). Delete the workflow or the variable after the event.
-- **Data resets.** The free disk is ephemeral: each deploy or restart starts from the seed data, so bookings and
-  owner edits made during the demo are lost on the next push to `main`.
+- **Data persists in Postgres.** The free disk is ephemeral, so with `DATABASE_URL` set the backend keeps the
+  DuckDB file as one snapshot row in Postgres: restored on boot, saved in the background after every write (bursts
+  coalesce into one save, the last one is flushed on shutdown). Without `DATABASE_URL` each deploy starts from the
+  seed. If Postgres is unreachable at boot the backend logs it, runs on the seed and does not save until the next
+  deploy, so the real snapshot is never overwritten. `/api/demo/reset` still wipes everything, including the snapshot.
+  A free Render Postgres expires 30 days after creation; Neon or Supabase work the same way via `DATABASE_URL`.
+- **Postgres missing?** If the service was created by hand rather than from the Blueprint: Render *New* >
+  *Postgres*, plan *Free*, region *Frankfurt*; then copy its *Internal Database URL* into the web service's
+  *Environment* as `DATABASE_URL` and save (Render redeploys).
 - **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that (assets and
   images load from it), and `404.html` is a copy of `index.html` so old links like `/agent` still load the one page.
 

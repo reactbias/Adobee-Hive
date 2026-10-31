@@ -70,6 +70,7 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `OWNER_EDIT_TOKEN`, `DEMO_RESET_TOKEN` | empty | When set, owner edits need `X-Owner-Token` and a reset needs `X-Demo-Token`. Leave empty locally |
 | `HIVE_MCP_URLS` | empty | Comma-separated MCP URLs of other Hives the agent searches too |
 | `DUCKDB_PATH` | `code/backend/data/abh.duckdb` | Where the data lives |
+| `DATABASE_URL` | empty | Optional Postgres: the DuckDB file is restored from it on boot and saved after each write, so data survives redeploys |
 
 **Without a key nothing breaks.** A scripted planner walks the same MCP tools in English, German, French and Italian,
 owner edits understand simple phrases ("add sauna", "remove parking", room prices), a rule check gives the second
@@ -243,8 +244,9 @@ Nothing to run by hand: every merge to `main` deploys.
 | Frontend | https://reactbias.github.io/Adobee-Hive/ | GitHub Actions, *Deploy frontend (GitHub Pages)*; the repo variable `VITE_API_URL` points it at the backend |
 | Backend | https://adobee-hive.onrender.com | Render builds `code/backend/Dockerfile` from `render.yaml`; the key and tokens are set in the Render dashboard |
 
-Render's free tier sleeps after 15 idle minutes (a keep-warm workflow pings it) and has no lasting disk: **each
-deploy starts from the seed data**, so demo bookings and owner edits are gone after the next merge. Don't merge in
+Render's free tier sleeps after 15 idle minutes (a keep-warm workflow pings it) and has no lasting disk, so the
+backend keeps its data as a snapshot in a free Render Postgres (`DATABASE_URL`): bookings and owner edits survive a
+merge. Without `DATABASE_URL` (local runs, tests) nothing changes: the local DuckDB file only. Don't merge in
 the last 15 minutes before a demo. Setup, settings and costs: [DEPLOY.md](DEPLOY.md).
 
 ## Ship a change
