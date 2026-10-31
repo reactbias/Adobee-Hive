@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
-import { api, type DemandMap as Demand } from "../api";
+import { api, type DemandMap } from "../api";
 import Display from "../components/Display";
 import { useI18n } from "../i18n";
 
 // The twist: agents' unmet requests tell a city's small businesses what to become.
-export default function DemandMap() {
+export default function DemandPanel() {
   const { t } = useI18n();
-  const [demand, setDemand] = useState<Demand | null>(null);
+  const [demand, setDemand] = useState<DemandMap | null>(null);
   const [busy, setBusy] = useState(false);
   const [simulated, setSimulated] = useState(0);
 
   useEffect(() => {
-    api.demand().then(setDemand);
+    api
+      .demand()
+      .then(setDemand)
+      .catch(() => setDemand(null));
   }, []);
 
   async function simulate() {
@@ -24,11 +27,10 @@ export default function DemandMap() {
   const max = Math.max(1, ...(demand?.features.map((f) => f.asked) ?? []));
   return (
     <div className="stack loose">
-      <header className="page-head">
-        <span className="eyebrow">{t("demand.eyebrow")}</span>
-        <h1>
+      <header className="stack">
+        <h3>
           <Display text={t("demand.title")} />
-        </h1>
+        </h3>
         <p className="lead">{t("demand.lead")}</p>
         <div className="row">
           <button onClick={simulate} disabled={busy}>

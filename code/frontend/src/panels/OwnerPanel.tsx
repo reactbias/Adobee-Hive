@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
 import TrustBadge from "../components/TrustBadge";
 import Display from "../components/Display";
@@ -36,10 +35,11 @@ function summarise(p: Proposal, t: T, intl: string): string {
     .join(" · ");
 }
 
-export default function OwnerStudio() {
+/** The owner's side of the same card: plain-language edits, signed and published, and the demand they missed. */
+export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?: string }) {
   const { t, intl } = useI18n();
   const [cards, setCards] = useState<Card[]>([]);
-  const [cardId, setCardId] = useState("hotel-rheinblick");
+  const [cardId, setCardId] = useState(initial);
   const [overview, setOverview] = useState<OwnerOverview | null>(null);
   const [instruction, setInstruction] = useSample(["owner.sample"]);
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -103,13 +103,12 @@ export default function OwnerStudio() {
   const week = overview ? Object.keys(WEEK_LABELS).map((k) => [k, overview.last_7_days[k] ?? 0] as const) : [];
 
   return (
-    <div className="studio">
-      <header className="page-head studio-head">
+    <div className="stack loose">
+      <header className="panel-head">
         <div className="stack">
-          <span className="eyebrow">{t("owner.eyebrow")}</span>
-          <h1>
+          <h3>
             <Display text={t("owner.title")} />
-          </h1>
+          </h3>
           <p className="lead">{t("owner.lead")}</p>
         </div>
         <div className="picker">
@@ -278,9 +277,6 @@ export default function OwnerStudio() {
             </div>
             <TrustBadge trust={card.trust} />
             <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
-            <Link className="btn quiet arrow self-start" to={`/card/${card.slug}`}>
-              {t("owner.agents.human")}
-            </Link>
           </section>
           <section className="panel stack">
             <h3>{t("owner.bookings.title")}</h3>

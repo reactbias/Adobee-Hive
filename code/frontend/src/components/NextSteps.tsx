@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import type { Booking, Card } from "../api";
 import { useI18n } from "../i18n";
 import { metres, stay } from "../lib/format";
@@ -6,7 +5,8 @@ import { icsEvent } from "../lib/next";
 import Icon from "./Icon";
 
 // What the agent offers once the stay is booked. Every tile does one visible thing on the guest's side (a calendar
-// file, a signed card, a map) and none of them books or pays, so the only consent on the page stays the Approve.
+// file, a signed card further down the page, a map) and none of them books or pays, so the only consent on the page
+// stays the Approve.
 
 const STATION = "basel sbb";
 
@@ -23,11 +23,14 @@ export default function NextSteps({
   booking,
   hotel,
   nearby,
+  onOpenCard,
 }: {
   booking: Booking;
   /** The booked business's signed card, for its address and distances. */
   hotel?: Card | null;
   nearby?: { card: Card; shared?: string } | null;
+  /** Show a card on this page, under the chat. */
+  onOpenCard: (slug: string) => void;
 }) {
   const { t, intl } = useI18n();
   const walk = hotel?.distances_m?.[STATION];
@@ -62,9 +65,9 @@ export default function NextSteps({
                 {nearby.card.policies?.reservations ? `. ${nearby.card.policies.reservations}.` : ""}
               </span>
             </div>
-            <Link className="quiet" to={`/card/${nearby.card.slug}`}>
+            <button className="quiet" onClick={() => onOpenCard(nearby.card.slug)}>
               {t("next.coffee.cta")}
-            </Link>
+            </button>
           </li>
         )}
         {route && (

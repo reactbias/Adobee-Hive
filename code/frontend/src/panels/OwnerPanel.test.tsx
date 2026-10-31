@@ -1,12 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type Card, type OwnerOverview, type Proposal } from "../api";
 import { I18nProvider } from "../i18n";
 import de from "../i18n/de";
 import it_ from "../i18n/it";
-import OwnerStudio from "./OwnerStudio";
+import OwnerPanel from "./OwnerPanel";
 
 // The owner studio speaks the page's language even offline: the Use button writes a command in that language and the
 // offline summary is worded from items, not from the backend's English sentence. api.ts is mocked.
@@ -51,9 +50,7 @@ function setup(locale: string) {
   vi.spyOn(api, "owner").mockResolvedValue(OVERVIEW);
   render(
     <I18nProvider>
-      <MemoryRouter>
-        <OwnerStudio />
-      </MemoryRouter>
+      <OwnerPanel />
     </I18nProvider>,
   );
   return userEvent.setup();

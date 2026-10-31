@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { api, MOODS, type AskItem, type AskResult, type Handoff, type Mood } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -9,7 +8,7 @@ const EXAMPLES: Key[] = ["ask.ex1", "ask.ex2", "ask.ex3", "ask.ex4"];
 
 // Ask any question about the example businesses. The mood is the person's own, visible setting: it is sent with the
 // question and echoed back with its effects, and nothing here guesses it.
-export default function AskHive() {
+export default function AskPanel() {
   const { t, intl } = useI18n();
   const [question, setQuestion] = useState("");
   const [mood, setMood] = useState<Mood | null>(null);
@@ -51,11 +50,10 @@ export default function AskHive() {
         : t("ask.per", { price: money(i.price.amount, i.price.currency, intl), per: i.price.per });
 
   return (
-    <div className="agent">
-      <section className="brief">
-        <header className="page-head">
-          <span className="eyebrow">{t("ask.eyebrow")}</span>
-          <h1>{t("ask.title")}</h1>
+    <div className="grid split ask">
+      <section className="stack loose">
+        <header className="stack">
+          <h3>{t("ask.title")}</h3>
           <p className="lead">{t("ask.lead")}</p>
         </header>
 
@@ -148,9 +146,7 @@ export default function AskHive() {
                     {r.claimed ? t("trust.signed") : t("trust.unclaimed")}
                   </span>
                 </div>
-                <h3>
-                  <Link to={`/card/${r.slug}`}>{r.name}</Link>
-                </h3>
+                <h3>{r.name}</h3>
                 <ol className="ask-items">
                   {r.items.map((i) => (
                     <li key={i.id}>
