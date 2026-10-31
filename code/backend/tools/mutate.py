@@ -34,6 +34,8 @@ APP = ROOT / "app"
 # mode this tool must not have. test_suite_covers_every_target in tests/test_mutation.py pins it.
 SUITE = [
     "tests/test_federation.py",
+    "tests/test_offers_needs.py",
+    "tests/test_pitch.py",
     "tests/test_reputation.py",
     "tests/test_hive.py",
     "tests/test_hub_trust.py",
@@ -109,6 +111,36 @@ CURATED: list[Mutant] = [
         "an unreviewed business reports a rating of zero instead of none earned yet",
         '"rating": trust["verified_reviews"]["average"],',
         '"rating": 0,',
+    ),
+    Mutant(
+        "hive.py",
+        "what an entity offers or needs stops counting, so the index is prose again",
+        '"offers_needs": min(30, 10 * len(side_hits)),',
+        '"offers_needs": 0,',
+    ),
+    Mutant(
+        "hive.py",
+        "looking_for is ignored, so a search for who offers a thing answers with who wants it",
+        'need_hits = _side_hits(card, "needs", terms) if looking_for in ("needs", "any") else []',
+        'need_hits = _side_hits(card, "needs", terms)',
+    ),
+    Mutant(
+        "hive.py",
+        "people are hidden from discovery again, so every developer on the hub is invisible",
+        "NOT_DISCOVERABLE: set[str] = set()",
+        'NOT_DISCOVERABLE: set[str] = {"person"}',
+    ),
+    Mutant(
+        "hive.py",
+        "missed demand is logged against a person: a record of the times they were passed over",
+        'NO_MISSED_DEMAND = {"person"}',
+        "NO_MISSED_DEMAND: set[str] = set()",
+    ),
+    Mutant(
+        "hive.py",
+        "an unclaimed card reports itself as bookable, so a lead passes for a business that agreed",
+        '"bookable": bool(card.get("units")) and trust["claimed"],',
+        '"bookable": True,',
     ),
     Mutant(
         "calibration.py",
