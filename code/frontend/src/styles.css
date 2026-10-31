@@ -1242,9 +1242,17 @@ th.end {
   color: var(--ink-2);
   font-size: var(--t-sm);
 }
-.gate .facts,
+.gate .facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .receipt .facts {
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 600px) {
+  .gate .facts,
+  .receipt .facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .gate-actions button:first-child {
   min-width: 200px;
@@ -1765,4 +1773,20 @@ button.self-start {
   .bar-value {
     text-align: left;
   }
+}
+
+/* A second agent's check of the held booking, inside the approval card */
+.opinion {
+  border-left: 2px solid var(--good);
+  padding-left: var(--s4);
+}
+.opinion.concern {
+  border-left-color: var(--bad);
+}
+.opinion p {
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.opinion .status {
+  font-weight: 500;
 }

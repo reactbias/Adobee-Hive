@@ -252,6 +252,20 @@ export default function TravellerAgent() {
                 </div>
               )}
             </dl>
+            {result?.second_opinion && (
+              <div className={`opinion ${result.second_opinion.verdict}`}>
+                <span className="label">
+                  {t("agent.opinion.from", { by: result.second_opinion.by })}
+                  {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}
+                </span>
+                <p>
+                  <span className={`status ${result.second_opinion.verdict === "agree" ? "ok" : "no"}`}>
+                    {t(result.second_opinion.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
+                  </span>{" "}
+                  {result.second_opinion.note}
+                </p>
+              </div>
+            )}
             {why.length > 0 && (
               <div className="why">
                 <span className="label">{t("agent.gate.why")}</span>
