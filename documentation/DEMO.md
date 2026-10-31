@@ -48,7 +48,7 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
 
 ## Before going on stage
 
-- `curl <backend>/api/health` says `"llm": "claude"` if the key is set.
+- `curl <backend>/api/health` says `"llm": "openai"` if the key is set.
 - On the deployed demo, open `/owner` once and enter the owner token, so the edit at beat 4 doesn't stop for it.
 - Reset to a clean Basel after the warm-up run (Gare Central back to not dog-friendly, no bookings, no demand):
   `curl -X POST -H "X-Demo-Token: $DEMO_RESET_TOKEN" <backend>/api/demo/reset`. Locally no token is needed.

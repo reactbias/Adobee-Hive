@@ -29,7 +29,37 @@ The MCP endpoint is `http://localhost:8000/mcp/` (Streamable HTTP), also listed 
 as a custom connector in Claude and ask: *"Find me a dog-friendly hotel near Basel SBB under CHF 200 for next
 weekend and book it."*
 
-## AWS: every push to `main` deploys itself
+## Free hosting: GitHub Pages + Render (the hackathon setup)
+
+Browser only, no AWS account, no local terminal. Every push to `main` redeploys both parts.
+
+| Part | Service | Trigger | Config |
+| --- | --- | --- | --- |
+| Frontend | GitHub Pages, `https://<owner>.github.io/<repo>/` | Push to `main` under `code/frontend/` | `.github/workflows/deploy-frontend-pages.yml` |
+| Backend | Render free web service from `code/backend/Dockerfile` | Render watches `main` | `render.yaml` |
+| LLM key | `OPENAI_API_KEY`, entered in the Render dashboard only | Set once | Never in the repo |
+| Keep-warm | Health ping every 10 minutes | GitHub Actions cron | `.github/workflows/keep-backend-warm.yml` |
+
+One-time setup, about 10 minutes:
+
+1. Render: *New* > *Blueprint*, connect this repo, branch `main`. Render reads `render.yaml`, asks for
+   `OPENAI_API_KEY` (paste it there, nowhere else) and generates the owner and demo tokens (find them under the
+   service's *Environment*). Copy the service URL, e.g. `https://adobee-hive.onrender.com`.
+2. GitHub repo *Settings* > *Pages*: source *GitHub Actions*.
+3. GitHub repo *Settings* > *Secrets and variables* > *Actions* > *Variables*: `VITE_API_URL` and `BACKEND_URL`,
+   both set to the Render URL (no trailing slash). Then re-run *Deploy frontend (GitHub Pages)*.
+
+Things to know about the free tier:
+
+- **Cold start.** A free Render service sleeps after 15 idle minutes and needs about a minute to wake. The
+  keep-warm workflow pings `/api/health` every 10 minutes while `BACKEND_URL` is set (GitHub may delay scheduled
+  runs by a few minutes). Delete the workflow or the variable after the event.
+- **Data resets.** The free disk is ephemeral: each deploy or restart starts from the seed data, so bookings and
+  owner edits made during the demo are lost on the next push to `main`.
+- **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that, the router uses it
+  as `basename`, and `404.html` is a copy of `index.html` so deep links like `/card/rheinblick` load.
+
+## AWS (optional, later): every push to `main` deploys itself
 
 | Part | Service | Trigger | Config |
 | --- | --- | --- | --- |

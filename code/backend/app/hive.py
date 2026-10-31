@@ -323,7 +323,9 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
-# What discovery searches when no kind is given. Other domains (people, example cards) have their own tools.
+# People are found only through their own domain's tools (domains/hr.py), never in a search for businesses.
+NOT_DISCOVERABLE = {"person"}
+# What discovery searches when no kind is given. Other domains (example cards) have their own tools.
 STAY_KINDS = ("hotel", "cafe")
 RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
 
@@ -377,6 +379,8 @@ def discover(
     matches, excluded, events = [], [], []
     cards = list_cards(kind) if kind else [c for k in STAY_KINDS for c in list_cards(k)]
     for card in cards:
+        if card["kind"] in NOT_DISCOVERABLE:
+            continue
         reasons, misses = [], []
         card_feats = {f.lower() for f in card.get("features", [])}
         missing = [f for f in features if f not in card_feats]

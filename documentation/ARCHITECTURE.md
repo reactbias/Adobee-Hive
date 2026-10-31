@@ -69,7 +69,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests). Returns ranked matches with a score breakdown, and every excluded business with why |
+| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests). Returns ranked matches with a score breakdown, and every excluded business with why. People never show up here, only through the HR tools |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
 | `hive_book` | Book a unit; returns a signed receipt |

@@ -37,7 +37,7 @@ function Nav() {
     <nav className="nav">
       <div className="nav-inner">
         <NavLink to="/" className="brand">
-          <img src="/brand/logo.svg" alt="" width={30} height={30} />
+          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
           <span>Adobee Hive</span>
         </NavLink>
         <div className="nav-links">
@@ -79,7 +79,7 @@ function Nav() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <I18nProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Nav />
         <main>
           <Routes>
