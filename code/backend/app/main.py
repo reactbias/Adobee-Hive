@@ -205,8 +205,12 @@ async def hive_discover(
     radius: int = Query(0, ge=0, le=federation.MAX_RADIUS),
     budget_ms: float = Query(federation.DEFAULT_BUDGET_MS, ge=0, le=20_000),
     seen: list[str] | None = SEEN_QUERY,
+    looking_for: str = "offers",
 ) -> dict[str, Any]:
     """Search the Hive, and with radius above 0 its peer Hives too; radius 0 is this Hive only, as before.
+
+    looking_for is which side of the market the caller is on: "offers" (the default) finds whoever provides the
+    thing asked for, "needs" whoever wants what the caller provides, "any" both.
 
     This is also how one Hive forwards a query to another: a hop passes the radius it has left, the time budget
     left and the hubs the query has already visited (seen), which is how loops in the peer graph are cut.
@@ -227,6 +231,7 @@ async def hive_discover(
         radius,
         budget_ms,
         seen,
+        looking_for,
     )
 
 

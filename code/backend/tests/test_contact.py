@@ -16,10 +16,20 @@ def test_a_search_result_carries_contact_without_fetching_the_card(client):
         assert "contact_sharing" in match, "the flags travel too, or an empty value cannot be read"
 
 
-def test_contact_survives_the_hop_to_a_peer(client):
-    """The case that matters: a remote result is the one that cannot go and fetch the card."""
+def test_contact_on_a_forwarded_result_comes_from_the_signed_card(client):
+    """The case that matters: a remote result is the one that cannot go and fetch the card.
+
+    This used to read "every signed card has a contact key", which held only while discovery was
+    gated to hotels. It is not what the promise is: kinds without contact details are discoverable
+    now (a person never has any, by design, and an unclaimed example card carries none either), and
+    the rule that matters is that the hub never *invents* one. So: whatever contact a result shows
+    is exactly what the signed card says, and an empty one means the card had nothing to show.
+    """
     forwarded = hive.discover(query="quiet", seen=["basel"])
 
+    assert forwarded["matches"], "the seed must answer this"
     for match in forwarded["matches"]:
-        assert "contact" in match
-        assert "contact" in match["card"], "the signed card carries it too, for anyone who checks"
+        assert match["contact"] == (match["card"].get("contact") or {}), match["id"]
+        assert match["contact_sharing"] == (match["card"].get("contact_sharing") or {}), match["id"]
+    carried = [m for m in forwarded["matches"] if m["contact"]]
+    assert carried, "and a business that does publish one still travels with it"

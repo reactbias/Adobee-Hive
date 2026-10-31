@@ -8,7 +8,7 @@ import openai
 import pytest
 from mcp import Client
 
-from app import agent, config, db, guard, hive, llm, owner, second_opinion, simulate
+from app import agent, config, connections, db, guard, hive, hub, llm, owner, second_opinion, sharing, simulate
 from app.domains import examples, hr
 from app.mcp_server import server
 
@@ -344,12 +344,32 @@ def test_rule_edit_keeps_the_pets_policy_in_line():
     assert removed["policies"]["pets"] == "No pets"
 
 
-def test_business_discovery_never_lists_people(client):
+def test_discovery_lists_a_person_and_still_guards_their_contact(client):
+    """The reverse of the old rule, on purpose: a hub whose developers are invisible is not a hub.
+
+    People used to be hidden from discovery (NOT_DISCOVERABLE), which also hid every developer,
+    hairdresser and consultant on the hub. `offers` and `needs` are the index now and `kind` is
+    only a filter, so a person is found like anyone else. What hiding them used to buy, and what
+    this test keeps: their contact is not handed out, reaching them waits for their yes, and no
+    `missed_demand` row is written against a person — demand is a market signal a business asked
+    for; against a person it would be a record of the times they were passed over.
+    """
     hive.publish(dict(hr.EXAMPLE_CARD))
-    found = hive.discover(features=["dog-friendly"])
-    assert "person-mira" not in {c["id"] for c in found["matches"] + found["excluded"]}
+    found = hive.discover(query="product design prototyping", kind="person")
+    mira = next(m for m in found["matches"] if m["id"] == "person-mira")
+    assert mira["signature_valid"] and mira["bookable"] is False
+
+    # Consent, unchanged: a person card carries no contact details at all (domains/hr.py), the
+    # result cannot invent any, and an introduction has to be asked for and waits for the person.
+    assert mira["contact"] == {} and "contact" not in hive.get_card("person-mira")
+    assert sharing.resolve(hive.get_card("person-mira").get("sharing"), None) == sharing.CONFIRM
+    assert hub.connect("acme", "person-mira")["state"] == connections.REQUESTED  # not open, asked
+    assert hr.request_intro("person-mira", "Acme", "Can we talk?")["status"] == "pending_consent"
+
+    # And nothing is logged against them when they do not fit: no missed_demand for a person.
+    turned_away = hive.discover(features=["dog-friendly"])
+    assert any(e["id"] == "person-mira" for e in turned_away["excluded"]), "said so in the open"
     assert not any(m["detail"] for m in client.get("/api/owner/person-mira").json()["missed_demand"])
-    assert hive.discover(kind="person")["matches"] == []  # not even when asked by kind
 
 
 def test_agent_falls_back_offline_when_the_model_hangs(client, monkeypatch):
