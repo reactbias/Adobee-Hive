@@ -22,6 +22,7 @@ export default function Composer({
   secondary,
   boxRef,
   maxLength,
+  bar = false,
 }: {
   id: string;
   label: string;
@@ -40,6 +41,8 @@ export default function Composer({
   secondary?: ReactNode;
   boxRef?: RefObject<HTMLTextAreaElement>;
   maxLength?: number;
+  /** One row across the top of the page, instead of a tall box in the brief. */
+  bar?: boolean;
 }) {
   const own = useRef<HTMLTextAreaElement>(null);
   const box = boxRef ?? own;
@@ -50,6 +53,12 @@ export default function Composer({
     if (!el) return;
     el.style.height = "auto";
     const needed = el.scrollHeight;
+    if (bar) {
+      el.style.height = "28px";
+      el.style.overflowX = "auto";
+      el.style.overflowY = "hidden";
+      return;
+    }
     if (!needed) {
       el.style.removeProperty("height");
       return;
@@ -57,7 +66,7 @@ export default function Composer({
     el.style.height = `${Math.min(needed, MAX_BOX_PX)}px`;
     el.style.overflowY = needed > MAX_BOX_PX ? "auto" : "hidden";
   };
-  useLayoutEffect(() => fit(), [value]);
+  useLayoutEffect(() => fit(), [value, bar]);
   useEffect(() => {
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
@@ -68,12 +77,13 @@ export default function Composer({
   };
   return (
     <>
-      <div className="composer">
+      <div className={bar ? "composer bar" : "composer"}>
         <label htmlFor={id}>{label}</label>
         <textarea
           id={id}
           ref={box}
           value={value}
+          rows={bar ? 1 : undefined}
           maxLength={maxLength}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {

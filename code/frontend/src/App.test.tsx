@@ -16,6 +16,8 @@ describe("the app", () => {
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
+    vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
   });
 
   it("opens on the traveller agent and links to no other page", async () => {
@@ -31,7 +33,7 @@ describe("the app", () => {
     expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
-  it("tells one story in two chapters: your agent, then the business's side", () => {
+  it("tells one journey: Search, then Opportunities", () => {
     render(
       <I18nProvider>
         <App />
@@ -39,22 +41,29 @@ describe("the app", () => {
     );
 
     const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
-    expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
+    const links = chapters.getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
+    expect(links[0]).toHaveTextContent(en["chapter.travel"]);
+    expect(links[1]).toHaveTextContent(en["chapter.business"]);
     expect(screen.getByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    // Nothing is drawn until an endpoint returns it: no empty stage, no empty log.
+    expect(screen.queryByRole("region", { name: en["card.stage"] })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
   });
 
-  it("gives every chapter the same layout: a brief beside one fixed-height panel", () => {
+  it("keeps Search as one stack and Opportunities as a brief beside one panel", () => {
     const { container } = render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    for (const id of ["travel", "business"]) {
-      const grid = container.querySelector(`section#${id} > .chapter-grid`);
-      expect(grid, id).not.toBeNull();
-      expect(grid!.querySelector(":scope > .brief"), id).not.toBeNull();
-      expect(grid!.querySelector(":scope > .frame"), id).not.toBeNull();
-    }
+    const search = container.querySelector("section#travel");
+    expect(search?.classList.contains("stack")).toBe(true);
+    expect(search?.querySelector(":scope > .frame")).toBeNull();
+    const grid = container.querySelector("section#business > .chapter-grid");
+    expect(grid).not.toBeNull();
+    expect(grid!.querySelector(":scope > .brief")).not.toBeNull();
+    expect(grid!.querySelector(":scope > .frame")).not.toBeNull();
   });
 
   it("opens the business chapter on the owner studio, with the demand map one tab away", () => {

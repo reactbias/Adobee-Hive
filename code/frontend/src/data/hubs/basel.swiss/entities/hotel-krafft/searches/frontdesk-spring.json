@@ -1,0 +1,8 @@
+{
+  "id": "frontdesk-spring",
+  "title": "Seasonal front-desk staff",
+  "window": "2027-03-01/2027-05-31",
+  "requires": ["de", "en"],
+  "modality": "on-site",
+  "budget": { "amount": 4800, "currency": "CHF", "unit": "month" }
+}

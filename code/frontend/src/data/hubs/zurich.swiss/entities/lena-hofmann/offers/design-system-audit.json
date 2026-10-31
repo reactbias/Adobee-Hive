@@ -1,0 +1,8 @@
+{
+  "id": "design-system-audit",
+  "title": "Design system audit",
+  "modality": "remote",
+  "price": { "amount": 180, "currency": "CHF", "unit": "hour" },
+  "terms": "A written audit of an existing system.",
+  "availability": { "status": "open" }
+}

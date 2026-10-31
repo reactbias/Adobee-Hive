@@ -1,0 +1,16 @@
+{
+  "id": "hive:hub.basel.swiss/hotel-krafft@example.com",
+  "kind": "business",
+  "name": "Hotel Krafft Basel",
+  "description": "26 rooms on the Rhine in Basel, since 1872. Quiet side rooms, dogs welcome, 180 m from the water.",
+  "rating": 43,
+  "rating_count": 18,
+  "skills": [
+    { "tag": "hospitality.lodging", "level": "primary" },
+    { "tag": "hospitality.dining", "level": "secondary" },
+    { "tag": "events.small-venue", "level": "secondary" }
+  ],
+  "policy": {
+    "human_in_loop": "bookings > CHF 2000, all event contracts"
+  }
+}

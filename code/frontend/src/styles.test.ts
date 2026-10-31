@@ -26,6 +26,11 @@ describe("styles", () => {
     expect(css).toMatch(/\.chapter-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 
+  it("keeps the search bar one line", () => {
+    expect(rule(".search-top .composer.bar")).toMatch(/border-radius:\s*999px/);
+    expect(rule(".search-top .composer.bar textarea")).toMatch(/white-space:\s*nowrap/);
+  });
+
   it("wraps the composer's buttons, and their labels, on a narrow screen", () => {
     expect(rule(".composer-actions")).toMatch(/flex-wrap:\s*wrap/);
     expect(rule(".composer-actions button")).toMatch(/white-space:\s*normal/);

@@ -3,6 +3,12 @@ const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 /** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
 export const OFFLINE = "error.offline";
+
+/** A status code or a lost connection is one case for the page: the backend is out of reach. */
+export function shownError(message: string): string {
+  if (message === OFFLINE || /^\d{3}\b/.test(message)) return OFFLINE;
+  return message;
+}
 // Render's free backend sleeps and takes up to a minute to wake. Past this, the chat stops "thinking" and says so.
 const TIMEOUT_MS = 90_000;
 const COLD = new Set([502, 503, 504]);
