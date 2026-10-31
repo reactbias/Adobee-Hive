@@ -37,6 +37,24 @@ trust factor rather than in behaviour:
 
 They are listed here rather than quietly dropped. Worth closing if the reasons become user-facing.
 
+### In CI
+
+A `mutation` job runs after `backend` on every pull request:
+
+- **Curated mutants must all die.** They aim at invariants — the loop guard, the radius clamp, the
+  sign of the calibration error, a stale connection becoming scorable — so a survivor is a real
+  hole and the job fails.
+- **A seeded random pass** of eight flips runs alongside, seeded by the run number so a different
+  corner is probed each time while the log still says how to reproduce it. It is
+  `continue-on-error`, because a random mutant can surface a gap that predates the pull request
+  and blocking an unrelated change on it would only teach people to ignore the job.
+
+`tests/test_mutation.py` guards the harness itself: every file in `SUITE` exists, every curated
+mutant still matches its source, and every target module is covered by a file in `SUITE`. That
+last one exists because it already went wrong — the two hub test files were missing from `SUITE`,
+so eight hub mutants "survived" while the real tests caught every one of them. A mutation tool
+that reports a false all-clear is worse than none, so it is now a test.
+
 ### Adding a mutant
 
 Add to `CURATED` in `mutate.py`: the file, one line on what the bug would break, the exact string to

@@ -23,6 +23,10 @@ SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
 DEMO_RESET_TOKEN = os.getenv("DEMO_RESET_TOKEN", "")  # when set, /api/demo/reset needs it as X-Demo-Token
 OWNER_EDIT_TOKEN = os.getenv("OWNER_EDIT_TOKEN", "")  # when set, owner edits need it as X-Owner-Token
 
+# Running the hub itself: the blocklist and the neighbour list. Unlike the owner token this one
+# fails closed — an unset ADMIN_TOKEN refuses every write rather than leaving the blocklist open.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
 # Cost guard for the demo key: calls that may reach Claude, per client IP and in total, per hour.
 LLM_CALLS_PER_CLIENT_HOUR = int(os.getenv("LLM_CALLS_PER_CLIENT_HOUR", "30"))
 LLM_CALLS_TOTAL_HOUR = int(os.getenv("LLM_CALLS_TOTAL_HOUR", "300"))

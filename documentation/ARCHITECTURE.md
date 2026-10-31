@@ -91,6 +91,10 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
 | `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
+| `hub_connect` | Ask to be introduced to a business or person found in a search, and log the introduction. A public entry opens at once, one marked `needs_confirmation` waits for its owner's yes, and one shared only on the owner's initiative cannot be asked for |
+| `hub_score` | Record how an introduction actually went, after the real meeting: tenths of a star out of five, once, and only while the connection is still open. The only input to how far this Hive trusts another |
+| `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale |
+| `hub_standing` | What this Hive makes of its neighbours: published minus realised, lower is better, unproven when the evidence is thin |
 | `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
@@ -111,6 +115,18 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
 | `GET /api/hive/discover` | Search with the same constraints as `hive_discover`, plus `radius` (0 = this Hive, up to 3 hops over peer Hives), `budget_ms` and `seen`. Also the door one Hive uses to forward a query to another | rate limit above radius 0 |
+| `POST /api/hub/connect` | Ask to be introduced to an entity, and log it | rate limit |
+| `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
+| `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
+| `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
+| `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
+| `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
+| `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
+| `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
+| `GET /api/admin/neighbours` | The peer list with each one's calibration | — |
+| `GET /api/admin/blocklist` | Everything this hub has shut out; readable without a token on purpose | — |
+| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token`, fails closed |
+| `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |

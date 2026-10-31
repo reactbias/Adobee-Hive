@@ -101,11 +101,28 @@ flowchart TB
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
   FED[federation.py<br/>hop-limited search over peer Hives]:::mod
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
+  SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
+  BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
+  CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
+  CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
+  HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
+  ADM[admin.py<br/>settings, neighbours, blocklist, GUI-ready]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
 
   REST --> GRD
   REST --> A
+  HIVE --> SHR
+  HIVE --> BLK
+  FED --> BLK
+  CNX --> CAL
+  CAL --> REP
+  REST --> HUB
+  MCP --> HUB
+  HUB --> CNX
+  HUB --> SHR
+  REST --> ADM
+  ADM --> BLK
   A -->|MCP client| INJ --> MCP
   MIR -.->|stress test| INJ
   A --> V
@@ -283,6 +300,24 @@ flowchart LR
     M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
     M3[hive_wait · hive_check_waiting]:::door
     M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
+    M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
+  end
+
+  AGT --> HUBD
+  subgraph HUBD["Reaching a person, and saying how it went"]
+    direction TB
+    H1["POST /api/hub/connect"]:::door
+    H2["POST /api/hub/connections/{connection_id}/confirm · POST /api/hub/connections/{connection_id}/decline"]:::held
+    H3["POST /api/hub/connections/{connection_id}/score"]:::held
+    H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
+  end
+
+  ADMN([Hub operator]) --> ADMD
+  subgraph ADMD["Administration · GUI-ready, no interface yet"]
+    direction TB
+    D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
+    D2["GET /api/admin/blocklist"]:::door
+    D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
   end
 
   APP([React app]) --> AGR & ASK & CRD & OWN & OPS
@@ -334,6 +369,16 @@ cycles in the peer graph cannot loop, and spending what is left of the time budg
 verified here, against the key pinned in *its own* hub's registry — never against the carrier's word — so a
 relaying hub can withhold or delay a card but never forge one. Details: [federation.py](../code/backend/app/federation.py)
 and [reputation.py](../code/backend/app/reputation.py).
+
+Four modules carry the hub's own side of that. [sharing.py](../code/backend/app/sharing.py) decides per item what may
+leave at all — `public`, `confirm`, `push` (held, but never searchable) or `never` — and the stricter of the item's flag
+and the entity's default always wins. [blocklist.py](../code/backend/app/blocklist.py) is the manual override an
+operator reaches for, blocking a peer hub or a single entity in both directions, with a reason that has to be readable
+six months later. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
+weeks, for a person to score how the real meeting went; an introduction nobody scores goes stale rather than staying
+open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the only number that
+matters about a peer: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told
+the truth about its members, never on how good they were.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
