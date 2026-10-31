@@ -114,6 +114,24 @@ describe("traveller agent", () => {
     vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
   });
 
+  it("keeps the search on the page, with the corpus chips and the buttons under them", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    const chip = screen.getByRole("button", { name: en["try.coffee"] });
+    const send = screen.getByRole("button", { name: en["agent.send"] });
+    const reach = screen.getByRole("radio", { name: en["reach.local"] });
+    expect(box.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chip.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(send.compareDocumentPosition(reach) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(send);
+    expect(await screen.findByRole("textbox", { name: en["agent.followUp"] })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["try.tavern"] })).toBeInTheDocument();
+  });
+
   it("searches this hub only until the person chooses to look further", async () => {
     const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
@@ -225,9 +243,9 @@ describe("traveller agent", () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    await user.click(screen.getByRole("button", { name: en["agent.example.2"] }));
+    await user.click(screen.getByRole("button", { name: en["try.tavern"] }));
 
-    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.2"] }], {});
+    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["try.tavern"] }], {});
   });
 
   it("reads the hub log all along and shows it beside the chat when details opens", async () => {
@@ -518,7 +536,7 @@ describe("traveller agent", () => {
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
 
     await user.clear(box);
-    await user.type(box, `${en["card.try.person"]}{Enter}`);
+    await user.type(box, "A designer for a dataviz sprint.{Enter}");
 
     expect(await screen.findByRole("heading", { name: "Lena Hofmann" })).toBeInTheDocument();
     expect(screen.getByText(en["card.rating.none"])).toBeInTheDocument();

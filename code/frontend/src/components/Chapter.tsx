@@ -22,8 +22,9 @@ export default function Chapter({
   children,
 }: {
   id: ChapterId;
-  heading: Key;
-  lead: string;
+  /** Omitted when the chapter is only its working part, as Search is. */
+  heading?: Key;
+  lead?: string;
   /** Replaces the numbered chapter name above the heading. */
   eyebrow?: string;
   /** The first chapter carries the page's h1. */
@@ -39,7 +40,7 @@ export default function Chapter({
   const { t } = useI18n();
   const n = String(CHAPTERS.indexOf(id) + 1).padStart(2, "0");
   const H = headingLevel === 1 ? "h1" : "h2";
-  const head = (
+  const head = heading ? (
     <div className="page-head">
       <span className="eyebrow">
         {eyebrow ?? (
@@ -51,12 +52,13 @@ export default function Chapter({
       <H id={`${id}-title`}>
         <Display text={t(heading)} />
       </H>
-      <p className="lead">{lead}</p>
+      {lead && <p className="lead">{lead}</p>}
     </div>
-  );
+  ) : null;
+  const name = heading ? { "aria-labelledby": `${id}-title` } : { "aria-label": t(`chapter.${id}` as Key) };
   if (stack) {
     return (
-      <section id={id} className="chapter stack" ref={sectionRef} aria-labelledby={`${id}-title`}>
+      <section id={id} className="chapter stack" ref={sectionRef} {...name}>
         {head}
         {side}
         {children}
@@ -64,7 +66,7 @@ export default function Chapter({
     );
   }
   return (
-    <section id={id} className="chapter" ref={sectionRef} aria-labelledby={`${id}-title`}>
+    <section id={id} className="chapter" ref={sectionRef} {...name}>
       <div className="chapter-grid">
         <div className="brief">
           {head}

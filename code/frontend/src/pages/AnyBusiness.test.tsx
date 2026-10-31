@@ -20,7 +20,7 @@ const PENDING = {
 };
 
 const RESULT: AskResult = {
-  question: en["ask.ex2"],
+  question: en["try.lockout"],
   preference: { mood: "stressed", effects: ["calm_first", "fewer_options"], source: "chosen by you" },
   replies: [
     {
@@ -107,10 +107,10 @@ describe("any business, in the agent chat", () => {
     const agent = vi.spyOn(api, "agent");
     const user = setup();
 
-    await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
+    await user.click(screen.getByRole("button", { name: en["try.lockout"] }));
     await skipAhead(user);
 
-    expect(ask).toHaveBeenCalledWith(en["ask.ex2"], null);
+    expect(ask).toHaveBeenCalledWith(en["try.lockout"], null);
     expect(agent).not.toHaveBeenCalled();
     expect(await screen.findByText("Maasai Mara safari")).toBeInTheDocument();
     expect(screen.getAllByText("BeKenya").length).toBeGreaterThan(0);
@@ -124,7 +124,7 @@ describe("any business, in the agent chat", () => {
     const approve = vi.spyOn(api, "askApprove").mockResolvedValue(HANDOFF);
     const user = setup();
 
-    await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
+    await user.click(screen.getByRole("button", { name: en["try.lockout"] }));
     await skipAhead(user);
     expect(await screen.findByText(en["ask.pending.title"])).toBeInTheDocument();
     expect(approve).not.toHaveBeenCalled();
@@ -140,7 +140,7 @@ describe("any business, in the agent chat", () => {
     vi.spyOn(api, "ask").mockResolvedValue(RESULT);
     const approve = vi.spyOn(api, "askApprove");
     const user = setup();
-    await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
+    await user.click(screen.getByRole("button", { name: en["try.lockout"] }));
     await skipAhead(user);
     await user.click(await screen.findByRole("button", { name: en["ask.pending.decline"] }));
     expect(screen.queryByText(en["ask.pending.title"])).not.toBeInTheDocument();

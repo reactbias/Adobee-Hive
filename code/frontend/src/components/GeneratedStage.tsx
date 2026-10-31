@@ -66,18 +66,20 @@ export default function GeneratedStage({
     <Frame
       label={t("card.stage")}
       head={
-        <div className="spread result-head">
+        <div className="result-head">
           <span className="result-query">{scene.query}</span>
-          <span className="eyebrow">
-            {shown < count || following
-              ? t("card.drawing")
-              : count === 1
-                ? t("card.count.one")
-                : t("card.count.other", { n: count })}
-          </span>
-          <button className="ghost small" aria-pressed={detailsOpen} onClick={onDetails}>
-            {t("card.details")}
-          </button>
+          <div className="result-actions">
+            <span className="eyebrow">
+              {shown < count || following
+                ? t("card.drawing")
+                : count === 1
+                  ? t("card.count.one")
+                  : t("card.count.other", { n: count })}
+            </span>
+            <button className="ghost small" aria-pressed={detailsOpen} onClick={onDetails}>
+              {t("card.details")}
+            </button>
+          </div>
         </div>
       }
     >

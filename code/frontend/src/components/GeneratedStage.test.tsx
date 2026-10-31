@@ -328,7 +328,7 @@ describe("results from other hubs", () => {
 
   it("offers no connection on a card drawn from the folders, which no hub answered for", () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
-    const scene = sceneFor(en["card.try.person"]);
+    const scene = sceneFor("A designer for a dataviz sprint");
     render(
       <I18nProvider>
         <GeneratedStage scene={scene!} onDetails={() => {}} />

@@ -77,9 +77,6 @@ const de: Record<Key, string> = {
   "demand.empty": "Noch keine Suchen. Fragen Sie oben Ihren Agenten nach einem Zimmer.",
   "demand.ofAsked": "{unserved} von {asked} unerfüllt",
 
-  "agent.eyebrow": "Die Eingangstür, signiert.",
-  "agent.title": "Der nächste Gast ist *ein Agent.*",
-  "agent.lead": "Ein Zimmer, ein Plan, eine Antwort: Ihr Agent fragt Basler Betriebe und bucht nur mit Ihrem Ja.",
   "agent.intent": "Ihr Wunsch",
   "agent.followUp": "Antwort an Ihren Agenten",
   "agent.placeholder": "Was brauchen Sie?",
@@ -92,6 +89,12 @@ const de: Record<Key, string> = {
   "mic.listening": "Hört zu…",
   "mic.blocked": "Mikrofon blockiert: bitte im Browser erlauben",
   "agent.try": "Beispiele",
+  "try.tavern": "Ein einfaches Zimmer über einer Gaststube, unter hundert Franken",
+  "try.garden": "Zimmer mit Frühstück und Garten",
+  "try.hostel": "Hostel mit Etagenbetten für eine Schulklasse",
+  "try.pasta": "Italienisches Restaurant mit hausgemachten Nudeln",
+  "try.coffee": "Wo man frisch geröstete Kaffeebohnen kauft",
+  "try.lockout": "Ich habe mich aus meiner Wohnung ausgesperrt",
   "agent.example.1":
     "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, 13.11.2026 bis 15.11.2026. Mein Name ist Mara Keller.",
   "agent.example.2":
@@ -252,8 +255,6 @@ const de: Record<Key, string> = {
 
   // Ask the Hive
   "trust.unclaimed": "Nicht beansprucht · nur Weiterleitung",
-  "ask.ex1": "Was läuft diesen Monat bei BaselHack?",
-  "ask.ex2": "Planen Sie mir ein Abenteuer unter 500 CHF",
   "ask.empty": "Noch keine Karte beantwortet das. Es wird als verpasste Nachfrage festgehalten, ohne Ihre Frage.",
   "scout.call": "Noch keine Karte im Hive beantwortet das. Ich suche ausserhalb des Hive, im öffentlichen Web.",
   "scout.found":
@@ -396,8 +397,6 @@ const de: Record<Key, string> = {
   "card.count.one": "1 Ergebnis",
   "card.count.other": "{n} Ergebnisse",
   "card.more": "Mehr zu {name}",
-  "card.try.person": "Eine Designerin für einen Dataviz-Sprint.",
-  "card.try.staff": "Saisonales Front-desk-Personal.",
   // The instance finder (the first screen) and the hub admin panel
   "finder.title": "Hive wählen",
   "finder.lead":

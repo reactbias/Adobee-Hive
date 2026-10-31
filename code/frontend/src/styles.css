@@ -1113,7 +1113,14 @@ th.end {
   }
 }
 
-/* Chapter 1: the search is a bar across the top, and what it draws sits underneath. */
+/* Chapter 1: the search stays on screen, the chips sit under it, and the buttons under the chips. */
+.search-top {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 12;
+  background: var(--paper);
+  padding-bottom: var(--s3);
+}
 .chapter.stack {
   display: flex;
   flex-direction: column;
@@ -1147,12 +1154,8 @@ th.end {
   overflow-y: auto;
 }
 .search-top .composer.bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  /* A pill at one row; the buttons stay on the last line as the text wraps to more. */
-  align-items: end;
-  gap: var(--s3);
-  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  display: block;
+  padding: var(--s2) var(--s4);
   border: 1px solid var(--line-strong);
   border-radius: 24px;
   background: var(--surface);
@@ -1179,6 +1182,7 @@ th.end {
   border: 0;
 }
 .search-top .composer.bar textarea {
+  width: 100%;
   min-height: 0;
   height: 28px;
   padding: 0;
@@ -1195,8 +1199,8 @@ th.end {
   border: 0;
   box-shadow: none;
 }
-.search-top .composer.bar .composer-bar {
-  margin: 0;
+.search-top .search-actions {
+  margin-top: var(--s3);
 }
 /* The label and its chips on one line, set off from the bar above. */
 .search-top .examples {
@@ -1303,20 +1307,39 @@ th.end {
   flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: start;
+  flex-wrap: nowrap;
   gap: var(--s4);
 }
+/* The question stays whole. The count and Details stay locked beside it, on the same row. */
 .result-query {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   font-size: var(--t-sm);
   color: var(--ink-2);
 }
+.result-actions {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--s4);
+}
 .result-head .eyebrow {
   white-space: nowrap;
+}
+/* A phone keeps the question readable: the count and Details drop under it, still on the right. */
+@media (max-width: 600px) {
+  .result-head {
+    flex-wrap: wrap;
+  }
+  .result-query {
+    flex-basis: 100%;
+  }
+  .result-actions {
+    margin-left: auto;
+  }
 }
 .result-head button[aria-pressed="true"] {
   border-color: var(--clay);
