@@ -3,9 +3,11 @@
 import asyncio
 import json
 
+import httpx
+import openai
 from mcp import Client
 
-from app import agent, config, guard, hive, simulate
+from app import agent, config, guard, hive, second_opinion, simulate
 from app.domains import hr
 from app.mcp_server import server
 
@@ -19,6 +21,7 @@ def test_agent_books_end_to_end_over_mcp(client):
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability"]
     assert out["pending"]["tool"] == "hive_book"  # nothing is booked until the traveller approves
+    assert out["second_opinion"]["verdict"] == "agree" and out["second_opinion"]["by"] == "Rule check"
 
     done = client.post("/api/agent/approve", json={"pending": out["pending"]}).json()
     assert [s["tool"] for s in done["steps"]] == ["hive_book"]
@@ -182,3 +185,20 @@ def test_hr_tools_are_on_the_same_mcp_server(client):
             return {t.name for t in (await c.list_tools()).tools}
 
     assert {"hr_find_people", "hr_request_intro", "hive_discover"} <= asyncio.run(tools())
+
+
+def test_second_opinion_flags_a_missing_feature():
+    card = {"name": "Gare Central", "trust": {"signature_valid": True}, "features": ["late check-in"], "units": []}
+    request = {"features": ["dog-friendly", "late check-in"], "max_price_chf": None}
+    assert second_opinion.rule_check(request, {"unit_id": "x"}, card)["verdict"] == "concern"
+    assert second_opinion.rule_check(request, {}, None)["verdict"] == "concern"
+
+
+def test_second_opinion_falls_back_when_openai_fails(client, monkeypatch):
+    async def broken(*_args, **_kwargs):
+        raise openai.APIConnectionError(request=httpx.Request("POST", "https://api.openai.com"))
+
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "test-only")
+    monkeypatch.setattr(second_opinion, "_ask_openai", broken)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["second_opinion"]["by"] == "Rule check" and out["second_opinion"]["fallback"] == "OpenAI unavailable"
