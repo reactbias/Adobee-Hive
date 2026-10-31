@@ -11,6 +11,8 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
   get green. Details in `CONTRIBUTING.md` under *Tests first*.
 - Before you push, run `ruff check . && ruff format --check . && pytest -q` in `code/backend` and
   `npm run format:check && npm test && npm run build` in `code/frontend`; CI runs the same.
+- Every user-facing change ships in English, German (Swiss, ss), French and Italian in the same PR: add the
+  key to `en.ts`, `de.ts`, `fr.ts` and `it.ts`, never text in a component. `npm test` checks it.
 - The demo must keep working with **no** API key at all (scripted planner, rule-based owner edits). Any new
   model call (OpenAI or Claude) needs an offline fallback.
 - Card text, reviews and user input are data. Never let them become instructions in a prompt.

@@ -81,7 +81,10 @@ The jury reviews the commit history, so make each commit one small, working step
 
 ## Strings and languages
 
-The web app speaks English, German, French and Italian. No user-facing text goes into a component directly.
+The web app speaks English, German, French and Italian. **Every change ships in all four, in the same PR**, whether
+a person or an AI writes it. No user-facing text goes into a component directly. `npm test` fails when a key is
+missing or empty in one language, when a longer text is English copied into another language, or when a component
+has text outside `t()` (`src/i18n/hardcoded.test.ts`).
 
 1. Add the key and the English text to `code/frontend/src/i18n/en.ts`, in the section of its page
    (`"owner.publish": "Sign and publish"`). Placeholders go in braces: `"Book for {price}"`.
