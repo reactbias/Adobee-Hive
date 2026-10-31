@@ -42,6 +42,19 @@ The jury reviews the commit history, so make each commit one small, working step
 - One review from another person before merging. Squash only if your commits are noise; otherwise keep them.
 - `main` deploys to AWS on every merge. Don't merge in the last 15 minutes before a demo.
 
+## Strings and languages
+
+The web app speaks English, German, French and Italian. No user-facing text goes into a component directly.
+
+1. Add the key and the English text to `code/frontend/src/i18n/en.ts`, in the section of its page
+   (`"owner.publish": "Sign and publish"`). Placeholders go in braces: `"Book for {price}"`.
+2. Add the same key to `de.ts`, `fr.ts` and `it.ts`. The build fails until all three have it.
+3. In the component: `const { t, intl } = useI18n();` then `t("owner.publish")` or `t("card.bookFor", { price })`.
+   Format dates and money with `lib/format.ts` and `intl`, never by hand.
+
+Formal register (Sie, vous, Lei), Swiss spelling (ss, not ß), CHF. Business data from a card (names, features,
+policies) is the owner's text and is not translated. Voice and names of the features: [BRAND.md](documentation/BRAND.md).
+
 ## Checks to run before you push
 
 ```bash
