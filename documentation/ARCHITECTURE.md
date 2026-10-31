@@ -56,6 +56,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
+| `components/Reach.tsx`, `lib/hubScene.ts` | How far a search goes (this Hive, nearby Hives, further: discover radius 0, 1 or 3) and the live search that draws the result cards, each saying which hub it came from and how many hops away, with any hub that did not answer or copy that was refused |
 | `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB, and the hotel's side further down. None of them books or pays |
 | `components/Icon.tsx`, `components/Display.tsx` | Our icon set; headlines with one italic phrase |
 | `panels/` | The parts of chapters 2 and 3, one file each; see [The page](#the-page) |

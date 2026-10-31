@@ -114,6 +114,22 @@ describe("traveller agent", () => {
     vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
   });
 
+  it("searches this hub only until the person chooses to look further", async () => {
+    const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    expect(screen.getByRole("radio", { name: en["reach.local"] })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 0 }));
+
+    await user.click(screen.getByRole("button", { name: en["agent.newTrip"] }));
+    await user.click(screen.getByRole("radio", { name: en["reach.far"] }));
+    expect(screen.getByRole("radio", { name: en["reach.far"] })).toBeChecked();
+    await user.type(screen.getByRole("textbox", { name: en["agent.intent"] }), "a quiet hotel{Enter}");
+    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 3 }));
+  });
+
   it("asks the agent and stops at the gate without booking", async () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const approve = vi.spyOn(api, "approve");
@@ -468,7 +484,8 @@ describe("traveller agent", () => {
     expect(await screen.findByRole("heading", { name: "Lena Hofmann" })).toBeInTheDocument();
     expect(screen.getByText(en["card.rating.none"])).toBeInTheDocument();
     expect(screen.queryByText("0.0 / 5")).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: en["card.rate.ask"] })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: en["agent.review.rating"] })).not.toBeInTheDocument();
   });
 
   it("says the agent is on it while the request is out", async () => {

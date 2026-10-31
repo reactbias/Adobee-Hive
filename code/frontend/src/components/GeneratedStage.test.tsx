@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
-import { sceneFor, sceneFromDiscovery } from "../lib/cardView";
+import { sceneFor, sceneFromDiscovery, type Scene } from "../lib/cardView";
 import GeneratedStage from "./GeneratedStage";
 
 const beat = () =>
@@ -181,5 +181,81 @@ describe("generated card", () => {
     expect(screen.queryByText(en["card.yes.done"])).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Room reservation/ })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: /Small event on the Rhine terrace/ })).toBeInTheDocument();
+  });
+});
+
+// Where an answer came from: a result from another hub says so under its name, a local one says nothing extra,
+// and a hub that did not answer or a copy that was refused is shown rather than swallowed.
+describe("results from other hubs", () => {
+  afterEach(() => {
+    window.matchMedia = undefined as never;
+  });
+
+  function stage(federation: Scene["federation"], hops = 1) {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
+    const scene = sceneFromDiscovery(
+      "quiet hotel",
+      [
+        { id: "limmat", hops, provenance: { path: ["zurich", "basel"], origin: "zurich" } },
+        { id: "rhein", hops: 0 },
+      ],
+      {
+        limmat: hubCard("limmat", "Pension Limmat", "Quiet rooms on the Limmat"),
+        rhein: hubCard("rhein", "Hotel Rheinblick", "Quiet rooms over the Rhine"),
+      },
+    )!;
+    render(
+      <I18nProvider>
+        <GeneratedStage scene={{ ...scene, federation }} onDetails={() => {}} />
+      </I18nProvider>,
+    );
+  }
+
+  const zurich = { radius: 1, asked: [{ hub: "zurich", name: "Hive Zürich" }], dropped: [], rejected: [] };
+
+  it("names the hub and the distance for a result that travelled, and nothing for a local one", () => {
+    stage(zurich);
+    const rows = screen.getAllByRole("article");
+    expect(rows[0]).toHaveTextContent("from Hive Zürich, 1 hop away");
+    expect(rows[1]).not.toHaveTextContent(/hop/);
+    // The hub's order stands: distance is already in its score.
+    expect(rows[0]).toHaveTextContent("Pension Limmat");
+  });
+
+  it("says hops past one", () => {
+    stage(zurich, 2);
+    expect(screen.getByText("from Hive Zürich, 2 hops away")).toBeInTheDocument();
+  });
+
+  it("counts the hubs it asked, and says so plainly when there were none", () => {
+    stage(zurich);
+    expect(screen.getByText("1 Hive asked")).toBeInTheDocument();
+    cleanup();
+
+    stage({ radius: 1, asked: [], dropped: [], rejected: [] }, 0);
+    expect(screen.getByText(en["reach.none"])).toBeInTheDocument();
+    expect(screen.queryByText(/Hives? asked/)).not.toBeInTheDocument();
+  });
+
+  it("shows a hub that did not answer, and a copy that did not match what the owner signed", () => {
+    stage({
+      ...zurich,
+      dropped: [
+        { hub: "zurich", reason: "deadline exceeded: 12 ms left for this hop" },
+        { hub: "geneva", reason: "no key registry: its cards could not be verified here" },
+      ],
+      rejected: [{ hub: "zurich", card_id: "hotel-liar", reason: "this copy does not match what the owner signed" }],
+    });
+    expect(screen.getByText("Hive Zürich did not answer in time")).toBeInTheDocument();
+    expect(
+      screen.getByText("geneva was left out: no key registry: its cards could not be verified here"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("A copy from Hive Zürich did not match what the owner signed")).toBeInTheDocument();
+  });
+
+  it("says nothing about other hubs when the person searched this one only", () => {
+    stage(undefined, 0);
+    expect(screen.queryByText(en["reach.none"])).not.toBeInTheDocument();
+    expect(screen.queryByText(/asked/)).not.toBeInTheDocument();
   });
 });

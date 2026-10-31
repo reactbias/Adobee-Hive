@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { metres, money } from "../lib/format";
-import { ratingScore, type Field, type Hit, type Price, type Scene } from "../lib/cardView";
+import { ratingScore, type Federation, type Field, type Hit, type Price, type Scene } from "../lib/cardView";
 import { Frame } from "./Chapter";
 
 // A search draws one row per Card. A tap opens a Card one part at a time: who it is, then each
@@ -55,10 +55,46 @@ export default function GeneratedStage({
         </div>
       }
     >
+      {scene.federation && <Reached federation={scene.federation} />}
       {scene.hits.slice(0, shown).map((hit) => (
-        <CardHit key={hit.card.id} hit={hit} onFollowing={onFollowing} onDetails={onDetails} />
+        <CardHit
+          key={hit.card.id}
+          hit={hit}
+          origin={hubName(scene.federation, hit.found?.origin ?? "")}
+          onFollowing={onFollowing}
+          onDetails={onDetails}
+        />
       ))}
     </Frame>
+  );
+}
+
+/** A hub's own declared name when it was asked, else its id. */
+function hubName(federation: Federation | undefined, hub: string): string {
+  return federation?.asked.find((h) => h.hub === hub)?.name ?? hub;
+}
+
+/** How many hubs were asked, and any that did not answer or whose copy was refused. Shown, never swallowed. */
+function Reached({ federation }: { federation: Federation }) {
+  const { t } = useI18n();
+  const n = federation.asked.length;
+  if (federation.radius === 0) return null;
+  return (
+    <div className="reach-notes">
+      <p>{n === 0 ? t("reach.none") : n === 1 ? t("reach.asked.one") : t("reach.asked.other", { n })}</p>
+      {federation.dropped.map((d) => (
+        <p key={`d:${d.hub}:${d.reason}`}>
+          {d.hub === "*"
+            ? t("reach.budget")
+            : d.reason.startsWith("deadline")
+              ? t("reach.dropped", { hub: hubName(federation, d.hub) })
+              : t("reach.skipped", { hub: hubName(federation, d.hub), reason: d.reason })}
+        </p>
+      ))}
+      {federation.rejected.map((r) => (
+        <p key={`r:${r.hub}:${r.card_id}`}>{t("reach.refused", { hub: hubName(federation, r.hub) })}</p>
+      ))}
+    </div>
   );
 }
 
@@ -81,10 +117,13 @@ function partsIn(hit: Hit): number {
 /** One row until the person opens it; then its parts, one beat apart. */
 function CardHit({
   hit,
+  origin,
   onFollowing,
   onDetails,
 }: {
   hit: Hit;
+  /** The name of the hub the result came from, for a result that travelled. */
+  origin: string;
   onFollowing: (id: string, pending: boolean) => void;
   onDetails: () => void;
 }) {
@@ -107,6 +146,7 @@ function CardHit({
     hit.offers.find((o) => `offer:${o.id}` === picked) ?? hit.needs.find((n) => `search:${n.id}` === picked);
   const path = hit.found?.path ?? [];
   const why = hit.found?.why ?? [];
+  const hops = hit.found?.hops ?? 0;
   return (
     <article className={opened ? "card-hit open" : "card-hit"}>
       <div className="card-row">
@@ -119,6 +159,11 @@ function CardHit({
         <p className={score === null ? "card-rating none" : "card-rating"}>
           {score === null ? t("card.rating.none") : <b>{t("card.rating.score", { score })}</b>}
         </p>
+        {hops > 0 && origin && (
+          <p className="card-from">
+            {hops === 1 ? t("reach.from.one", { hub: origin }) : t("reach.from.other", { hub: origin, n: hops })}
+          </p>
+        )}
       </div>
       {opened && (
         <div id={bodyId} className="card-body">
