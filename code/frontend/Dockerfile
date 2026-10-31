@@ -1,5 +1,5 @@
 # Local/compose image: builds the static site and serves it with nginx,
-# proxying /api and /mcp to the backend container. AWS uses Amplify instead (amplify.yml).
+# proxying /api and /mcp to the backend container. The hosted site is built by GitHub Pages instead.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./

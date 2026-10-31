@@ -1,4 +1,4 @@
-// Typed client for the FastAPI backend. VITE_API_URL is set in Amplify; empty means same origin (dev proxy).
+// Typed client for the FastAPI backend. VITE_API_URL is set by the Pages build; empty means same origin (dev proxy).
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {

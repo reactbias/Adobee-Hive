@@ -52,11 +52,11 @@ The backend URL is baked into the frontend at build time, so after changing `VIT
 (GitHub Pages)* in Actions.
 
 **Cost:** GitHub Pages and Render's free plan cost nothing. The only running cost is OpenAI usage, capped by the
-limits in [Cost guard](#cost-guard-for-the-demo-key). The AWS path below is not in use.
+limits in [Cost guard](#cost-guard-for-the-demo-key).
 
 ## Free hosting: GitHub Pages + Render (the hackathon setup)
 
-Browser only, no AWS account, no local terminal. Every push to `main` redeploys both parts.
+Browser only, no local terminal. Every push to `main` redeploys both parts.
 
 | Part | Service | Trigger | Config |
 | --- | --- | --- | --- |
@@ -83,32 +83,6 @@ Things to know about the free tier:
   owner edits made during the demo are lost on the next push to `main`.
 - **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that, the router uses it
   as `basename`, and `404.html` is a copy of `index.html` so deep links like `/card/rheinblick` load.
-
-## AWS (optional, later): every push to `main` deploys itself
-
-| Part | Service | Trigger | Config |
-| --- | --- | --- | --- |
-| Frontend | Amplify Hosting, monorepo app root `code/frontend` | Amplify watches `main` | `amplify.yml` |
-| Backend | App Runner, image from ECR, auto-deploy on new image | GitHub Action on changes under `code/backend/` | `.github/workflows/deploy-backend.yml`, `code/backend/Dockerfile` |
-| OpenAI (and optional Claude) key | Secrets Manager, injected into App Runner | Set once | `code/scripts/aws/bootstrap.sh` |
-| Data | DuckDB file, snapshot to S3 after each write, restored on boot | Automatic | `code/backend/app/storage.py` |
-
-Region: `eu-central-1` (Frankfurt).
-
-One-time setup, about 15 minutes:
-
-1. `AWS_PROFILE=... OPENAI_API_KEY=... ./code/scripts/aws/bootstrap.sh` (needs Docker and the AWS CLI; pass
-   `ANTHROPIC_API_KEY` too or instead to use Claude). It creates the ECR repo, S3 bucket, secrets, IAM roles and the
-   App Runner service, and prints the backend URL.
-2. GitHub repo secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (an IAM user that can push to ECR).
-3. Amplify console: *New app*, connect this repo, branch `main`, tick monorepo with root `code/frontend`.
-   Environment variable `VITE_API_URL` = the backend URL. Under *Rewrites and redirects* add
-   `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>` → `/index.html` (200)
-   so deep links like `/card/rheinblick` work.
-4. Push to `main`.
-
-The bootstrap prints two team secrets: the **owner token** (the owner studio asks for it before an edit) and the
-**demo token** (`X-Demo-Token` for `POST /api/demo/reset`). Share them in person or through a password manager.
 
 ## Cost guard for the demo key
 
