@@ -254,16 +254,16 @@ Here is a real served Card, in full, from `GET /api/hive/cards/treuhand-kehrli` 
 | `name` | string | **yes** | What a person sees |
 | `description` | string | yes, may be `""` | **The pitch to the agent.** Up to 2000 characters. Always present, never absent |
 | `tagline` | string | optional | One phrase. The vault seeder clamps its own at 90 characters, which is why the example above looks truncated mid-word — that is the seeder, not the hub |
-| `sharing` | `public` \| `confirm` \| `push` \| `never` | optional | The entity's **default** item flag. Absent means `confirm` (`sharing.DEFAULT`), never `public` |
-| `contact` | object | yes | Open map. Seeded cards carry whichever of `email`, `phone`, `address`, `mcp` the folder gave. **`email` and `phone` are not in fact guaranteed present today** — see the disagreements below |
+| `sharing` | `public` \| `confirm` \| `push` \| `never` | optional | The entity's **default** item flag. `"public"` on every card built from a vault; **`null`** on the hand-written demo and example cards, which never went through signup. Where it is missing, `sharing.resolve` treats the item as `confirm`, never `public` |
+| `contact` | object | yes | Open map, always present. A card built from a vault carries whichever of `email`, `phone`, `address`, `mcp` the folder gave — so **`email` and `phone` are not in fact guaranteed present**, whatever `cards/README.md` says (see the disagreements below). The hand-written demo cards do carry both, empty where unpublished |
 | `contact_sharing` | object | yes, may be `{}` | Per-channel flag, only where it differs from the entity default. `{"phone": "confirm"}` with `"phone": ""` means *they have one, ask for it* |
 | `features` | string[] | yes, may be `[]` | Short exact tags a search can filter on: `dog-friendly`, `breakfast`, `quiet`, `parking`, `late check-in` |
 | `offers` | object[] | yes, may be `[]` | **Half the index.** Each entry: `title` (required), `summary`, `price_chf`, `tags`, `skills`, `unit`, `id` |
 | `needs` | object[] | yes, may be `[]` | **The other half.** Same shape as `offers` |
 | `units` | object[] | only for stays | Bookable rooms or slots. `bookable` on a search result is `bool(units) and claimed` |
 | `structure` | object[] | yes | The *shape* of the owner's folder, never its contents. See below |
-| `custody` | `owner` \| `hub` | yes | `owner` means the applicant brought a public key and kept the private half |
-| `registered_via` | string | optional | The application id that admitted it |
+| `custody` | `owner` \| `hub` | optional | Set by `registration._publish`, so it is `null` on a card that did not come through signup. `owner` means the applicant brought a public key and kept the private half |
+| `registered_via` | string | optional | The application id that admitted it. `null` on a card that did not come through signup |
 | `owner_public_key` | base64 | optional | Present when `custody: owner`. **Not** the key card versions are signed with |
 | `version` | integer | yes | Monotonic. `hive.publish` increments it; last writer wins |
 | `published_at`, `valid_until` | ISO 8601 | yes | A card is `fresh` for 90 days |
@@ -281,8 +281,9 @@ level (they are on *search results*, derived from `trust.verified_reviews`), `se
 | `claimed` | `false` means a **lead** compiled from public information. The subject never agreed to anything: findable, never bookable, hand-off only after a human says yes |
 | `provenance` | `null` for a locally published card; set for a card the scout compiled |
 | `verified_reviews.average` | **`null` until a signed booking receipt exists.** `null` is not zero. Every seeded card is `null` |
-| `verified_reviews.count` | How many signed receipts produced the average |
-| `attestations` | Counter-signed statements. `[]` on every seeded card |
+| `verified_reviews.count` | How many signed receipts produced the average. `0` everywhere on a seeded stack |
+| `signature`, `public_key`, `algorithm` | The Ed25519 signature over the card's canonical JSON, the key it was made with, and the scheme. The key here is the one this hub pins in `/.well-known/hive.json`, which is **not** `owner_public_key` |
+| `attestations` | Counter-signed statements. `[]` on every card built from a vault; four of the hand-written Basel demo cards carry one or two (`hotel-gare` 2, `hotel-rheinblick` 2, `hotel-messe` 1, `hotel-muenster` 1) |
 | `freshness_days`, `fresh` | Age since `published_at`, and whether it is inside 90 days |
 
 ### `structure` — the shape of the folder, never the contents
