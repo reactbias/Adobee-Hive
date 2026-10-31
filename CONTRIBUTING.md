@@ -13,10 +13,27 @@ to touch another lane's file, say so in the PR description and ping that lane.
 | Agents | `code/backend/app/agent.py`, `llm.py`, `simulate.py` |
 | Owner studio | `code/backend/app/owner.py`, `code/frontend/src/pages/OwnerStudio.tsx`, `CardPage.tsx` |
 | Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/AgentTrace.tsx`, `components/B6Bee.tsx`, `styles.css`, `public/brand/` |
+| HR workflows | `code/backend/app/domains/hr.py` and any new HR page or component |
 | Vision | `documentation/`, `assets/` |
 | Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, `guard.py`, `SECURITY.md`, CI and deploy files |
 
 A change to the API contract updates `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` in the same PR.
+
+## Add a use case
+
+Hotels are the first use case; HR is the second. A new one (events, shops, services) doesn't touch either:
+
+1. Create `code/backend/app/domains/<name>.py` with a module docstring that says what is built and what is next.
+2. Pick a card kind (`"event"`, `"shop"`) and keep a fictional `EXAMPLE_CARD`. Cards go through `hive.publish`,
+   so they are signed like every other card.
+3. Write plain functions for the logic, then a `register(server)` that wraps each in `@server.tool()` with
+   `safe(...)` from `domains.base`. Tool names start with the domain (`events_find`, `events_reserve`).
+4. Add the module to `DOMAINS` in `domains/__init__.py`.
+5. Add tests next to the others, and a row to the tables in `documentation/ARCHITECTURE.md`.
+
+Keep the core's promises: signed cards, reasons for every exclusion, no paid placement, consent before personal
+data moves, and a human approval for anything that commits money or a person. If a tool calls Claude, edits a card
+or wipes data, it goes through `guard.py`.
 
 ## Branches
 

@@ -234,6 +234,11 @@ def _log(card_id: str, kind: str, detail: str) -> None:
     _log_many([(card_id, kind, detail)])
 
 
+def record_event(card_id: str, kind: str, detail: str) -> None:
+    """Log a domain event against a card (shown to its owner). For use cases built on the Hive core."""
+    _log(card_id, kind, detail)
+
+
 def _log_many(events: list[tuple[str, str, str]]) -> None:
     if not events:
         return

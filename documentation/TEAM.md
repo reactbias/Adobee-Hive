@@ -16,6 +16,7 @@ From the whiteboard, pointed at the challenge. Each maps to its own files so peo
 | 3 | Owner studio and human card page | Ole, Lezhi | `OwnerStudio.tsx`, `CardPage.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
 | 4 | Traveller agent UI and brand | Tobias, Felix, Andrey | `TravellerAgent.tsx`, `Home.tsx`, `styles.css` | Demo rehearsal, Mannin font |
 | 5 | Vision deck | Emily, Saad | `documentation/`, `assets/` | The 5 to 10 year story: hotels, events, people; Adobe's brand-visibility angle |
+| 6 | HR workflows | The three teammates from the whiteboard's CV/HR stream (names to confirm) | `code/backend/app/domains/hr.py`, tests, later an HR page | Fictional person seed, the person's yes/no on intros, a person view |
 
 ## How we work
 

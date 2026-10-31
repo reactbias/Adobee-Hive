@@ -32,6 +32,18 @@ flowchart LR
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
 | `llm.py`, `config.py` | Claude client with structured outputs and fallbacks; environment settings |
 
+## Use cases (`code/backend/app/domains`)
+
+The core knows cards, trust, events and bookings. A use case adds a card kind and its own MCP tools:
+
+| Domain | Card kind | Tools | Where |
+| --- | --- | --- | --- |
+| Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
+| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py` |
+
+Each domain module has a `register(server)` function and is listed in `domains.DOMAINS`. How to add one:
+[CONTRIBUTING.md](../CONTRIBUTING.md#add-a-use-case).
+
 ## Frontend (`code/frontend/src`)
 
 | File | Responsibility |
@@ -53,6 +65,8 @@ flowchart LR
 | `hive_book` | Book a unit; returns a signed receipt |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
+| `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
+| `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
 Agents can find the endpoint from `/.well-known/hive.json`.
 

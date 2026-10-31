@@ -1,10 +1,12 @@
 """The challenge's core mechanism: an agent discovers and books a Basel hotel over MCP."""
 
 import asyncio
+import json
 
 from mcp import Client
 
 from app import agent, config, guard, hive, simulate
+from app.domains import hr
 from app.mcp_server import server
 
 REQUEST = (
@@ -161,3 +163,22 @@ def test_bad_input_is_a_clear_400_not_a_crash(client):
     assert client.post(book, json=too_long).status_code == 400
     oversized = {"messages": [{"role": "user", "content": "x" * 5000}]}
     assert client.post("/api/agent", json=oversized).status_code == 422
+
+
+def test_hr_domain_finds_people_by_skill_and_asks_for_consent(client):
+    hive.publish(dict(hr.EXAMPLE_CARD))
+    found = hr.find_people(["Figma", "user research", "rust"])
+    mira = found["matches"][0]
+    assert mira["matched"] == ["figma", "user research"] and mira["signature_valid"]
+    assert "contact" not in mira and "email" not in json.dumps(found)
+    intro = hr.request_intro("person-mira", "Fictional Hotel Group", "We'd like to talk about agent-facing design.")
+    assert intro["status"] == "pending_consent"
+    assert "intro_request" in client.get("/api/owner/person-mira").json()["last_7_days"]
+
+
+def test_hr_tools_are_on_the_same_mcp_server(client):
+    async def tools():
+        async with Client(server) as c:
+            return {t.name for t in (await c.list_tools()).tools}
+
+    assert {"hr_find_people", "hr_request_intro", "hive_discover"} <= asyncio.run(tools())
