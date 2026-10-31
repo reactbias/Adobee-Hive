@@ -217,7 +217,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Three peered hubs on one machine, reachable from any phone on the wifi, seeded through the real signup endpoint ([how](documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh)) | `lan.sh`, `tools/seed_vaults.py` |
 | A test corpus whose cards never use the words a person would type, with an answer key, so search can be measured rather than demonstrated | [`testdata/`](testdata/README.md), `tools/make_corpus.py` |
 | `contact` on every entity: the key is always there, an empty value means "not published", and a channel the owner marked `never` is absent rather than listed as withheld | `hive.with_contact`, `documentation/cards/README.md` |
-| Semantic similarity with no key, no network and no new dependency: stems, a four-language concept table and character trigrams above a measured floor. **Written and tested; discovery does not call it yet**, so matching is still literal — one of the gaps in [LIMITS.md](documentation/LIMITS.md) | `code/backend/app/semantic.py` |
+| Semantic similarity with no key, no network and no new dependency: stems, a four-language concept table and character trigrams above a measured floor. Discovery combines it with literal matching; the optional embedding provider is not implemented ([limits](documentation/LIMITS.md)) | `code/backend/app/semantic.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
@@ -246,7 +246,7 @@ How it works and how to run it: [code/backend/tools/README.md](code/backend/tool
 ## Run it locally in 5 minutes
 
 You need **Git**, **Python 3.12** and **Node 22**. No API key: without one, the agent runs on a scripted planner
-over the same MCP tools and the header shows **Offline mode**.
+over the same MCP tools. The status strip shows backend reachability separately from the configured planner.
 
 **1. Clone and configure**
 
