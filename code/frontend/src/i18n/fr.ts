@@ -16,7 +16,7 @@ const fr: Record<Key, string> = {
   "trust.noReviews": "Pas encore de séjour vérifié",
 
   "owner.business": "Commerce",
-  "owner.sample": "Ajouter un sauna. La double côté cour coûte 165 francs dès aujourd'hui.",
+  "owner.placeholder": "Dès aujourd'hui, …",
   "owner.tokenNeeded": "Dans ce Hive, seul le propriétaire peut modifier une carte. Saisissez votre jeton.",
   "owner.token": "Jeton du propriétaire",
   "owner.useToken": "Utiliser le jeton",
@@ -24,6 +24,7 @@ const fr: Record<Key, string> = {
   "owner.week.missed": "demandes manquées",
   "owner.week.booked": "réservations",
   "owner.preview": "Prévisualiser",
+  "owner.previewVersion": "Voir la v{version}",
   "owner.noChange": "Aucune modification détectée.",
   "owner.publish": "Signer et publier",
   "owner.discard": "Annuler",

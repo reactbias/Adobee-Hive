@@ -16,7 +16,7 @@ const de: Record<Key, string> = {
   "trust.noReviews": "Noch keine belegten Aufenthalte",
 
   "owner.business": "Betrieb",
-  "owner.sample": "Sauna hinzufügen. Das Courtyard-Doppelzimmer kostet ab heute 165 Franken.",
+  "owner.placeholder": "Ab heute …",
   "owner.tokenNeeded": "In diesem Hive darf nur der Inhaber Karten ändern. Bitte Inhaber-Token eingeben.",
   "owner.token": "Inhaber-Token",
   "owner.useToken": "Token verwenden",
@@ -24,6 +24,7 @@ const de: Record<Key, string> = {
   "owner.week.missed": "verpasste Anfragen",
   "owner.week.booked": "Buchungen",
   "owner.preview": "Änderung ansehen",
+  "owner.previewVersion": "v{version} ansehen",
   "owner.noChange": "Keine Änderung erkannt.",
   "owner.publish": "Signieren und veröffentlichen",
   "owner.discard": "Verwerfen",

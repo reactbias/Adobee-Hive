@@ -17,7 +17,7 @@ const en = {
 
   // The owner's side, under the chat
   "owner.business": "Business",
-  "owner.sample": "Add sauna. The courtyard double is 165 francs from today.",
+  "owner.placeholder": "From today, …",
   "owner.tokenNeeded": "This Hive lets only the owner edit cards. Enter your owner token.",
   "owner.token": "Owner token",
   "owner.useToken": "Use token",
@@ -25,6 +25,7 @@ const en = {
   "owner.week.missed": "requests you missed",
   "owner.week.booked": "bookings",
   "owner.preview": "Preview change",
+  "owner.previewVersion": "Preview v{version}",
   "owner.noChange": "No change detected.",
   "owner.publish": "Sign and publish",
   "owner.discard": "Discard",

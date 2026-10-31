@@ -3,7 +3,7 @@ import { api, mcpUrl, setOwnerToken, type Card, type OwnerOverview, type Proposa
 import Chapter, { Frame } from "../components/Chapter";
 import Composer from "../components/Composer";
 import TrustBadge from "../components/TrustBadge";
-import { useI18n, useSample } from "../i18n";
+import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, day, stay } from "../lib/format";
 import { demoMode } from "../lib/demo";
@@ -66,7 +66,8 @@ export default function OwnerPanel({
   const [cards, setCards] = useState<Card[]>([]);
   const [cardId, setCardId] = useState(initial);
   const [overview, setOverview] = useState<OwnerOverview | null>(null);
-  const [instruction, setInstruction] = useSample(["owner.sample"]);
+  // Empty until the owner speaks or picks a row under "What agents asked you for": a sample here read as a real change.
+  const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -88,6 +89,7 @@ export default function OwnerPanel({
   useEffect(() => {
     setProposal(null);
     setPublished(null);
+    setInstruction("");
     api
       .owner(cardId)
       .then(setOverview)
@@ -157,7 +159,12 @@ export default function OwnerPanel({
       return tags.length ? [{ what: tags.join(" + "), tags, meta: t("owner.times", { n: m.times }) }] : [];
     }),
   ];
-  const use = (tags: string[]) => setInstruction(tags.map((tag) => t("owner.waiting.add", { tag })).join(", "));
+  // Use writes the ask as the owner's own sentence and previews it straight away; nothing is live until they sign.
+  const use = (tags: string[]) => {
+    const text = tags.map((tag) => t("owner.waiting.add", { tag })).join(", ");
+    setInstruction(text);
+    propose(text);
+  };
 
   const tabs = (
     <div className="tabs" role="tablist" aria-label={t("chapter.business")}>
@@ -205,7 +212,8 @@ export default function OwnerPanel({
               onChange={setInstruction}
               onSend={propose}
               busy={busy}
-              sendLabel={t("owner.preview")}
+              placeholder={t("owner.placeholder")}
+              sendLabel={card ? t("owner.previewVersion", { version: card.version + 1 }) : t("owner.preview")}
               busyLabel={t("owner.checking")}
             />
           )}
