@@ -58,8 +58,8 @@ Things to know about the free tier:
   runs by a few minutes). Delete the workflow or the variable after the event.
 - **Data resets.** The free disk is ephemeral: each deploy or restart starts from the seed data, so bookings and
   owner edits made during the demo are lost on the next push to `main`.
-- **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that, the router uses it
-  as `basename`, and `404.html` is a copy of `index.html` so deep links like `/card/rheinblick` load.
+- **Sub-path.** Pages serves the site under `/<repo>/`. The workflow sets `VITE_BASE` for that (assets and
+  images load from it), and `404.html` is a copy of `index.html` so old links like `/agent` still load the one page.
 
 ## AWS (optional, later): every push to `main` deploys itself
 
@@ -81,10 +81,10 @@ One-time setup, about 15 minutes:
 3. Amplify console: *New app*, connect this repo, branch `main`, tick monorepo with root `code/frontend`.
    Environment variable `VITE_API_URL` = the backend URL. Under *Rewrites and redirects* add
    `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>` → `/index.html` (200)
-   so deep links like `/card/rheinblick` work.
+   so old links like `/agent` still load the one page.
 4. Push to `main`.
 
-The bootstrap prints two team secrets: the **owner token** (the owner studio asks for it before an edit) and the
+The bootstrap prints two team secrets: the **owner token** (the owner studio in chapter 3 asks for it before an edit) and the
 **demo token** (`X-Demo-Token` for `POST /api/demo/reset`). Share them in person or through a password manager.
 
 ## Cost guard for the demo key

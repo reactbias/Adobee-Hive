@@ -13,8 +13,8 @@ From the whiteboard, pointed at the challenge. Each maps to its own files so peo
 | --- | --- | --- | --- | --- |
 | 1 | Hive core: cards, trust, discovery, booking | Aneeq, Shayan, Sarthak | `hive.py`, `hive_seed.py`, `mcp_server.py` | More Basel businesses, a restaurant table flow, cancellation edge cases |
 | 2 | Agents | Aneeq, Shayan, Sarthak | `agent.py` | Live OpenAI run tuned on the demo prompts; booking from Claude via the MCP URL |
-| 3 | Owner studio and human card page | Ole, Lezhi | `OwnerStudio.tsx`, `CardPage.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
-| 4 | Traveller agent UI and brand | Tobias, Felix, Andrey | `TravellerAgent.tsx`, `Home.tsx`, `styles.css` | Demo rehearsal |
+| 3 | Owner studio and tamper test | Ole, Lezhi | `panels/OwnerPanel.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
+| 4 | Traveller agent UI and brand | Tobias, Felix, Andrey | `TravellerAgent.tsx`, `App.tsx`, `styles.css` | Demo rehearsal |
 | 5 | Vision deck | Emily, Saad | `documentation/`, `assets/` | The 5 to 10 year story: hotels, events, people; Adobe's brand-visibility angle |
 | 6 | HR workflows | The three teammates from the whiteboard's CV/HR stream (names to confirm) | `code/backend/app/domains/hr.py`, tests, later an HR page | Fictional person seed, the person's yes/no on intros, a person view |
 
