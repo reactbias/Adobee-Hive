@@ -83,10 +83,13 @@ class HiveConnections:
     What the guard refused is collected in `blocked`, keyed by source and card id.
     """
 
-    def __init__(self, extra: list[tuple[str, Any]] | None = None, guarded: bool = True) -> None:
+    def __init__(
+        self, extra: list[tuple[str, Any]] | None = None, guarded: bool = True, source: str | None = None
+    ) -> None:
         self.stack = AsyncExitStack()
         self.extra = extra or []
         self.guarded = guarded
+        self.source = source
         self.sources: dict[str, Client] = {}
         self.routes: dict[str, list[str]] = {}
         self.origin: dict[str, str] = {}  # card id -> source that listed it as a match
@@ -97,6 +100,10 @@ class HiveConnections:
 
     async def __aenter__(self) -> "HiveConnections":
         targets = [(url, url) for url in config.HIVE_MCP_URLS] or [(LOCAL_HIVE, local_server)]
+        if self.source is not None:
+            targets = [(label, target) for label, target in targets if label == self.source]
+            if not targets:
+                raise ValueError("The Hive selected for this booking is no longer configured. Ask your agent again.")
         for _label, target in targets:  # keys are pinned from configured Hives only, never from extra sources
             self.pins |= await _pinned_keys(target)
         for label, target in [*targets, *self.extra]:
@@ -266,8 +273,9 @@ async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
     args = _take(str(pending.get("id", "")))
+    source = args.pop("_source", None)
     steps: list[dict[str, Any]] = []
-    async with HiveConnections() as hives:
+    async with HiveConnections(source=source) as hives:
         booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
         return {"reply": say(locale, "book_failed", error=booking.get("error")), "steps": steps, "booking": None}
@@ -292,14 +300,17 @@ HOLD_TTL_S = 30 * 60
 MAX_HELD = 1000
 
 
-def _hold(args: dict[str, Any]) -> dict[str, Any]:
+def _hold(args: dict[str, Any], source: str | None = None) -> dict[str, Any]:
     now = time.time()
     for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
         del _HELD[key]
     while len(_HELD) >= MAX_HELD:
         del _HELD[next(iter(_HELD))]  # the oldest hold
     hold_id = secrets.token_urlsafe(16)
-    _HELD[hold_id] = (now, dict(args))
+    stored = dict(args)
+    if source is not None:
+        stored["_source"] = source
+    _HELD[hold_id] = (now, stored)
     return {"id": hold_id, "tool": "hive_book", "input": args}
 
 
@@ -311,10 +322,11 @@ def _take(hold_id: str) -> dict[str, Any]:
     return held[1]
 
 
-def _call_tool(name: str, args: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+def _call_tool(name: str, args: dict[str, Any], hives: HiveConnections) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Hold hive_book for the traveller's approval; any other tool is called. Returns (pending, args to call)."""
     if name == "hive_book":
-        return _hold(args | {"agent": AGENT_NAME}), {}
+        source = hives.origin.get(str(args.get("card_id"))) or hives.routes[name][0]
+        return _hold(args | {"agent": AGENT_NAME}, source), {}
     return None, args
 
 
@@ -362,7 +374,7 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], lo
             if not isinstance(args, dict):
                 output: dict[str, Any] = {"error": "arguments must be a JSON object"}
             else:
-                held, args = _call_tool(call.name, args)
+                held, args = _call_tool(call.name, args, hives)
                 pending = held or pending
                 output = HELD if held else await hives.step(steps, call.name, args)
             convo.append(
@@ -404,7 +416,7 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]], lo
             return {"reply": reply, "steps": steps, "pending": pending, "mode": "claude"}
         results = []
         for call in calls:
-            held, args = _call_tool(call.name, dict(call.input or {}))
+            held, args = _call_tool(call.name, dict(call.input or {}), hives)
             pending = held or pending
             output = HELD if held else await hives.step(steps, call.name, args)
             results.append(
@@ -477,7 +489,7 @@ def _dates(text: str) -> list[str]:
 def parse_request(text: str) -> dict[str, Any]:
     """Pull dates, budget, guests, name, landmark and feature tags out of a free-text request.
 
-    Only the offline planner uses this; with a key, Claude reads the request itself.
+    The offline planner and explicit room searches reuse this; a live model also reads the request itself.
     """
     low = text.lower()
     dates = _dates(text)
@@ -626,7 +638,8 @@ async def _run_scripted(
             "guest_name": req["guest_name"],
             "guests": req["guests"],
             "agent": AGENT_NAME + " (scripted)",
-        }
+        },
+        hives.last_source,
     )
     reply = (
         say(
