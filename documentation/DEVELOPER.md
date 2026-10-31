@@ -115,6 +115,20 @@ curl -s http://localhost:8000/mcp/ \
 
 Use `"method":"tools/list"` (no params) to see every tool with its arguments.
 
+`hive_discover` searches everything on the hub by what it **offers** and what it **needs**; `kind` only narrows
+it. `looking_for` says which side of the market you are on — `offers` (the default) finds whoever provides the
+thing, `needs` whoever wants what you provide, `any` both. So this finds the people looking for a contractor:
+
+```bash
+curl -s http://localhost:8000/mcp/ \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hive_discover",
+       "arguments":{"query":"svelte contractor","looking_for":"needs"}}}'
+```
+
+Every result says whether it is `claimed` by its subject and whether it is `bookable`: an unclaimed card was
+compiled from public information, so it can only be handed off to the business's own site after a person's yes.
+
 **With Python**, a whole booking: discover, check availability, book. Save it as `book.py` and run it with the
 backend's virtual environment active (it has the `mcp` package). Use dates in the future.
 
