@@ -6,7 +6,7 @@ const it: Record<Key, string> = {
   "nav.live": "IA attiva",
   "nav.offline": "Modalità offline",
   "nav.down": "Backend non raggiungibile",
-  "footer.line": "Adobee Hive · BaselHack 2026 · Team B",
+  "footer.line": "Adobee Hive · BaselHack 2026 · Team B6",
   "footer.wake": "Sveglia l'ape B6",
 
   "trust.signed": "Firmata dal titolare",

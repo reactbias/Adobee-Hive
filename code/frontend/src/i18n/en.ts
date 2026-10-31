@@ -5,7 +5,7 @@ const en = {
   "nav.live": "AI live",
   "nav.offline": "Offline mode",
   "nav.down": "Backend unreachable",
-  "footer.line": "Adobee Hive · BaselHack 2026 · Team B",
+  "footer.line": "Adobee Hive · BaselHack 2026 · Team B6",
   "footer.wake": "Wake the B6 bee",
 
   // Trust lines
