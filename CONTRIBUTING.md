@@ -77,7 +77,7 @@ The jury reviews the commit history, so make each commit one small, working step
 - One review from another person before merging, then merge with a merge commit. Never squash: the jury reads the
   small commits.
 - Stack nothing: every PR targets `main`. A PR merged into another feature branch never reaches `main`.
-- `main` deploys to AWS on every merge. Don't merge in the last 15 minutes before a demo.
+- `main` deploys to GitHub Pages and Render on every merge. Don't merge in the last 15 minutes before a demo.
 
 ## Strings and languages
 

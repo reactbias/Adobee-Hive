@@ -1,6 +1,6 @@
-"""Optional S3 snapshot of the DuckDB file, so data survives App Runner redeploys.
+"""Optional S3 snapshot of the DuckDB file, so data survives redeploys.
 
-App Runner disks are ephemeral. With DUCKDB_S3_URI set we download the file on boot
+Free hosting disks are ephemeral. With DUCKDB_S3_URI set we download the file on boot
 and upload a fresh copy after every write. Good enough for a single-instance demo.
 """
 
