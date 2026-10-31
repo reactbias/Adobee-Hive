@@ -7,4 +7,4 @@ mcp==2.3.0
 httpx==0.28.1
 cryptography==50.0.2
 pydantic==2.14.2
-boto3==1.43.123
+psycopg[binary]==3.3.6

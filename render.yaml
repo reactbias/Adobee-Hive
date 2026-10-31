@@ -1,5 +1,11 @@
 # Render Blueprint for the backend: free web service built from code/backend/Dockerfile,
 # redeployed on every push to main. Render asks for OPENAI_API_KEY when the Blueprint is created.
+# A free Render Postgres keeps the data across redeploys (DATABASE_URL, internal network only).
+databases:
+  - name: adobee-hive-db
+    plan: free
+    region: frankfurt
+    ipAllowList: [] # no access from the internet; only the web service reaches it
 services:
   - type: web
     name: adobee-hive
@@ -21,3 +27,7 @@ services:
         generateValue: true
       - key: DEMO_RESET_TOKEN
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adobee-hive-db
+          property: connectionString
