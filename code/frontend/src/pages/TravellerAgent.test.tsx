@@ -25,6 +25,14 @@ const RESULT: AgentResult = {
   mode: "offline",
   pending: HELD,
   second_opinion: { verdict: "agree", note: "Quiet, dog-friendly, under budget.", by: "Rule check", ms: 1 },
+  critic: {
+    challenge: "Why Hotel Rheinblick? Gare Central is CHF 40 a night cheaper.",
+    answer: "Hotel Rheinblick scores 82 on the Hive's open ranking, Gare Central only 61: it fits your wishes better.",
+    verdict: "agree",
+    note: "Fair. I agree.",
+    rival: "Gare Central",
+  },
+  consensus: true,
   steps: [
     {
       tool: "hive_discover",
@@ -220,6 +228,7 @@ describe("traveller agent", () => {
       en["chat.name.hive"],
       "Hotel Rheinblick",
       en["chat.name.sceptic"],
+      en["chat.name.critic"],
     ])
       expect(roster).toHaveTextContent(name);
     expect(roster).not.toHaveTextContent(en["chat.name.mirror"]);
@@ -285,5 +294,39 @@ describe("traveller agent", () => {
 
     expect(await screen.findByRole("button", { name: en["next.business.cta"] })).toBeInTheDocument();
     expect(owner).toHaveBeenCalledWith("hotel-rheinblick");
+  });
+
+  it("lets three agents argue before it asks: the critic challenges, your agent answers, all agree", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await skipAhead(user);
+
+    expect(screen.getByText(RESULT.critic!.challenge)).toBeInTheDocument();
+    expect(screen.getByText(RESULT.critic!.answer)).toBeInTheDocument();
+    expect(screen.getAllByText(en["chat.consensus.agree"]).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", { name: en["agent.approve"] })).toBeInTheDocument();
+  });
+
+  it("says plainly when the three agents do not agree, and still leaves the yes to the traveller", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue({
+      ...RESULT,
+      critic: {
+        ...RESULT.critic!,
+        answer: "",
+        verdict: "concern",
+        note: "Not convinced: Gare Central ranks at least as high.",
+      },
+      consensus: false,
+    });
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await skipAhead(user);
+
+    expect(screen.getAllByText(en["chat.consensus.split"]).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not convinced: Gare Central ranks at least as high.").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", { name: en["agent.approve"] })).toBeInTheDocument();
   });
 });
