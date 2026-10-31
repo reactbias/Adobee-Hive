@@ -108,6 +108,9 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hub_score` | Record how an introduction actually went, after the real meeting: tenths of a star out of five, once, and only while the connection is still open. The only input to how far this Hive trusts another |
 | `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale |
 | `hub_standing` | What this Hive makes of its neighbours: published minus realised, lower is better, unproven when the evidence is thin |
+| `hub_registration` | What this Hive asks of someone who wants to join: policy, checks, proof types and an example document |
+| `hub_register` | Apply to join with one signed JSON document. Bring a public key and the user keeps the private half |
+| `hub_directory` | The Hives this one knows of, so a user can choose which to join, with each one's calibration |
 | `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
@@ -136,6 +139,13 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
 | `POST /api/admin/login` | Exchange the hub's `ADMIN_PASSWORD` for a short-lived session token, so a person can administer the hub from a browser. A refusal says nothing about the password; a lockout says when to try again | rate limit per client IP **and** in total, fails closed |
 | `POST /api/admin/logout` | End this session token | `X-Admin-Token` |
+| `GET /api/hub/registration` | The admission policy and the exact document to send | — |
+| `POST /api/hub/register` | Apply to join. A refusal is 200 with `state: rejected`, not a 4xx | rate limit |
+| `GET /api/hub/register/{application_id}` | Check on an application | — |
+| `POST /api/hub/register/{application_id}/withdraw` | Withdraw before a decision | — |
+| `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
+| `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
+| `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
 | `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |

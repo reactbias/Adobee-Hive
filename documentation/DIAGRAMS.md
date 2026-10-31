@@ -106,6 +106,7 @@ flowchart TB
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
+  REG[registration.py<br/>one signed application, and who gets in]:::mod
   ADM[admin.py<br/>settings, neighbours, blocklist, GUI-ready]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
@@ -123,6 +124,10 @@ flowchart TB
   HUB --> SHR
   REST --> ADM
   ADM --> BLK
+  REST --> REG
+  MCP --> REG
+  REG --> HIVE
+  REG --> BLK
   A -->|MCP client| INJ --> MCP
   MIR -.->|stress test| INJ
   A --> V
@@ -301,6 +306,7 @@ flowchart LR
     M3[hive_wait · hive_check_waiting]:::door
     M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
     M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
+    M6[hub_registration · hub_register · hub_directory]:::door
   end
 
   AGT --> HUBD
@@ -312,6 +318,14 @@ flowchart LR
     H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
   end
 
+  JOIN([Someone who wants to join]) --> REGD
+  subgraph REGD["Joining a hub"]
+    direction TB
+    J1["GET /api/hub/directory · GET /api/hub/registration"]:::door
+    J2["POST /api/hub/register"]:::door
+    J3["GET /api/hub/register/{application_id} · POST /api/hub/register/{application_id}/withdraw"]:::door
+  end
+
   ADMN([Hub operator]) --> ADMD
   subgraph ADMD["Administration · the admin panel, or curl"]
     direction TB
@@ -320,6 +334,8 @@ flowchart LR
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
     D0 -. "X-Admin-Token" .-> D3
+    D4["GET /api/admin/applications"]:::door
+    D5["POST /api/admin/applications/{application_id}"]:::held
   end
 
   APP([React app]) --> AGR & ASK & CRD & OWN & OPS
