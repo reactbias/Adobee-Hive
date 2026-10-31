@@ -156,21 +156,19 @@ def test_the_real_hotel_krafft_folder_has_all_three_of_its_rooms():
 
 
 #: The answer key in testdata/README.md, between the markers, is what semantic search is measured
-#: against. A pair is only worth measuring if literal matching cannot reach it.
-ANSWER_KEY = ROOT.parents[1] / "testdata" / "README.md"
+#: against. A pair is only worth measuring if literal matching cannot reach it; tools/eval_answer_key.py
+#: scores it, and this module reuses that script's parser so there is only one of them.
 
 
-def _answer_key_rows():
-    """The query and expected slug of every row between the answer-key markers."""
-    text = ANSWER_KEY.read_text(encoding="utf-8")
-    block = text.split("<!-- answer-key -->", 1)[1].split("<!-- /answer-key -->", 1)[0]
-    rows = []
-    for line in block.splitlines():
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) < 3 or cells[0].startswith("---") or cells[0] == "What a person types":
-            continue
-        rows.append((cells[0], cells[1].strip("`")))
-    return rows
+def _eval_tool():
+    """Load tools/eval_answer_key.py: the scorer, and the one parser for the answer key."""
+    if "eval_answer_key" in sys.modules:
+        return sys.modules["eval_answer_key"]
+    spec = importlib.util.spec_from_file_location("eval_answer_key", ROOT / "tools" / "eval_answer_key.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["eval_answer_key"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def _indexed_text(card: dict) -> str:
@@ -190,7 +188,7 @@ def test_the_answer_key_covers_entities_that_exist_and_is_not_a_softball():
     about semantic search. Fourteen pairs that share none is the measurement.
     """
     seed = _seed_vaults()
-    rows = _answer_key_rows()
+    rows = [(query, slug) for query, slug, _ in _eval_tool().pairs()]
     assert len(rows) >= 10, "the key needs ten to fifteen pairs to measure anything"
     for query, slug in rows:
         assert slug in seed.KIND, f"{slug} is in the answer key but not a vault"

@@ -49,6 +49,19 @@ Keep the core's promises: signed cards, reasons for every exclusion, no paid pla
 data moves, and a human approval for anything that commits money or a person. If a tool calls a model, edits a card
 or wipes data, it goes through `guard.py`.
 
+## Mutation testing
+
+CI breaks the code on purpose after the tests pass, to check the tests notice. The 35 curated mutants in
+`code/backend/tools/mutate.py` must all fail the suite; a survivor fails the build and means a missing
+assertion, not a broken feature. Run it before you push a change to federation, reputation, calibration,
+connections, sharing or registration:
+
+```bash
+cd code/backend && python tools/mutate.py
+```
+
+Adding a rule the design depends on? Add a mutant for it, so the rule cannot be quietly deleted later.
+
 ## Branches
 
 `<type>/<short-topic>`, for example `feat/restaurant-tables`, `fix/owner-diff-prices`, `docs/pitch-beats`.

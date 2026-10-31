@@ -19,6 +19,7 @@ import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
 import ActivityPanel from "../panels/ActivityPanel";
+import Introductions from "../panels/Introductions";
 import NetworkPanel from "../panels/NetworkPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
@@ -34,8 +35,8 @@ import Reach from "../components/Reach";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
-// The Try list: stays first, then any business; the same chat answers both.
-const TRY: Key[] = ["agent.example.1", "card.try.person", "card.try.staff", "agent.example.2", "ask.ex1", "ask.ex2"];
+// What a person would type, from the corpus answer key: the card never uses these words.
+const TRY: Key[] = ["try.tavern", "try.garden", "try.hostel", "try.pasta", "try.coffee", "try.lockout"];
 
 type Rec = Record<string, unknown>;
 
@@ -64,6 +65,8 @@ export default function TravellerAgent() {
   const [searching, setSearching] = useState(false);
   // How far the hubs are asked: this one only until the person chooses further.
   const [radius, setRadius] = useState(0);
+  // Counts introductions asked for from a result, so the "How did it go?" panel reads them again.
+  const [introduced, setIntroduced] = useState(0);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
@@ -493,10 +496,6 @@ export default function TravellerAgent() {
       <Chapter
         id="travel"
         stack
-        headingLevel={1}
-        eyebrow={t("agent.eyebrow")}
-        heading="agent.title"
-        lead={t("agent.lead")}
         side={
           <div className="search-top">
             <Composer
@@ -511,7 +510,7 @@ export default function TravellerAgent() {
               busyLabel={searching ? t("card.searching") : t("agent.sending")}
               placeholder={t("agent.placeholder")}
               tryLabel={t("agent.try")}
-              examples={history.length || searching ? [] : TRY.map((k) => t(k))}
+              examples={TRY.map((k) => t(k))}
               boxRef={box}
               secondary={
                 history.length > 0 && (
@@ -573,7 +572,14 @@ export default function TravellerAgent() {
         )}
         <div className={scene && details ? "journey split" : "journey"}>
           {scene && (
-            <GeneratedStage key={scene.query} scene={scene} onDetails={openDetails} detailsOpen={details} deal={deal} />
+            <GeneratedStage
+              key={scene.query}
+              scene={scene}
+              onDetails={openDetails}
+              detailsOpen={details}
+              deal={deal}
+              onConnected={() => setIntroduced((n) => n + 1)}
+            />
           )}
           {(details || (!scene && history.length > 0)) && (
             <div className="journey-side" ref={sideRef}>
@@ -643,6 +649,7 @@ export default function TravellerAgent() {
           )}
         </div>
       </Chapter>
+      <Introductions refresh={introduced} />
       <OwnerPanel
         key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`}
         initial={owner?.id}

@@ -1,5 +1,10 @@
-// Typed client for the FastAPI backend. VITE_API_URL is set by the Pages build; empty means same origin (dev proxy).
-const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+// Typed client for the FastAPI backend.
+//
+// The base URL is resolved per call, not baked in. VITE_API_URL is the build's default — what the Pages and
+// Render deploys talk to before anybody picks anything, and empty means same origin through the dev proxy — but a
+// Hive chosen in the finder overrides it for this tab. That is what makes picking Zürich actually talk to Zürich
+// instead of recording a preference and carrying on with Basel.
+const BUILD_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 /** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
 export const OFFLINE = "error.offline";
@@ -37,7 +42,9 @@ async function call<T>(path: string, init?: RequestInit, retry = true): Promise<
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, {
+    // A peer hub's `apply_at` is a full address; everything else is a path on the Hive this tab is pointed at.
+    const target = /^https?:\/\//.test(path) ? path : `${apiBase()}${path}`;
+    res = await fetch(target, {
       ...init,
       signal: abort.signal,
       headers:
@@ -110,12 +117,22 @@ function adminHeaders(): Record<string, string> {
   return token ? { "X-Admin-Token": token } : {};
 }
 
-// The hub the app is pointed at, chosen in the instance finder. Remembered for this tab only.
+// The hub the app is pointed at, chosen in the instance finder: its id, and where it actually answers.
+// Remembered for this tab only, so closing the tab goes back to the build's default.
 const HUB_KEY = "adobee-hub";
-export function setChosenHub(hub: string) {
+const HUB_URL_KEY = "adobee-hub-url";
+
+/**
+ * Remember the chosen Hive. `url` is its base URL; "" means the one this build was pointed at.
+ *
+ * Both halves are kept together on purpose: an id alone cannot be called, and a URL alone cannot be shown.
+ */
+export function setChosenHub(hub: string, url = "") {
   try {
     if (hub) sessionStorage.setItem(HUB_KEY, hub);
     else sessionStorage.removeItem(HUB_KEY);
+    if (hub && url) sessionStorage.setItem(HUB_URL_KEY, url.replace(/\/$/, ""));
+    else sessionStorage.removeItem(HUB_URL_KEY);
   } catch {
     /* storage blocked: the finder asks again on the next load */
   }
@@ -128,13 +145,32 @@ export function chosenHub(): string {
   }
 }
 
-/**
- * The backend this build talks to. VITE_API_URL is baked in at build time, so a deployed build can only reach
- * the hub it was built against: the instance finder says so rather than pretending a pick moves the app.
- */
-export const apiOrigin = () => BASE || window.location.origin;
+/** Where the chosen Hive answers, or "" for the hub this build was pointed at. */
+export function chosenHubUrl(): string {
+  try {
+    return sessionStorage.getItem(HUB_URL_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
-export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
+/** The base URL every call goes to: the Hive chosen in this tab, else the build's default. */
+export const apiBase = (): string => chosenHubUrl() || BUILD_BASE;
+
+/**
+ * True when this page cannot call that hub at all, whatever the hub allows.
+ *
+ * A page served over HTTPS may not call an `http://` address: that is mixed content, the browser blocks it
+ * before any request is made, and no CORS or private-network header fixes it. The finder refuses such a choice
+ * with that reason rather than appearing to switch and then failing on every call.
+ */
+export const blockedAsMixedContent = (url: string): boolean =>
+  typeof window !== "undefined" && window.location.protocol === "https:" && /^http:\/\//i.test(url);
+
+/** The backend the app is talking to right now: the chosen Hive, the build's default, or this very origin. */
+export const apiOrigin = () => apiBase() || window.location.origin;
+
+export const mcpUrl = () => `${apiOrigin()}/mcp/`;
 
 // ---------- Hive ----------
 
@@ -461,6 +497,76 @@ export interface HiveMatch {
   federated_score?: number;
   /** The signed card this Hive verified the result against, for a result from a peer. */
   card?: Card;
+  /** What connecting will take: `public` opens at once, `confirm` waits for the owner's yes. */
+  sharing?: Sharing;
+  needs_confirmation?: boolean;
+  connectable?: boolean;
+  /** `email` and `phone` are always present, possibly empty; an empty one may be gated in `contact_sharing`. */
+  contact?: Record<string, string>;
+  contact_sharing?: Record<string, string>;
+}
+
+// ---------- Introductions: connect, then score how it went ----------
+
+/** Who moves first, per item. `push` and `never` never appear in a search, so there is nothing to ask for. */
+export type Sharing = "public" | "confirm" | "push" | "never";
+
+/**
+ * One introduction. `requested` waits on the owner's yes, `open` waits on a person's score until `stale_at`,
+ * `rated` is final, and `stale` and `declined` can never become a rating. Ratings are tenths of a star, 0–50.
+ */
+export interface Connection {
+  id: string;
+  created_at: string;
+  state: "requested" | "open" | "rated" | "stale" | "declined";
+  requester: string;
+  requester_hub: string | null;
+  target: string;
+  target_hub: string | null;
+  via_hub: string | null;
+  sharing: string | null;
+  /** What the carrying hub said the entity was worth at the introduction, frozen. */
+  published_rating: number | null;
+  opened_at: string | null;
+  stale_at: string | null;
+  rated_at: string | null;
+  rating: number | null;
+  note: string | null;
+  rating_stars: number | null;
+  published_rating_stars: number | null;
+}
+export interface Connections {
+  /** Open and unscored, the one about to go stale first. */
+  awaiting_rating: Connection[];
+  awaiting_confirmation: Connection[];
+}
+export interface ConnectRequest {
+  requester: string;
+  entity_id: string;
+  target_hub?: string;
+  via_hub?: string;
+}
+/** A hub's calibration as the score left it. Lower `error` is better; negative means it undersold. */
+export interface HubStanding {
+  hub: string;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+/** What a score did: the gap against what was promised, and where that leaves the hub that carried it. */
+export interface ScoreOutcome {
+  connection: Connection;
+  hub: string;
+  gap?: number;
+  gap_stars?: number;
+  says?: string;
+  hub_standing?: HubStanding;
+}
+export interface Standing {
+  hub: string;
+  peers: HubStanding[];
 }
 /** What a peer Hive did with a forwarded query: who was asked, dropped, and whose card was refused here. */
 export interface FederationReport {
@@ -549,6 +655,44 @@ export interface Directory {
   asked_every_seconds?: number;
   /** Scored introductions a verdict needs, so "unproven" can say how far off it is. */
   min_evidence?: number;
+}
+
+/** What a hub asks of someone who wants to join, published so they can read it before applying. */
+export interface RegistrationPolicy {
+  policy: string;
+  means: string;
+  checks: string[];
+  proof_types: string[];
+  key_custody: string;
+}
+
+export interface Proof {
+  type: string;
+  subject: string;
+}
+
+/**
+ * The document sent to join. Every key is always present: the hub checks the signature over the body after
+ * filling in its defaults, so a missing `invite` or `proofs` would change the bytes and break it.
+ */
+export interface JoinApplication {
+  entity: Record<string, unknown>;
+  public_key: string;
+  proofs: Proof[];
+  invite: string;
+  signature?: string;
+}
+
+/** The hub's answer. A refusal is `state: "rejected"` with the checks, the reason and a next step, not an error. */
+export interface ApplicationOutcome {
+  id: string;
+  state: "admitted" | "pending" | "rejected" | "withdrawn";
+  entity_id: string;
+  custody: "owner" | "hub";
+  verification: string;
+  checks: { check: string; ok: boolean; detail: string }[];
+  reason: string;
+  next: string;
 }
 
 /** A peer and how closely its published ratings matched what our people found. Lower `error` is better. */
@@ -711,6 +855,27 @@ export const api = {
 
   /** The Hives to choose between. Not on `main` yet (PR #71): the finder falls back to this hub on a 404. */
   directory: () => call<Directory>("/api/hub/directory"),
+  /** `applyAt` is the directory row's address: a path for this hub, a full URL for a peer. */
+  registrationPolicy: (applyAt = "/api/hub/register") =>
+    call<RegistrationPolicy>(applyAt.replace(/\/api\/hub\/register$/, "/api/hub/registration")),
+  register: (application: JoinApplication, applyAt = "/api/hub/register") =>
+    call<ApplicationOutcome>(applyAt, { method: "POST", body: JSON.stringify(application) }),
+
+  /** Ask to be introduced. A public entry comes back `open`; a `confirm` one comes back `requested`. */
+  connect: (request: ConnectRequest) => post<Connection>("/api/hub/connect", request),
+  /** Score an open introduction once, in tenths of a star (43 is 4.3). */
+  score: (id: string, rating: number, note = "") =>
+    post<ScoreOutcome>(`/api/hub/connections/${encodeURIComponent(id)}/score`, { rating, note }),
+  confirmConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}),
+  declineConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}),
+  connections: ({ requester = "", target = "" }: { requester?: string; target?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (requester) params.set("requester", requester);
+    if (target) params.set("target", target);
+    const query = params.toString();
+    return call<Connections>(`/api/hub/connections${query ? `?${query}` : ""}`);
+  },
+  standing: () => call<Standing>("/api/hub/standing"),
 
   /** Trade the hub's password for a session token. A 429 carries the seconds to wait in `retryAfter`. */
   adminLogin: (password: string) => post<AdminSession>("/api/admin/login", { password }),
