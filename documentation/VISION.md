@@ -134,7 +134,7 @@ different relationships:
 | --- | --- | --- | --- |
 | **Stays** | A hotel or café: rooms, prices, policies | A traveller's agent finds, compares and books | Built end to end |
 | **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`) |
-| **Ask** | Any business: offers, events, news. Five real ones as unclaimed public-info cards | A person asks a question; actions wait for their yes | Built (chapter 1, the same agent chat; `app/domains/explore.py`) |
+| **Ask** | Any business: offers, events, news. Six real ones as unclaimed public-info cards | A person asks a question; actions wait for their yes | Built (chapter 1, the same agent chat; `app/domains/explore.py`) |
 | Events, shops, services | Tickets, stock, appointments | Same pattern | Next |
 
 The arc runs from one booking today to agents that handle whole business relationships on our behalf: finding,
@@ -179,15 +179,33 @@ claim to have answered it. We hold to one design principle instead: **the rules 
 | A ruleset per jurisdiction, chosen by the person, with the local law as the floor | Next |
 | Rulesets published and signed by who wrote them (a health body, a consumer association), like a card | Built for stays (`hive_rulesets`, `ruleset` on `hive_discover`): "Dogs, verified" by a dog owners' club keeps only a vouched-for dog-friendly; each answer names the ruleset, its author and what it changed |
 
+## What federating already does
+
+Any town, association or chain runs its own Hive, and a search carries a **radius**: how many Hive-to-Hive hops it
+may travel, chosen by the person, capped at three. Each hop names itself so the cycles in a real peer graph cannot
+loop a query for ever, spends what is left of one time budget, and asks only its most trusted peers. A card that
+comes back is verified here against the key pinned in *its own* hub's registry, fetched from that hub directly, so
+a Hive in the middle can withhold a card or delay it and can never forge one. A hub is then measured twice over:
+by how it has behaved, and by whether its published ratings survived contact with real people. No single platform
+owns the front door again.
+
+That is built, and the architecture is in [FEDERATION.md](FEDERATION.md). What it still lacks is a second hub in
+the cloud — three peered hubs run on one laptop for the demo
+([`lan.sh`](DEVELOPER.md#three-hubs-on-one-machine-lansh)).
+
 ## Beyond the weekend
 
-- **Federated Hives.** Any town, association or chain runs its own Hive; an agent searches several at once. The
-  prototype already federates through `HIVE_MCP_URLS`. No single platform owns the front door again.
-- **Owner-held keys.** Today the server holds each owner's signing key. In the real thing the key lives with the
-  owner (a wallet, or their Adobe account), and the Hive only stores what they signed.
-- **People as Hive cards.** The whiteboard started with hiring, and the HR lane is building it: person cards with
-  skills and availability, found by company agents, contacted only after the person agrees. Next: the person's
-  yes/no, a person studio, CV import.
+- **Owner-held keys.** Today the server holds each card's signing key, even for an application that brought its
+  own public key: that key pins who applied, and the card version is still signed by a key the hub generates. In
+  the real thing the signing key lives with the owner (a wallet, or their Adobe account) and the Hive only stores
+  what they signed. This is the one gap in the trust story, and it is named in
+  [LIMITS.md](LIMITS.md#trust).
+- **A person studio.** The HR lane has person cards with skills and availability, found by company agents like
+  anyone else, with an introduction that waits for the person. Next: the person's own view of their card, their
+  yes or no inside it, and CV import.
+- **Anchoring hub ids outside the hubs.** A relayed card cannot be forged, because its key comes from its own
+  hub's registry. What is not anchored is the hub id itself, so a hostile carrier could point at a registry it
+  controls. A hub directory or DNS is the fix ([SECURITY.md](../SECURITY.md#known-limits)).
 - **The website comes to you.** Profile-tailored presentation, compact text for fewer tokens, and a peer-to-peer
   marketplace on an open protocol.
 
