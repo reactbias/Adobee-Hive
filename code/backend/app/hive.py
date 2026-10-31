@@ -319,6 +319,8 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
+# People are found only through their own domain's tools (domains/hr.py), never in a search for businesses.
+NOT_DISCOVERABLE = {"person"}
 RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
 
 
@@ -370,6 +372,8 @@ def discover(
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     for card in list_cards(kind):
+        if card["kind"] in NOT_DISCOVERABLE:
+            continue
         reasons, misses = [], []
         card_feats = {f.lower() for f in card.get("features", [])}
         missing = [f for f in features if f not in card_feats]
