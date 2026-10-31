@@ -11,6 +11,7 @@ The agent never spends money on its own: when it is ready to book, it holds the 
 import json
 import logging
 import re
+import secrets
 import time
 from contextlib import AsyncExitStack
 from datetime import date, timedelta
@@ -113,12 +114,13 @@ async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
 
 
 async def approve(pending: dict[str, Any]) -> dict[str, Any]:
-    """The traveller said yes: send the held hive_book call, unchanged, over MCP."""
+    """The traveller said yes: send the held hive_book call, unchanged, over MCP. Each hold can be approved once."""
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
+    args = _take(str(pending.get("id", "")))
     steps: list[dict[str, Any]] = []
     async with HiveConnections() as hives:
-        booking = await hives.step(steps, "hive_book", dict(pending["input"]))
+        booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
         return {"reply": f"Booking failed: {booking.get('error')}", "steps": steps, "booking": None}
     return {
@@ -129,8 +131,30 @@ async def approve(pending: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Held bookings live here, not with the client: approve() books exactly what the agent held, once. In memory is
+# enough because the backend runs as one instance; a restart only means asking the agent again.
+_HELD: dict[str, tuple[float, dict[str, Any]]] = {}
+HOLD_TTL_S = 30 * 60
+MAX_HELD = 1000
+
+
 def _hold(args: dict[str, Any]) -> dict[str, Any]:
-    return {"tool": "hive_book", "input": args}
+    now = time.time()
+    for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
+        del _HELD[key]
+    while len(_HELD) >= MAX_HELD:
+        del _HELD[next(iter(_HELD))]  # the oldest hold
+    hold_id = secrets.token_urlsafe(16)
+    _HELD[hold_id] = (now, dict(args))
+    return {"id": hold_id, "tool": "hive_book", "input": args}
+
+
+def _take(hold_id: str) -> dict[str, Any]:
+    """Remove and return a held booking's arguments; it cannot be approved again."""
+    held = _HELD.pop(hold_id, None)
+    if held is None or time.time() - held[0] > HOLD_TTL_S:
+        raise ValueError("This booking was already approved or has expired. Ask your agent again.")
+    return held[1]
 
 
 def _call_tool(name: str, args: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
