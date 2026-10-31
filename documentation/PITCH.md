@@ -110,7 +110,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | Prompt injection? | Card text reaches the agent as data, never instructions, and every tool call is shown to the human. |
 | Is the demo real? | Yes: the agent reaches hotels only through MCP tools, and Claude can book through the same URL as a connector. |
 | Where does Adobe fit? | Content Credentials provenance for business facts, and the owner studio as a tool for how a brand is seen by agents. |
-| Whose idea of "right" or "healthy"? | It differs by person and by country, so the Hive never decides silently: the rules are visible and chosen, per interaction, with the local law as the floor. The mood selector in chapter 2 is the first piece; per-jurisdiction rulesets are next. |
+| Whose idea of "right" or "healthy"? | It differs by person and by country, so the Hive never decides silently: the rules are visible and chosen, per interaction, with the local law as the floor. Signed rulesets a person picks per search are the first piece; per-jurisdiction rulesets are next. |
 
 Guardrails for the widened story: HR is a starter (person cards, skills search, introductions only with consent),
 not a finished flow. We never claim AGI, only point at the horizon. If asked who owns the Hive: nobody alone; any

@@ -134,7 +134,7 @@ different relationships:
 | --- | --- | --- | --- |
 | **Stays** | A hotel or café: rooms, prices, policies | A traveller's agent finds, compares and books | Built end to end |
 | **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`) |
-| **Ask** | Any business: offers, events, news. Five real ones as unclaimed public-info cards | A person asks a question with a mood they choose; actions wait for their yes | Built (chapter 2, `app/domains/explore.py`) |
+| **Ask** | Any business: offers, events, news. Five real ones as unclaimed public-info cards | A person asks a question; actions wait for their yes | Built (chapter 2, `app/domains/explore.py`) |
 | Events, shops, services | Tickets, stock, appointments | Same pattern | Next |
 
 The arc runs from one booking today to agents that handle whole business relationships on our behalf: finding,
@@ -171,7 +171,7 @@ claim to have answered it. We hold to one design principle instead: **the rules 
 
 | Principle | Status |
 | --- | --- |
-| A mood the person picks changes what comes first, and the answer shows how | Built (chapter 2, curious, stressed, planning, celebrating) |
+| A mood the person picks changes what comes first, and the answer shows how | Built in the API (`mood` on `POST /api/ask`: curious, stressed, planning, celebrating); not shown in the app |
 | Every answer lists the rules in force | Built (chapter 2) |
 | Cards compiled from public sources say they are unclaimed | Built (`trust.claimed`) |
 | Only the declared context and what was asked are counted, never the question or the person | Built |
