@@ -37,6 +37,10 @@ export type HiveCard = {
   skills: string[];
   /** The owner's line for when a person must say yes. Card text, shown as data. */
   policy?: string;
+  /** Channels by name; an empty value is a channel that exists but is not published. */
+  contact: Record<string, string>;
+  /** Per channel: `confirm` means the owner releases it on request. Channels kept private are not in `contact`. */
+  contactSharing: Record<string, string>;
   /** Everything else the hub sent, so a new field shows up without a layout change. */
   facts: Field[];
 };
@@ -49,8 +53,12 @@ export type Hit = {
   needs: Need[];
   /** The request asked to act, so the picked offering can ask for a yes. */
   acting: boolean;
+  /** Compiled from public information; the hub can only hand off, not book. */
+  unclaimed?: boolean;
   /** How this hub found it, when the row came from a live search. */
   found?: { why: string[]; path: string[]; hops: number; origin: string };
+  /** The sharing flag the hub reported for a live result: what connecting to it will take. */
+  sharing?: string;
 };
 
 /** What the other hubs did with a search above radius 0: who was asked, who did not answer, which copy was refused. */
@@ -302,8 +310,18 @@ export function readCard(raw: unknown): HiveCard | null {
     needs,
     skills,
     policy,
+    contact: strings(o.contact),
+    contactSharing: strings(o.contact_sharing),
     facts: [],
   };
+}
+
+/** An open map of strings, dropping anything that is not one. */
+function strings(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  return Object.fromEntries(
+    Object.entries(raw).filter((pair): pair is [string, string] => typeof pair[1] === "string"),
+  );
 }
 
 function asOffer(raw: unknown): Offer[] {
@@ -340,6 +358,9 @@ const HUB_SKIP = [
   "units",
   "skills",
   "policy",
+  "contact",
+  "contact_sharing",
+  "sharing",
   "trust",
   "signature",
   "public_key",
@@ -382,26 +403,51 @@ export function readHubCard(raw: unknown): HiveCard | null {
   return card;
 }
 
+type DiscoverMatch = {
+  id: string;
+  score?: number;
+  claimed?: boolean;
+  bookable?: boolean;
+  why?: string[];
+  hops?: number;
+  provenance?: { path?: string[]; origin?: string };
+  sharing?: string;
+};
+
+// The hub lists every entity it carries; a zero score means nothing in the request touched it.
+const scored = (matches: DiscoverMatch[]) => {
+  const related = matches.filter((m) => typeof m.score !== "number" || m.score > 0);
+  return related.length ? related : matches;
+};
+
 /** One row per discover match, using the card the hub returned for that id. */
 export function sceneFromDiscovery(
   query: string,
-  matches: { id: string; why?: string[]; hops?: number; provenance?: { path?: string[]; origin?: string } }[],
+  matches: DiscoverMatch[],
   cards: Record<string, unknown>,
 ): Scene | null {
   const asked = plain(query);
   const acting = ACT.test(asked) && !LOOK.test(asked);
   const hits: Hit[] = [];
-  for (const match of matches) {
+  for (const match of scored(matches)) {
     const card = readHubCard(cards[match.id] ?? match);
     if (!card) continue;
     const path = match.provenance?.path?.filter((hop) => typeof hop === "string") ?? [];
+    const unclaimed = match.claimed === false;
+    // The unclaimed note is the hub's disclosure, shown from the flag, not a reason it matched.
+    const why = (match.why ?? []).filter(
+      (line) => typeof line === "string" && !(unclaimed && line.startsWith("unclaimed")),
+    );
+    const raw = cards[match.id] as { sharing?: unknown } | undefined;
     hits.push({
+      sharing: match.sharing ?? (typeof raw?.sharing === "string" ? raw.sharing : undefined),
       card,
       offers: card.offers,
       needs: card.needs,
-      acting,
+      acting: acting && match.bookable !== false,
+      unclaimed,
       found: {
-        why: (match.why ?? []).filter((line) => typeof line === "string"),
+        why,
         path,
         hops: typeof match.hops === "number" ? match.hops : Math.max(0, path.length - 1),
         origin: match.provenance?.origin ?? path[0] ?? "",

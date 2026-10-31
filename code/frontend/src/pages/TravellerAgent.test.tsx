@@ -114,6 +114,24 @@ describe("traveller agent", () => {
     vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
   });
 
+  it("keeps the search on the page, with the corpus chips and the buttons under them", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    const chip = screen.getByRole("button", { name: en["try.coffee"] });
+    const send = screen.getByRole("button", { name: en["agent.send"] });
+    const reach = screen.getByRole("radio", { name: en["reach.local"] });
+    expect(box.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(chip.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(send.compareDocumentPosition(reach) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(send);
+    expect(await screen.findByRole("textbox", { name: en["agent.followUp"] })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["try.tavern"] })).toBeInTheDocument();
+  });
+
   it("searches this hub only until the person chooses to look further", async () => {
     const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
@@ -225,9 +243,9 @@ describe("traveller agent", () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    await user.click(screen.getByRole("button", { name: en["agent.example.2"] }));
+    await user.click(screen.getByRole("button", { name: en["try.tavern"] }));
 
-    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.2"] }], {});
+    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["try.tavern"] }], {});
   });
 
   it("reads the hub log all along and shows it beside the chat when details opens", async () => {
@@ -457,6 +475,45 @@ describe("traveller agent", () => {
     expect(screen.queryByRole("heading", { name: "Hotel Krafft Basel" })).not.toBeInTheDocument();
   });
 
+  it("books from the cards exactly as from Details: the agent's hold, one yes, the same receipt", async () => {
+    vi.spyOn(api, "discover").mockResolvedValue({
+      matches: [{ id: "hotel-rheinblick", name: "Hotel Rheinblick", description: "By the Rhine.", score: 80 }],
+      excluded: [],
+      ranking_policy: "open",
+    } as never);
+    vi.spyOn(api, "card").mockResolvedValue({
+      id: "hotel-rheinblick",
+      name: "Hotel Rheinblick",
+      description: "By the Rhine.",
+      units: [{ id: "river", name: "River-view double", price_chf: 180 }],
+    } as never);
+    const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const approve = vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: "Hotel Rheinblick" }));
+    await user.click(await screen.findByRole("button", { name: /River-view double/ }));
+    expect(agent).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: en["card.yes"] }));
+
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
+    expect(screen.getByText(en["card.status.held"])).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: en["agent.approve"] }));
+
+    expect(approve).toHaveBeenCalledWith(HELD);
+    expect(await screen.findByText("bk_123")).toBeInTheDocument();
+    expect(screen.getByText(en["card.status.booked"])).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
+
+    // Details opens on the same run: nothing is asked or booked twice.
+    await user.click(screen.getByRole("button", { name: en["card.details"] }));
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(approve).toHaveBeenCalledTimes(1);
+  });
+
   it("sends on Enter, and Shift+Enter starts a new line instead", async () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
@@ -479,12 +536,11 @@ describe("traveller agent", () => {
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
 
     await user.clear(box);
-    await user.type(box, `${en["card.try.person"]}{Enter}`);
+    await user.type(box, "A designer for a dataviz sprint.{Enter}");
 
     expect(await screen.findByRole("heading", { name: "Lena Hofmann" })).toBeInTheDocument();
     expect(screen.getByText(en["card.rating.none"])).toBeInTheDocument();
     expect(screen.queryByText("0.0 / 5")).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: en["card.rate.ask"] })).not.toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: en["agent.review.rating"] })).not.toBeInTheDocument();
   });
 
