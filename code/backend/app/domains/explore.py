@@ -310,7 +310,15 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
             scored.append((score, card, item, why))
 
     scored.sort(key=lambda s: -s[0])
-    picked = scored[: pref["limit"]]
+    limit = pref["limit"]
+    if len(named) > 1:  # several businesses of the kind asked for (five taxis): each one's best item first
+        best = {}
+        for entry in scored:
+            best.setdefault(entry[1]["id"], entry)
+        firsts = list(best.values())
+        scored = firsts + [entry for entry in scored if entry not in firsts]
+        limit = max(limit, len(firsts))
+    picked = scored[:limit]
     replies: dict[str, dict[str, Any]] = {}
     for _, card, item, why in picked:
         reply = replies.setdefault(card["id"], _reply_head(card))
