@@ -142,6 +142,14 @@ export default function TravellerAgent() {
               {String(result.pending.input.check_in)} to {String(result.pending.input.check_out)}, for{" "}
               {String(result.pending.input.guest_name)}
             </div>
+            {result.second_opinion && (
+              <div className={result.second_opinion.verdict === "concern" ? "error" : "muted"}>
+                Second opinion from {result.second_opinion.by}
+                {result.second_opinion.fallback ? ` (${result.second_opinion.fallback})` : ""}:{" "}
+                {result.second_opinion.verdict === "agree" ? "agrees. " : "has a concern. "}
+                {result.second_opinion.note}
+              </div>
+            )}
             <div className="row">
               <button onClick={approve} disabled={busy}>
                 Approve booking
