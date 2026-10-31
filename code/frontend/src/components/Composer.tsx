@@ -3,6 +3,9 @@ import MicButton from "./MicButton";
 
 /** About eight lines of request text; past that the box scrolls instead of growing. */
 const MAX_BOX_PX = 300;
+/** The search bar: one 28px row, wrapping up to five before it scrolls. */
+const BAR_ROW_PX = 28;
+const MAX_BAR_PX = 5 * BAR_ROW_PX;
 
 // The one input every agent on the page listens to: a box that sends on Enter, a microphone, a send button that
 // says when the agent is working, and a Try list of examples that send with one tap.
@@ -52,19 +55,14 @@ export default function Composer({
     const el = box.current;
     if (!el) return;
     el.style.height = "auto";
-    const needed = el.scrollHeight;
-    if (bar) {
-      el.style.height = "28px";
-      el.style.overflowX = "auto";
-      el.style.overflowY = "hidden";
-      return;
-    }
+    const needed = bar ? Math.max(el.scrollHeight, BAR_ROW_PX) : el.scrollHeight;
     if (!needed) {
       el.style.removeProperty("height");
       return;
     }
-    el.style.height = `${Math.min(needed, MAX_BOX_PX)}px`;
-    el.style.overflowY = needed > MAX_BOX_PX ? "auto" : "hidden";
+    const max = bar ? MAX_BAR_PX : MAX_BOX_PX;
+    el.style.height = `${Math.min(needed, max)}px`;
+    el.style.overflowY = needed > max ? "auto" : "hidden";
   };
   useLayoutEffect(() => fit(), [value, bar]);
   useEffect(() => {

@@ -26,9 +26,11 @@ describe("styles", () => {
     expect(css).toMatch(/\.chapter-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 
-  it("keeps the search bar one line", () => {
-    expect(rule(".search-top .composer.bar")).toMatch(/border-radius:\s*999px/);
-    expect(rule(".search-top .composer.bar textarea")).toMatch(/white-space:\s*nowrap/);
+  it("wraps a long search in the bar instead of hiding it off to the side", () => {
+    expect(rule(".search-top .composer.bar")).toMatch(/border-radius:\s*24px/);
+    expect(rule(".search-top .composer.bar")).toMatch(/align-items:\s*end/);
+    expect(rule(".search-top .composer.bar textarea")).toMatch(/white-space:\s*pre-wrap/);
+    expect(rule(".search-top .composer.bar textarea")).not.toMatch(/overflow-x:\s*auto/);
   });
 
   it("wraps the composer's buttons, and their labels, on a narrow screen", () => {
