@@ -58,7 +58,10 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
       .catch((e) => setError(e.message));
 
   useEffect(() => {
-    api.cards().then((all) => setCards(all.filter((c) => c.trust.claimed !== false)));
+    api
+      .cards()
+      .then((all) => setCards(all.filter((c) => c.trust.claimed !== false)))
+      .catch(() => setCards([]));
   }, []);
   useEffect(() => {
     setProposal(null);

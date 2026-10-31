@@ -233,7 +233,13 @@ describe("traveller agent", () => {
       distances_m: { "basel sbb": 1900 },
     } as never);
     vi.spyOn(api, "cards").mockResolvedValue([
-      { id: "cafe-bienli", slug: "cafe-bienli", name: "Café Bienli", features: ["dog-friendly"] } as never,
+      {
+        id: "cafe-bienli",
+        slug: "cafe-bienli",
+        name: "Café Bienli",
+        features: ["dog-friendly"],
+        trust: { signature_valid: true },
+      } as never,
     ]);
     const user = setup();
 
@@ -243,7 +249,7 @@ describe("traveller agent", () => {
     await skipAhead(user);
 
     expect(await screen.findByRole("button", { name: en["next.calendar.cta"] })).toBeInTheDocument();
-    expect(screen.getByText("Café Bienli")).toBeInTheDocument();
+    expect(screen.getByText("Café Bienli", { selector: "b" })).toBeInTheDocument();
     expect(screen.getByText(en["next.coffee.because"].replace("{feature}", "dog-friendly"))).toBeInTheDocument();
     expect(screen.getByRole("link", { name: en["next.route.cta"] })).toHaveAttribute(
       "href",
