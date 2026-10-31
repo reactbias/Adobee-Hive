@@ -15,7 +15,7 @@ planner answered.
 | 3 | Tamper with a price: the signature check fails and agents reject the card. A forged review is rejected too | 45 s | `/card/rheinblick` |
 | 4 | Gare Central's owner sees that agents turned her away for dog-friendly and fixes it in one sentence | 60 s | `/owner` |
 | 5 | The twist: Basel's missed-demand map, "agents write the business plan" | 45 s | `/demand` |
-| 6 | Close: one business, many agents, many use cases (HR is next), up to the AGI horizon, with the guardrails first | 30 s | slide |
+| 6 | Close: one business, many agents, many use cases (HR as a starter), toward the AGI horizon, with the guardrails first | 30 s | slide |
 
 ## Click by click
 
