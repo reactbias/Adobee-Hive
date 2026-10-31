@@ -187,6 +187,18 @@ def test_radius_zero_is_the_default_over_mcp_and_rest(client):
     assert set(rest) == {"matches", "excluded", "ranking_policy"}
 
 
+def test_a_negative_radius_is_clamped_to_a_local_search(client, net):
+    """Found by tools/mutate.py: dropping the max(0, ...) clamp passed every other test."""
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    net(zurich)
+
+    for bad in (-1, -3, -99):
+        found = hive.discover(**ASK, radius=bad)
+        assert zurich.asks == [], f"radius {bad} must not reach a peer"
+        assert set(found) == {"matches", "excluded", "ranking_policy"}, f"radius {bad} must look local"
+    assert _ids(hive.discover(**ASK, radius=-1)) == _ids(hive.discover(**ASK, radius=0))
+
+
 def test_radius_zero_never_asks_a_peer_even_when_peers_are_configured(client, net):
     zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
     net(zurich)
