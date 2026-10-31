@@ -128,7 +128,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 
 | Endpoint | What it does | Guard |
 | --- | --- | --- |
-| `GET /api/health` | Up, and which model provider the agents use (`openai`, `claude` or `mock`) | |
+| `GET /api/health` | Up, which model provider the agents use (`openai`, `claude` or `mock`) and which similarity provider discovery ranks with (`semantic`: `offline` or `embeddings`). Never anything about a key | |
 | `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
 | `GET /api/hive/discover` | Search with the same constraints and `looking_for` as `hive_discover`, plus `radius` (0 = this Hive, up to 3 hops over peer Hives), `budget_ms` and `seen`. Also the door one Hive uses to forward a query to another | rate limit above radius 0 |

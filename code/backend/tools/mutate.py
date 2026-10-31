@@ -42,6 +42,7 @@ SUITE = [
     "tests/test_hub_api.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
+    "tests/test_semantic_search.py",
 ]
 
 
@@ -124,6 +125,24 @@ CURATED: list[Mutant] = [
         "what an entity offers or needs stops counting, so the index is prose again",
         '"offers_needs": min(30, 10 * len(side_hits)),',
         '"offers_needs": 0,',
+    ),
+    Mutant(
+        "hive.py",
+        "being close to the ask stops counting, so a haircut search misses 'cut, wash and finish' again",
+        '"semantic": round(SEMANTIC_POINTS * close[1].score, 1) if close else 0,',
+        '"semantic": 0,',
+    ),
+    Mutant(
+        "hive.py",
+        "a merely similar entity is paid like one that really offers the thing, so literal stops winning",
+        "SEMANTIC_POINTS = 8",
+        "SEMANTIC_POINTS = 30",
+    ),
+    Mutant(
+        "hive.py",
+        "the semantic side ignores looking_for, so who offers a thing is answered with who wants it",
+        'sides = tuple(s for s in ("offers", "needs") if looking_for in (s, "any"))',
+        'sides = ("offers", "needs")',
     ),
     Mutant(
         "hive.py",

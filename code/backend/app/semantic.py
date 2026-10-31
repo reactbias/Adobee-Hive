@@ -139,6 +139,15 @@ CONCEPTS: dict[str, str] = {
         heizung energie elettricista""",
     "health": """massage physio physiotherapy therapy yoga fitness trainer gym wellness nails cosmetic
         kosmetik massaggio""",
+    "automation": """automation automate automating automated automatisieren automatisierung workflow
+        workflows repetitive manual paperwork admin bot script scripting rpa agent agents flow""",
+    "jobs": """job jobs career careers vacancy vacancies opening openings hiring recruitment employment
+        employer apprenticeship internship stelle stellen karriere lehrstelle praktikum arbeitgeber emploi
+        carriere recrutement stage lavoro carriera impiego assunzioni""",
+    "insurance": """insurance insure pension pensions retirement savings cover annuity vorsorge versicherung
+        rente altersvorsorge assurance retraite prevoyance assicurazione pensione""",
+    "measurement": """measurement measure measuring sensor sensors instrument instrumentation flow level
+        pressure calibration analysis metering messtechnik sensorik kalibrierung mesure misura""",
     "quiet": """quiet calm silent peaceful ruhig leise still calme tranquille tranquillo silenzioso""",
     "pet": """dog dogs pet pets puppy hund hunde haustier chien cane animals""",
 }
@@ -155,14 +164,31 @@ def _words(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z]+", _fold(text)) if len(w) > 1 and w not in STOPWORDS]
 
 
-#: Suffixes stripped to reach a stem, longest first. Deliberately short: over-stemming invents matches, and a
-#: wrong stem is worse than a missed one because it is invisible. Nothing is stripped below four characters.
-_SUFFIXES = ("ungen", "ation", "ingly", "ies", "ing", "ers", "ed", "er", "es", "en", "ly", "s")
+#: Derivational suffixes stripped to reach a stem, after the plural is taken off. Deliberately short:
+#: over-stemming invents matches, and a wrong stem is worse than a missed one because it is invisible.
+#: Nothing is stripped that would leave less than four characters behind.
+_SUFFIXES = ("ungen", "ation", "ing", "ers", "er", "ed", "ly", "en")
+
+
+def _singular(word: str) -> str:
+    """Take the plural off, the way "websites" has to become "website" and not "websit".
+
+    The naive version stripped "es" before "s" and quietly broke every word ending in a silent e — a stem
+    nobody could see was wrong, which is exactly how a similarity score goes bad without anyone noticing.
+    """
+    if word.endswith("sses"):
+        return word[:-2]
+    if word.endswith("ies") and len(word) > 4:
+        return word[:-3] + "y"
+    if word.endswith("s") and not word.endswith(("ss", "us", "is")) and len(word) > 3:
+        return word[:-1]
+    return word
 
 
 @lru_cache(maxsize=8192)
 def stem(word: str) -> str:
-    """Reduce a word to a crude stem: "cutting" to "cut", "developers" to "develop", "offers" to "offer"."""
+    """Reduce a word to a crude stem: "cutting" to "cut", "developers" to "develop", "writer" to "writ"."""
+    word = _singular(word)
     for suffix in _SUFFIXES:
         if word.endswith(suffix) and len(word) - len(suffix) >= 4:
             word = word[: -len(suffix)]
