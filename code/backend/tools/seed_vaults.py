@@ -37,17 +37,71 @@ HOME = {
     # basel — hospitality
     "hotel-krafft": "basel",
     "cafe-rhein": "basel",
+    # basel — the rest of the test corpus (tools/make_corpus.py)
+    "wirtshaus-anker": "basel",
+    "gaestehaus-sonnenrain": "basel",
+    "zimmer-ob-der-baeckerei": "basel",
+    "herberge-dreiland": "basel",
+    "logis-vieux-moulin": "basel",
+    "kanalhaus-lofts": "basel",
+    "villa-hirzbrunnen": "basel",
+    "schiffsquartier-mathilde": "basel",
+    "beizli-sternen": "basel",
+    "roesterei-vogelsang": "basel",
+    "teestube-amselhof": "basel",
+    "imbiss-rheinbord": "basel",
+    "trattoria-barcarola": "basel",
+    "suppenkueche-dreirosen": "basel",
+    "textilpflege-gundeli": "basel",
+    "kuechenkollektiv-klybeck": "basel",
+    "schluesseldienst-spalen": "basel",
+    "mira-luetolf": "basel",
     # zurich — developer and freelance work
     "lena-hofmann": "zurich",
     "grid-ops": "zurich",
     "niko-ferrer": "zurich",
     "aylin-dervis": "zurich",
+    # zurich — the rest of the test corpus (tools/make_corpus.py)
+    "jonas-brun": "zurich",
+    "ilaria-conti": "zurich",
+    "tobias-wenger": "zurich",
+    "svenja-aebi": "zurich",
+    "renzo-balmer": "zurich",
+    "fabienne-roulet": "zurich",
+    "kuno-steinmann": "zurich",
+    "mirjam-oswald": "zurich",
+    "anouk-pfister": "zurich",
+    "leonie-frei": "zurich",
+    "basil-zuercher": "zurich",
+    "kaspar-lienhard": "zurich",
+    "quellcode-genossenschaft": "zurich",
+    "datenhaus-oerlikon": "zurich",
+    "bildwerk-retusche": "zurich",
+    "kurierdienst-sihlquai": "zurich",
+    "gasthof-sihlwald": "zurich",
     # bern — local services. A guesthouse sits here too, because a real hub is mixed: domain is
     # what a hub mostly carries, never a rule it enforces.
     "schnittwerk-bern": "bern",
     "velowerk-bern": "bern",
     "lichtfeld-foto": "bern",
     "pension-limmat": "bern",
+    # bern — the rest of the test corpus (tools/make_corpus.py)
+    "coiffure-bluemlisalp": "bern",
+    "elektro-mattenhof": "bern",
+    "naehatelier-sulgenau": "bern",
+    "stimmwerk-aare": "bern",
+    "sanitaer-hofstetter": "bern",
+    "dachdecker-laengmoos": "bern",
+    "schreinerei-ostermundigen": "bern",
+    "gartenbau-weissenstein": "bern",
+    "treuhand-kehrli": "bern",
+    "reinigung-sternenfeld": "bern",
+    "hundesalon-wankdorf": "bern",
+    "uhrmacher-bubenberg": "bern",
+    "bildrahmen-kramgasse": "bern",
+    "fahrschule-breitenrain": "bern",
+    "sami-kaufmann": "bern",
+    "kaffee-marzili": "bern",
 }
 #: The kind each folder registers as. Only a filter now: discovery indexes what a card offers and
 #: needs, so a person is found by their skills in the same search that finds a room.
@@ -62,7 +116,70 @@ KIND = {
     "schnittwerk-bern": "service",
     "velowerk-bern": "service",
     "lichtfeld-foto": "service",
+    # the rest of the test corpus (tools/make_corpus.py)
+    "wirtshaus-anker": "hotel",
+    "gaestehaus-sonnenrain": "hotel",
+    "zimmer-ob-der-baeckerei": "hotel",
+    "herberge-dreiland": "hotel",
+    "logis-vieux-moulin": "hotel",
+    "kanalhaus-lofts": "hotel",
+    "villa-hirzbrunnen": "hotel",
+    "schiffsquartier-mathilde": "hotel",
+    "beizli-sternen": "cafe",
+    "roesterei-vogelsang": "cafe",
+    "teestube-amselhof": "cafe",
+    "imbiss-rheinbord": "cafe",
+    "trattoria-barcarola": "cafe",
+    "suppenkueche-dreirosen": "cafe",
+    "textilpflege-gundeli": "service",
+    "kuechenkollektiv-klybeck": "service",
+    "schluesseldienst-spalen": "service",
+    "mira-luetolf": "person",
+    "jonas-brun": "person",
+    "ilaria-conti": "person",
+    "tobias-wenger": "person",
+    "svenja-aebi": "person",
+    "renzo-balmer": "person",
+    "fabienne-roulet": "person",
+    "kuno-steinmann": "person",
+    "mirjam-oswald": "person",
+    "anouk-pfister": "person",
+    "leonie-frei": "person",
+    "basil-zuercher": "person",
+    "kaspar-lienhard": "person",
+    "quellcode-genossenschaft": "service",
+    "datenhaus-oerlikon": "service",
+    "bildwerk-retusche": "service",
+    "kurierdienst-sihlquai": "service",
+    "gasthof-sihlwald": "hotel",
+    "coiffure-bluemlisalp": "service",
+    "elektro-mattenhof": "service",
+    "naehatelier-sulgenau": "service",
+    "stimmwerk-aare": "service",
+    "sanitaer-hofstetter": "service",
+    "dachdecker-laengmoos": "service",
+    "schreinerei-ostermundigen": "service",
+    "gartenbau-weissenstein": "service",
+    "treuhand-kehrli": "service",
+    "reinigung-sternenfeld": "service",
+    "hundesalon-wankdorf": "service",
+    "uhrmacher-bubenberg": "service",
+    "bildrahmen-kramgasse": "service",
+    "fahrschule-breitenrain": "service",
+    "sami-kaufmann": "person",
+    "kaffee-marzili": "cafe",
 }
+
+#: Folders whose card was compiled from public information rather than written by its subject. The
+#: hub reports these as unclaimed and no caller may treat one as a business that agreed to anything,
+#: which is a trust signal a test corpus needs a few of: in the real directory most cards are leads.
+UNCLAIMED = frozenset(
+    {
+        "villa-hirzbrunnen",
+        "imbiss-rheinbord",
+        "hundesalon-wankdorf",
+    }
+)
 
 #: Words that mean something to `fit()`. Pulled out of the prose rather than typed twice, so the
 #: folder stays the single source and nobody has to maintain a parallel list of tags.
@@ -167,8 +284,12 @@ def read_units(vault: Path) -> list[dict]:
         line = line.strip().lstrip("-").strip()
         if not line or line.startswith("#"):
             continue
+        # The separator is an em dash or a *spaced* hyphen, so a hyphen inside the name survives.
+        # It did not before: "River-view double" split at the hyphen, found no guest count, and the
+        # hotel's most expensive room existed in the markdown and nowhere in the hub.
         m = re.match(
-            r"(?P<name>[^—\-]+)[—\-]+\s*(?P<guests>\d+)\s*guests?,\s*CHF\s*(?P<price>\d+)" r"(?:,\s*(?P<qty>\d+))?",
+            r"(?P<name>.+?)\s*(?:[—–]|\s-\s)\s*(?P<guests>\d+)\s*guests?,\s*CHF\s*(?P<price>\d+)"
+            r"(?:,\s*(?P<qty>\d+))?",
             line,
         )
         if not m:
@@ -232,6 +353,14 @@ def build_card(vault: Path) -> dict:
     units = read_units(vault)
     if units:
         card["units"] = units
+    if vault.name in UNCLAIMED:
+        # Same shape as domains/examples.py: the trust block reads `verified_by_owner` and reports
+        # the card as unclaimed, so a lead is never answered as a business that agreed.
+        card["provenance"] = {
+            "source": "public information",
+            "verified_by_owner": False,
+            "note": "Fictional test card, nobody claimed it. Hand-off only.",
+        }
     return card
 
 

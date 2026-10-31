@@ -122,6 +122,46 @@ describe("card view", () => {
     expect(scene?.hits[1].offers.map((o) => o.title)).toEqual(["River room"]);
   });
 
+  it("leaves out what the hub scored zero, and never asks a yes for a card that only hands off", () => {
+    const card = (id: string, name: string) => ({ id, name, description: "", rating: null, units: [] });
+    const scene = sceneFromDiscovery(
+      "Book me a quiet hotel. My name is Mara Keller.",
+      [
+        {
+          id: "x-bekenya",
+          score: 10,
+          claimed: false,
+          bookable: false,
+          why: ["offers mara", "unclaimed: compiled from public information, hand-off only"],
+        },
+        { id: "hotel-rheinblick", score: 7, claimed: true, bookable: true, why: ["mentions quiet"] },
+        {
+          id: "x-pax",
+          score: 0,
+          claimed: false,
+          bookable: false,
+          why: ["unclaimed: compiled from public information"],
+        },
+      ],
+      {
+        "x-bekenya": card("x-bekenya", "BeKenya"),
+        "hotel-rheinblick": card("hotel-rheinblick", "Hotel Rheinblick"),
+        "x-pax": card("x-pax", "Pax"),
+      },
+    );
+    expect(scene?.hits.map((h) => h.card.name)).toEqual(["BeKenya", "Hotel Rheinblick"]);
+    expect(scene?.hits.map((h) => h.acting)).toEqual([false, true]);
+    expect(scene?.hits.map((h) => h.unclaimed)).toEqual([true, false]);
+    expect(scene?.hits[0].found?.why).toEqual(["offers mara"]);
+  });
+
+  it("keeps every row when the hub scored nothing, rather than showing an empty page", () => {
+    const scene = sceneFromDiscovery("anything", [{ id: "a", score: 0, why: [] }], {
+      a: { id: "a", name: "A", description: "", rating: null },
+    });
+    expect(scene?.hits.map((h) => h.card.name)).toEqual(["A"]);
+  });
+
   it("leaves a comparison, a taxi and a jobs question to the agent", () => {
     expect(sceneFor(en["agent.example.2"])).toBeNull();
     expect(sceneFor("book me a taxi")).toBeNull();

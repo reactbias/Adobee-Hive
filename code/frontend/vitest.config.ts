@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
 
@@ -5,6 +6,8 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // folderScan.test.ts reads the vaults seed_vaults.py registers, so the browser parse is checked against them.
+    server: { fs: { allow: [".", fileURLToPath(new URL("../../testdata/vaults", import.meta.url))] } },
     test: {
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],

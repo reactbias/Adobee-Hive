@@ -21,15 +21,19 @@ tomorrow. Blocking (`blocklist.py`, kind `hub`) says *refuse it in both directio
 card that travelled through it even when another peer hands it over*. An operator reaching for the
 wrong one of those gets a surprise either way, which is why both say so on screen.
 
-Whether a peer answers is a stored observation, never a live fetch on a page load: `check()` probes
-every peer in parallel under one hard deadline and writes down what it found, and the listing is a
-database read. An unreachable peer therefore costs an admin page nothing — it reads as "no answer"
-with the time it was last tried, which is the honest thing to show anyway.
+This module answers *which peers exist*. It deliberately does not answer *who a peer is* or *whether
+it is answering*: `federation.py` keeps that in its own book, asked in the background every
+`PEER_ASK_SECONDS` and read back by `federation.peer_row` without fetching anything. Two stores for
+one fact would drift, and an admin page that showed two different answers to "is this hub up" would
+be worse than one that showed none.
+
+So nothing here reaches out to a peer, and neither does the admin peer page: it is this table joined
+with what the background asking already learned. An unreachable peer therefore costs an admin page
+nothing — it reads as not answering, with the time it was last tried.
 """
 
 from __future__ import annotations
 
-import asyncio
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlparse
@@ -47,10 +51,7 @@ CREATE TABLE IF NOT EXISTS hub_peers (
     added_by VARCHAR,
     changed_at TIMESTAMP,
     removed_at TIMESTAMP,
-    removed_reason VARCHAR,
-    last_checked_at TIMESTAMP,
-    answers BOOLEAN,
-    last_error VARCHAR
+    removed_reason VARCHAR
 );
 """
 
@@ -60,8 +61,6 @@ REMOVED = "removed"
 MAX_URL = 300
 MAX_NAME = 200
 MAX_REASON = 500
-#: One hard ceiling for a whole probe, however many peers there are: they are asked in parallel.
-PROBE_TIMEOUT_S = 3.0
 
 
 class PeerError(ValueError):
@@ -135,12 +134,10 @@ def get(url: str) -> dict[str, Any] | None:
 def _readable(row: dict[str, Any]) -> dict[str, Any]:
     """One row as an interface wants it: timestamps as text, and the id guessed when nobody has asked."""
     out = dict(row)
-    for key in ("added_at", "changed_at", "removed_at", "last_checked_at"):
+    for key in ("added_at", "changed_at", "removed_at"):
         value = out.get(key)
         out[key] = value.isoformat() if isinstance(value, datetime) else None
     out["hub"] = out.get("hub_id") or hub_id_for(out["url"])
-    # None is not False: a peer nobody has asked yet has not failed, it is simply unknown.
-    out["answers"] = None if out.get("answers") is None else bool(out["answers"])
     return out
 
 
@@ -242,52 +239,3 @@ def remove(url: str, reason: str, removed_by: str = "admin") -> dict[str, Any]:
         )
     audit.record("peer.remove", url, reason, credential=removed_by)
     return get(url) or {}
-
-
-def record_reachability(url: str, answers: bool, error: str = "", profile: dict[str, Any] | None = None) -> None:
-    """Write down what a probe found. Fills in a hub id and name the peer told us, never overwrites one."""
-    url = canonical_url(url)
-    row = get(url)
-    if row is None:
-        return
-    hub_id = row["hub_id"] or str((profile or {}).get("hub_id") or "")
-    name = row["name"] or str((profile or {}).get("name") or "")
-    with db.write() as cur:
-        cur.execute(
-            "UPDATE hub_peers SET answers = ?, last_checked_at = ?, last_error = ?, hub_id = ?, name = ? "
-            "WHERE url = ?",
-            [
-                answers,
-                datetime.now(UTC).replace(tzinfo=None),
-                error[:MAX_REASON],
-                hub_id[:MAX_NAME],
-                name[:MAX_NAME],
-                url,
-            ],
-        )
-
-
-async def check(transport: Any | None = None) -> list[dict[str, Any]]:
-    """Probe every active peer in parallel under one deadline, store what came back, and report it.
-
-    Bounded on purpose: `PROBE_TIMEOUT_S` for the whole thing however many peers there are, and a
-    peer that fails is recorded as not answering rather than raised. Nothing else in the admin
-    surface fetches from a peer, so one dead neighbour can never make a page slow or blank.
-    """
-    from . import federation  # federation reads this module's list, so the import goes this way round
-
-    reach = transport or federation.DEFAULT_TRANSPORT
-    targets = [row["url"] for row in listing(include_removed=False)]
-
-    async def one(url: str) -> tuple[str, dict[str, Any] | None, str]:
-        try:
-            return url, await asyncio.wait_for(reach.profile(url), timeout=PROBE_TIMEOUT_S), ""
-        except TimeoutError:
-            return url, None, f"no answer within {PROBE_TIMEOUT_S:g} s"
-        except Exception as err:
-            return url, None, f"{type(err).__name__}: {err}"[:200]
-
-    found = await asyncio.gather(*[one(url) for url in targets]) if targets else []
-    for url, profile, error in found:
-        record_reachability(url, profile is not None, error, profile)
-    return listing()

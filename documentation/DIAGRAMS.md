@@ -101,11 +101,13 @@ flowchart TB
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
   FED[federation.py<br/>hop-limited search over peer Hives]:::mod
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
+  SEM[semantic.py<br/>offline similarity · optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
   RMV[removals.py<br/>withdrawn entities: the hub stops carrying, history stays]:::mod
   AUD[audit.py<br/>the admin ledger: what changed, when, why]:::mod
   PRS[peers.py<br/>the peer list, stored: env is only the seed]:::mod
+  SVC[services.py<br/>optional keys, write-only: in, never out]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -116,6 +118,7 @@ flowchart TB
 
   REST --> GRD
   REST --> A
+  HIVE --> SEM
   HIVE --> SHR
   HIVE --> BLK
   FED --> BLK
@@ -133,6 +136,8 @@ flowchart TB
   REST --> PRS --> AUD
   ADM --> PRS
   FED --> PRS
+  REST --> SVC --> AUD
+  LLM --> SVC
   REST --> REG
   MCP --> REG
   REG --> HIVE
@@ -346,7 +351,9 @@ flowchart LR
     D0 -. "X-Admin-Token" .-> D3
     D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id} · GET /api/admin/audit"]:::door
     D7["POST /api/admin/entities/{entity_id}/remove · POST /api/admin/entities/{entity_id}/restore"]:::held
-    D8["GET /api/admin/peers"]:::door
+    D8["GET /api/admin/peers · GET /api/admin/services"]:::door
+    D10["POST /api/admin/services/{name} · DELETE /api/admin/services/{name} · POST /api/admin/services/{name}/check"]:::held
+    D0 -. "X-Admin-Token" .-> D10
     D9["POST /api/admin/peers · PUT /api/admin/peers · POST /api/admin/peers/remove · POST /api/admin/peers/check"]:::held
     D0 -. "X-Admin-Token" .-> D9
     D0 -. "X-Admin-Token" .-> D7
@@ -443,6 +450,46 @@ A peer that misses the deadline is dropped and named in `federation.dropped`; th
 everything else. A hub that declares paid placement, or that relays cards which fail verification here, loses
 trust, and with it the rank of every card it carries — so vetting its own members honestly is the hub's own
 interest.
+
+### Asking the peers who they are
+
+Choosing a hub is a different question from searching one, and it is asked before anybody has searched anything.
+So a hub does not wait for a federated query to learn its peers' names: `federation.keep_peers_fresh` asks each
+peer's discovery document on a timer for as long as the hub runs, and keeps the answers in a peer book. A peer is
+named, described and counted in *its own* words; what this hub contributes is the calibration column, which is
+the one thing a peer cannot say about itself.
+
+Reading the directory never asks anybody. That is the whole point: the picker may poll, and one peer that has
+stopped answering must not make choosing a hub slow, or the picker feels broken again.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+  autonumber
+  participant P as A person choosing a hub
+  participant APP as InstanceFinder
+  participant H0 as This hub
+  participant BOOK as federation peer book
+  participant P1 as Peer "zurich"
+  participant P2 as Peer that has stopped answering
+
+  Note over H0,BOOK: every PEER_ASK_SECONDS, off any request path
+  H0->>P1: GET /.well-known/hive.json (PEER_ASK_TIMEOUT_S)
+  P1-->>H0: hub_id, name, description, admission, entities
+  H0->>P2: the same ask, at the same moment
+  P2--xH0: no answer within the timeout
+  H0->>BOOK: zurich: answered, stamped now<br/>the other: asked now, did not answer, keep the last good answer
+  P->>APP: open the finder
+  APP->>H0: GET /api/hub/directory
+  H0->>BOOK: read only, never ask
+  BOOK-->>H0: real names, real counts, when each was last asked
+  H0-->>APP: hubs[], each with last_asked and last_asked_ok
+  Note over APP: a hub never asked says so; nothing is shown as zero
+```
+
+A peer that has genuinely never been asked carries `last_asked: null`, and the row says so rather than
+pretending. One that answered and has since gone quiet keeps the name and count it gave, marked stale, because an
+answer from two minutes ago is more use than no answer at all — as long as the row admits how old it is.
 
 ## Who works where
 

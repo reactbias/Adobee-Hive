@@ -27,7 +27,8 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | Demo data | Wiping or flooding it | Reset needs `X-Demo-Token` when `DEMO_RESET_TOKEN` is set; simulated traffic is rate-limited | `main.py` |
 | The server | Oversized or malformed input | Request models bound every string and count; dates, stay length (30 nights), guests (20) and text sizes are checked in the Hive core, so MCP calls get the same checks as REST | `main.py`, `hive.py` |
 | The database | SQL injection, file access | Parameterised queries only; DuckDB runs with `enable_external_access=false` | `db.py` |
-| Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and in the Render dashboard in the cloud; `.env` is git-ignored; no secrets in the repo or its history, and CI scans every push with gitleaks | `.gitignore`, `render.yaml`, `ci.yml` |
+| Keys for optional services | A stored key read back, logged, or leaking through an error | Write-only: a key goes into `hub_service_keys` and no endpoint, log or error message returns one. An interface sees presence, a SHA-256 fingerprint (12 hex) and the last four characters, nothing else; `/api/health` and `/api/admin/settings` carry neither. A vendor error is scrubbed of the key before it is stored, because vendors echo a bad key back. Setting, clearing and testing all need `X-Admin-Token` and fail closed | `services.py` |
+| Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally, in the Render dashboard in the cloud, or — set by an operator — in this hub's own database (`services.py`); `.env` and the DuckDB file are git-ignored; no secrets in the repo or its history, and CI scans every push with gitleaks | `.gitignore`, `render.yaml`, `ci.yml`, `services.py` |
 | Personal data | The public repo exposing people | Team members are not named (head count only); no emails, phone numbers, account ids, device names, local paths or photo EXIF; whiteboard photos are downscaled, EXIF-stripped, with the Wi-Fi password and handwritten names pixelated | `CONTRIBUTING.md`, `assets/` |
 | Ranking | A ruleset that quietly favours a business or hides its effect | Rulesets are signed by their authors and checked against keys pinned in `/.well-known/hive.json`; only additive rules are accepted (require tags, require attestations, show fewer), so none can boost or loosen the floor; every answer names the ruleset and what it changed, and each business it left out says why | `rulesets.py` |
 | A card that arrives over another Hive | A relaying hub forging, tampering with or substituting a card | A federated result is verified at the destination, never taken from the carrier: the key comes from the card's own hub registry, fetched directly from that hub, and the card must match `hive.verify_pinned` exactly like a local one. A card that fails is dropped, named in `federation.rejected` with the hub that carried it, and costs that hub trust. A relaying hub can therefore withhold or delay a card, never change one | `federation._verified`, `reputation.record_invalid` |
@@ -79,6 +80,12 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
   browser session minted from the password — because that is the most this design can honestly say. It cannot tell
   two operators apart, so `audit.WHO_LIMIT` is printed next to the rows rather than letting a reader assume
   otherwise. Per-operator accounts are the fix.
+- **A service key an operator stores is kept in the clear.** It goes into the hub's DuckDB file, which
+  means it is as protected as that host's disk and no more: there is no envelope encryption and no secret
+  manager. Nothing reads it back out over HTTP and nothing logs it, but a reader of the database file has
+  it. The admin panel says exactly this next to the field rather than implying a protection that was not
+  built; an operator who needs more should keep using the deployment's environment, which this still
+  honours as the seed. Per-hub envelope encryption is the fix.
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
   alike, as on any booking site. CORS is `*` for the same reason. MCP host-header checks are off because the host
   serves the public domain; the MCP surface exposes only these public actions.

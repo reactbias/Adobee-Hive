@@ -15,6 +15,7 @@ import type { Key } from "../i18n/en";
 import EntitiesPanel from "./EntitiesPanel";
 import NetworkPanel from "./NetworkPanel";
 import PeersPanel from "./PeersPanel";
+import ServicesPanel from "./ServicesPanel";
 
 // Running the hub, from a browser instead of curl. The hub's password buys a short-lived session token which
 // lives in this tab's sessionStorage only; a 401 or 403 from anything drops it and asks again.
@@ -22,7 +23,7 @@ import PeersPanel from "./PeersPanel";
 // Two of these views are built against endpoints that are not on `main` yet (the signup queue, PR #71). A 404 is
 // not an error here, it is "not deployed on this hub": the view says so and the rest of the panel keeps working.
 
-const VIEWS = ["overview", "entities", "applications", "blocklist", "neighbours"] as const;
+const VIEWS = ["overview", "entities", "applications", "blocklist", "neighbours", "services"] as const;
 type View = (typeof VIEWS)[number];
 
 const lost = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403);
@@ -361,6 +362,7 @@ export default function AdminPanel({ onLeave }: { onLeave?: () => void }) {
         {view === "applications" && <Applications onLost={signOut} />}
         {view === "blocklist" && <BlocklistView onLost={signOut} />}
         {view === "neighbours" && <PeersPanel onLost={signOut} />}
+        {view === "services" && <ServicesPanel onLost={signOut} />}
       </div>
     </section>
   );

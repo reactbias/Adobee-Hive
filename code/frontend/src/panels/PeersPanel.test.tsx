@@ -18,9 +18,15 @@ const ZURICH: AdminPeer = {
   changed_at: null,
   removed_at: null,
   removed_reason: null,
-  answers: true,
-  last_checked_at: "2026-10-31T08:00:00",
-  last_error: "",
+  known: true,
+  description: "A fictional neighbour.",
+  verification: "signed",
+  admission: "vetted",
+  entities: 12,
+  last_asked: "2026-10-31T08:00:00",
+  last_asked_ok: true,
+  last_answered: "2026-10-31T08:00:00",
+  stale: false,
   blocked: false,
   error: -10,
   error_stars: -1,
@@ -35,8 +41,8 @@ const SILENT: AdminPeer = {
   hub: "hive-bern.example",
   hub_id: "hive-bern.example",
   name: "Adobee Hive (Bern)",
-  answers: false,
-  last_error: "ConnectError: no answer",
+  last_asked_ok: false,
+  stale: true,
   error: null,
   error_stars: null,
   evidence: 0,
@@ -48,8 +54,12 @@ const UNASKED: AdminPeer = {
   ...SILENT,
   url: "https://hive-genf.example",
   hub: "hive-genf.example",
-  answers: null,
-  last_checked_at: null,
+  known: false,
+  entities: null,
+  last_asked: null,
+  last_asked_ok: null,
+  last_answered: null,
+  stale: false,
 };
 
 const show = () =>
@@ -82,7 +92,7 @@ describe("the connected hubs", () => {
     expect(screen.getByText(en["admin.peers.answers"])).toBeInTheDocument();
     expect(screen.getByText(en["admin.peers.silent"])).toBeInTheDocument();
     expect(screen.getByText(en["admin.peers.unasked"])).toBeInTheDocument();
-    expect(screen.getByText("ConnectError: no answer")).toBeInTheDocument();
+    expect(screen.getByText(en["admin.peers.stale"])).toBeInTheDocument();
   });
 
   it("says when the hub is still running on its environment setting", async () => {

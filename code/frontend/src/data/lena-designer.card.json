@@ -17,10 +17,7 @@
   "identity": {
     "name": "Lena Hofmann",
     "tagline": "Interface design for data-heavy products",
-    "locales": [
-      "de",
-      "en"
-    ],
+    "locales": ["de", "en"],
     "place": {
       "locality": "Zürich",
       "country": "CH"
@@ -96,9 +93,7 @@
         "status": "open",
         "next_free": "2026-11-17"
       },
-      "portfolio": [
-        "https://lena.example/case/grid-ops"
-      ]
+      "portfolio": ["https://lena.example/case/grid-ops"]
     },
     {
       "id": "design-system-audit",
@@ -162,10 +157,7 @@
   "policy": {
     "handshake": "agent-review",
     "human_in_loop": "any engagement > CHF 5000",
-    "excludes": [
-      "unpaid pitch work",
-      "equity-only"
-    ],
+    "excludes": ["unpaid pitch work", "equity-only"],
     "rate_limit": "30 queries/hour/agent"
   },
   "attestations": [

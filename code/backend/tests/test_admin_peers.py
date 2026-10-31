@@ -65,6 +65,7 @@ def clean_peers(client):
     """An empty peer table before and after, so one test's neighbour is not another's."""
     peers.init()
     audit.init()
+    federation.forget()
     with db.write() as cur:
         cur.execute("DELETE FROM hub_peers")
         cur.execute("DELETE FROM hub_admin_log")
@@ -155,7 +156,8 @@ def test_the_peer_table_carries_what_an_operator_acts_on(client, admin, monkeypa
     assert row["url"] == ZURICH
     assert row["hub"] == "hive-zurich.example"
     assert row["name"] == "Adobee Hive (Zurich)"
-    assert row["answers"] is None, "nobody has asked yet, which is not the same as a refusal"
+    assert row["last_asked_ok"] is None, "nobody has asked yet, which is not the same as a refusal"
+    assert row["known"] is False and row["entities"] is None, "unknown is never drawn as zero"
     assert {"verdict", "error", "evidence", "blocked", "state"} <= set(row)
 
 
@@ -244,9 +246,10 @@ def test_a_peer_that_does_not_answer_is_recorded_as_such_rather_than_raising(cli
     out = client.post("/api/admin/peers/check", headers=ADMIN).json()
     rows = {r["url"]: r for r in out["peers"]}
 
-    assert rows[ZURICH]["answers"] is True and rows[ZURICH]["last_checked_at"]
-    assert rows[BERN]["answers"] is False
-    assert rows[BERN]["last_error"], "an operator needs to know what went wrong, not only that it did"
+    assert rows[ZURICH]["last_asked_ok"] is True and rows[ZURICH]["last_asked"]
+    assert rows[ZURICH]["known"] is True
+    assert rows[BERN]["last_asked_ok"] is False, "a peer that did not answer must not read as one that did"
+    assert rows[BERN]["last_asked"], "an operator needs to know we tried, and when"
     assert set(net.profiled) == {ZURICH, BERN}
 
 

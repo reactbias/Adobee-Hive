@@ -11,11 +11,14 @@ from typing import Any
 import anthropic
 import openai
 
-from . import config
+from . import config, services
 
 log = logging.getLogger(__name__)
 
+# Cached per key, so a key an operator stores in the admin panel is picked up on the next call
+# instead of at the next restart (services.py), and a replaced key is never used by a stale client.
 _client: anthropic.Anthropic | None = None
+_client_key = ""
 _fallbacks_ok = config.CLAUDE_FALLBACKS != "off"
 
 
@@ -28,10 +31,12 @@ FAILURES = (LLMError, anthropic.APIError, openai.OpenAIError, json.JSONDecodeErr
 
 
 def client() -> anthropic.Anthropic:
-    """Return the shared Anthropic client, created on first use."""
-    global _client
-    if _client is None:
-        _client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+    """Return the shared Anthropic client, rebuilt when the key in use has changed."""
+    global _client, _client_key
+    key = services.key_for("anthropic")
+    if _client is None or key != _client_key:
+        _client = anthropic.Anthropic(api_key=key, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+        _client_key = key
     return _client
 
 
@@ -77,7 +82,7 @@ def structured(
     model: str | None = None,
 ) -> dict[str, Any]:
     """Ask the configured model for JSON matching `schema` (structured outputs) and return it parsed."""
-    if config.LLM_PROVIDER == "openai":
+    if services.provider() == "openai":
         return _structured_openai(system, user, schema, max_tokens)
     response = _create(
         model=model or config.CLAUDE_MODEL,
@@ -90,12 +95,15 @@ def structured(
 
 
 _openai: openai.OpenAI | None = None
+_openai_key = ""
 
 
 def _structured_openai(system: str, user: str | list, schema: dict[str, Any], max_tokens: int) -> dict[str, Any]:
-    global _openai
-    if _openai is None:
-        _openai = openai.OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+    global _openai, _openai_key
+    key = services.key_for("openai")
+    if _openai is None or key != _openai_key:
+        _openai = openai.OpenAI(api_key=key, timeout=config.LLM_TIMEOUT_S, max_retries=1)
+        _openai_key = key
     response = _openai.responses.create(
         model=config.OPENAI_MODEL,
         instructions=system,

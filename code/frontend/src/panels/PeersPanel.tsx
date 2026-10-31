@@ -18,19 +18,20 @@ import { dayOf } from "../lib/format";
 
 const lost = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403);
 
-/** Whether a peer answered the last time anyone asked. Unasked is not the same as silent. */
+/** Whether a peer answered the last time anyone asked. Never asked is not the same as silent. */
 function Answers({ peer }: { peer: AdminPeer }) {
   const { t, intl } = useI18n();
-  const word = peer.answers === null ? "unasked" : peer.answers ? "answers" : "silent";
+  const ok = peer.last_asked_ok;
+  const word = ok === null ? "unasked" : ok ? "answers" : "silent";
   return (
     <span className="stack tight">
-      <span className={`status ${peer.answers === null ? "" : peer.answers ? "ok" : "no"}`}>
-        {t(`admin.peers.${word}`)}
-      </span>
-      {peer.last_checked_at && (
-        <span className="muted small">{t("admin.peers.lastChecked", { date: dayOf(peer.last_checked_at, intl) })}</span>
+      <span className={`status ${ok === null ? "" : ok ? "ok" : "no"}`}>{t(`admin.peers.${word}`)}</span>
+      {peer.last_asked && (
+        <span className="muted small">{t("admin.peers.lastAsked", { date: dayOf(peer.last_asked, intl) })}</span>
       )}
-      {peer.answers === false && peer.last_error && <span className="muted small">{peer.last_error}</span>}
+      {/* An older answer is still worth showing, as long as the row says it is old. */}
+      {peer.stale && <span className="muted small">{t("admin.peers.stale")}</span>}
+      {peer.entities !== null && <span className="muted small">{t("admin.peers.entities", { n: peer.entities })}</span>}
     </span>
   );
 }

@@ -8,6 +8,7 @@ and that a card built that way is actually findable by what it offers and by wha
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -77,3 +78,122 @@ def test_a_seeded_person_is_found_by_what_she_offers_and_by_what_she_needs(clien
     offers_side = {m["id"]: m for m in hive.discover(query="svelte contractor")["matches"]}
     assert offers_side["lena-hofmann"]["score_breakdown"]["offers_needs"] == 0
     assert offers_side["grid-ops"]["score_breakdown"]["offers_needs"] == 0
+
+
+def _make_corpus():
+    """Load tools/make_corpus.py the same way: the curated table is a script, not a package."""
+    if "make_corpus" in sys.modules:
+        return sys.modules["make_corpus"]
+    spec = importlib.util.spec_from_file_location("make_corpus", ROOT / "tools" / "make_corpus.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["make_corpus"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_every_folder_is_assigned_a_hub_and_a_kind_the_backend_accepts():
+    """A folder missing from either map is a folder no hub ever sees, and a bad kind is a dead card."""
+    seed, corpus = _seed_vaults(), _make_corpus()
+    folders = {v.name for v in seed.VAULTS.iterdir() if v.is_dir()}
+    assert folders == set(seed.HOME), "every vault needs a home hub"
+    assert folders == set(seed.KIND), "every vault needs a kind"
+    assert set(seed.HOME.values()) <= {"basel", "zurich", "bern"}
+    assert set(seed.KIND.values()) <= set(corpus.KINDS), "a kind the backend does not accept"
+    assert folders >= seed.UNCLAIMED, "an unclaimed folder that does not exist"
+
+
+def test_the_generated_folders_still_say_what_the_curated_table_says():
+    """The table in make_corpus.py is the source. Drift between it and disk is a silent fork."""
+    corpus = _make_corpus()
+    drift = {e.slug: corpus.drifted(e) for e in corpus.ENTITIES}
+    assert not {slug: names for slug, names in drift.items() if names}
+    assert not {e.slug for e in corpus.ENTITIES} & corpus.PRE_EXISTING, "the hand-written ten stay hand-written"
+
+
+def test_the_generator_and_the_seeder_agree_on_every_hub_and_kind():
+    """Two files hold the same fact, so a test holds them together rather than a convention."""
+    seed, corpus = _seed_vaults(), _make_corpus()
+    for entity in corpus.ENTITIES:
+        assert seed.HOME[entity.slug] == entity.hub, entity.slug
+        assert seed.KIND[entity.slug] == entity.kind, entity.slug
+    assert {e.slug for e in corpus.ENTITIES if e.unclaimed} == seed.UNCLAIMED & {e.slug for e in corpus.ENTITIES}
+
+
+def test_an_unclaimed_folder_registers_as_a_lead_and_not_as_a_business_that_agreed(client):
+    """Variety in the trust signals has to survive the round trip, or it is only a comment."""
+    seed = _seed_vaults()
+    slug = sorted(seed.UNCLAIMED)[0]
+    hive.publish(seed.build_card(seed.VAULTS / slug))
+    assert hive.get_card(slug)["trust"]["claimed"] is False
+    claimed = sorted(set(seed.KIND) - seed.UNCLAIMED)[0]
+    hive.publish(seed.build_card(seed.VAULTS / claimed))
+    assert hive.get_card(claimed)["trust"]["claimed"] is True
+    # Nothing seeded carries a rating: that needs the signed receipt of a stay that happened.
+    assert hive.get_card(slug)["trust"]["verified_reviews"]["average"] is None
+
+
+def test_a_room_name_with_a_hyphen_in_it_is_still_a_bookable_unit(tmp_path):
+    """`River-view double` parsed as nothing, so the room existed in the prose and not in the hub."""
+    vault = tmp_path / "haus-am-hang"
+    vault.mkdir()
+    (vault / "about.md").write_text("# Haus am Hang\n\nFour rooms.\n", encoding="utf-8")
+    (vault / "rooms.md").write_text(
+        "# Rooms\n\n- South-facing double — 2 guests, CHF 180, 3 of them.\n- Attic single - 1 guest, CHF 90, 2.\n",
+        encoding="utf-8",
+    )
+    units = _seed_vaults().read_units(vault)
+    assert [(u["name"], u["max_guests"], u["price_chf"], u["quantity"]) for u in units] == [
+        ("South-facing double", 2, 180, 3),
+        ("Attic single", 1, 90, 2),
+    ]
+
+
+def test_the_real_hotel_krafft_folder_has_all_three_of_its_rooms():
+    """The hyphen bug cost the demo card its most expensive room; this is the folder on disk."""
+    seed = _seed_vaults()
+    units = seed.read_units(seed.VAULTS / "hotel-krafft")
+    assert [u["name"] for u in units] == ["Courtyard single", "Courtyard double", "River-view double"]
+
+
+#: The answer key in testdata/README.md, between the markers, is what semantic search is measured
+#: against. A pair is only worth measuring if literal matching cannot reach it; tools/eval_answer_key.py
+#: scores it, and this module reuses that script's parser so there is only one of them.
+
+
+def _eval_tool():
+    """Load tools/eval_answer_key.py: the scorer, and the one parser for the answer key."""
+    if "eval_answer_key" in sys.modules:
+        return sys.modules["eval_answer_key"]
+    spec = importlib.util.spec_from_file_location("eval_answer_key", ROOT / "tools" / "eval_answer_key.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["eval_answer_key"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _indexed_text(card: dict) -> str:
+    """Everything hive.discover can match a query term against, offers and needs included."""
+    parts = [card.get("name", ""), card.get("tagline", ""), card.get("description", ""), *card.get("features", [])]
+    for side in ("offers", "needs"):
+        for entry in card.get(side) or []:
+            parts += [str(entry.get(f)) for f in hive.OFFER_FIELDS if entry.get(f)]
+    return " ".join(parts).lower()
+
+
+def test_the_answer_key_covers_entities_that_exist_and_is_not_a_softball():
+    """Every pair must be a real vault, and must share no searchable word with it.
+
+    This is the honesty check on the key. `hive.discover` matches a term of more than three
+    characters as a substring, so a query that shares one is already findable and proves nothing
+    about semantic search. Fourteen pairs that share none is the measurement.
+    """
+    seed = _seed_vaults()
+    rows = [(query, slug) for query, slug, _ in _eval_tool().pairs()]
+    assert len(rows) >= 10, "the key needs ten to fifteen pairs to measure anything"
+    for query, slug in rows:
+        assert slug in seed.KIND, f"{slug} is in the answer key but not a vault"
+        text = _indexed_text(seed.build_card(seed.VAULTS / slug))
+        terms = {t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - hive.STOPWORDS
+        assert terms, f"{query!r} has nothing a hub would search for"
+        shared = sorted(t for t in terms if t in text)
+        assert not shared, f"{query!r} already finds {slug} literally through {shared}"

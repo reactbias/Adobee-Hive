@@ -41,8 +41,10 @@ SUITE = [
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_registration.py",
+    "tests/test_semantic.py",
     "tests/test_admin_manage.py",
     "tests/test_admin_peers.py",
+    "tests/test_admin_services.py",
 ]
 
 
@@ -151,6 +153,18 @@ CURATED: list[Mutant] = [
         '"bookable": True,',
     ),
     Mutant(
+        "semantic.py",
+        "the similarity floor goes, so every card is a little bit like every query and ranking is noise",
+        "SIMILARITY_FLOOR = 0.25",
+        "SIMILARITY_FLOOR = 0.0",
+    ),
+    Mutant(
+        "semantic.py",
+        "the concept table stops being consulted, so semantic search is substring search again",
+        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in _concept_index().get(root, ())]',
+        "bag += []",
+    ),
+    Mutant(
         "hive.py",
         "a withdrawn entity is discoverable again, so kicking one off the hub does nothing",
         "    if not include_withdrawn:",
@@ -179,6 +193,24 @@ CURATED: list[Mutant] = [
         "a peer change is accepted with no reason, so nobody can tell later why a hub was dropped",
         '        raise PeerError("a peer change needs a reason: someone has to be able to read this list later")',
         '        reason = "none given"',
+    ),
+    Mutant(
+        "services.py",
+        "a stored key comes back in the status call, so the panel shows the key it promised never to",
+        '        "fingerprint": str(row["fingerprint"]) if stored else "",',
+        '        "fingerprint": str(row["secret"]) if stored else "",',
+    ),
+    Mutant(
+        "services.py",
+        "a vendor's error keeps the key it echoed back, so a bad key is written into the database",
+        '    text = message.replace(secret, "[key]") if secret else message',
+        "    text = message",
+    ),
+    Mutant(
+        "services.py",
+        "an empty key is stored, so a service reads as configured and every call fails",
+        '    if not secret:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
+        '    if False:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
     ),
     Mutant(
         "removals.py",
@@ -333,6 +365,7 @@ TARGETS = [
     "connections.py",
     "sharing.py",
     "registration.py",
+    "semantic.py",
     "removals.py",
     "audit.py",
     "peers.py",

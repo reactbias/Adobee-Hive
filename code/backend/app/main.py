@@ -35,6 +35,7 @@ from . import (
     removals,
     replies,
     rulesets,
+    services,
     simulate,
     waiting,
 )
@@ -58,10 +59,18 @@ async def lifespan(_: FastAPI):
     audit.init()
     removals.init()
     peers.init()
+    services.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
+    # A hub with peers configured asks them who they are straight away and then on a timer, so the directory
+    # knows their names without waiting for somebody to run a federated search. Reads never fan out.
+    asking = None
+    if config.HIVE_PEER_URLS and config.PEER_ASK_SECONDS > 0:
+        asking = asyncio.create_task(federation.keep_peers_fresh())
     async with mcp_app.router.lifespan_context(mcp_app):
         yield
+    if asking is not None:
+        asking.cancel()
     db.close()
 
 
@@ -95,6 +104,7 @@ def _hive_call(fn, *args, **kwargs):
         registration.RegistrationError,
         removals.RemovalError,
         peers.PeerError,
+        services.ServiceError,
     ) as err:
         raise HTTPException(400, str(err)) from err
 
@@ -105,10 +115,11 @@ def _hive_call(fn, *args, **kwargs):
 @app.get("/api/health")
 def health() -> dict[str, Any]:
     """Report whether the backend is up and which model vendor the agents use."""
-    claude = config.LLM_PROVIDER == "claude"
+    claude = services.provider() == "claude"
     return {
         "status": "ok",
-        "llm": config.LLM_PROVIDER if config.LLM_ENABLED else "mock",
+        # The vendor in use, never a key and never a fingerprint: /api/health is public.
+        "llm": services.provider() if services.enabled() else "mock",
         "model": config.CLAUDE_MODEL if claude else config.OPENAI_MODEL,
         "fast_model": config.CLAUDE_FAST_MODEL if claude else config.OPENAI_MODEL,
         "hives": config.HIVE_MCP_URLS or ["local"],
@@ -127,12 +138,17 @@ def well_known(request: Request) -> dict[str, Any]:
         "owner_keys": hive.owner_keys(),
         "ruleset_keys": rulesets.keys(),
         "ranking_policy": hive.RANKING_POLICY,
-        # What peer Hives judge this hub by when a query reaches them over it (see reputation.py).
+        # What peer Hives judge this hub by when a query reaches them over it (see reputation.py), and what a
+        # person choosing a hub decides by: its name, what it asks of a member, and how much it carries. A peer
+        # reads this one document rather than interrogating four endpoints, and a peer that cannot reach it says
+        # so rather than guessing.
         "federation": {
             "hub_id": config.HIVE_HUB_ID,
             "name": config.HIVE_NAME,
             "description": config.HIVE_DESCRIPTION,
             "verification": config.HIVE_VERIFICATION,
+            "admission": config.ADMISSION_POLICY,
+            "entities": len(hive.list_cards()),
             "paid_placement": False,
             "max_radius": federation.MAX_RADIUS,
         },
@@ -328,7 +344,7 @@ def demo_reset(request: Request) -> dict[str, Any]:
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
-    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
+    if services.enabled() and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
         locale = replies.locale_from(request.headers.get("accept-language", ""))
@@ -612,6 +628,51 @@ def admin_unblock(kind: str, subject: str, _: str = Depends(admin_only)) -> dict
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
 
 
+# ---------------------------------------------------------------- optional services and their keys
+
+
+class ServiceKeyBody(BaseModel):
+    """A key an operator is storing. Write-only: no endpoint ever gives it back."""
+
+    secret: str = Field(..., min_length=1, max_length=500, description="The key. Never returned, never logged")
+
+
+@app.get("/api/admin/services")
+def admin_services(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """Every optional integration: what it is for, whether a key is set and where from, how it tested.
+
+    Never a key. The only things about a stored key that leave this hub are its fingerprint and its
+    last four characters, which is enough to tell two keys apart and no use to anyone else.
+    """
+    return services.listing()
+
+
+@app.post("/api/admin/services/{name}")
+def admin_set_service_key(name: str, body: ServiceKeyBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Store a key for one optional service. The next call that needs it uses it: no restart.
+
+    The answer is the service's status, so the key cannot come back even by accident.
+    """
+    return _hive_call(services.set_key, name, body.secret, stored_by=credential)
+
+
+@app.delete("/api/admin/services/{name}")
+def admin_clear_service_key(name: str, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Forget the stored key. The hub falls back to the environment, or to working without one."""
+    return _hive_call(services.clear_key, name, cleared_by=credential)
+
+
+@app.post("/api/admin/services/{name}/check")
+def admin_check_service(name: str, _: str = Depends(admin_only)) -> dict[str, Any]:
+    """Make one cheap authenticated call with the key in use and say whether it worked.
+
+    So an operator finds out before a demo rather than during it. A key that does not work is a
+    200 with `working: false` — an answer, not a server error — and the message is scrubbed of the
+    key first, because vendors do echo a bad key back.
+    """
+    return _hive_call(services.check, name)
+
+
 # ---------------------------------------------------------------- the connected hubs
 
 
@@ -672,8 +733,14 @@ def admin_remove_peer(body: PeerRemovalBody, credential: str = Depends(admin_onl
 
 @app.post("/api/admin/peers/check")
 async def admin_check_peers(_: str = Depends(admin_only)) -> dict[str, Any]:
-    """Ask every peer whether it answers, in parallel under one deadline, and store what came back."""
-    return {"peers": await peers.check()}
+    """Ask every peer who it is, now rather than at the next background round, and return the table.
+
+    The same `federation.ask_peers` the hub runs on a timer: all peers at once, each capped at
+    `PEER_ASK_TIMEOUT_S`, nothing raised. This is the button for an operator who has just added a
+    neighbour and does not want to wait `PEER_ASK_SECONDS` to see whether it answers.
+    """
+    await federation.ask_peers()
+    return admin.peer_table()
 
 
 # ---------------------------------------------------------------- what this hub carries

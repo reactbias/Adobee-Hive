@@ -12,6 +12,7 @@ import {
 } from "../api";
 import Chapter, { Frame } from "../components/Chapter";
 import Composer from "../components/Composer";
+import ConnectionRequests from "../components/ConnectionRequests";
 import TrustBadge from "../components/TrustBadge";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -375,6 +376,8 @@ export default function OwnerPanel({
                   <p className="muted">{t("owner.asked.empty")}</p>
                 )}
               </section>
+
+              <ConnectionRequests target={cardId} />
 
               {card && (
                 <section className="stack">
