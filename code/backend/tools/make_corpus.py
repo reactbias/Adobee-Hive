@@ -376,7 +376,530 @@ BASEL: tuple[Entity, ...] = (
     ),
 )
 
-ENTITIES: tuple[Entity, ...] = BASEL
+# --------------------------------------------------------------------------- zurich
+# Developers, designers and freelance technical work. The same job is described three different
+# ways on purpose — "builds the half you can see", "interfacce React", "Oberflächen für Maschinen"
+# — and exactly one card uses the word a client would type, so recall and precision are both
+# measurable. Two entities sit outside the domain, because a real hub is mixed.
+
+ZURICH: tuple[Entity, ...] = (
+    Entity(
+        slug="jonas-brun",
+        name="Jonas Brun",
+        hub="zurich",
+        kind="person",
+        about="I build the half of a product you can see. Vue and plain TypeScript, nine years, "
+        "Zürich. I will not take on a design I have not been allowed to argue with first.",
+        offer_heading="What I do",
+        offers=(
+            "A new order flow that works on a phone — CHF 1200/day.",
+            "Turning a set of screens into something that runs — CHF 5800, two weeks.",
+            "A second pair of eyes on a component library — CHF 160/hour.",
+        ),
+        needs=("Somebody who can draw the screens before I build them, two days a month.",),
+        contact=("email: jonas@brun.example", "phone: ask first"),
+    ),
+    Entity(
+        slug="ilaria-conti",
+        name="Ilaria Conti",
+        hub="zurich",
+        kind="person",
+        about="Mi occupo di interfacce React da sette anni, soprattutto per banche e assicurazioni. "
+        "Lavoro da Zurigo, in remoto, e parlo italiano, tedesco e inglese.",
+        offer_heading="What I do",
+        offers=(
+            "Sviluppo React a giornata — CHF 1150/day.",
+            "Migrazione di una vecchia applicazione a React — CHF 14000, un mese.",
+            "Revisione del codice di un team, una settimana — CHF 4800.",
+        ),
+        contact=("email: ilaria@conti.example", "phone: +41 44 000 05 12"),
+    ),
+    Entity(
+        slug="tobias-wenger",
+        name="Tobias Wenger",
+        hub="zurich",
+        kind="person",
+        about="Ich baue Oberflächen für Maschinen, die niemand falsch lesen darf: Leitstände, "
+        "Labore, Medizintechnik. Zwölf Jahre, davon vier in der Zulassung.",
+        offer_heading="What I do",
+        offers=(
+            "Oberfläche für ein Messgerät, vom Papier bis zur Abnahme — CHF 1400 am Tag.",
+            "Durchsicht einer Bedienoberfläche nach IEC 62366 — CHF 4200.",
+            "Begleitung einer Zulassung, remote — CHF 180 die Stunde.",
+        ),
+        needs=("Eine Person für die Dokumentation, die ein Lastenheft lesen kann.",),
+        contact=("email: tobias@wenger.example", "phone: never", "address: never"),
+    ),
+    Entity(
+        slug="svenja-aebi",
+        name="Svenja Aebi",
+        hub="zurich",
+        kind="person",
+        about="Systems work in Rust, mostly where something has become too slow to keep in a "
+        "scripting language. Zürich, two clients at a time, no more.",
+        offer_heading="What I do",
+        offers=(
+            "Rewriting a hot path in Rust — CHF 1300/day.",
+            "A Rust service with the tests and the deployment, not just the code — CHF 16000, three weeks.",
+            "Teaching a team enough Rust to be dangerous — CHF 3600, two days on site.",
+        ),
+        needs=("Someone to write the documentation I keep not writing, CHF 100/hour.",),
+        contact=("email: svenja@aebi.example", "phone: ask first"),
+    ),
+    Entity(
+        slug="renzo-balmer",
+        name="Renzo Balmer",
+        hub="zurich",
+        kind="person",
+        about="Go on the server, Postgres underneath, fourteen years of it. I read about Rust on "
+        "the train and have never once been paid for it, so do not ask me for that.",
+        offer_heading="What I do",
+        offers=(
+            "A Go service that does one thing and keeps doing it — CHF 1150/day.",
+            "Taking a monolith apart, carefully — CHF 12800, three weeks.",
+            "On-call cover for a small team — CHF 2200 a week.",
+        ),
+        contact=("email: renzo@balmer.example", "phone: +41 44 000 05 48"),
+    ),
+    Entity(
+        slug="fabienne-roulet",
+        name="Fabienne Roulet",
+        hub="zurich",
+        kind="person",
+        about="Je dessine des parcours et des maquettes, surtout pour des applications utilisées "
+        "debout, dans le bruit. Huit ans, Zurich, en français et en allemand.",
+        offer_heading="What I do",
+        offers=(
+            "Maquettes cliquables pour une application mobile — CHF 6400, deux semaines.",
+            "Atelier d'une journée avec vos équipes — CHF 1900.",
+            "Reprise d'une charte existante — CHF 150 l'heure.",
+        ),
+        needs=("Quelqu'un qui sait construire ce que je dessine, deux jours par mois.",),
+        contact=("email: fabienne@roulet.example", "phone: ask first", "address: never"),
+    ),
+    Entity(
+        slug="kuno-steinmann",
+        name="Kuno Steinmann",
+        hub="zurich",
+        kind="person",
+        about="I make slow queries fast. Postgres mostly, sometimes DuckDB, and once a very sad "
+        "MySQL. Zürich, remote, and I always ask to see the slow log first.",
+        offer_heading="What I do",
+        offers=(
+            "A week on your ten slowest queries — CHF 6400.",
+            "An index review with the reasons written down — CHF 2400.",
+            "Standing by for a migration night — CHF 1800.",
+        ),
+        contact=("email: kuno@steinmann.example", "phone: +41 44 000 05 70"),
+    ),
+    Entity(
+        slug="mirjam-oswald",
+        name="Mirjam Oswald",
+        hub="zurich",
+        kind="person",
+        about="I go through your product with a screen reader and a keyboard and tell you, in "
+        "order, what I could not do. Then I stay until it is fixed, if you want me to.",
+        offer_heading="What I do",
+        offers=(
+            "A full pass with a screen reader, written up — CHF 3200.",
+            "Sitting with your developers while they fix it — CHF 140/hour.",
+            "A short training for a team that has never watched someone use a keyboard only — CHF 1200.",
+        ),
+        needs=("A developer who actually wants the list, not one who wants it to be shorter.",),
+        contact=("email: mirjam@oswald.example", "phone: ask first"),
+    ),
+    Entity(
+        slug="anouk-pfister",
+        name="Anouk Pfister",
+        hub="zurich",
+        kind="person",
+        about="I write the pages people read when something has gone wrong: runbooks, release "
+        "notes, the handover nobody had time for. Zürich, remote, German and English.",
+        offer_heading="What I do",
+        offers=(
+            "A runbook your night shift can follow at three in the morning — CHF 2800.",
+            "Release notes for a quarter, written from the commits — CHF 1600.",
+            "A day of sitting next to an engineer and writing down what they know — CHF 1100.",
+        ),
+        contact=("email: anouk@pfister.example", "phone: +41 44 000 05 93"),
+    ),
+    Entity(
+        slug="leonie-frei",
+        name="Leonie Frei",
+        hub="zurich",
+        kind="person",
+        about="I break software on purpose, before your customers do it by accident. Eight years, "
+        "mostly payment flows and anything with a deadline someone is afraid of.",
+        offer_heading="What I do",
+        offers=(
+            "Two weeks of breaking your release candidate — CHF 7200.",
+            "An exploratory pass before you ship — CHF 2400, three days.",
+            "Setting up the first hundred automated checks — CHF 9600.",
+        ),
+        needs=("A short contract with a team that fixes what I find, rather than filing it.",),
+        contact=("email: leonie@frei.example", "phone: ask first", "address: never"),
+    ),
+    Entity(
+        slug="basil-zuercher",
+        name="Basil Zürcher",
+        hub="zurich",
+        kind="person",
+        about="Apps für iPhone und Android, meistens für Firmen, die eine haben wollen und keine "
+        "brauchen. Ich sage das vorher, und baue sie dann trotzdem gut.",
+        offer_heading="What I do",
+        offers=(
+            "Eine App für beide Systeme, aus einer Codebasis — CHF 1250 am Tag.",
+            "Eine bestehende App übernehmen und weiterpflegen — CHF 3800 im Monat.",
+            "Abklärung, ob es wirklich eine App sein muss — CHF 900, ein Tag.",
+        ),
+        contact=("email: basil@zuercher.example", "phone: +41 44 000 06 17"),
+    ),
+    Entity(
+        slug="kaspar-lienhard",
+        name="Kaspar Lienhard",
+        hub="zurich",
+        kind="person",
+        about="I build the thing that guesses the next number. Forecasts, mostly, for people with "
+        "a great deal of history and no plan. I will tell you when a spreadsheet would do.",
+        offer_heading="What I do",
+        offers=(
+            "A forecast you can put in front of a board — CHF 12000, three weeks.",
+            "A model review, including whether it should exist — CHF 3400.",
+            "Two days of looking at your data before anybody promises anything — CHF 2200.",
+        ),
+        needs=("Someone who can put a model behind an interface people will use. CHF 120/hour.",),
+        contact=("email: kaspar@lienhard.example", "phone: never"),
+    ),
+    Entity(
+        slug="quellcode-genossenschaft",
+        name="Quellcode Genossenschaft",
+        hub="zurich",
+        kind="service",
+        about="Eine Genossenschaft von sechs Entwicklerinnen. Wir übernehmen Arbeit, die jemand "
+        "liegengelassen hat, und schreiben sie nicht neu, wenn wir sie retten können.",
+        offers=(
+            "Übernahme eines verwaisten Systems, mit Einarbeitung — ab CHF 18000.",
+            "Ein Monat Pflege und Bereitschaft — CHF 7400.",
+            "Zweite Meinung zu einem Angebot von jemand anderem — CHF 1400.",
+        ),
+        needs=("Eine Person für Kundengespräche und Planung, zwei Tage pro Woche.",),
+        contact=("email: kontakt@quellcode.example", "phone: +41 44 000 06 44"),
+    ),
+    Entity(
+        slug="datenhaus-oerlikon",
+        name="Datenhaus Oerlikon",
+        hub="zurich",
+        kind="service",
+        about="Wir stellen Server auf und betreuen sie, in einem Keller in Zürich, für Firmen, die "
+        "ihre Daten nicht bei einem Konzern haben wollen. Seit 2009.",
+        offers=(
+            "Ein Server bei uns, mit Betreuung — CHF 240 im Monat.",
+            "Umzug einer bestehenden Anwendung zu uns — ab CHF 4800.",
+            "Sicherung mit einer zweiten Kopie im Jura — CHF 90 im Monat.",
+        ),
+        needs=("Eine Elektrikerin für einen zweiten Stromkreis im Keller.",),
+        contact=("email: technik@datenhaus-oerlikon.example", "phone: +41 44 000 06 61"),
+    ),
+    Entity(
+        slug="bildwerk-retusche",
+        name="Bildwerk Retusche",
+        hub="zurich",
+        kind="service",
+        about="Wir arbeiten Bilder nach: Haut, Staub, Farben, und die Lampe, die im Spiegel steht. "
+        "Vor allem für Fotografinnen, die am Abend abgeben müssen.",
+        offers=(
+            "Nachbearbeitung pro Bild — CHF 12, ab fünfzig Bildern CHF 9.",
+            "Eine Serie über Nacht, bis acht Uhr am Morgen — Zuschlag 50 Prozent.",
+            "Freistellen für einen Katalog — CHF 6 pro Bild.",
+        ),
+        contact=("email: auftrag@bildwerk-retusche.example", "phone: ask first"),
+    ),
+    Entity(
+        slug="kurierdienst-sihlquai",
+        name="Kurierdienst Sihlquai",
+        hub="zurich",
+        kind="service",
+        about="Vier Leute, vier Velos, und ein Anhänger für alles, was nicht in den Rucksack "
+        "passt. Innerhalb der Stadt in einer Stunde, auch bei Regen.",
+        offers=(
+            "Fahrt innerhalb der Stadt — CHF 18, bis fünf Kilo.",
+            "Anhängerfahrt für ein Möbelstück — CHF 60.",
+            "Eine feste Tour jeden Morgen — CHF 420 im Monat.",
+        ),
+        needs=("Jemand, der unsere vier Velos im Winter wartet.",),
+        contact=("email: disposition@kurierdienst-sihlquai.example", "phone: +41 44 000 06 88"),
+    ),
+    Entity(
+        slug="gasthof-sihlwald",
+        name="Gasthof Sihlwald",
+        hub="zurich",
+        kind="hotel",
+        about="Sechs Zimmer am Waldrand, zwanzig Minuten mit der Bahn aus Zürich. Küche am Abend, "
+        "kein Fernseher, und ein Hund, der zu allen gehört.",
+        rooms=(
+            "Zimmer Tanne — 2 guests, CHF 145, 3 of them.",
+            "Zimmer Buche — 2 guests, CHF 160, 2 of them.",
+            "Einzelzimmer am Gang — 1 guest, CHF 98, 1 of them.",
+        ),
+        needs=("Eine Köchin oder einen Koch für drei Abende pro Woche, CHF 38 die Stunde.",),
+        contact=("email: wirt@gasthof-sihlwald.example", "phone: +41 44 000 07 02", "mobile: ask first"),
+    ),
+)
+
+# --------------------------------------------------------------------------- bern
+# Trades and local services, the hub where the vocabulary gap is widest: every one of these is a
+# word a customer types in English or standard German and a word the owner writes in neither.
+# "Cut, wash and finish" is already here in schnittwerk-bern, hand-written, and still the clearest
+# example in the corpus of a card that a search for "haircut" cannot reach.
+
+BERN: tuple[Entity, ...] = (
+    Entity(
+        slug="coiffure-bluemlisalp",
+        name="Coiffure Blüemlisalp",
+        hub="bern",
+        kind="service",
+        about="Wir schneiden, färben und flechten, in der Lorraine, nur mit Termin. Zwei Stühle, "
+        "und am Samstag eine Warteliste, die wir ehrlich führen.",
+        offers=(
+            "Schneiden und fönen — CHF 70.",
+            "Flechtfrisur für ein Fest — CHF 95, eine Stunde.",
+            "Farbe und Ansatz — ab CHF 150.",
+        ),
+        needs=("Eine zweite Person für Dienstag und Donnerstag, CHF 34 die Stunde.",),
+        contact=(
+            "email: termin@bluemlisalp.example",
+            "phone: +41 31 000 10 14",
+            "address: Lorrainestrasse 9, 3013 Bern",
+        ),
+    ),
+    Entity(
+        slug="elektro-mattenhof",
+        name="Elektro Mattenhof",
+        hub="bern",
+        kind="service",
+        about="Steckdosen, Sicherungen, Elektrokontrollen. Wir kommen innerhalb von zwei "
+        "Arbeitstagen, und bei einem Kurzschluss am gleichen Tag.",
+        offers=(
+            "Eine neue Steckdose, aufputz — CHF 160.",
+            "Elektrokontrolle für eine Wohnung — CHF 280, mit Bericht.",
+            "Sicherungskasten erneuern — ab CHF 1400.",
+        ),
+        needs=("Eine Lernende für den Sommer, wir haben niemanden gefunden.",),
+        contact=("email: buero@elektro-mattenhof.example", "phone: +41 31 000 10 31"),
+    ),
+    Entity(
+        slug="naehatelier-sulgenau",
+        name="Nähatelier Sulgenau",
+        hub="bern",
+        kind="service",
+        about="Wir ändern Kleider: kürzen, enger machen, Reissverschluss ersetzen. Zwei Wochen, "
+        "dringend auch über Nacht, und wir sagen es, wenn es sich nicht lohnt.",
+        offers=(
+            "Hose kürzen — CHF 35.",
+            "Jackett enger machen — CHF 90.",
+            "Reissverschluss ersetzen — ab CHF 45.",
+        ),
+        needs=("Jemand, der unsere Industriemaschinen einstellt und ölt, einmal im Jahr.",),
+        contact=("email: atelier@sulgenau.example", "phone: ask first", "address: Sulgenaustrasse 22, 3007 Bern"),
+    ),
+    Entity(
+        slug="stimmwerk-aare",
+        name="Stimmwerk Aare",
+        hub="bern",
+        kind="service",
+        about="Wir stimmen Klaviere und Flügel im Kanton Bern, zweimal im Jahr pro Instrument, und "
+        "regulieren die Mechanik, wenn sie zu laut klappert.",
+        offers=(
+            "Stimmen eines Klaviers — CHF 190, eine Stunde vor Ort.",
+            "Regulieren der Mechanik — CHF 420.",
+            "Beurteilung eines gebrauchten Instruments vor dem Kauf — CHF 150.",
+        ),
+        contact=("email: termin@stimmwerk-aare.example", "phone: +41 31 000 10 58"),
+    ),
+    Entity(
+        slug="sanitaer-hofstetter",
+        name="Sanitär Hofstetter",
+        hub="bern",
+        kind="service",
+        about="Wir kommen, wenn es tropft. Notfall auch am Wochenende, und wir sagen den Preis "
+        "vorher, auch um elf Uhr nachts.",
+        offers=(
+            "Tropfender Hahn — CHF 140, eine Stunde.",
+            "Verstopfte Leitung — CHF 220.",
+            "Notfall am Wochenende — CHF 320 für die erste Stunde.",
+        ),
+        needs=("Einen Lernenden, und jemand, der die Offerten schreibt.",),
+        contact=("email: notfall@sanitaer-hofstetter.example", "phone: +41 31 000 10 77", "mobile: +41 79 000 10 77"),
+    ),
+    Entity(
+        slug="dachdecker-laengmoos",
+        name="Dachdecker Längmoos",
+        hub="bern",
+        kind="service",
+        about="Wir decken Dächer und bringen in Ordnung, was der Sturm aufgemacht hat. Ziegel, "
+        "Blech, Flachdach. Im Winter nur das Nötigste, und das sagen wir auch.",
+        offers=(
+            "Ziegel ersetzen nach einem Sturm — CHF 480, ein halber Tag.",
+            "Ein Dach anschauen und einen Bericht schreiben — CHF 350.",
+            "Dachrinne erneuern — CHF 95 pro Meter.",
+        ),
+        needs=("Ein Gerüstbauer, mit dem wir zuverlässig planen können.",),
+        contact=("email: buero@dachdecker-laengmoos.example", "phone: +41 31 000 11 02"),
+    ),
+    Entity(
+        slug="schreinerei-ostermundigen",
+        name="Schreinerei Ostermundigen",
+        hub="bern",
+        kind="service",
+        about="Möbel nach Mass, Türen, Küchen aus Holz, das wir vorher zeigen. Vier Leute, und "
+        "eine Werkstatt, in der man am Freitag Kaffee trinken darf.",
+        offers=(
+            "Ein Regal nach Mass — ab CHF 900.",
+            "Küche aus Esche, geplant und eingebaut — ab CHF 18000.",
+            "Eine Tür einpassen, die niemand mehr zum Schliessen bringt — CHF 380.",
+        ),
+        needs=("Jemand, der unsere Möbel fotografiert, zweimal im Jahr.",),
+        contact=("email: werkstatt@schreinerei-ostermundigen.example", "phone: +41 31 000 11 24"),
+    ),
+    Entity(
+        slug="gartenbau-weissenstein",
+        name="Gartenbau Weissenstein",
+        hub="bern",
+        kind="service",
+        about="Wir pflegen Gärten, schneiden Hecken zweimal im Jahr und räumen im Herbst das Laub "
+        "weg. Keine Steingärten, das machen wir nicht mehr.",
+        offers=(
+            "Hecke schneiden, zweimal im Jahr — CHF 420 pro Gang.",
+            "Garten pflegen, nach Aufwand — CHF 85 die Stunde.",
+            "Einen Baum fällen, mit Bewilligung — ab CHF 1200.",
+        ),
+        needs=("Zwei Saisonkräfte von März bis Oktober, CHF 31 die Stunde.",),
+        contact=("email: offerte@gartenbau-weissenstein.example", "phone: +41 31 000 11 48"),
+    ),
+    Entity(
+        slug="treuhand-kehrli",
+        name="Treuhand Kehrli",
+        hub="bern",
+        kind="service",
+        about="Buchhaltung, Mehrwertsteuer und Steuererklärungen für kleine Betriebe: Beizen, "
+        "Ateliers, Einzelfirmen. Wir rechnen pro Stunde und schicken keine Pauschale.",
+        offers=(
+            "Buchhaltung pro Quartal, bis 200 Belege — CHF 680.",
+            "Mehrwertsteuerabrechnung — CHF 240 pro Quartal.",
+            "Steuererklärung für eine Einzelfirma — ab CHF 450.",
+        ),
+        needs=("Jemand, der uns eine Seite baut, die ein Agent lesen kann.",),
+        contact=("email: kontakt@treuhand-kehrli.example", "phone: +41 31 000 11 66"),
+    ),
+    Entity(
+        slug="reinigung-sternenfeld",
+        name="Reinigung Sternenfeld",
+        hub="bern",
+        kind="service",
+        about="Treppenhäuser, Büros und Wohnungsübergaben, mit Abnahmegarantie. Fünf Leute, und "
+        "wir putzen am Abend, damit niemand im Weg steht.",
+        offers=(
+            "Wohnungsübergabe, 3 Zimmer, mit Garantie — CHF 790.",
+            "Büro einmal pro Woche — CHF 240 im Monat.",
+            "Treppenhaus, vierzehntäglich — CHF 180 im Monat.",
+        ),
+        needs=("Eine Person mit Führerschein für die Abendtour, CHF 30 die Stunde.",),
+        contact=("email: auftrag@reinigung-sternenfeld.example", "phone: +41 31 000 11 85"),
+    ),
+    Entity(
+        slug="hundesalon-wankdorf",
+        name="Hundesalon Wankdorf",
+        hub="bern",
+        kind="service",
+        about="Wir baden und scheren Hunde, auch die nervösen, und nehmen uns dann mehr Zeit. "
+        "Kleine Räume, ein Hund auf einmal, kein Gebell von nebenan.",
+        offers=(
+            "Baden und scheren, kleiner Hund — CHF 85.",
+            "Grosser Hund, mit Fellwechsel — CHF 140.",
+            "Krallen und Pfoten — CHF 35.",
+        ),
+        contact=("email: termin@hundesalon-wankdorf.example", "phone: +41 31 000 12 09"),
+        unclaimed=True,
+    ),
+    Entity(
+        slug="uhrmacher-bubenberg",
+        name="Uhrmacher Bubenberg",
+        hub="bern",
+        kind="service",
+        about="Wir bringen mechanische Uhren wieder zum Laufen, auch solche, die seit dreissig "
+        "Jahren in einer Schublade lagen. Keine Batterien, keine Smartwatches.",
+        offers=(
+            "Revision eines Handaufzugs — CHF 280, vier Wochen.",
+            "Automatikwerk überholen — ab CHF 420.",
+            "Glas ersetzen — CHF 90.",
+        ),
+        needs=("Einen Händler für alte Ersatzteile, besonders Unruhen.",),
+        contact=("email: werkstatt@uhrmacher-bubenberg.example", "phone: ask first", "address: never"),
+    ),
+    Entity(
+        slug="bildrahmen-kramgasse",
+        name="Bildrahmen Kramgasse",
+        hub="bern",
+        kind="service",
+        about="Wir fassen Bilder ein, auch grosse und auch schiefe, mit Glas, das nicht spiegelt. "
+        "Zehn Arbeitstage, und wir zeigen drei Leisten, nicht dreissig.",
+        offers=(
+            "Einfassen bis A3, mit Passepartout — CHF 120.",
+            "Grossformat bis zwei Meter — ab CHF 390.",
+            "Entspiegeltes Glas, Zuschlag — CHF 60.",
+        ),
+        contact=("email: laden@bildrahmen-kramgasse.example", "phone: +41 31 000 12 31"),
+    ),
+    Entity(
+        slug="fahrschule-breitenrain",
+        name="Fahrschule Breitenrain",
+        hub="bern",
+        kind="service",
+        about="Fahrstunden in Bern, Kategorie B, auch mit Automat. Zwei Lehrerinnen, und wir sagen "
+        "ehrlich, wie viele Stunden es noch braucht.",
+        offers=(
+            "Eine Fahrstunde, 50 Minuten — CHF 95.",
+            "Zehn Stunden im Voraus — CHF 890.",
+            "Begleitung zur Prüfung, mit unserem Wagen — CHF 180.",
+        ),
+        contact=("email: anmeldung@fahrschule-breitenrain.example", "phone: +41 31 000 12 54"),
+    ),
+    Entity(
+        slug="sami-kaufmann",
+        name="Sami Kaufmann",
+        hub="bern",
+        kind="person",
+        about="I keep old software alive: COBOL on a mainframe, two Delphi applications, and a "
+        "Access database that runs a warehouse. Bern, and I have no plans to retire.",
+        offer_heading="What I do",
+        offers=(
+            "Keeping a COBOL batch running, with the handover written down — CHF 1300/day.",
+            "Moving a Delphi application to something newer, in stages — CHF 24000.",
+            "An honest look at how long you have left — CHF 1800, two days.",
+        ),
+        needs=("Someone to break it on purpose before the warehouse does it by accident.",),
+        contact=("email: sami@kaufmann.example", "phone: ask first"),
+    ),
+    Entity(
+        slug="kaffee-marzili",
+        name="Kaffee Marzili",
+        hub="bern",
+        kind="cafe",
+        about="Zwanzig Plätze am Weg zur Badi, offen von sieben bis achtzehn Uhr. Im Sommer "
+        "verkaufen wir mehr Eis als Kaffee, und das ist uns recht.",
+        offer_heading="What we offer",
+        offer_file="menu.md",
+        offers=(
+            "Kaffee und ein Stück Kuchen — CHF 8.",
+            "Zmorge mit Ei und Brot — CHF 16, bis elf Uhr.",
+            "Eis, zwei Kugeln — CHF 5.",
+        ),
+        needs=("Eine Bäckerei in der Nähe, die uns am Morgen liefert.",),
+        contact=("email: hallo@kaffee-marzili.example", "phone: +41 31 000 12 78"),
+    ),
+)
+
+ENTITIES: tuple[Entity, ...] = BASEL + ZURICH + BERN
 
 
 # --------------------------------------------------------------------------- writing it out
