@@ -16,7 +16,22 @@ import pytest
 from app import db, folders
 
 ROOT = Path(__file__).resolve().parents[3]
+BACKEND = Path(__file__).resolve().parents[1]
 VAULTS = ROOT / "testdata" / "vaults"
+
+
+def _seed_vaults():
+    """Load tools/seed_vaults.py as a module; it is a script, not part of the app package."""
+    import importlib.util
+    import sys
+
+    if "seed_vaults" in sys.modules:
+        return sys.modules["seed_vaults"]
+    spec = importlib.util.spec_from_file_location("seed_vaults", BACKEND / "tools" / "seed_vaults.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["seed_vaults"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 @pytest.fixture(autouse=True)
@@ -47,11 +62,12 @@ def two(tmp_path) -> folders.LocalFolderLink:
     (hotel / folders.MARKER).write_text(
         "\n".join(
             [
-                "# what the house offers, and to whom",
-                "about.md = public",
-                "rooms/*.md = public-summary",
-                "claudeconnect/** = shared",
-                "notes/takings.md = hidden",
+                "# Visibility",
+                "",
+                "- about.md: public",
+                "- rooms/: public-summary",
+                "- claudeconnect/: shared",
+                "- notes/takings.md: hidden",
             ]
         ),
         encoding="utf-8",
@@ -209,7 +225,7 @@ def test_the_owner_sees_their_whole_folder_with_what_they_said_about_each_file(t
     assert seen["rooms/012-rhine-quiet.md"] == folders.PUBLIC_SUMMARY
     assert seen["claudeconnect/tx-verband.md"] == folders.SHARED
     assert seen["notes/takings.md"] == folders.HIDDEN
-    assert folders.MARKER not in seen, "the folder's own bookkeeping is not part of what it offers"
+    assert seen[folders.MARKER] == folders.DEFAULT_VISIBILITY, "the Card lists it, so the folder does too"
 
 
 def test_an_unmarked_file_is_no_more_open_than_the_seeded_cards_say(tmp_path):
@@ -234,7 +250,7 @@ def test_a_broken_marker_line_cannot_open_a_file(tmp_path):
     """A typo must fail to close a file further, never to open one."""
     (tmp_path / "plain").mkdir()
     (tmp_path / "plain" / "about.md").write_text("# Plain\n", encoding="utf-8")
-    (tmp_path / "plain" / folders.MARKER).write_text("about.md = publick\nnonsense\n= public\n", encoding="utf-8")
+    (tmp_path / "plain" / folders.MARKER).write_text("- about.md: publick\nnonsense\n- : public\n", encoding="utf-8")
     assert folders.LocalFolderLink(tmp_path).files("plain")[0]["visibility"] == "public-summary"
 
 
@@ -258,6 +274,7 @@ def test_an_unlinked_viewer_sees_only_what_the_card_already_says(two):
         "about.md",
         "rooms/012-rhine-quiet.md",
         "rooms/rates-2027.md",
+        folders.MARKER,
     }
     assert manifest["withheld"] == 2, "the transcript and the takings are counted, not named"
 
@@ -305,9 +322,39 @@ def test_a_path_cannot_climb_out_of_the_folder_it_names(two):
 def test_the_default_root_is_the_vault_corpus_the_cards_were_built_from():
     """Slice 1 runs on what is already there: the folders in testdata/vaults/, not a fixture of its own."""
     assert folders.LocalFolderLink().root == VAULTS
-    held = folders.LocalFolderLink().files("hotel-krafft")
-    assert {f["path"] for f in held} >= {"about.md", "contact.md"}
-    assert all(f["visibility"] == folders.DEFAULT_VISIBILITY for f in held)
+    held = {f["path"]: f for f in folders.LocalFolderLink().files("hotel-krafft")}
+    assert {"about.md", "contact.md"} <= set(held)
+    assert held["about.md"]["media_type"] == "text/markdown"
+    assert held["about.md"]["digest"].startswith("sha256:")
+
+
+def test_the_folder_and_the_card_agree_about_every_file_in_the_corpus():
+    """`visibility.md` is read twice — here, and by tools/seed_vaults.py when it builds a Card — so
+    the two readings are pinned against each other over all of testdata/vaults/ rather than trusted.
+
+    If they ever disagree, the handshake and the index are talking about different files, and the
+    product's claim that one leads to the other stops being true.
+    """
+    seed = _seed_vaults()
+    link = folders.LocalFolderLink()
+    checked = 0
+    for vault in sorted(v for v in VAULTS.iterdir() if v.is_dir()):
+        rules = seed.read_visibility(vault)
+        ours = link.files(vault.name)
+        assert {f["path"] for f in ours} == {
+            f.relative_to(vault).as_posix() for f in vault.rglob("*") if f.is_file()
+        }, vault.name
+        for entry in ours:
+            theirs, _ = seed.visibility_of(entry["path"], rules)
+            assert entry["visibility"] == theirs, f"{vault.name}/{entry['path']}"
+            assert entry["media_type"] == seed.media_type(vault / entry["path"])
+            checked += 1
+        # And every row the Card publishes has the same digest as the file the folder holds.
+        for row in seed.read_structure(vault):
+            if row["visibility"] in folders.ADMITTED:
+                held = next(f for f in ours if f["path"] == row["path"])
+                assert held["digest"] == row["digest"] and held["bytes"] == row["bytes"]
+    assert checked > 100, f"the corpus should be bigger than this ({checked} files)"
 
 
 def test_an_unknown_folder_link_falls_back_to_local_and_says_so(monkeypatch):

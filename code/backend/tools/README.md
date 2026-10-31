@@ -3,11 +3,11 @@
 ## mutate.py — does the suite actually notice?
 
 Coverage proves a line ran. It does not prove a test would fail if that line were wrong.
-`mutate.py` makes deliberate changes to the nine modules the design rests on — `app/hive.py`,
+`mutate.py` makes deliberate changes to the ten modules the design rests on — `app/hive.py`,
 `federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `registration.py`,
-`sharing.py`, `semantic.py` and `folders.py` — runs the suite, and reports every change that
-**survived**, because a surviving mutant is a missing assertion, named and located. There are 40
-curated mutants.
+`sharing.py`, `semantic.py`, `limits.py` and `folders.py` — runs the suite, and reports every change
+that **survived**, because a surviving mutant is a missing assertion, named and located. There are
+47 curated mutants.
 
 ```bash
 cd code/backend && source .venv/bin/activate
