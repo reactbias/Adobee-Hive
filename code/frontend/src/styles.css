@@ -580,6 +580,15 @@ label {
     flex-shrink: 0;
   }
 }
+@media (max-width: 480px) {
+  .nav-end .status {
+    font-size: 0;
+    gap: 0;
+  }
+  .nav-end .locales button {
+    min-width: 34px;
+  }
+}
 
 /* ---------- Footer and the Team B6 easter egg ---------- */
 
@@ -786,7 +795,7 @@ th.end {
 }
 @media (max-width: 1000px) {
   .chapter-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s6);
   }
 }
@@ -1014,8 +1023,15 @@ button.quiet.small {
 .composer-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: var(--s2);
   margin-left: auto;
+  min-width: 0;
+}
+.composer-actions button {
+  white-space: normal;
+  text-align: center;
 }
 button.busy:disabled {
   opacity: 0.75;
