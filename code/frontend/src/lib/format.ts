@@ -43,3 +43,37 @@ export const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const money = (n: unknown, currency: string, intl: string) =>
   new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(n));
+
+/**
+ * How long ago an ISO 8601 moment was, in the page's language: "2 minutes ago", "vor 2 Minuten", "yesterday".
+ *
+ * `Intl.RelativeTimeFormat` does the words, so there is nothing to translate and nothing to pluralise by hand.
+ * Returns "" for a missing or unparsable stamp, so a caller renders its own "never" rather than a wrong time.
+ */
+export function since(iso: unknown, intl: string, now: Date = new Date()): string {
+  const then = iso ? new Date(String(iso)) : null;
+  if (!then || Number.isNaN(then.getTime())) return "";
+  const seconds = Math.round((then.getTime() - now.getTime()) / 1000);
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["second", 60],
+    ["minute", 60],
+    ["hour", 24],
+    ["day", 7],
+    ["week", 4.35],
+    ["month", 12],
+  ];
+  const format = new Intl.RelativeTimeFormat(intl, { numeric: "auto" });
+  let value = seconds;
+  for (const [unit, per] of units) {
+    if (Math.abs(value) < per) return format.format(value, unit);
+    value = Math.round(value / per);
+  }
+  return format.format(value, "year");
+}
+
+/** The exact moment, for a `title` on a relative time. "" when there is nothing to show. */
+export const moment = (iso: unknown, intl: string): string => {
+  const then = iso ? new Date(String(iso)) : null;
+  if (!then || Number.isNaN(then.getTime())) return "";
+  return new Intl.DateTimeFormat(intl, { dateStyle: "medium", timeStyle: "short" }).format(then);
+};

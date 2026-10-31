@@ -22,19 +22,22 @@ any other tool result).
 """
 
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
-from time import perf_counter
+from datetime import UTC, datetime
+from time import monotonic, perf_counter
 from typing import Any, Protocol
 
 import httpx
 
 from . import config, hive, reputation
 
+log = logging.getLogger(__name__)
+
 MAX_RADIUS = 3  # a traveller can reach peers of peers of peers, no further
 PEERS_PER_HOP = 4  # breadth cap: the most trusted peers at each hop, so fan-out stays bounded
 DEFAULT_BUDGET_MS = 2500.0
 MIN_FORWARD_MS = 150.0  # below this, a hop is not worth making
-PROFILE_TIMEOUT_S = 3.0
 MAX_PEER_EXCLUSIONS = 20  # a peer's reasons are useful, but not unbounded
 FEDERATED_RANKING_POLICY = (
     "Federated results rank local_relevance x hub_path_trust x hop_decay. Hop decay is confidence in a longer "
@@ -68,7 +71,7 @@ class HttpTransport:
 
     async def profile(self, base_url: str) -> dict[str, Any]:
         """Fetch and normalise a peer's discovery document."""
-        async with httpx.AsyncClient(timeout=PROFILE_TIMEOUT_S) as http:
+        async with httpx.AsyncClient(timeout=config.PEER_ASK_TIMEOUT_S) as http:
             res = await http.get(f"{base_url.rstrip('/')}/.well-known/hive.json")
             res.raise_for_status()
             doc = res.json()
@@ -81,6 +84,10 @@ class HttpTransport:
             "description": str(declared.get("description") or doc.get("description") or ""),
             "verification": declared.get("verification"),
             "paid_placement": declared.get("paid_placement"),
+            # What it asks of a new member, and how many entities it carries: the two facts a person choosing a
+            # hub actually decides by. Absent from an older peer's document, and absent is not zero.
+            "admission": str(declared.get("admission") or ""),
+            "entities": _count(declared.get("entities")),
             "ranking_policy": str(doc.get("ranking_policy") or ""),
             "owner_keys": {k: v for k, v in (doc.get("owner_keys") or {}).items() if isinstance(v, str)},
         }
@@ -98,29 +105,148 @@ class HttpTransport:
 
 DEFAULT_TRANSPORT: Transport = HttpTransport()
 
-# A peer's discovery document, cached per process: by base URL for the hubs we talk to, by hub id so a carrier
-# deeper in a chain can be judged too. Both are opinions this hub formed, like reputation's observations.
-_profiles: dict[str, dict[str, Any]] = {}
+# ---------------------------------------------------------------- the peer book
+#
+# What this hub knows about each peer, and when it last asked: by base URL for the hubs we talk to, by hub id so a
+# carrier deeper in a chain can be judged too. Both are opinions this hub formed, like reputation's observations,
+# and nothing here is persisted or taken on a peer's word about a third party.
+#
+# Asking happens on a timer (`keep_peers_fresh`), never on the read path. A hub with peers configured therefore
+# knows their names without waiting for someone to run a federated search, and a read of the directory cannot be
+# made slow by a peer that has stopped answering.
+_peers: dict[str, dict[str, Any]] = {}
 _by_hub: dict[str, dict[str, Any]] = {}
 
 
 def forget() -> None:
-    """Drop every cached peer profile, so the next query reads each peer's declaration again."""
-    _profiles.clear()
+    """Drop everything this hub has learned about its peers, so the next ask reads each declaration again."""
+    _peers.clear()
     _by_hub.clear()
 
 
-async def _profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
-    """A peer's discovery document, from cache or from the peer itself. None when it cannot be read."""
-    if base_url in _profiles:
-        return _profiles[base_url]
-    try:
-        profile = await transport.profile(base_url)
-    except Exception:  # an unreachable or broken peer is simply not a source for this query
+def _count(value: Any) -> int | None:
+    """A whole count a peer published, or None. A missing or nonsense count stays missing: never read as zero."""
+    if isinstance(value, bool) or not isinstance(value, int):
         return None
-    _profiles[base_url] = profile
+    return value if value >= 0 else None
+
+
+def _now() -> str:
+    """This moment as ISO 8601 UTC, the one format every `last_asked` in an answer uses."""
+    return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+def url_label(base_url: str) -> str:
+    """The host and port of a peer URL: the honest label for a hub that has not yet said what it is called."""
+    return base_url.rstrip("/").split("//")[-1]
+
+
+def _blank(base_url: str) -> dict[str, Any]:
+    """A peer we have a URL for and nothing else. Never asked is `None`, which is not the same as nothing there."""
+    return {
+        "url": base_url,
+        "profile": None,  # the last discovery document that actually arrived
+        "last_asked": None,  # when we last tried, successfully or not; None means genuinely never asked
+        "last_asked_ok": None,
+        "last_answered": None,  # when the document in `profile` arrived
+        "asked_at": 0.0,  # monotonic, for the max age only
+    }
+
+
+async def _ask(base_url: str, transport: Transport) -> dict[str, Any]:
+    """Ask one peer who it is and record the attempt either way.
+
+    A failed ask keeps the last document that did arrive rather than blanking the row: a peer's name and its
+    owner keys outlive one bad minute, and `last_asked_ok` already says the answer on screen is not current.
+    """
+    record = _peers.setdefault(base_url, _blank(base_url))
+    try:
+        profile = await asyncio.wait_for(transport.profile(base_url), timeout=config.PEER_ASK_TIMEOUT_S)
+    except Exception:  # unreachable, slow or broken: say when we asked, and keep what we already knew
+        record |= {"last_asked": _now(), "last_asked_ok": False, "asked_at": monotonic()}
+        return record
+    record |= {
+        "profile": profile,
+        "last_asked": _now(),
+        "last_asked_ok": True,
+        "last_answered": _now(),
+        "asked_at": monotonic(),
+    }
     _by_hub[profile["hub_id"]] = profile
-    return profile
+    return record
+
+
+def _fresh(record: dict[str, Any]) -> bool:
+    """True while an answer we already have is young enough to reuse without asking again."""
+    return bool(record["profile"]) and (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
+
+
+async def _profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
+    """A peer's discovery document, from the book or from the peer itself. None when it has never been read."""
+    record = _peers.get(base_url)
+    if record and _fresh(record):
+        return record["profile"]
+    return (await _ask(base_url, transport))["profile"]
+
+
+def peer_row(base_url: str) -> dict[str, Any]:
+    """What this hub knows about one peer, as data an interface can render.
+
+    Read-only: it never asks, so a caller on a request path cannot be made slow by a peer. Everything we have not
+    been told stays unknown — `entities` is `None` rather than `0`, and the label falls back to the URL rather
+    than to a hub id nobody published.
+    """
+    record = _peers.get(base_url) or _blank(base_url)
+    declared = record["profile"] or {}
+    return {
+        "url": base_url,
+        "hub": str(declared.get("hub_id") or url_label(base_url)),
+        "known": bool(declared),
+        "name": str(declared.get("name") or ""),
+        "description": str(declared.get("description") or ""),
+        "verification": str(declared.get("verification") or "unknown"),
+        "admission": str(declared.get("admission") or "unknown"),
+        "entities": _count(declared.get("entities")),
+        "last_asked": record["last_asked"],
+        "last_asked_ok": record["last_asked_ok"],
+        "last_answered": record["last_answered"],
+        # The last ask failed, so what is shown is an older answer rather than the current one.
+        "stale": bool(declared) and record["last_asked_ok"] is False,
+    }
+
+
+def peer_rows() -> list[dict[str, Any]]:
+    """One row per configured peer, from the book alone. Never asks, so it never blocks and never hangs."""
+    return [peer_row(url) for url in config.HIVE_PEER_URLS]
+
+
+async def ask_peers(transport: Transport | None = None) -> list[dict[str, Any]]:
+    """Ask every configured peer who it is, all at once.
+
+    Concurrent, so a round costs the slowest peer rather than the sum of them, and each ask is capped at
+    `PEER_ASK_TIMEOUT_S`. Nothing is raised: a peer that does not answer is recorded as not having answered.
+    """
+    urls = list(config.HIVE_PEER_URLS)
+    if urls:
+        await asyncio.gather(*[_ask(url, transport or DEFAULT_TRANSPORT) for url in urls])
+    return peer_rows()
+
+
+async def keep_peers_fresh() -> None:
+    """Ask the peers who they are, now and every `PEER_ASK_SECONDS` after, for as long as the hub runs.
+
+    This is what makes the asking happen on its own. Without it a hub only ever learns a peer's name as a side
+    effect of somebody running a federated search, so a directory read on a quiet hub would say "not asked" for
+    ever while the peer was publishing its name perfectly well all along.
+    """
+    while True:
+        try:
+            await ask_peers()
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # a bad round must never end the loop; the next one tries again
+            log.debug("asking the peers who they are failed", exc_info=True)
+        await asyncio.sleep(max(1.0, config.PEER_ASK_SECONDS))
 
 
 async def _choose_peers(

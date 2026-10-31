@@ -54,8 +54,15 @@ async def lifespan(_: FastAPI):
     registration.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
+    # A hub with peers configured asks them who they are straight away and then on a timer, so the directory
+    # knows their names without waiting for somebody to run a federated search. Reads never fan out.
+    asking = None
+    if config.HIVE_PEER_URLS and config.PEER_ASK_SECONDS > 0:
+        asking = asyncio.create_task(federation.keep_peers_fresh())
     async with mcp_app.router.lifespan_context(mcp_app):
         yield
+    if asking is not None:
+        asking.cancel()
     db.close()
 
 
@@ -119,12 +126,17 @@ def well_known(request: Request) -> dict[str, Any]:
         "owner_keys": hive.owner_keys(),
         "ruleset_keys": rulesets.keys(),
         "ranking_policy": hive.RANKING_POLICY,
-        # What peer Hives judge this hub by when a query reaches them over it (see reputation.py).
+        # What peer Hives judge this hub by when a query reaches them over it (see reputation.py), and what a
+        # person choosing a hub decides by: its name, what it asks of a member, and how much it carries. A peer
+        # reads this one document rather than interrogating four endpoints, and a peer that cannot reach it says
+        # so rather than guessing.
         "federation": {
             "hub_id": config.HIVE_HUB_ID,
             "name": config.HIVE_NAME,
             "description": config.HIVE_DESCRIPTION,
             "verification": config.HIVE_VERIFICATION,
+            "admission": config.ADMISSION_POLICY,
+            "entities": len(hive.list_cards()),
             "paid_placement": False,
             "max_radius": federation.MAX_RADIUS,
         },

@@ -430,6 +430,46 @@ everything else. A hub that declares paid placement, or that relays cards which 
 trust, and with it the rank of every card it carries — so vetting its own members honestly is the hub's own
 interest.
 
+### Asking the peers who they are
+
+Choosing a hub is a different question from searching one, and it is asked before anybody has searched anything.
+So a hub does not wait for a federated query to learn its peers' names: `federation.keep_peers_fresh` asks each
+peer's discovery document on a timer for as long as the hub runs, and keeps the answers in a peer book. A peer is
+named, described and counted in *its own* words; what this hub contributes is the calibration column, which is
+the one thing a peer cannot say about itself.
+
+Reading the directory never asks anybody. That is the whole point: the picker may poll, and one peer that has
+stopped answering must not make choosing a hub slow, or the picker feels broken again.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+  autonumber
+  participant P as A person choosing a hub
+  participant APP as InstanceFinder
+  participant H0 as This hub
+  participant BOOK as federation peer book
+  participant P1 as Peer "zurich"
+  participant P2 as Peer that has stopped answering
+
+  Note over H0,BOOK: every PEER_ASK_SECONDS, off any request path
+  H0->>P1: GET /.well-known/hive.json (PEER_ASK_TIMEOUT_S)
+  P1-->>H0: hub_id, name, description, admission, entities
+  H0->>P2: the same ask, at the same moment
+  P2--xH0: no answer within the timeout
+  H0->>BOOK: zurich: answered, stamped now<br/>the other: asked now, did not answer, keep the last good answer
+  P->>APP: open the finder
+  APP->>H0: GET /api/hub/directory
+  H0->>BOOK: read only, never ask
+  BOOK-->>H0: real names, real counts, when each was last asked
+  H0-->>APP: hubs[], each with last_asked and last_asked_ok
+  Note over APP: a hub never asked says so; nothing is shown as zero
+```
+
+A peer that has genuinely never been asked carries `last_asked: null`, and the row says so rather than
+pretending. One that answered and has since gone quiet keeps the name and count it gave, marked stale, because an
+answer from two minutes ago is more use than no answer at all — as long as the row admits how old it is.
+
 ## Who works where
 
 The pictures double as a map of the lanes in [CONTRIBUTING.md](../CONTRIBUTING.md). Pick a box, open its file,
