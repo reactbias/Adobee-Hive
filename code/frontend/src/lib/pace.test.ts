@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { delayFor, playback, type Beat } from "./pace";
 
-// The offline planner's usual run: the guest, the ack, three MCP calls and answers, the sceptic, the agent's reply.
+// The offline planner's usual run: the guest, the ack, three MCP calls and answers, the critic's challenge, your
+// agent's answer and the critic's verdict, the verifier, the agreement, the agent's reply.
 const OFFLINE_RUN: { beat: Beat; chars?: number }[] = [
   { beat: "first" },
   { beat: "say", chars: 56 },
@@ -12,6 +13,10 @@ const OFFLINE_RUN: { beat: Beat; chars?: number }[] = [
   { beat: "think" },
   { beat: "reply" },
   { beat: "think" },
+  { beat: "say", chars: 40 },
+  { beat: "say", chars: 14 },
+  { beat: "think" },
+  { beat: "say", chars: 20 },
   { beat: "say", chars: 260 },
 ];
 

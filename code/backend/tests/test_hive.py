@@ -23,6 +23,9 @@ def test_agent_books_end_to_end_over_mcp(client):
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability"]
     assert out["pending"]["tool"] == "hive_book"  # nothing is booked until the traveller approves
     assert out["second_opinion"]["verdict"] == "agree" and out["second_opinion"]["by"] == "Rule check"
+    # Three agents agree before the traveller is asked: the booking agent, the critic and the verifier.
+    assert out["critic"]["verdict"] == "agree" and out["critic"]["challenge"]
+    assert out["consensus"] is True
 
     done = client.post("/api/agent/approve", json={"pending": out["pending"]}).json()
     assert [s["tool"] for s in done["steps"]] == ["hive_book"]

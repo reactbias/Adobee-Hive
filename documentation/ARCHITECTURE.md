@@ -30,7 +30,8 @@ flowchart LR
 | `agent.py` | The traveller agent: an OpenAI or Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
 | `injection.py` | The guard on every tool result: text that addresses agents (EN, DE, FR, IT rules) is withheld before the agent reads it and reported in the trace |
 | `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test in chapter 1 |
-| `second_opinion.py` | A separate sceptic agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
+| `second_opinion.py` | The verifier: a separate agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
+| `critic.py` | The critic: always argues for the strongest alternative to the pick from the Hive's open ranking and concedes only when the pick ranks higher. With the verifier it sets `consensus` on the agent's answer. No model call |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked. Without a key, a rule-based edit understands add, remove and room prices in EN, DE, FR and IT and returns `summary_items` the studio words in the page's language |
 | `rulesets.py` | Signed rulesets a person chooses per request (e.g. "Dogs, verified" by a fictional dog owners' club). They can only narrow a search, never boost; the answer names the ruleset, its author and what it changed. Authors' keys are in `/.well-known/hive.json` under `ruleset_keys` |
 | `waiting.py` | Standing requests: an agent waits anonymously when nothing fits; the owner sees counts and budgets per missing change; a published card that now fits sends each waiting agent an offer signed with the business's key |
@@ -125,7 +126,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hive/demand` | The city demand map: what agents asked for, how often nobody could serve it | |
 | `POST /api/demo/simulate` | Up to 200 simulated traveller searches for the demand map | rate limit |
 | `POST /api/demo/reset` | Back to the seed cards, no bookings, no demand | `X-Demo-Token` |
-| `POST /api/agent` | Run the traveller agent over MCP; a booking comes back held, as `pending` | model rate limit |
+| `POST /api/agent` | Run the traveller agent over MCP; a booking comes back held, as `pending`, with the verifier's `second_opinion`, the `critic` and `consensus` | model rate limit |
 | `POST /api/agent/approve` | The traveller's yes: send the held booking, once | one-time hold |
 | `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
 | `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |

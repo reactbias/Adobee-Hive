@@ -27,7 +27,7 @@ import httpx
 import openai
 from mcp import Client
 
-from . import config, hive, injection, llm, mirror, second_opinion
+from . import config, critic, hive, injection, llm, mirror, second_opinion
 from .mcp_server import server as local_server
 from .replies import language_line, say
 
@@ -238,10 +238,12 @@ async def run(
             result = await _run_scripted(hives, text, locale) | {"fallback": f"{vendor} unavailable"}
         result["guard"] = hives.report()
         result["scenario"] = scenario
-    if result["pending"]:  # a second agent checks the pick before the human is asked
+    if result["pending"]:  # two more agents weigh the pick before the human is asked
         result["second_opinion"] = await second_opinion.review(
             text, parse_request(text), result["pending"]["input"], result["steps"], locale
         )
+        result["critic"] = critic.challenge(result["steps"], result["pending"]["input"], locale)
+        result["consensus"] = result["second_opinion"]["verdict"] == result["critic"]["verdict"] == "agree"
     return result
 
 

@@ -158,6 +158,14 @@ export interface SecondOpinion {
   ms: number;
   fallback?: string;
 }
+/** The critic's turn: it challenges the pick with the strongest alternative, then concedes or holds. */
+export interface Critic {
+  challenge: string;
+  answer: string;
+  verdict: "agree" | "concern";
+  note: string;
+  rival: string | null;
+}
 export interface AgentResult {
   reply: string;
   steps: Step[];
@@ -165,6 +173,9 @@ export interface AgentResult {
   mode: string;
   fallback?: string;
   second_opinion?: SecondOpinion;
+  critic?: Critic;
+  /** True when the critic and the verifier both agree with the pick. */
+  consensus?: boolean;
   guard?: Refusal[];
   scenario?: string | null;
   rules?: "on" | "off";

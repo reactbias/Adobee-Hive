@@ -95,7 +95,7 @@ Imagery: lit clay honeycomb for slides (`assets/brand/hero-clay.svg`). The app i
 photos, no people.
 
 Personas on the agent stage are abstract hexagon avatars (`public/personas/`), one per voice: the guest, *Your agent*,
-the Hive, the business, *the sceptic* (second opinion), *the mirror* (an unverified copy) and the owner. They are
+the Hive, the business, *the critic* (argues for the alternative), *the verifier* (checks the facts), *the mirror* (an unverified copy) and the owner. They are
 fictional and drawn, never photos or generated faces.
 
 Motion is purposeful only. The agent stage plays like a group chat: whoever speaks next glows and shows *is

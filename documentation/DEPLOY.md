@@ -20,7 +20,7 @@ Or the whole stack: `cd code && cp .env.example .env` (add the key), then `docke
 (frontend on 5173, backend on 8000).
 
 The agents run on **OpenAI** when `OPENAI_API_KEY` is set (`OPENAI_MODEL`, default `gpt-5-mini`): the booking agent,
-owner edits, and the sceptic that reviews each held booking before you approve. Claude is an alternative: set
+owner edits, and the verifier that checks each held booking before you approve. Claude is an alternative: set
 `ANTHROPIC_API_KEY` without an OpenAI key, or `LLM_PROVIDER=claude`. Without any key everything still runs: a
 scripted planner walks the same MCP tools, owner edits fall back to simple rules ("add sauna"), a rule check gives the
 second opinion, and the header shows **Offline mode**.

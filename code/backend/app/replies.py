@@ -34,6 +34,16 @@ TEXT: dict[str, dict[str, str]] = {
         "opinion.missing": "{name} does not list: {missing}.",
         "opinion.budget": "CHF {price} a night is above the CHF {budget} budget.",
         "opinion.agree": "Every requested feature is on the signed card and the price fits.",
+        "critic.cheaper": "Why {name}? {rival} is CHF {diff} a night cheaper.",
+        "critic.rival": "Why {name}? {rival} also fits, with a score of {score}.",
+        "critic.alone": "{name} is the only hotel left. Was the search too narrow?",
+        "critic.alone.answer": "No. The Hive gave a reason for each of the {n} it left out, and each one breaks a "
+        "wish of yours.",
+        "critic.answer": "{name} scores {score} on the Hive's open ranking, {rival} only {rival_score}: it fits your "
+        "wishes better.",
+        "critic.concede": "Fair. I agree.",
+        "critic.hold": "Not convinced: {rival} ranks at least as high. Look at it before you say yes.",
+        "critic.unranked": "The Hive never ranked this pick, so I can't weigh it against anything.",
     },
     "de": {
         "none_fit": "Kein Betrieb erfüllt alle Ihre Wünsche. Am nächsten: {why}.",
@@ -59,6 +69,16 @@ TEXT: dict[str, dict[str, str]] = {
         "opinion.missing": "{name} führt nicht: {missing}.",
         "opinion.budget": "CHF {price} pro Nacht liegt über dem Budget von CHF {budget}.",
         "opinion.agree": "Jeder gewünschte Punkt steht auf der signierten Karte, und der Preis passt.",
+        "critic.cheaper": "Warum {name}? {rival} ist CHF {diff} pro Nacht günstiger.",
+        "critic.rival": "Warum {name}? {rival} passt auch, mit {score} Punkten.",
+        "critic.alone": "{name} ist das einzige Hotel, das übrig bleibt. War die Suche zu eng?",
+        "critic.alone.answer": "Nein. Der Hive hat für jedes der {n} aussortierten Hotels einen Grund genannt, und "
+        "jeder verletzt einen Ihrer Wünsche.",
+        "critic.answer": "{name} hat im offenen Ranking des Hive {score} Punkte, {rival} nur {rival_score}: Es passt "
+        "besser zu Ihren Wünschen.",
+        "critic.concede": "Einverstanden. Ich stimme zu.",
+        "critic.hold": "Nicht überzeugt: {rival} liegt mindestens gleich hoch. Schauen Sie es an, bevor Sie Ja sagen.",
+        "critic.unranked": "Der Hive hat diese Wahl nie gerankt, also kann ich sie mit nichts vergleichen.",
     },
     "fr": {
         "none_fit": "Aucun établissement ne remplit toutes vos conditions. Le plus proche : {why}.",
@@ -85,6 +105,16 @@ TEXT: dict[str, dict[str, str]] = {
         "opinion.missing": "{name} n'indique pas : {missing}.",
         "opinion.budget": "CHF {price} par nuit dépasse le budget de CHF {budget}.",
         "opinion.agree": "Chaque élément demandé figure sur la carte signée et le prix convient.",
+        "critic.cheaper": "Pourquoi {name} ? {rival} coûte CHF {diff} de moins par nuit.",
+        "critic.rival": "Pourquoi {name} ? {rival} convient aussi, avec un score de {score}.",
+        "critic.alone": "{name} est le seul hôtel qui reste. La recherche était-elle trop étroite ?",
+        "critic.alone.answer": "Non. Le Hive a donné une raison pour chacun des {n} hôtels écartés, et chacune "
+        "contredit l'un de vos souhaits.",
+        "critic.answer": "{name} obtient {score} dans le classement ouvert du Hive, {rival} seulement {rival_score} : "
+        "il répond mieux à vos souhaits.",
+        "critic.concede": "Juste. Je suis d'accord.",
+        "critic.hold": "Pas convaincu : {rival} est classé au moins aussi haut. Regardez-le avant de dire oui.",
+        "critic.unranked": "Le Hive n'a jamais classé ce choix, je ne peux donc le comparer à rien.",
     },
     "it": {
         "none_fit": "Nessuna struttura soddisfa tutte le Sue condizioni. La più vicina: {why}.",
@@ -112,6 +142,16 @@ TEXT: dict[str, dict[str, str]] = {
         "opinion.missing": "{name} non indica: {missing}.",
         "opinion.budget": "CHF {price} a notte supera il budget di CHF {budget}.",
         "opinion.agree": "Ogni elemento richiesto è sulla scheda firmata e il prezzo va bene.",
+        "critic.cheaper": "Perché {name}? {rival} costa CHF {diff} in meno a notte.",
+        "critic.rival": "Perché {name}? Anche {rival} va bene, con un punteggio di {score}.",
+        "critic.alone": "{name} è l'unico hotel rimasto. La ricerca era troppo stretta?",
+        "critic.alone.answer": "No. L'Hive ha dato un motivo per ciascuno dei {n} hotel esclusi, e ognuno va contro "
+        "uno dei suoi desideri.",
+        "critic.answer": "{name} ha {score} punti nella classifica aperta dell'Hive, {rival} solo {rival_score}: "
+        "risponde meglio ai suoi desideri.",
+        "critic.concede": "Giusto. Sono d'accordo.",
+        "critic.hold": "Non convinto: {rival} è classificato almeno altrettanto in alto. Lo guardi prima di dire sì.",
+        "critic.unranked": "L'Hive non ha mai classificato questa scelta, quindi non posso confrontarla con nulla.",
     },
 }
 

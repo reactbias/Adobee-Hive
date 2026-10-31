@@ -75,7 +75,9 @@ export default function TravellerAgent() {
         { kind: "guest", text },
         ...(before.length ? [] : [{ kind: "ack" } as Segment]),
         { kind: "steps", steps: out.steps },
+        ...(out.critic ? [{ kind: "critic", critic: out.critic } as Segment] : []),
         ...(out.second_opinion ? [{ kind: "opinion", opinion: out.second_opinion } as Segment] : []),
+        ...(out.consensus !== undefined ? [{ kind: "consensus", agreed: out.consensus } as Segment] : []),
         { kind: "agent", text: out.reply },
         ...(out.guard?.length ? [{ kind: "refused" } as Segment] : []),
       ]);
@@ -282,6 +284,11 @@ export default function TravellerAgent() {
                 pending && (
                   <div className="gate">
                     <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
+                    {result?.consensus !== undefined && (
+                      <p className={`status ${result.consensus ? "ok" : "no"}`}>
+                        {t(result.consensus ? "chat.consensus.agree" : "chat.consensus.split")}
+                      </p>
+                    )}
                     <h3>
                       {t("agent.gate.question", {
                         unit: String(unit?.name ?? pending.unit_id),
@@ -324,6 +331,12 @@ export default function TravellerAgent() {
                           </span>{" "}
                           {result.second_opinion.note}
                         </p>
+                      </div>
+                    )}
+                    {result?.critic?.verdict === "concern" && (
+                      <div className="opinion concern">
+                        <span className="label">{t("chat.name.critic")}</span>
+                        <p>{result.critic.note}</p>
                       </div>
                     )}
                     {why.length > 0 && (
