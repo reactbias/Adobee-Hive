@@ -1,0 +1,35 @@
+This machine: 192.168.21.123
+
+Starting hubs...
+  basel    http://192.168.21.123:8424
+  zurich   http://192.168.21.123:8425
+
+Seeding the fake vaults through the real signup endpoint...
+  ✓ cafe-rhein       admitted  2 files  admitted automatically: this hub admits anything that passes its check
+  ✓ hotel-krafft     admitted  3 files  admitted automatically: this hub admits anything that passes its check
+
+2/2 on http://127.0.0.1:8424
+  ✓ grid-ops         admitted  2 files  admitted automatically: this hub admits anything that passes its check
+  ✓ lena-hofmann     admitted  3 files  admitted automatically: this hub admits anything that passes its check
+  ✓ pension-limmat   admitted  3 files  admitted automatically: this hub admits anything that passes its check
+
+3/3 on http://127.0.0.1:8425
+
+Building the app against http://192.168.21.123:8424 ...
+./lan.sh: line 90: ../../.lan/app.pid: No such file or directory
+
+────────────────────────────────────────────────────────────
+  Sign up here, from any browser on this network:
+
+      http://192.168.21.123:8426
+
+  Laptop or phone, no install. Both hubs are on this machine.
+────────────────────────────────────────────────────────────
+
+  hub directory   http://192.168.21.123:8424/api/hub/directory
+  what it asks    http://192.168.21.123:8424/api/hub/registration
+  API docs        http://192.168.21.123:8424/docs
+  second hub      http://192.168.21.123:8425
+  logs            .lan/*.log
+
+  Tell someone on another device to run:  ./lan.sh check  (or just open the URL)

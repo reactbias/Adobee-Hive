@@ -581,3 +581,40 @@ def test_a_ruleset_still_narrows_a_federated_answer(client, net):
     # Nobody has vouched for the peer's dog-friendly claim, so the ruleset leaves it out, with the reason.
     assert "hotel-limmat" not in {m["id"] for m in out["matches"]}
     assert any(e["id"] == "hotel-limmat" for e in out["excluded"])
+
+
+# ---------------------------------------------------------------- what two real hubs showed
+
+
+def test_a_forwarded_query_carries_the_signed_card_but_a_direct_one_does_not(client):
+    """Found by running two real hubs, not by any fake.
+
+    The last hop of a federated search always arrives as radius 0, and a radius-0 answer omits
+    `card` to stay byte-identical for direct callers. So a peer answered with matches that could
+    not be verified, and the asking hub rejected every one of them with "no card to check against
+    the owner's key". Every FakeHive here includes `card`, so nothing caught it.
+
+    Backward compatibility is owed to a direct caller, not to a hop. `seen` is what tells them
+    apart: a peer that forwarded a query has already put itself in it.
+    """
+    direct = hive.discover(**ASK)
+    assert set(direct) == {"matches", "excluded", "ranking_policy"}
+    assert all("card" not in m for m in direct["matches"]), "a direct caller's answer is unchanged"
+
+    forwarded = hive.discover(**ASK, seen=["basel"])
+    assert set(forwarded) == {"matches", "excluded", "ranking_policy"}, "the envelope is the same"
+    assert forwarded["matches"], "the seed must answer this ask"
+    for match in forwarded["matches"]:
+        card = match.get("card")
+        assert isinstance(card, dict), f"{match['id']} travelled to a peer with no card to verify"
+        assert card["id"] == match["id"]
+        assert card.get("trust", {}).get("signature"), "the card must carry the signature it is checked by"
+
+
+def test_a_card_that_travelled_verifies_against_the_origin_registry(client):
+    """The point of carrying the card: the far end can check it against the owner's pinned key."""
+    forwarded = hive.discover(**ASK, seen=["basel"])
+    pins = hive.owner_keys()
+
+    for match in forwarded["matches"]:
+        assert hive.verify_pinned(match["card"], pins), f"{match['id']} would be rejected by a peer"

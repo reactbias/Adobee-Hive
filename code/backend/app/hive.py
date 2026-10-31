@@ -495,6 +495,7 @@ def discover(
             "guests": guests,
         }
         return federation.run(ask, int(radius), budget_ms, seen)
+    forwarded = bool(seen)  # a non-empty `seen` means a peer hub forwarded this, not a local client
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
     # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
@@ -542,6 +543,11 @@ def discover(
             "description": card.get("description") or "",
             "rating": trust["verified_reviews"]["average"],
             "rating_count": trust["verified_reviews"]["count"],
+            # How to reach them, on the result itself. An agent that found someone should not have
+            # to fetch the whole card to know whether there is an address to write to, and a
+            # federated result has no cheap way to fetch it at all.
+            "contact": (card.get("contact") or {}),
+            "contact_sharing": (card.get("contact_sharing") or {}),
             "from_price_chf": price,
             "distance_m": dist,
             "score": round(sum(score.values()), 1),
@@ -572,6 +578,13 @@ def discover(
     )
     _log_many(events)
     matches.sort(key=lambda m: m["score"], reverse=True)
+    if forwarded:
+        # A peer asked this, and it will verify every card against our key registry before showing
+        # it to anyone. It can only do that if the signed card travels with the match, so attach it.
+        # A direct caller gets the answer unchanged — backward compatibility is about them, not
+        # about hops. Without this a federated search rejects every remote result with "no card to
+        # check against the owner's key", which is what two real hubs showed the moment they met.
+        matches = [{**m, "card": get_card(m["id"])} for m in matches]
     return {
         "matches": matches,
         "excluded": excluded,
