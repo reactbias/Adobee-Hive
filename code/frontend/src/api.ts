@@ -2,9 +2,14 @@
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  // The language switch sets <html lang>; the backend answers in it (agent replies, the second opinion).
+  const lang = { "Accept-Language": document.documentElement.lang || "en" };
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: init?.body instanceof FormData ? init?.headers : { "Content-Type": "application/json", ...init?.headers },
+    headers:
+      init?.body instanceof FormData
+        ? { ...lang, ...init?.headers }
+        : { "Content-Type": "application/json", ...lang, ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
