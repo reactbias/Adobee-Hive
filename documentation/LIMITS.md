@@ -38,9 +38,10 @@ signature establishes, and nothing in the hub confirms a proof: a `dns-txt`, `re
 unverified and raises nothing. That is deliberate — a hub that blocks on a DNS lookup falls over when a registrar
 does — but it means the top two rungs of the ladder are unreachable today.
 
-**The hub holds a signing key for every card, including the ones that brought their own.** Bringing a
-`public_key` to `POST /api/hub/register` proves the applicant holds the private half, and it is recorded on the
-card as `owner_public_key` with `custody: "owner"`, which a peer can see. The card version itself is still signed
+**The hub holds a signing key for every card, including the ones that brought their own.** The onboarding panel
+generates an Ed25519 keypair in the browser, offers the private half as a download and signs the application's
+canonical JSON with it (`lib/signing.ts`), so `custody: "owner"` is reachable without a terminal. That proves the
+applicant holds the private half, and it is recorded on the card as `owner_public_key`, which a peer can see. The card version itself is still signed
 by a key `hive.publish` generates and keeps in `hive_keys`, and that is the key published in
 `/.well-known/hive.json` under `owner_keys` and used by every signature check. So the jury answer is still *the
 server, for the demo* — registration narrows the gap by pinning who applied, it does not close it. Owner-held
@@ -72,22 +73,18 @@ public node view is built from two of them. The admission queue is the one that 
 carries each applicant's id, name, public key and the checks that ran. Every admin **write** does fail closed.
 
 **There is no second deployed hub.** The hop machinery is real and tested (`tests/test_federation.py` drives it
-through an in-process transport), but `https://adobee-hive.onrender.com` has no `HIVE_PEER_URLS`, so every search
-against the live backend is a radius-0 search whatever the reach control says. Three peered hubs on one machine is
+through an in-process transport), but `https://adobee-hive.onrender.com` has no `HIVE_PEER_URLS`, so a search
+against the live backend stays local whatever the reach control says. Three peered hubs on one machine is
 what [`lan.sh`](../lan.sh) is for; see [DEVELOPER.md](DEVELOPER.md#three-hubs-on-one-machine-lansh).
 
 ## The deployed demo
 
-**An https page cannot call an http hub.** The frontend's backend URL is `VITE_API_URL`, baked in at build time.
-The GitHub Pages build is served over https, so it can only talk to an https backend — a hub on a LAN address or
-on plain http is unreachable from it, and the browser blocks the request rather than reporting it. That is why
-`lan.sh` serves the app over http from `vite preview` with the hub proxied same-origin instead of pointing a
-hosted page at it.
-
-**Choosing a Hive in the finder does not change which backend answers.** `InstanceFinder` reads
-`GET /api/hub/directory` and remembers the pick in `sessionStorage`, and the page says on screen that this build
-talks to one backend whatever you pick. Picking a hub is the right screen and the right data; routing the app at
-the hub you picked is not built.
+**An https page cannot call an http hub.** Picking a Hive in the finder does now move the app: the hub's base URL
+is stored for the tab and `api.ts` resolves its base per call. The one pick that cannot be honoured is a hub on
+plain http, because a browser will not let an https page call one — so the GitHub Pages build can only reach https
+hubs, and the finder refuses such a row with that reason rather than appearing to switch. `VITE_API_URL` is the
+hub a visitor talks to before they pick one. A LAN demo is unaffected, because `lan.sh` serves the page over http
+too, with the hub proxied same-origin.
 
 **One instance, in memory.** Rate limits, held bookings, held hand-offs and hub reputation live in the process:
 they reset on a restart and would not be shared between two instances. DuckDB on local disk with a Postgres

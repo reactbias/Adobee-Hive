@@ -22,6 +22,29 @@ component renders all three.
 | `rating` | integer or **null** | **Tenths of a star, 0–50.** `43` is 4.3 out of 5 |
 | `rating_count` | integer | How many signed receipts produced it |
 
+### `description` is the pitch to the agent, and it is meant to be
+
+One line, and writing it to be found is the point rather than a thing to police. In a web where the first visitor
+is an agent, the description *is* the shop window: it is what a search reads, and an owner who writes it carefully
+— their own words, the errand a person would actually type — is doing the job the Card exists for. There is no
+keyword rule here and there should not be one.
+
+The honest question is the other one: what stops somebody describing themselves as something they are not? Not a
+filter. The economic loop:
+
+1. A hub freezes what it published about an entity at the moment of introduction (`hub._published_rating`).
+2. A person meets them, and afterwards scores the real meeting
+   (`POST /api/hub/connections/{id}/score`, tenths of a star).
+3. `published − realised` is the gap, and over-promising makes it positive.
+4. That error is the recency-weighted number a hub carries in the standing table, the neighbours view and the
+   [hub directory](../REGISTRATION.md#choosing-a-hub-first) a person picks a door from — and no hub can move it
+   by anything it says about itself, because every input comes from other people's users.
+
+So a description that oversells gets its subject matched to the wrong people, and the cost lands on the hub that
+carried the claim. That is why admission is strict ([REGISTRATION.md](../REGISTRATION.md)) and why the same
+pressure reaches the entity: a hub whose members embarrass it has every reason to stop carrying them. Writing the
+field well is rewarded; writing it falsely is paid for later, by somebody who can refuse to keep you.
+
 ### Two things to get right
 
 **In this model `rating` is tenths of a star, not stars.** `43` → `4.3 / 5`. Divide by 10 for

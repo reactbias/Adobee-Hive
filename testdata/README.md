@@ -1,6 +1,6 @@
 # testdata — the corpus semantic search is measured against
 
-`vaults/` holds 28 fictional entities, one folder of markdown each, registered through the real signup
+`vaults/` holds 61 fictional entities, one folder of markdown each, registered through the real signup
 endpoint by `code/backend/tools/seed_vaults.py`. Ten folders are hand-written; the rest come from the
 curated table in `code/backend/tools/make_corpus.py`. Nothing here is a real business or a real person.
 
