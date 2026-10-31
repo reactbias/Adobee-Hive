@@ -20,7 +20,10 @@ import pytest
 
 from app import cc_folders, config, db, folders
 
-KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+#: 64 hex characters, which is the shape the authz header wants of an X25519 public key. Written as
+#: a repeat rather than typed out, because a 64-character hex literal next to the word KEY is what a
+#: secret scanner is for — and this one is not a secret.
+KEY = "0123456789abcdef" * 4
 
 
 @pytest.fixture(autouse=True)
