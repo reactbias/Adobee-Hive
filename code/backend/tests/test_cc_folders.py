@@ -258,7 +258,7 @@ def test_the_owners_visibility_overrules_the_authz_file(cc):
     files = cc.home("hotel-krafft") / "files"
     files.mkdir(parents=True)
     (files / "takings.md").write_text("Not yours.\n", encoding="utf-8")
-    (files / folders.MARKER).write_text("takings.md = hidden\n", encoding="utf-8")
+    (files / folders.MARKER).write_text("# Visibility\n\n- takings.md: hidden\n", encoding="utf-8")
     cc.accept_link(cc.request_link("mara@example.com", "hotel-krafft")["id"])
 
     with pytest.raises(folders.FolderError, match="admits no file"):
@@ -276,7 +276,7 @@ def test_a_published_file_needs_no_grant_and_an_unlinked_stranger_gets_nothing_e
     files.mkdir(parents=True)
     (files / "about.md").write_text("# Krafft\n", encoding="utf-8")
     (files / "rooms.md").write_text("Rear room\n", encoding="utf-8")
-    (files / folders.MARKER).write_text("about.md = public\n", encoding="utf-8")
+    (files / folders.MARKER).write_text("# Visibility\n\n- about.md: public\n", encoding="utf-8")
 
     assert cc.can_read("hotel-krafft/about.md", "a-stranger"), "published is published"
     assert not cc.can_read("hotel-krafft/rooms.md", "a-stranger")

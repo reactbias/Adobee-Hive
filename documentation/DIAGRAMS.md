@@ -111,6 +111,7 @@ flowchart TB
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
   REG[registration.py<br/>one signed application, and who gets in]:::mod
+  LIM[limits.py<br/>published ceilings, both doors, body size]:::guard
   ADM[admin.py<br/>settings, neighbours, blocklist, GUI-ready]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
@@ -130,12 +131,15 @@ flowchart TB
   REST --> ADM
   MCP --> ADM
   ADM --> BLK
+  REST --> LIM
   ADM --> SHR
   ADM --> CAL
   ADM --> FED
   ADM --> REG
   REST --> REG
   MCP --> REG
+  REG --> LIM
+  HIVE --> LIM
   REG --> HIVE
   REG --> BLK
   A -->|MCP client| INJ --> MCP
