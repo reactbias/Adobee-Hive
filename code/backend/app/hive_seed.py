@@ -2,7 +2,7 @@
 
 import copy
 
-from . import db, hive
+from . import db, hive, waiting
 
 SBB, MESSE, MARKT, BADISCHER = "basel sbb", "messe basel", "marktplatz", "badischer bahnhof"
 
@@ -160,7 +160,15 @@ def run() -> None:
         hive.attest(card_id, claim, by)
 
 
-TABLES = ("hive_events", "hive_reviews", "hive_bookings", "hive_attestations", "hive_keys", "hive_cards")
+TABLES = (
+    *waiting.TABLES,
+    "hive_events",
+    "hive_reviews",
+    "hive_bookings",
+    "hive_attestations",
+    "hive_keys",
+    "hive_cards",
+)
 
 
 def reset() -> None:

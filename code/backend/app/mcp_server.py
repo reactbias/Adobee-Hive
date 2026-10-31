@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import domains, hive
+from . import domains, hive, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -18,7 +18,8 @@ server = MCPServer(
         "Use hive_discover to find businesses for the user's constraints, hive_get_card to read one card and "
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
         "Only state facts that come from cards. Tell the user why you picked a business (score_breakdown, why) "
-        "and keep the booking receipt: it is needed to cancel or to leave a verified review."
+        "and keep the booking receipt: it is needed to cancel or to leave a verified review. "
+        "If nothing fits and the user wants to be told, hive_wait leaves an anonymous standing request."
     ),
 )
 
@@ -86,6 +87,28 @@ def hive_cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
     """Leave a verified review (1-5) for a stay. Requires the booking's signed receipt."""
     return _safe(hive.review, receipt, rating, text)
+
+
+@server.tool()
+def hive_wait(
+    check_in: str,
+    check_out: str,
+    features: list[str] | None = None,
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    guests: int = 1,
+) -> dict[str, Any]:
+    """When hive_discover found nothing that fits, and only if your user wants to be told: leave an anonymous
+    standing request. If a business later changes its signed card to fit, it sends a signed offer. Returns a
+    request_id and a secret token; keep both. Never include the user's name or words."""
+    return _safe(waiting.leave, features, near, max_price_chf, check_in, check_out, guests)
+
+
+@server.tool()
+def hive_check_waiting(request_id: str, token: str) -> dict[str, Any]:
+    """Check a standing request. Offers are signed by the business; verify them against its pinned key and ask
+    your user before booking with hive_book."""
+    return _safe(waiting.check, request_id, token)
 
 
 # The stays tools above came first; every other use case registers its tools from app/domains.

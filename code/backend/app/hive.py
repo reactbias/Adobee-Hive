@@ -165,6 +165,30 @@ def _sign_receipt(card_id: str, payload: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(canonical(payload)).decode() + "." + base64.urlsafe_b64encode(sig).decode()
 
 
+def sign_statement(card_id: str, payload: dict[str, Any]) -> str:
+    """Sign a statement (a receipt, an offer) with the business's key: base64url(body).base64url(signature)."""
+    return _sign_receipt(card_id, payload)
+
+
+def read_statement(statement: str) -> dict[str, Any]:
+    """Return a signed statement's body without checking it; verify_statement() is the check."""
+    try:
+        return json.loads(base64.urlsafe_b64decode(statement.split(".")[0]))
+    except (ValueError, IndexError) as err:
+        raise HiveError("Malformed statement.") from err
+
+
+def verify_statement(statement: str, public_key: str) -> bool:
+    """What any agent can do on its own: check a signed statement against a business's pinned public key."""
+    try:
+        body_b64, sig_b64 = statement.split(".")
+        pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key))
+        pub.verify(base64.urlsafe_b64decode(sig_b64), base64.urlsafe_b64decode(body_b64))
+        return True
+    except (InvalidSignature, ValueError):
+        return False
+
+
 def _check_receipt(card_id: str, receipt: str) -> dict[str, Any]:
     try:
         body_b64, sig_b64 = receipt.split(".")
@@ -290,7 +314,8 @@ MAX_TEXT = 2000  # review text and booking notes
 MAX_NAME = 100
 
 
-def _nights(check_in: str, check_out: str) -> int:
+def stay_nights(check_in: str, check_out: str) -> int:
+    """Return the nights between two ISO dates; refuses bad dates and stays over MAX_NIGHTS."""
     try:
         n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
     except (TypeError, ValueError) as err:
@@ -310,7 +335,7 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
                 [card["id"], check_out, check_in],
             ).fetchall()
         )
-    nights = _nights(check_in, check_out)
+    nights = stay_nights(check_in, check_out)
     free = []
     for unit in card.get("units", []):
         left = unit["quantity"] - booked.get(unit["id"], 0)
