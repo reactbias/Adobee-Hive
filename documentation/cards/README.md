@@ -140,6 +140,96 @@ That is why `manifest-after-handshake.json` is in this folder. It is the same va
 connected peer: two prepared transcripts appear that the public Card never mentions, plus 252 files
 withheld without naming them. Diff the two files and the privacy model is right there.
 
+## How much room you have
+
+Write the Card first, then check it against this. Every number here is what a hub will accept, and
+the hub publishes the same table at `GET /api/hub/registration` so a client can read it before it
+composes anything. Nothing on this page is about *what* you write — only how much of it there is.
+
+**`description` is your pitch to an agent, and 2000 characters is room to make it.** In a web whose
+visitors are agents, the description is the thing they read, so writing it for discovery is the
+point of the field rather than something to apologise for. Name what you do, name the words a
+person would actually type, name the things you are good at. A hub does not read your prose, score
+its keyword density or form a view about your style.
+
+What stops an entity describing itself as something it is not was never prose analysis — it is the
+economic loop. Over-promise, and you get matched to people you cannot help; they meet you, they
+score the introduction, and the hub carrying you publishes a rating that turns out to be wrong. Its
+calibration error rises ([FEDERATION.md](../FEDERATION.md), `calibration.py`), and *every* entity
+on that hub ranks lower everywhere. An honest description is the cheapest thing in the system.
+
+The ceilings exist because an unbounded field is an index that can be flooded, a database that can
+be filled and a signed document that stops fitting in a request. They are set from the real corpus
+in `testdata/vaults/` with a lot of room to spare, because a limit that refuses a legitimate hotel
+is worse than one slightly too generous.
+
+<!-- room -->
+
+| What | Room | What it is for |
+| --- | --- | --- |
+| `id` | 63 characters | `hive:<hub>/<entity>` without the hub part. Lower case, digits, hyphens |
+| `kind` | 32 characters | What sort of entity this is, so a search can narrow by it |
+| `name` | 120 characters | What a person sees in a result |
+| `tagline` | 200 characters | One phrase under the name |
+| `description` | **2000 characters** | Your pitch to an agent. Write it for discovery |
+| `offers` | 50 entries | What you provide. Half the index |
+| `needs` | 50 entries | What you are looking for. The other half |
+| `offers[].title` | 200 characters | The name of one thing you offer or need |
+| `offers[].summary` | 600 characters | The line it came from, in your own words |
+| `offers[].tags` | 20 entries | Words a search should match that the prose does not carry |
+| `features` | 50 entries | Short facts a search can filter on |
+| `units` | 100 entries | Bookable rooms or slots |
+| `structure` | 1000 entries | One row per file in your folder: path and digest, never contents |
+| `contact` | 20 channels | The open map of how to reach you |
+| `contact.<channel>` | 200 characters | One channel's value, e.g. a postal address |
+| `proofs` | 8 entries | Claims about the world. Recorded unverified, never trusted |
+| `proofs[].subject` | 200 characters | What one proof is about, e.g. a domain name |
+| `any other text` | 500 characters | Any string the card carries that is not named above |
+| `any other list` | 200 entries | Any list the card carries that is not named above |
+| `keys per object` | 64 keys | How many keys one object may carry |
+| `nesting` | 12 levels | How deeply a card may nest |
+| `the whole card` | 256,000 bytes | The canonical JSON of everything above |
+| `the application` | 320,000 bytes | The card plus its key, proofs and signature |
+| `the request body` | 1,048,576 bytes | Refused by size before it is parsed into objects |
+
+<!-- /room -->
+
+`needs` is bounded exactly like `offers`, and the two `offers[].*` rows apply to a need as well —
+the two sides of the market have the same shape and the same room.
+
+### What is deliberately not limited
+
+Numbers are not range-checked here: a price, a file size or a room count can be anything, because a
+wrong number is a business's own problem and not a cost to the hub. The numbers that *are* a cost
+are checked where they are spent — a stay is at most 30 nights for 20 guests (`hive.py`). Nothing
+counts how many entities one applicant may register either; that is the hub's admission policy
+(`GET /api/hub/registration`) and the rate limit on the endpoint, not a field length. And no field
+is judged on its content, ever.
+
+### Three things are tidied, not refused
+
+A hub normalises these on the way in and publishes what it kept, so what it signs is what a reader
+sees:
+
+- **Unicode to NFC**, so two spellings of the same character are one string and one digest.
+- **Control and zero-width characters out** — ZWSP, word joiner, soft hyphen, the bidi overrides.
+  They are invisible to a reader, count against nothing, and change the signature over the
+  canonical JSON for no reason anybody can see.
+- **Runs of whitespace to a single space**, and the ends trimmed. A Card's text fields are one line
+  of prose each.
+
+So a description padded with zero-width characters is not refused; the padding is simply not there
+any more, and what is left is measured.
+
+### What a refusal looks like
+
+Over a limit at signup is an answer, not an error: `POST /api/hub/register` returns **200** with
+`state: "rejected"`, the checks it got through, and a reason that names the ceiling and your actual
+size — `` `description` is at most 2000 characters; this one is 7412 `` — so you can fix it without
+guessing. The same ceilings apply to every version after, through `hive.publish`: an entity cannot
+join politely and then grow unbounded on its next update. A request body over the last row is
+refused with **413** before it is parsed at all.
+
 ## How this relates to what runs today
 
 The live backend serves a simpler card (`code/backend/app/hive.py`) and is converging on this.
