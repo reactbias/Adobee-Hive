@@ -146,6 +146,9 @@ Poll that until the peer counts appear, then search:
 until curl -s http://127.0.0.1:8520/api/hub/directory | grep -q '"entities": *21'; do sleep 3; done
 ```
 
+Timed on a clean run: **21.7 seconds**. After that, the same `radius: 2` query returns 73 matches
+with `"rejected": []`.
+
 **It does not fully heal.** Those 41 rejections are charged against the peers' reputation, and
 `reputation.py` keeps its observations in a module-level dict, so for the rest of that process the
 peers read *"41 of 82 relayed cards failed verification here"* and their trust sits at **0.05**
@@ -735,7 +738,7 @@ svenja-aebi       score=5  fed=2.60  hops=1  path=['zurich','basel']  also=[{'pa
 
 **Do not pin a test to `federated_score` or `hub_path_trust`.** Both move with this hub's live
 observations of its peers — latency, answers, timeouts, cards that failed verification here — so the
-same query gave `4.19`, `4.39` and `4.41` on three consecutive runs of this stack. `score`, `hops`,
+same query gave `4.18`, `4.19`, `4.39` and `4.41` on four runs of this stack. `score`, `hops`,
 `provenance.path` and `hop_decay` are stable; the trust factors are opinions formed at runtime, and
 they are not persisted — a restart returns every peer to trust on first use.
 
