@@ -220,6 +220,7 @@ def ask(question: str, mood: str | None = None, today: date | None = None) -> di
         if item:
             pending = _hold(card, item)
 
+    hive.record_events([(cid, "shown", "ask") for cid in dict.fromkeys(card["id"] for _, card, _, _ in picked)])
     hive.record_event(
         "*", "explore_ask", json.dumps({"mood": mood, "cards": [c["id"] for c in scope], "answered": len(picked)})
     )
