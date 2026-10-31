@@ -2638,3 +2638,112 @@ button.self-start {
 .frame .kpis dd {
   font-size: var(--t-xl);
 }
+
+/* ---------- The live activity feed (?demo): one line per agent step ---------- */
+
+.activity-legend {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+}
+.activity-legend div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: baseline;
+}
+.activity-legend dd {
+  margin: 0;
+  font-size: var(--t-sm);
+}
+.activity-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: var(--t-sm);
+}
+.activity-feed > li {
+  display: grid;
+  grid-template-columns: 4.5em minmax(7em, 10em) minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+}
+.activity-feed > li.activity-run {
+  margin-top: var(--s5);
+}
+.activity-feed time {
+  font-family: var(--mono);
+  font-size: var(--t-xs);
+}
+.activity-agent {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.activity-step b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.activity-what {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-outcome {
+  color: var(--ink-2);
+}
+.activity-outcome.handoff_only,
+.activity-outcome.held {
+  color: var(--clay-dark);
+  font-weight: 600;
+}
+.activity-outcome.confirmed,
+.activity-outcome.valid,
+.activity-outcome.added {
+  color: var(--good);
+}
+.activity-outcome.invalid,
+.activity-outcome.blocked,
+.activity-outcome.failed,
+.activity-outcome.refused,
+.activity-outcome.rejected {
+  color: var(--bad);
+}
+.activity-feed .activity-source {
+  grid-column: 4;
+  grid-row: 1;
+}
+.activity-source {
+  display: inline-block;
+  padding: 1px var(--s2);
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  font-size: var(--t-xs);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.activity-source.partner {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.activity-source.web {
+  background: var(--clay-tint);
+  border-color: var(--clay);
+  color: var(--clay-dark);
+}
+@media (max-width: 640px) {
+  .activity-feed > li {
+    grid-template-columns: 4.5em minmax(0, 1fr) auto;
+  }
+  .activity-agent {
+    grid-column: 2;
+  }
+  .activity-what {
+    grid-column: 2 / -1;
+  }
+  .activity-feed .activity-source {
+    grid-column: 3;
+  }
+}

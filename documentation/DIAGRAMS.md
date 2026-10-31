@@ -333,5 +333,6 @@ find its test.
 | Your agent, verifier, critic | `agent.py`, `second_opinion.py`, `critic.py` | `test_critic.py`, `test_injection.py`, `test_languages.py` |
 | Any business, scout | `explore.py`, `scout.py` | `test_explore.py`, `test_relevance.py`, `test_scout.py` |
 | Owner studio | `owner.py`, `waiting.py` | `test_owner_languages.py`, `test_waiting.py`, `test_card_stats.py` |
+| Live activity feed | `activity.py`, `ActivityPanel.tsx` | `test_activity.py`, `ActivityPanel.test.tsx` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |
