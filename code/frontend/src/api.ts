@@ -159,7 +159,7 @@ export interface DemandMap {
 }
 export interface Health {
   status: string;
-  llm: "claude" | "mock";
+  llm: "openai" | "claude" | "mock";
   model: string;
   fast_model: string;
 }

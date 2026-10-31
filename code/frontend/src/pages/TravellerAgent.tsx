@@ -192,7 +192,9 @@ export default function TravellerAgent() {
             <span>
               {result.mode === "claude"
                 ? t("agent.mode.claude")
-                : t("agent.mode.offline") + (result.fallback ? ` (${result.fallback})` : "")}
+                : result.mode === "openai"
+                  ? t("agent.mode.openai")
+                  : t("agent.mode.offline") + (result.fallback ? ` (${result.fallback})` : "")}
             </span>
           ) : (
             <span>{t("agent.mode.ready")}</span>

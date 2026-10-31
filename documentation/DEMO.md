@@ -3,8 +3,8 @@
 Short version for the stage: [PITCH.md](PITCH.md).
 
 Everything below runs live. Without an API key the agent switches to a scripted planner that walks the same MCP
-tools, so the demo cannot die on stage. The header shows **Claude live** or **Offline mode**, and each run says on
-the agent stage whether Claude or the offline planner answered.
+tools, so the demo cannot die on stage. The header shows **AI live** or **Offline mode**, and each run says on
+the agent stage whether OpenAI, Claude or the offline planner answered.
 
 ## Pitch beats
 
@@ -46,5 +46,5 @@ the agent stage whether Claude or the offline planner answered.
 - Then click **Simulate 40 traveller searches** once on `/demand` so the map and Gare Central's missed demand have
   data to show.
 - Keep the browser zoom at 125 % so the jury can read the agent stage.
-- Set the language switch in the header to the language of the pitch. The example requests, Claude and the
-  offline planner all work in English, German, French and Italian.
+- Set the language switch in the header to the language of the pitch. The example requests, the live model and
+  the offline planner all work in English, German, French and Italian.

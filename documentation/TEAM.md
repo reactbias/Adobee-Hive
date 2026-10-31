@@ -12,7 +12,7 @@ From the whiteboard, pointed at the challenge. Each maps to its own files so peo
 | # | Workstream | People | Files | Next deliverable |
 | --- | --- | --- | --- | --- |
 | 1 | Hive core: cards, trust, discovery, booking | Aneeq, Shayan, Sarthak | `hive.py`, `hive_seed.py`, `mcp_server.py` | More Basel businesses, a restaurant table flow, cancellation edge cases |
-| 2 | Agents | Aneeq, Shayan, Sarthak | `agent.py` | Live Claude run tuned on the demo prompts; booking from Claude via the MCP URL |
+| 2 | Agents | Aneeq, Shayan, Sarthak | `agent.py` | Live OpenAI run tuned on the demo prompts; booking from Claude via the MCP URL |
 | 3 | Owner studio and human card page | Ole, Lezhi | `OwnerStudio.tsx`, `CardPage.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
 | 4 | Traveller agent UI and brand | Tobias, Felix, Andrey | `TravellerAgent.tsx`, `Home.tsx`, `styles.css` | Demo rehearsal, Mannin font |
 | 5 | Vision deck | Emily, Saad | `documentation/`, `assets/` | The 5 to 10 year story: hotels, events, people; Adobe's brand-visibility angle |
@@ -27,5 +27,5 @@ From the whiteboard, pointed at the challenge. Each maps to its own files so peo
 - **Humans and AI together.** Commits written with Claude carry a `Co-Authored-By` trailer, so the history shows
   who did what.
 - **Branch and PR** into `main`; CI runs the backend tests and the frontend build. `main` deploys itself.
-- **No secrets in git.** The Claude key lives in `.env` locally and in AWS Secrets Manager in the cloud.
+- **No secrets in git.** API keys live in `.env` locally and in AWS Secrets Manager in the cloud.
 - All businesses in the seed data are fictional.

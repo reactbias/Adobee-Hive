@@ -26,12 +26,19 @@ OWNER_EDIT_TOKEN = os.getenv("OWNER_EDIT_TOKEN", "")  # when set, owner edits ne
 LLM_CALLS_PER_CLIENT_HOUR = int(os.getenv("LLM_CALLS_PER_CLIENT_HOUR", "30"))
 LLM_CALLS_TOTAL_HOUR = int(os.getenv("LLM_CALLS_TOTAL_HOUR", "300"))
 
-LLM_ENABLED = bool(ANTHROPIC_API_KEY)
-
-# Optional second opinion from another vendor: a sceptic agent on OpenAI checks a held booking before the
-# traveller approves. Without a key a rule check answers instead.
+# OpenAI runs the booking agent, owner edits and the second opinion when its key is set. One small, tool-capable
+# model keeps the demo budget predictable.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+
+# Which model vendor the agents use: "openai", "claude" or "offline". By default OpenAI when its key is set, then
+# Claude, then the offline planner and rule-based edits.
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "") or (
+    "openai" if OPENAI_API_KEY else "claude" if ANTHROPIC_API_KEY else "offline"
+)
+if {"openai": OPENAI_API_KEY, "claude": ANTHROPIC_API_KEY}.get(LLM_PROVIDER, "") == "":
+    LLM_PROVIDER = "offline"  # unknown name, or the chosen vendor has no key
+LLM_ENABLED = LLM_PROVIDER != "offline"
 
 # MCP endpoints the booking agent searches. Empty = this server's own Hive, in-process.
 # Comma-separated URLs federate several Hives, e.g. another team's https://.../mcp/

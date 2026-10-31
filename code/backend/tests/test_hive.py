@@ -8,7 +8,7 @@ import openai
 import pytest
 from mcp import Client
 
-from app import agent, config, guard, hive, second_opinion, simulate
+from app import agent, config, guard, hive, llm, owner, second_opinion, simulate
 from app.domains import hr
 from app.mcp_server import server
 
@@ -147,7 +147,7 @@ def test_agent_falls_back_offline_when_claude_fails(client, monkeypatch):
     async def broken(*_args, **_kwargs):
         raise anthropic.APIConnectionError(request=httpx.Request("POST", "https://api.anthropic.com"))
 
-    monkeypatch.setattr(agent.config, "LLM_ENABLED", True)
+    monkeypatch.setattr(agent.config, "LLM_PROVIDER", "claude")
     monkeypatch.setattr(agent, "_run_claude", broken)
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     assert out["mode"] == "scripted" and out["fallback"] == "Claude unavailable"  # the UI must not claim Claude ran
@@ -251,3 +251,57 @@ def test_offline_planner_respects_localized_dont_book(text):
     req = agent.parse_request(text)
     assert not req["wants_booking"] and req["guests"] == 2
     assert (req["check_in"], req["check_out"]) == ("2027-06-14", "2027-06-17")
+
+
+def test_agent_falls_back_offline_when_openai_fails(client, monkeypatch):
+    async def broken(*_args, **_kwargs):
+        raise openai.APIConnectionError(request=httpx.Request("POST", "https://api.openai.com"))
+
+    monkeypatch.setattr(agent.config, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(agent, "_run_openai", broken)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["mode"] == "scripted" and out["fallback"] == "OpenAI unavailable"
+    assert out["pending"]["tool"] == "hive_book"
+
+
+def test_owner_edit_falls_back_to_rules_when_the_model_fails(monkeypatch):
+    def broken(*_args, **_kwargs):
+        raise llm.LLMError("no answer")
+
+    monkeypatch.setattr(config, "LLM_ENABLED", True)
+    monkeypatch.setattr(llm, "structured", broken)
+    out = owner.propose("hotel-gare", "add sauna")
+    assert out["mode"] == "mock" and any(c["field"] == "features" for c in out["changes"])
+
+
+def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
+    """A scripted stand-in for the OpenAI Responses API drives the real tool loop over MCP."""
+    from types import SimpleNamespace as NS
+
+    def call(name, args):
+        return NS(type="function_call", name=name, call_id=name, arguments=json.dumps(args))
+
+    dates = {"check_in": "2026-11-13", "check_out": "2026-11-15"}
+    turns = iter(
+        [
+            [call("hive_discover", {"kind": "hotel", "features": ["dog-friendly"], "near": "basel sbb"} | dates)],
+            [call("hive_get_card", {"card_id": "hotel-rheinblick"})],
+            [call("hive_book", {"card_id": "hotel-rheinblick", "unit_id": "double", "guest_name": "Tobi"} | dates)],
+            [NS(type="message")],
+        ]
+    )
+    seen = []
+
+    class FakeResponses:
+        async def create(self, **kwargs):
+            seen.append(kwargs)
+            output = next(turns)
+            return NS(output=output, output_text="Ready to book Hotel Rheinblick.")
+
+    monkeypatch.setattr(agent.config, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(agent.openai, "AsyncOpenAI", lambda **_: NS(responses=FakeResponses()))
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["mode"] == "openai" and out["reply"] == "Ready to book Hotel Rheinblick."
+    assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
+    assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
+    assert all(k["store"] is False for k in seen)

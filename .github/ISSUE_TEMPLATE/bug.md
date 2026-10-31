@@ -10,4 +10,4 @@ labels: bug
 
 **Steps (page or MCP tool, input):**
 
-**Claude live or offline mode:**
+**AI live or offline mode:**

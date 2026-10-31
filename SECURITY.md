@@ -15,12 +15,12 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | Reviews | Fake or bulk reviews | A review needs the signed receipt of a real booking, once | `hive.review` |
 | A business's card | Someone else editing it | Owner edits need `X-Owner-Token` when `OWNER_EDIT_TOKEN` is set (the AWS bootstrap generates one); identity fields stay locked; cards are capped at 64 kB | `guard.py`, `owner.apply` |
 | The traveller's money | An agent booking on its own | The agent holds `hive_book` until the traveller approves | `agent.approve` |
-| The traveller's agent | Prompt injection through card text | Tool results are passed as data and the system prompt says so; every tool call is shown to the human; a second agent on another vendor checks the pick against the signed card, and can only warn, never book | `agent.SYSTEM`, `second_opinion.py`, the agent trace |
+| The traveller's agent | Prompt injection through card text | Tool results are passed as data and the system prompt says so; every tool call is shown to the human; a separate sceptic agent checks the pick against the signed card, and can only warn, never book | `agent.SYSTEM`, `second_opinion.py`, the agent trace |
 | The demo's API budgets | Someone draining the Claude or OpenAI key | Calls that may reach either are rate-limited per client IP and in total (`LLM_CALLS_PER_CLIENT_HOUR`, `LLM_CALLS_TOTAL_HOUR`); agent turns are capped | `guard.py`, `AGENT_MAX_TURNS` |
 | Demo data | Wiping or flooding it | Reset needs `X-Demo-Token` when `DEMO_RESET_TOKEN` is set; simulated traffic is rate-limited | `main.py` |
 | The server | Oversized or malformed input | Request models bound every string and count; dates, stay length (30 nights), guests (20) and text sizes are checked in the Hive core, so MCP calls get the same checks as REST | `main.py`, `hive.py` |
 | The database | SQL injection, file access | Parameterised queries only; DuckDB runs with `enable_external_access=false` | `db.py` |
-| Secrets | Keys in git | The Claude and OpenAI keys live in `.env` locally and AWS Secrets Manager in the cloud; `.env` is git-ignored; no secrets in the repo or its history | `.gitignore`, `scripts/aws/bootstrap.sh` |
+| Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and AWS Secrets Manager in the cloud; `.env` is git-ignored; no secrets in the repo or its history | `.gitignore`, `scripts/aws/bootstrap.sh` |
 | Errors | Leaking internals | Agent failures are logged server-side; the client gets a plain message | `main.run_agent` |
 | Travellers' privacy | Profiling | Searches are logged without identity; bookings store only the guest name, dates and price. The second opinion sends OpenAI the request text and the public card with `store=false` | `hive.py`, `second_opinion.py` |
 

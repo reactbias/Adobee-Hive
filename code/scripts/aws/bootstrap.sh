@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # One-time AWS setup for the backend. Idempotent enough to re-run.
-#   AWS_PROFILE=... ANTHROPIC_API_KEY=sk-ant-... [OPENAI_API_KEY=...] ./scripts/aws/bootstrap.sh
+#   AWS_PROFILE=... OPENAI_API_KEY=... [ANTHROPIC_API_KEY=...] ./scripts/aws/bootstrap.sh
 # Creates: ECR repo, S3 bucket for the DuckDB snapshot, Secrets Manager secrets for the
-# Claude key (and the optional OpenAI key), IAM roles, and an App Runner service that auto-deploys new :latest images.
+# model keys you pass (OpenAI, Claude or both), IAM roles, and an App Runner service that auto-deploys new :latest images.
 set -euo pipefail
 
 REGION="${AWS_REGION:-eu-central-1}"
@@ -11,7 +11,8 @@ REPO="$NAME-backend"
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 BUCKET="${HIVE_BUCKET:-$NAME-data-$ACCOUNT}"
 IMAGE="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$REPO:latest"
-: "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY (it goes to Secrets Manager, never into the repo)}"
+[ -n "${OPENAI_API_KEY:-}${ANTHROPIC_API_KEY:-}" ] ||
+  { echo "set OPENAI_API_KEY and/or ANTHROPIC_API_KEY (they go to Secrets Manager, never into the repo)" >&2; exit 1; }
 # Shared secrets for the team: owner edits and demo reset. Generated unless you pass your own.
 OWNER_EDIT_TOKEN="${OWNER_EDIT_TOKEN:-$(openssl rand -hex 16)}"
 DEMO_RESET_TOKEN="${DEMO_RESET_TOKEN:-$(openssl rand -hex 16)}"
@@ -43,14 +44,17 @@ put_secret() {
 }
 
 echo "==> Secrets for the API keys"
-SECRET_ARN=$(put_secret "$NAME/anthropic" "$ANTHROPIC_API_KEY")
-SECRET_ARNS="\"$SECRET_ARN\""
-APP_SECRETS="\"ANTHROPIC_API_KEY\": \"$SECRET_ARN\""
-if [ -n "${OPENAI_API_KEY:-}" ]; then  # optional: the second-opinion agent on OpenAI
-  OPENAI_ARN=$(put_secret "$NAME/openai" "$OPENAI_API_KEY")
-  SECRET_ARNS="$SECRET_ARNS, \"$OPENAI_ARN\""
-  APP_SECRETS="$APP_SECRETS, \"OPENAI_API_KEY\": \"$OPENAI_ARN\""
-fi
+SECRET_ARNS=""
+APP_SECRETS=""
+# add_secret ENV_NAME SECRET_NAME VALUE: store one key and wire it into App Runner as ENV_NAME.
+add_secret() {
+  local arn
+  arn=$(put_secret "$2" "$3")
+  SECRET_ARNS="${SECRET_ARNS:+$SECRET_ARNS, }\"$arn\""
+  APP_SECRETS="${APP_SECRETS:+$APP_SECRETS, }\"$1\": \"$arn\""
+}
+[ -z "${OPENAI_API_KEY:-}" ] || add_secret OPENAI_API_KEY "$NAME/openai" "$OPENAI_API_KEY"
+[ -z "${ANTHROPIC_API_KEY:-}" ] || add_secret ANTHROPIC_API_KEY "$NAME/anthropic" "$ANTHROPIC_API_KEY"
 
 echo "==> IAM roles"
 ACCESS_ROLE="$NAME-apprunner-ecr"
