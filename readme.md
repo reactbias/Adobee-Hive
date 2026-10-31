@@ -10,7 +10,7 @@ stay found, trusted and bookable when its first visitor is an AI agent, not a pe
 | What | Where |
 | --- | --- |
 | Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · [/agent](https://reactbias.github.io/Adobee-Hive/agent) · [/ask](https://reactbias.github.io/Adobee-Hive/ask) · [/owner](https://reactbias.github.io/Adobee-Hive/owner) · [/demand](https://reactbias.github.io/Adobee-Hive/demand) |
-| Live backend | Render URL, added here once the service is live ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)); then `<backend>/api/health`, `<backend>/docs`, `<backend>/mcp/` |
+| Live backend | [adobee-hive.onrender.com](https://adobee-hive.onrender.com/api/health) ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)): [`/api/health`](https://adobee-hive.onrender.com/api/health), [`/docs`](https://adobee-hive.onrender.com/docs), MCP for agents [`/mcp/`](https://adobee-hive.onrender.com/mcp/) |
 | Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
 | Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
 | Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
