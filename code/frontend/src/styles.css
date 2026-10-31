@@ -3302,6 +3302,11 @@ button.self-start {
 .rows.tight li {
   align-items: flex-start;
 }
+/* An Ed25519 public key is one unbroken base64 word. Let it wrap rather than widen the page. */
+.key-line {
+  overflow-wrap: anywhere;
+  color: var(--ink-3);
+}
 
 @media (max-width: 480px) {
   .finder-row button,

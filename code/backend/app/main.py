@@ -610,6 +610,13 @@ def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
     return admin.entities()
 
 
+@app.get("/api/admin/entities/{entity_id}")
+def admin_entity(entity_id: str, _: None = Depends(admin_only)) -> dict[str, Any]:
+    """One entity in full: the signed card, its offers and needs, contact with the sharing flags,
+    its trust block and its signature state, and whether this hub has blocked it."""
+    return _hive_call(admin.entity, entity_id)
+
+
 # ---------------------------------------------------------------- joining this hub
 
 

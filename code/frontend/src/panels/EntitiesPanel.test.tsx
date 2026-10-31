@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, type AdminEntity } from "../api";
+import { ApiError, api, type AdminEntity, type AdminEntityDetail, type Card, type Trust } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
 import EntitiesPanel from "./EntitiesPanel";
@@ -29,6 +30,56 @@ const LEAD: AdminEntity = {
   rating: null,
   rating_count: 0,
   bookable: false,
+};
+
+const TRUST: Trust = {
+  signature_valid: true,
+  signature: "sig",
+  public_key: "Zm9vYmFyLXB1YmxpYy1rZXk",
+  algorithm: "Ed25519 over canonical JSON (sorted keys, no spaces)",
+  attestations: [{ claim: "dog-friendly", attested_by: "Basel Tourism" }],
+  verified_reviews: { count: 7, average: 4.3, recent: [], rule: "no stay, no review" },
+  freshness_days: 1,
+  claimed: true,
+};
+
+const CARD: Card = {
+  id: "hotel-rheinblick",
+  slug: "hotel-rheinblick",
+  kind: "hotel",
+  name: "Hotel Rheinblick",
+  tagline: "Quiet rooms over the Rhine",
+  description: "Fictional seed data.",
+  features: ["quiet"],
+  units: [],
+  version: 3,
+  published_at: "2026-10-30T09:12:00+00:00",
+  trust: TRUST,
+};
+
+const DETAIL: AdminEntityDetail = {
+  entity: RHEINBLICK,
+  card: CARD,
+  offers: [{ title: "River-view double", summary: "Two guests, breakfast included" }],
+  needs: [],
+  contact: [
+    { channel: "email", value: "stay@rheinblick.example", sharing: "public", searchable: true },
+    { channel: "phone", value: "", sharing: "never", searchable: false },
+  ],
+  contact_sharing: { phone: "never" },
+  sharing_default: "public",
+  trust: TRUST,
+  signature: {
+    valid: true,
+    signature: "sig",
+    public_key: "Zm9vYmFyLXB1YmxpYy1rZXk",
+    algorithm: "Ed25519 over canonical JSON (sorted keys, no spaces)",
+    fresh: true,
+    valid_until: "2027-01-28T09:12:00+00:00",
+    version: 3,
+  },
+  blocked: false,
+  block: null,
 };
 
 const show = () =>
@@ -89,5 +140,62 @@ describe("the entity list", () => {
     show();
 
     expect(await screen.findByText(en["admin.entities.empty"])).toBeInTheDocument();
+  });
+
+  it("opens one entity in full: its offers, its contact flags and its signature", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+
+    expect(await screen.findByText("River-view double")).toBeInTheDocument();
+    expect(screen.getByText("stay@rheinblick.example")).toBeInTheDocument();
+    expect(screen.getByText(en["admin.sharing.public"])).toBeInTheDocument();
+    expect(screen.getByText(DETAIL.signature.public_key)).toBeInTheDocument();
+    expect(screen.getByText(en["trust.signed"])).toBeInTheDocument();
+    expect(screen.getByText(en["admin.entity.notBlocked"])).toBeInTheDocument();
+  });
+
+  it("does not list a channel the card publishes nothing for", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await screen.findByText("stay@rheinblick.example");
+    expect(screen.queryByText("phone")).not.toBeInTheDocument();
+  });
+
+  it("says a blocked entity is blocked, and why, where the operator decides", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue({
+      ...DETAIL,
+      blocked: true,
+      block: {
+        kind: "entity",
+        subject: "hotel-rheinblick",
+        reason: "fabricated reviews",
+        added_at: "2026-10-31T10:00:00",
+        added_by: "admin",
+      },
+    });
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    expect(await screen.findByText(en["admin.entity.isBlocked"])).toBeInTheDocument();
+    expect(
+      screen.getByText(en["admin.entity.blockedWhy"].replace("{reason}", "fabricated reviews")),
+    ).toBeInTheDocument();
+  });
+
+  it("goes back to the list", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.back"] }));
+    expect(await screen.findByText(en["admin.entities.lead"])).toBeInTheDocument();
   });
 });

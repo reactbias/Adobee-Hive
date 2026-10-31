@@ -586,6 +586,44 @@ export interface AdminEntities {
   entities: AdminEntity[];
   count: number;
 }
+/** One side of the market an entity is indexed by: what it offers, or what it needs. */
+export interface AdminSide {
+  title?: string;
+  summary?: string;
+  tags?: string[];
+  sharing?: string;
+  [key: string]: unknown;
+}
+/** One contact channel with the sharing flag that actually applies: the stricter of two. */
+export interface AdminContactRow {
+  channel: string;
+  value: string;
+  sharing: string;
+  searchable: boolean;
+}
+/** One entity in full, as the operator deciding what to do about it needs to see it. */
+export interface AdminEntityDetail {
+  entity: AdminEntity;
+  card: Card;
+  offers: AdminSide[];
+  needs: AdminSide[];
+  contact: AdminContactRow[];
+  contact_sharing: Record<string, string>;
+  sharing_default: string;
+  trust: Trust;
+  signature: {
+    valid: boolean;
+    signature: string;
+    public_key: string;
+    algorithm: string;
+    fresh: boolean;
+    valid_until: string | null;
+    version: number | null;
+  };
+  /** Blocked is not the same as removed: blocking refuses it wherever it comes from. */
+  blocked: boolean;
+  block: BlockEntry | null;
+}
 export interface AdminNeighbours {
   peers: Peer[];
   blocked_hubs: string[];
@@ -664,6 +702,9 @@ export const api = {
   adminNeighbours: () => call<AdminNeighbours>("/api/admin/neighbours"),
   /** What this hub carries. Behind the admin token: the whole membership in one call is an operator's view. */
   adminEntities: () => call<AdminEntities>("/api/admin/entities", { headers: adminHeaders() }),
+  /** One entity in full: the signed card, its offers and needs, contact flags, trust and signature. */
+  adminEntity: (id: string) =>
+    call<AdminEntityDetail>(`/api/admin/entities/${encodeURIComponent(id)}`, { headers: adminHeaders() }),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

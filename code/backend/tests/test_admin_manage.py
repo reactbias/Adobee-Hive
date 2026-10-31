@@ -54,16 +54,55 @@ def test_an_unrated_entity_reports_no_rating_rather_than_zero(client, admin):
     assert all(r["rating"] is None for r in unrated)
 
 
+# ---------------------------------------------------------------- the detail
+
+
+def test_the_detail_view_shows_the_card_its_contact_flags_and_its_signature(client, admin):
+    """The operator's third sentence: "I cannot see their details"."""
+    entity_id = _an_entity(client)["id"]
+    out = client.get(f"/api/admin/entities/{entity_id}", headers=ADMIN).json()
+
+    assert out["entity"]["id"] == entity_id
+    assert out["card"]["id"] == entity_id, "the full card, not a summary of it"
+    assert isinstance(out["offers"], list) and isinstance(out["needs"], list)
+    assert "contact" in out and "contact_sharing" in out
+    assert out["trust"]["algorithm"].startswith("Ed25519")
+    assert out["signature"]["valid"] is True
+    assert out["signature"]["public_key"], "an operator checking a signature needs the key it was checked against"
+    assert out["blocked"] is False
+
+
+def test_the_detail_view_of_an_unknown_entity_is_a_bad_request_not_a_crash(client, admin):
+    res = client.get("/api/admin/entities/nothing-here", headers=ADMIN)
+    assert res.status_code == 400 and "nothing-here" in res.json()["detail"]
+
+
+def test_the_detail_view_says_whether_the_entity_is_blocked(client, admin):
+    """Removing and blocking are different acts; the view an operator decides from has to say which."""
+    entity_id = _an_entity(client)["id"]
+    client.post(
+        "/api/admin/blocklist",
+        json={"kind": "entity", "subject": entity_id, "reason": "fabricated reviews"},
+        headers=ADMIN,
+    )
+    try:
+        out = client.get(f"/api/admin/entities/{entity_id}", headers=ADMIN).json()
+        assert out["blocked"] is True
+        assert out["block"]["reason"] == "fabricated reviews"
+    finally:
+        client.delete(f"/api/admin/blocklist/entity/{entity_id}", headers=ADMIN)
+
+
 # ---------------------------------------------------------------- the door
 
 
-@pytest.mark.parametrize("path", ["/api/admin/entities"])
+@pytest.mark.parametrize("path", ["/api/admin/entities", "/api/admin/entities/hotel-rheinblick"])
 def test_every_new_endpoint_refuses_without_the_admin_token(client, admin, path):
     assert client.get(path).status_code == 403
     assert client.get(path, headers={"X-Admin-Token": "wrong"}).status_code == 403
 
 
-@pytest.mark.parametrize("path", ["/api/admin/entities"])
+@pytest.mark.parametrize("path", ["/api/admin/entities", "/api/admin/entities/hotel-rheinblick"])
 def test_administration_fails_closed_when_this_hub_has_no_credential(client, monkeypatch, path):
     """Unset means shut, not open, exactly as the blocklist already behaves."""
     monkeypatch.setattr(config, "ADMIN_TOKEN", "")
