@@ -16,19 +16,30 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      # Until scripts/aws/bootstrap.sh has run and the secrets exist, skip instead of failing main.
+      AWS_READY: ${{ secrets.AWS_ACCESS_KEY_ID != '' }}
     steps:
+      - name: AWS not set up yet
+        if: env.AWS_READY != 'true'
+        run: echo "::notice::Skipping deploy; add AWS secrets after running code/scripts/aws/bootstrap.sh."
+
       - uses: actions/checkout@v4
+        if: env.AWS_READY == 'true'
 
       - uses: aws-actions/configure-aws-credentials@v4
+        if: env.AWS_READY == 'true'
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - id: ecr
+        if: env.AWS_READY == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push
+        if: env.AWS_READY == 'true'
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
         run: |
