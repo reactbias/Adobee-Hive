@@ -46,6 +46,9 @@ const it: Record<Key, string> = {
   "owner.bookings.guest": "Ospite",
   "owner.bookings.dates": "Date",
   "owner.bookings.empty": "Ancora nessuna prenotazione.",
+  "owner.handoffs.title": "Inoltrato al Suo sito web",
+  "owner.handoffs.empty": "Ancora nulla di inoltrato.",
+  "owner.week.handedOff": "inoltri al Suo sito",
 
   "card.tamper.eyebrow": "Fatti firmati",
   "card.tamper.title": "Uno scraper può falsificare questa scheda?",

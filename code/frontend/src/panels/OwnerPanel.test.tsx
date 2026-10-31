@@ -36,6 +36,7 @@ const OVERVIEW: OwnerOverview = {
       agent: "a",
     },
   ],
+  handoffs: [],
   missed_demand: [{ detail: "missing sauna (asked: sauna, quiet)", times: 3 }],
   last_7_days: { shown: 4, read: 3, booked: 1, explore_handoff: 1 },
   waiting: {
@@ -68,8 +69,9 @@ const TAXI_OVERVIEW: OwnerOverview = {
   ...OVERVIEW,
   card: TAXI,
   bookings: [],
+  handoffs: [{ item: "Advice meeting", created_at: "2026-10-31T08:00:00Z" }],
   missed_demand: [],
-  last_7_days: { shown: 7 },
+  last_7_days: { shown: 7, explore_handoff: 1 },
   waiting: { agents: 0, budget_chf: 0, asks: [], offers_sent: 0 },
 };
 
@@ -120,6 +122,17 @@ describe("the business chapter", () => {
     // Nobody has claimed it, so there is nothing to edit: a line says so instead of the change box.
     expect(screen.queryByRole("textbox", { name: en["owner.change"] })).not.toBeInTheDocument();
     expect(screen.getByText(en["owner.unclaimed"])).toBeInTheDocument();
+  });
+
+  it("shows a business without rooms what agents handed off to its site, not an empty bookings table", async () => {
+    const user = setup("de");
+    await screen.findByText("Mara Keller");
+    await user.selectOptions(screen.getByRole("combobox", { name: de["owner.business"] }), "x-taxi");
+    expect(await screen.findByRole("heading", { name: de["owner.handoffs.title"] })).toBeInTheDocument();
+    expect(screen.getByText("Advice meeting")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: de["owner.bookings.title"] })).not.toBeInTheDocument();
+    const kpis = screen.getByRole("group", { name: de["owner.week.title"] });
+    expect(within(kpis).getByText(de["owner.week.handedOff"]).previousSibling).toHaveTextContent("1");
   });
 
   it("puts what agents asked for in one list, waiting first, with a Use for each", async () => {

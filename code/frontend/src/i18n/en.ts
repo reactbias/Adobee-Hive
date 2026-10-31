@@ -46,6 +46,9 @@ const en = {
   "owner.bookings.guest": "Guest",
   "owner.bookings.dates": "Dates",
   "owner.bookings.empty": "No bookings yet.",
+  "owner.handoffs.title": "Sent to your website",
+  "owner.handoffs.empty": "Nothing handed off yet.",
+  "owner.week.handedOff": "hand-offs to your site",
 
   // The signed card, under the chat
   "card.tamper.eyebrow": "Signed facts",

@@ -722,7 +722,7 @@ def mask_name(name: str) -> str:
 
 
 def owner_overview(card_id: str) -> dict[str, Any]:
-    """Return what the owner studio shows: the card, its bookings and the demand it missed."""
+    """Return what the owner studio shows: the card, its bookings or hand-offs and the demand it missed."""
     card = get_card(card_id)
     with db.cursor() as cur:
         bookings = db.rows(
@@ -745,7 +745,21 @@ def owner_overview(card_id: str) -> dict[str, Any]:
                 [card["id"], db.now() - timedelta(days=7)],
             ).fetchall()
         )
-    return {"card": card, "bookings": bookings, "missed_demand": missed, "last_7_days": counts}
+        # A card without rooms is never booked here: its yes-moment is a hand-off to the business's own site.
+        handed = cur.execute(
+            "SELECT detail, created_at FROM hive_events WHERE card_id = ? AND kind = 'explore_handoff' "
+            "ORDER BY created_at DESC LIMIT 50",
+            [card["id"]],
+        ).fetchall()
+    titles = {i["id"]: i["title"] for i in card.get("offers", []) + card.get("events", [])}
+    handoffs = [{"item": titles.get(item_id, item_id), "created_at": at} for item_id, at in handed]
+    return {
+        "card": card,
+        "bookings": bookings,
+        "handoffs": handoffs,
+        "missed_demand": missed,
+        "last_7_days": counts,
+    }
 
 
 def attest(card_id: str, claim: str, attested_by: str) -> None:

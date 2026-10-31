@@ -46,6 +46,9 @@ const de: Record<Key, string> = {
   "owner.bookings.guest": "Gast",
   "owner.bookings.dates": "Daten",
   "owner.bookings.empty": "Noch keine Buchungen.",
+  "owner.handoffs.title": "An Ihre Website weitergegeben",
+  "owner.handoffs.empty": "Noch nichts weitergegeben.",
+  "owner.week.handedOff": "an Ihre Website weitergegeben",
 
   "card.tamper.eyebrow": "Signierte Fakten",
   "card.tamper.title": "Kann ein Scraper diese Karte fälschen?",

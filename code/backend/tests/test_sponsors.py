@@ -38,3 +38,12 @@ def test_a_new_seed_card_reaches_a_hive_that_already_has_data(client, monkeypatc
     assert hive.get_card("x-later")["name"] == "Later Example"
     assert hive.get_card("hotel-rheinblick")["version"] == before
 
+
+def test_the_owner_view_lists_hand_offs_for_a_card_without_rooms(client):
+    out = client.post("/api/ask", json={"question": "Book an advice meeting with Pax"}).json()
+    pending = out["pending"]
+    assert pending["business"] == "Pax"
+    client.post("/api/ask/approve", json={"id": pending["id"]})
+    handoffs = client.get("/api/owner/x-pax").json()["handoffs"]
+    assert handoffs and handoffs[0]["item"] == pending["item"]
+    assert set(handoffs[0]) == {"item", "created_at"}  # what was asked and when, never who
