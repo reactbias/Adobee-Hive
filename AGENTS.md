@@ -24,6 +24,10 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 - A change that adds, removes or renames a backend module, MCP tool, endpoint, agent, hosting piece or data path
   updates `documentation/DIAGRAMS.md` in the same PR; `tests/test_docs.py` fails otherwise.
 - New endpoints that call a model, edit a card or wipe data must use `guard.py`; keep `SECURITY.md` true.
+- Keep the documentation true in the same PR, not afterwards. If your change makes a sentence in
+  `documentation/` wrong, fix that sentence. If it closes a gap listed in `documentation/LIMITS.md`, delete the
+  line; if it opens one, add a line. A false claim in front of a jury costs more than a missing feature.
+- Do not write a claim you have not read in the code. "Built", "served" and "verified" are checkable words.
 - Every public function and class gets a docstring; ruff enforces it.
 
 ## Layout
@@ -32,9 +36,12 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 code/backend/app/     FastAPI app, Hive core, MCP server, agents (Python 3.12)
 code/backend/app/domains/   one module per use case beyond stays (hr.py first); see CONTRIBUTING.md
 code/backend/tests/   pytest, including an end-to-end booking over MCP
+code/backend/tools/   mutation testing, the test corpus generator, the vault seeder
 code/frontend/src/    React + Vite + TypeScript; api.ts is the typed client
-documentation/        vision, demo script, architecture, deploy, brand, team
+documentation/        vision, federation, registration, limits, architecture, diagrams, deploy, brand, team
+testdata/             fictional vaults and the answer key search is measured against
 assets/               exports for slides
+lan.sh                three peered hubs on this machine, for anything federated
 ```
 
 ## Style

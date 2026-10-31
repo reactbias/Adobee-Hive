@@ -17,8 +17,8 @@ Photos are downscaled and stripped of camera metadata (location, device).
 
 ## Slides
 
-Three slides, in the order the pitch tells them. Every PNG here is a still from the film below, so a
-slide and the film can never drift apart: change a scene in
+Four groups, in the order the pitch tells them, with three alternative versions of slide 2. Every PNG here is a
+still from the film below, so a slide and the film can never drift apart: change a scene in
 [anim/hive_federation.py](anim/README.md) and re-render both.
 
 **Slide 1 — punchline and project**
@@ -75,7 +75,8 @@ Logo sources (SVG) live in `code/frontend/public/brand/`; see [documentation/BRA
 
 ## Screens
 
-Every page on a 375 px phone, offline mode, fictional data: [home](screens/phone-375-home.jpg),
+Six views on a 375 px phone, offline mode, fictional data. The instance finder, the node view and the admin
+panel are not captured here yet: [home](screens/phone-375-home.jpg),
 [traveller agent](screens/phone-375-agent.jpg), [ask the Hive](screens/phone-375-ask.jpg),
 [owner studio](screens/phone-375-owner.jpg), [card](screens/phone-375-card.jpg),
 [demand map](screens/phone-375-demand.jpg).
