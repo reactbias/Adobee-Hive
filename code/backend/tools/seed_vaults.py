@@ -5,7 +5,9 @@ Not a seeder that reaches into the database. It builds a Card from each folder a
 admission is broken the hubs come up empty and we find out immediately rather than on stage.
 
 Each vault is a folder of markdown. `about.md` gives the name and description, `contact.md` the
-channels, and every file becomes a row in `structure` — paths and digests, never contents.
+channels, a "What I do" / "What I need" heading anywhere in the folder gives the card its `offers`
+and `needs` (which is what discovery indexes), and every file becomes a row in `structure` — paths
+and digests, never contents.
 
     python tools/seed_vaults.py                        # against http://localhost:8000
     python tools/seed_vaults.py --hub http://localhost:8001 --only lena-hofmann grid-ops
@@ -36,13 +38,11 @@ HOME = {
     "cafe-rhein": "basel",
     "lena-hofmann": "zurich",
     "grid-ops": "zurich",
-    # A stay on the far hub, so a federated search has something to actually return.
-    # Without one, radius 1 looks broken: the peer is asked and answers with nothing,
-    # because discover() searches stay kinds and the other two vaults are people.
+    # A stay on the far hub, so a federated search has a room to return as well as people.
     "pension-limmat": "zurich",
 }
-#: Must be one of hive.STAY_KINDS ("hotel", "cafe") to be discoverable, or "person", which
-#: discover() deliberately skips — people are found through the hr tools, not a room search.
+#: The kind each folder registers as. Only a filter now: discovery indexes what a card offers and
+#: needs, so a person is found by their skills in the same search that finds a room.
 KIND = {
     "hotel-krafft": "hotel",
     "cafe-rhein": "cafe",
@@ -100,6 +100,46 @@ def read_contact(vault: Path) -> tuple[dict[str, str], dict[str, str]]:
     return contact, sharing
 
 
+#: Headings that open the two sides of the market. The needs are checked first, so a folder that
+#: says "What I need" is never read as an offer because the word "need" is shorter than the match.
+OFFER_HEADINGS = ("what i do", "what we do", "what i offer", "what we offer", "offers", "services", "rooms", "menu")
+NEED_HEADINGS = ("what i need", "what we need", "needs", "hiring", "looking for")
+
+
+def _entry(text: str) -> dict:
+    """One offer or need: the title up to the first dash, the line it came from, and a price if stated."""
+    entry = {"title": re.split(r"\s+[—–-]\s+", text, maxsplit=1)[0].rstrip(".,")[:120], "summary": text[:300]}
+    if price := re.search(r"CHF\s*([\d']+)", text):
+        entry["price_chf"] = int(price.group(1).replace("'", ""))
+    return entry
+
+
+def read_offers_needs(vault: Path) -> tuple[list[dict], list[dict]]:
+    """Parse what the folder says its owner does and wants: the card's `offers` and `needs`.
+
+    This is what discovery indexes, so it decides whether the entity is findable at all. It is
+    read out of the markdown the owner already wrote — a heading that says what they do, then one
+    bullet per line — rather than typed here, so the folder stays the single source of truth.
+    """
+    offers: list[dict] = []
+    needs: list[dict] = []
+    for path in sorted(vault.rglob("*.md")):
+        bucket: list[dict] | None = None
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            line = raw.strip()
+            if line.startswith("#"):
+                heading = line.lstrip("#").strip().lower()
+                if any(h in heading for h in NEED_HEADINGS):
+                    bucket = needs
+                elif any(h in heading for h in OFFER_HEADINGS):
+                    bucket = offers
+                else:
+                    bucket = None
+            elif bucket is not None and line.startswith("-"):
+                bucket.append(_entry(line.lstrip("-").strip()))
+    return offers, needs
+
+
 def read_units(vault: Path) -> list[dict]:
     """Parse rooms.md lines like `- Attic single — 1 guest, CHF 110, 4 of them.` into units.
 
@@ -146,6 +186,7 @@ def build_card(vault: Path) -> dict:
     name = lines[0].lstrip("# ").strip() if lines else vault.name
     description = next((ln for ln in lines[1:] if not ln.startswith("#")), "")[:300]
     contact, contact_sharing = read_contact(vault)
+    offers, needs = read_offers_needs(vault)
 
     structure = []
     for file in sorted(vault.rglob("*.md")):
@@ -170,6 +211,9 @@ def build_card(vault: Path) -> dict:
         "contact": contact,
         "contact_sharing": contact_sharing,
         "features": read_features(vault),
+        # The index: a hub searches these before it looks at anything else about the entity.
+        "offers": offers,
+        "needs": needs,
         "structure": structure,
     }
     units = read_units(vault)
