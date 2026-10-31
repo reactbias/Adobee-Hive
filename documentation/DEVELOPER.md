@@ -56,6 +56,36 @@ VITE_DEV_BACKEND=http://localhost:8001 npm run dev -- --port 5180               
 **The whole stack in Docker**: `cd code && docker compose up --build` (app on 5173, backend on 8000, data in a
 Docker volume).
 
+## Three hubs on one machine (`lan.sh`)
+
+A single hub cannot show federation. [`lan.sh`](../lan.sh) starts three real ones — `basel`, `zurich`, `bern` —
+each configured with the other two as `HIVE_PEER_URLS`, on this machine, bound to the LAN address rather than to
+localhost:
+
+```bash
+./lan.sh up       # three hubs, seed the test vaults, build the app, print the join URL
+./lan.sh check    # is this machine actually reachable from another device?
+./lan.sh down     # stop everything
+```
+
+What it does, and why each part is the way it is:
+
+- **Three hubs, peered both ways.** Only `basel` seeds the fictional Basel cards (`SEED_ON_EMPTY`); `zurich` and
+  `bern` start empty and are filled in the next step. Each gets its own DuckDB file under `.lan/`.
+- **Registration through the real endpoint.** `tools/seed_vaults.py` reads the markdown vaults in
+  [`testdata/`](../testdata/README.md) and applies to each hub with `POST /api/hub/register`, signed, so what you
+  search afterwards arrived the way a member would arrive. `ADMISSION_POLICY` is `open` for the run.
+- **The app same-origin, over http.** It is built with `VITE_API_URL=""` and served by `vite preview` with the
+  `basel` hub proxied behind `/api`. An https page cannot call an http hub, and Chrome's Private Network Access
+  blocks a private address calling another one, so proxying is the only arrangement that works from a phone on
+  the same wifi. The app's port is fixed at 8440 because it is the URL people are given.
+- **A directory with real rows.** `http://<lan-ip>:8420/api/hub/directory` now answers with three hubs that each
+  described themselves, which is what `InstanceFinder` and `NetworkPanel` render.
+
+If another device cannot reach it but this one can, the wifi has client isolation; use a phone hotspot and put
+every device on it. What federation does with those hubs: [FEDERATION.md](FEDERATION.md). How someone joins one:
+[REGISTRATION.md](REGISTRATION.md).
+
 ## Models and offline mode
 
 All settings are environment variables in `code/.env` (gitignored; template in `code/.env.example`).
@@ -71,6 +101,14 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `HIVE_MCP_URLS` | empty | Comma-separated MCP URLs of other Hives the agent searches too |
 | `DUCKDB_PATH` | `code/backend/data/abh.duckdb` | Where the data lives |
 | `DATABASE_URL` | empty | Optional Postgres: the DuckDB file is restored from it on boot and saved after each write, so data survives redeploys |
+| `HIVE_PEER_URLS` | empty | Peer Hives for hop-limited federated search: comma-separated base URLs. Empty means every search stays local whatever the radius |
+| `HIVE_HUB_ID` | `local` | How this hub names itself in a result's `provenance` chain and in a query's `seen` list |
+| `HIVE_NAME`, `HIVE_DESCRIPTION` | Basel defaults | What this hub calls itself in `/.well-known/hive.json` and in a peer's directory row |
+| `HIVE_VERIFICATION` | `signed` | What this hub declares it checks before carrying an entity. Peers weigh the claim against what they observe |
+| `PEER_ASK_SECONDS`, `PEER_ASK_TIMEOUT_S`, `PEER_STALE_AFTER_S` | `30`, `2`, `120` | How often peers are asked who they are, how long one may take, and when a cached answer is shown as stale. `0` turns the asking off |
+| `ADMISSION_POLICY` | `vetted` | Who may join: `open`, `vetted`, `invite` or `closed`. With `invite`, `INVITE_TOKENS` holds the accepted tokens ([REGISTRATION.md](REGISTRATION.md)) |
+| `ADMIN_TOKEN`, `ADMIN_PASSWORD` | empty | Running the hub. The static token is for curl and CI, the password is what a person types in the admin panel. Both unset means every admin write is refused, never open |
+| `SEMANTIC_PROVIDER` | empty | `offline` or `embeddings`. The module is not wired into discovery yet; see [LIMITS.md](LIMITS.md#discovery) |
 
 **Without a key nothing breaks.** A scripted planner walks the same MCP tools in English, German, French and Italian,
 owner edits understand simple phrases ("add sauna", "remove parking", room prices), a rule check gives the second
