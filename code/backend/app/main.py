@@ -235,9 +235,15 @@ async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
 
 
 @app.get("/api/owner/{card_id}")
-def owner_overview(card_id: str) -> dict[str, Any]:
-    """Return the owner studio data for one card."""
-    return _hive_call(hive.owner_overview, card_id)
+def owner_overview(card_id: str, request: Request) -> dict[str, Any]:
+    """Return the owner studio data for one card. Without the owner token, guest names show as initials."""
+    overview = _hive_call(hive.owner_overview, card_id)
+    try:
+        guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
+    except HTTPException:
+        for booking in overview["bookings"]:
+            booking["guest_name"] = hive.mask_name(booking["guest_name"] or "")
+    return overview
 
 
 @app.post("/api/owner/{card_id}/propose")

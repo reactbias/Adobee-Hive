@@ -8,7 +8,7 @@ import openai
 import pytest
 from mcp import Client
 
-from app import agent, config, guard, hive, llm, owner, second_opinion, simulate
+from app import agent, config, db, guard, hive, llm, owner, second_opinion, simulate
 from app.domains import hr
 from app.mcp_server import server
 
@@ -305,6 +305,23 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
     assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
     assert all(k["store"] is False for k in seen)
+
+
+def test_search_logs_never_store_the_travellers_words(client):
+    ask = "Book a dog-friendly hotel near Basel SBB for Anna Secret, 2026-11-13 to 2026-11-15"
+    client.post("/api/agent", json={"messages": [{"role": "user", "content": ask}]})
+    with db.cursor() as cur:
+        details = [r[0] for r in cur.execute("SELECT detail FROM hive_events").fetchall()]
+    assert details and not any("Anna" in d or "Secret" in d for d in details)
+
+
+def test_owner_overview_masks_guest_names_without_the_token(client, monkeypatch):
+    monkeypatch.setattr(config, "OWNER_EDIT_TOKEN", "s3cret")
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    client.post("/api/agent/approve", json={"pending": out["pending"]})
+    url = "/api/owner/hotel-rheinblick"
+    assert client.get(url).json()["bookings"][0]["guest_name"] == "T. M."
+    assert client.get(url, headers={"X-Owner-Token": "s3cret"}).json()["bookings"][0]["guest_name"] == "Tobi Muster"
 
 
 def test_a_held_booking_is_approved_once_and_as_held(client):

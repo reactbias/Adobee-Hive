@@ -360,6 +360,13 @@ def discover(
     """Find businesses for an agent. Returns matches with score breakdown and the near-misses."""
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
+    # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
+    asked = ", ".join(
+        [*features]
+        + ([f"near {near}"] if near else [])
+        + ([f"under CHF {max_price_chf:g}"] if max_price_chf else [])
+        + ([f"{guests} guests"] if guests > 1 else [])
+    )
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     for card in list_cards(kind):
@@ -426,17 +433,16 @@ def discover(
         }
         if misses:
             excluded.append({**summary, "why_not": misses})
-            events.append((card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {query})" if query else "")))
+            events.append((card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {asked})" if asked else "")))
         else:
             matches.append(summary)
-            events.append((card["id"], "shown", query or "structured search"))
+            events.append((card["id"], "shown", asked or "open search"))
     events.append(
         (
             "*",
             "search",
             json.dumps(
                 {
-                    "query": query,
                     "features": features,
                     "near": near,
                     "max_price_chf": max_price_chf,
@@ -612,6 +618,11 @@ def demand_map(days: int = 7) -> dict[str, Any]:
         "unserved_searches": sum(1 for s in searches if s["matched"] == 0),
         "features": features,
     }
+
+
+def mask_name(name: str) -> str:
+    """Reduce a guest name to initials, for anyone who is not the owner: "Tobi Muster" -> "T. M."."""
+    return " ".join(part[0] + "." for part in name.split() if part) or "Guest"
 
 
 def owner_overview(card_id: str) -> dict[str, Any]:

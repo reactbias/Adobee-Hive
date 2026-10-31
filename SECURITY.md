@@ -23,7 +23,7 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and AWS Secrets Manager in the cloud; `.env` is git-ignored; no secrets in the repo or its history, and CI scans every push with gitleaks | `.gitignore`, `scripts/aws/bootstrap.sh`, `ci.yml` |
 | Personal data | The public repo exposing people | Team members appear by name only; no emails, phone numbers, account ids, device names, local paths or photo EXIF; whiteboard photos are downscaled, EXIF-stripped, with the Wi-Fi password pixelated | `CONTRIBUTING.md`, `assets/` |
 | Errors | Leaking internals | Agent failures are logged server-side; the client gets a plain message | `main.run_agent` |
-| Travellers' privacy | Profiling | Searches are logged without identity; bookings store only the guest name, dates and price. The second opinion sends OpenAI the request text and the public card with `store=false` | `hive.py`, `second_opinion.py` |
+| Travellers' privacy | Profiling, names leaking | Searches and missed demand are logged as structured features only, never the free-text request (it can hold a name); bookings store only the guest name, dates and price, and the owner overview shows names only with the owner token, initials otherwise. The second opinion sends OpenAI the request text and the public card with `store=false` | `hive.py`, `second_opinion.py` |
 
 The container runs as a non-root user. Dependencies are pinned to exact versions, and CI runs on every push.
 
