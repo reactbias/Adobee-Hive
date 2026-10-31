@@ -164,6 +164,15 @@ is worse than one slightly too generous.
 `needs` is bounded exactly like `offers`, and the two `offers[].*` rows apply to a need as well —
 the two sides of the market have the same shape and the same room.
 
+### What is deliberately not limited
+
+Numbers are not range-checked here: a price, a file size or a room count can be anything, because a
+wrong number is a business's own problem and not a cost to the hub. The numbers that *are* a cost
+are checked where they are spent — a stay is at most 30 nights for 20 guests (`hive.py`). Nothing
+counts how many entities one applicant may register either; that is the hub's admission policy
+(`GET /api/hub/registration`) and the rate limit on the endpoint, not a field length. And no field
+is judged on its content, ever.
+
 ### Three things are tidied, not refused
 
 A hub normalises these on the way in and publishes what it kept, so what it signs is what a reader
