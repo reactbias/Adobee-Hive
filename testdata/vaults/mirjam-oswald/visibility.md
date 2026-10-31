@@ -1,0 +1,3 @@
+# Visibility
+
+- beispielbefund.pdf: public

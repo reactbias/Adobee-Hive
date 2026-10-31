@@ -1,0 +1,3 @@
+# Visibility
+
+- tarife.csv: public
