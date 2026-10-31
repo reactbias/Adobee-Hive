@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api } from "./api";
+import { api, apiBase, setChosenHub } from "./api";
 import App from "./App";
 import { I18nProvider } from "./i18n";
 import en from "./i18n/en";
@@ -253,7 +253,8 @@ describe("changing hive", () => {
         },
         {
           hub: "b",
-          url: "",
+          // A peer the app can actually be pointed at: a hub with no address cannot be picked, by design.
+          url: "http://10.0.0.2:8461",
           home: false,
           blocked: false,
           name: "Hive B",
@@ -314,16 +315,17 @@ describe("changing hive", () => {
     await userEvent.click(within(rows[1]).getByRole("button", { name: en["finder.use"] }));
 
     expect(sessionStorage.getItem("adobee-hub")).toBe("b");
+    expect(apiBase()).toBe("http://10.0.0.2:8461");
     expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
   });
 
-  it("says plainly which backend the build is pinned to, rather than looking like it switched", async () => {
+  it("says which backend the page is actually talking to", async () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    expect(await screen.findByText(/This build talks to/)).toBeInTheDocument();
+    expect(await screen.findByText(/Picking a Hive points this page at it/)).toBeInTheDocument();
   });
 });
 
@@ -429,5 +431,75 @@ describe("the address and the view agree", () => {
     window.dispatchEvent(new PopStateEvent("popstate"));
 
     expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
+  });
+});
+
+// The chosen Hive has to be visible and has to survive a reload, and an unreachable one must never be a dead page.
+describe("the Hive the app is on", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockRejectedValue(new Error("offline"));
+  });
+
+  const app = () =>
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+  it("says which Hive it is on, where a person can always see it", async () => {
+    sessionStorage.setItem("adobee-hub", "zurich");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    app();
+
+    expect(await screen.findByText(en["nav.onHub"].replace("{hub}", "zurich"))).toBeInTheDocument();
+  });
+
+  it("keeps the chosen Hive, and where it answers, across a reload", async () => {
+    setChosenHub("zurich", "http://10.0.0.2:8461");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+
+    const { unmount } = app();
+    expect(await screen.findByText(en["nav.onHub"].replace("{hub}", "zurich"))).toBeInTheDocument();
+    unmount();
+
+    app();
+    expect(await screen.findByText(en["nav.onHub"].replace("{hub}", "zurich"))).toBeInTheDocument();
+    expect(apiBase()).toBe("http://10.0.0.2:8461");
+  });
+
+  it("says a Hive could not be reached, and offers the way back, instead of a dead page", async () => {
+    setChosenHub("ghost", "http://10.0.0.9:8499");
+    vi.spyOn(api, "health").mockRejectedValue(new Error("error.offline"));
+    app();
+
+    expect(await screen.findByText(en["app.hubUnreachable"])).toBeInTheDocument();
+    const back = screen.getAllByRole("button", { name: en["finder.change"] })[0];
+    await userEvent.click(back);
+
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(apiBase()).toBe("");
+  });
+
+  it("goes back to the build's own backend when the Hive is dropped", async () => {
+    setChosenHub("zurich", "http://10.0.0.2:8461");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    app();
+
+    await userEvent.click(screen.getAllByRole("button", { name: en["finder.change"] })[0]);
+
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(apiBase()).toBe("");
+    expect(sessionStorage.getItem("adobee-hub-url")).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, chosenHub, setChosenHub, type Health } from "./api";
+import { api, chosenHub, chosenHubUrl, setChosenHub, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
@@ -32,15 +32,30 @@ function forgetHub() {
 }
 
 // One page in three chapters. The header names them, says whether the AI is live, and switches the language.
-function Header({ onChangeHub, onLeaveAdmin }: { onChangeHub?: () => void; onLeaveAdmin?: () => void }) {
+function Header({
+  onChangeHub,
+  onLeaveAdmin,
+  hub,
+  onHealth,
+}: {
+  onChangeHub?: () => void;
+  onLeaveAdmin?: () => void;
+  hub?: string;
+  onHealth?: (reached: boolean) => void;
+}) {
   const { t, locale, setLocale } = useI18n();
   const [health, setHealth] = useState<Health | null | undefined>(undefined);
   useEffect(() => {
+    let live = true;
     api
       .health()
-      .then(setHealth)
-      .catch(() => setHealth(null));
-  }, []);
+      .then((h) => live && (setHealth(h), onHealth?.(true)))
+      .catch(() => live && (setHealth(null), onHealth?.(false)));
+    return () => {
+      live = false;
+    };
+    // Re-asked whenever the app is pointed at a different Hive: the answer is about that hub, not about the page.
+  }, [hub, onHealth]);
   const mode =
     health === undefined ? null : health === null ? (
       <span className="status no">{t("nav.down")}</span>
@@ -79,6 +94,8 @@ function Header({ onChangeHub, onLeaveAdmin }: { onChangeHub?: () => void; onLea
           ))}
         </nav>
         <div className="nav-end">
+          {/* Which Hive you are on, always visible, so nobody has to guess which one answered. */}
+          {hub && <span className="muted small nav-hub-name">{t("nav.onHub", { hub })}</span>}
           {onChangeHub && (
             <button className="quiet nav-hub" onClick={onChangeHub}>
               {t("finder.change")}
@@ -110,6 +127,9 @@ export default function App() {
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
   // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
   const [admin, setAdmin] = useState(adminMode);
+  // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
+  const [reached, setReached] = useState(true);
+  const { t } = useI18n();
 
   /** Leave the hub's own panel and show the app, taking `?admin` out of the address with it. */
   const leaveAdmin = useCallback((keepHash: boolean) => {
@@ -160,17 +180,27 @@ export default function App() {
       </>
     );
 
+  const leaveHub = () => {
+    forgetHub();
+    setHub("");
+    setReached(true);
+  };
+
   return (
     <>
-      <Header
-        onChangeHub={() => {
-          forgetHub();
-          setHub("");
-        }}
-      />
+      <Header hub={hub} onChangeHub={leaveHub} onHealth={setReached} />
       <main>
-        {/* Keyed by the hub, so picking a different one starts the page over instead of layering on the last. */}
-        <TravellerAgent key={hub} />
+        {/* A chosen Hive that cannot be reached says so and offers the way back, rather than a dead page. */}
+        {!reached && (
+          <p className="error hub-unreachable" role="status">
+            {t("app.hubUnreachable")}{" "}
+            <button className="quiet" onClick={leaveHub}>
+              {t("finder.change")}
+            </button>
+          </p>
+        )}
+        {/* Keyed by the hub and its URL, so picking a different one starts the page over against that backend. */}
+        <TravellerAgent key={`${hub}@${chosenHubUrl()}`} />
       </main>
       <B6Bee />
     </>

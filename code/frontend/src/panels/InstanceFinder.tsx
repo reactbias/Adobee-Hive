@@ -1,5 +1,13 @@
 import { Component, useEffect, useState, type ReactNode } from "react";
-import { ApiError, api, apiOrigin, setChosenHub, type Directory, type DirectoryHub } from "../api";
+import {
+  ApiError,
+  api,
+  apiOrigin,
+  blockedAsMixedContent,
+  setChosenHub,
+  type Directory,
+  type DirectoryHub,
+} from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
@@ -85,8 +93,16 @@ function LastAsked({ hub }: { hub: DirectoryHub }) {
 }
 
 /** One hub, as five plain lines and a button. */
-function Row({ hub, onPick, needed }: { hub: DirectoryHub; onPick: (hub: string) => void; needed: number }) {
+function Row({ hub, onPick, needed }: { hub: DirectoryHub; onPick: (hub: DirectoryHub) => void; needed: number }) {
   const { t } = useI18n();
+  // Mixed content is the one case a pick genuinely cannot be honoured: an HTTPS page may not call an http:// hub,
+  // the browser blocks it before any request leaves, and no header on either side changes that. Say so, here,
+  // rather than switching and then failing on every call.
+  const mixed = !hub.home && !!hub.url && blockedAsMixedContent(hub.url);
+  // And a hub we have no address for cannot be called either. Letting it be picked would put its name in the
+  // header while every call still went to the hub we are on, which is the bug this whole screen is about.
+  const noAddress = !hub.home && !hub.url;
+  const unreachable = mixed || noAddress;
   const admission = hub.admission && ADMISSIONS.includes(hub.admission) ? hub.admission : "";
   // A count we do not have is said, never formatted: `{n} entities` with nothing to put in it reached the screen
   // as a literal "{n} entities", and a null must not get as far as a formatter.
@@ -109,9 +125,10 @@ function Row({ hub, onPick, needed }: { hub: DirectoryHub; onPick: (hub: string)
         <p className="finder-facts">
           <LastAsked hub={hub} />
         </p>
-        {!hub.home && <p className="muted small">{t("finder.peerNotWired")}</p>}
+        {mixed && <p className="muted small">{t("finder.mixedContent", { url: hub.url })}</p>}
+        {noAddress && <p className="muted small">{t("finder.noAddress")}</p>}
       </div>
-      <button onClick={() => onPick(hub.hub)} disabled={hub.blocked}>
+      <button onClick={() => onPick(hub)} disabled={hub.blocked || unreachable}>
         {t("finder.use")}
       </button>
     </li>
@@ -237,9 +254,11 @@ export default function InstanceFinder({ onPick }: { onPick: (hub: string) => vo
     // `attempt` is the retry button; `t` rebuilds the fallback row in the page's language after a switch.
   }, [t, attempt]);
 
-  const choose = (hub: string) => {
-    setChosenHub(hub);
-    onPick(hub);
+  // Picking a Hive points the app at it: the id for the screen, the URL for every call after this one. The home
+  // row keeps "" so the app stays on the backend this build was given.
+  const choose = (picked: DirectoryHub) => {
+    setChosenHub(picked.hub, picked.home ? "" : picked.url || "");
+    onPick(picked.hub);
   };
 
   const listed = hubs ?? [];

@@ -419,6 +419,13 @@ const it: Record<Key, string> = {
     "Non è stato possibile disegnare questo elenco. L'hub su cui si trova resta elencato qui sotto.",
   "finder.slow": "L'elenco richiede tempo. L'hub su cui si trova appare appena risponde, oppure riprovi.",
   "finder.retry": "Riprova",
+  "finder.mixedContent":
+    "Questa pagina è servita in HTTPS e {url} in semplice HTTP, quindi il browser non consentirà questa chiamata. Apra quell'Hive direttamente.",
+  "finder.pinned": "Scegliere un Hive indirizza questa pagina su di esso. In questo momento parla con {backend}.",
+  "nav.onHub": "Hive: {hub}",
+  "app.hubUnreachable": "Non è stato possibile raggiungere questo Hive, quindi nulla nella pagina è in diretta.",
+  "finder.noAddress":
+    "L'indirizzo di questo hub non è noto qui, quindi questa pagina non può essere indirizzata su di esso.",
   "finder.loading": "Lettura dell'elenco",
   "finder.use": "Usa questo Hive",
   "finder.change": "Cambia Hive",
@@ -428,8 +435,6 @@ const it: Record<Key, string> = {
   "finder.unknownDescription": "A questo hub non è stato chiesto cosa custodisce.",
   "finder.thisHub": "Questo Hive",
   "finder.thisHubDescription": "L'hub su cui gira questa applicazione.",
-  "finder.peerNotWired":
-    "La ricerca attraverso un altro hub non è ancora collegata: l'applicazione resta sull'hub con cui è stata distribuita.",
   "finder.admission.open": "Ammette tutto ciò che supera i controlli",
   "finder.admission.vetted": "Una persona legge ogni domanda",
   "finder.admission.invite": "Serve un invito",
@@ -568,8 +573,6 @@ const it: Record<Key, string> = {
   "network.alone": "Non è ancora configurato alcun hub vicino, quindi questo hub risponde da solo a ogni ricerca.",
   "network.legend":
     "La linea verso un vicino porta la sua calibrazione: argilla significa che l'hub ha mantenuto o superato la propria dichiarazione, rosso che ha pubblicato più di quanto le persone hanno trovato, grigio che le prove non bastano.",
-  "finder.pinned":
-    "Questa build comunica con {backend} qualunque sia la sua scelta qui: l'indirizzo del backend è fissato alla compilazione del sito. Scegliere un hub registra la scelta, ma non sposta ancora l'applicazione.",
   "network.hubs": "Hub di questa rete",
 };
 export default it;

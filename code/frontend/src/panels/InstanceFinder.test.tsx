@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, type Directory, type DirectoryHub } from "../api";
+import { ApiError, api, apiBase, chosenHubUrl, type Directory, type DirectoryHub } from "../api";
 import { I18nProvider, useI18n } from "../i18n";
 import de from "../i18n/de";
 import en from "../i18n/en";
@@ -267,13 +267,103 @@ describe("the instance finder", () => {
     expect(localStorage.getItem("adobee-hub")).toBeNull();
   });
 
-  it("is honest that picking another hub does not yet move the app to it", async () => {
-    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub(), hub({ hub: "zurich.example", home: false })] });
-    show();
+  // "Regardless of which hub they select, they always end up in the same one." The base URL was baked in at
+  // build time, so a pick recorded a preference and every call carried on going to the hub the build was made
+  // against. These pin that a pick really moves the app.
+  describe("picking a Hive points the app at it", () => {
+    it("remembers where the chosen hub answers, not only its name", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub(), hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461", name: "Hive Zurich" })],
+      });
+      show();
 
-    const rows = await screen.findAllByRole("listitem");
-    expect(within(rows[0]).queryByText(en["finder.peerNotWired"])).toBeNull();
-    expect(within(rows[1]).getByText(en["finder.peerNotWired"])).toBeInTheDocument();
+      const rows = await screen.findAllByRole("listitem");
+      await userEvent.click(within(rows[1]).getByRole("button", { name: en["finder.use"] }));
+
+      expect(sessionStorage.getItem("adobee-hub")).toBe("zurich");
+      expect(chosenHubUrl()).toBe("http://10.0.0.2:8461");
+      expect(apiBase()).toBe("http://10.0.0.2:8461");
+    });
+
+    it("sends the next call to the chosen hub's base URL", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461/", name: "Hive Zurich" })],
+      });
+      const fetched = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({ status: "ok" }),
+      } as unknown as Response);
+      show();
+
+      await userEvent.click(await screen.findByRole("button", { name: en["finder.use"] }));
+      await api.health();
+
+      expect(fetched).toHaveBeenCalledWith("http://10.0.0.2:8461/api/health", expect.anything());
+      fetched.mockRestore();
+    });
+
+    it("keeps the build's own backend when the hub picked is the home one", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub({ url: "http://10.0.0.1:8460" })] });
+      show();
+
+      await userEvent.click(await screen.findByRole("button", { name: en["finder.use"] }));
+
+      expect(chosenHubUrl()).toBe("");
+      expect(apiBase()).toBe("");
+    });
+
+    it("refuses a plain-HTTP hub from an HTTPS page, and says why", async () => {
+      const where = window.location;
+      Object.defineProperty(window, "location", {
+        value: { ...where, protocol: "https:" },
+        writable: true,
+        configurable: true,
+      });
+      try {
+        vi.spyOn(api, "directory").mockResolvedValue({
+          hubs: [hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461", name: "Hive Zurich" })],
+        });
+        show();
+
+        expect(
+          await screen.findByText(en["finder.mixedContent"].replace("{url}", "http://10.0.0.2:8461")),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: en["finder.use"] })).toBeDisabled();
+      } finally {
+        Object.defineProperty(window, "location", { value: where, writable: true, configurable: true });
+      }
+    });
+
+    it("will not be pointed at a hub whose address it does not know", async () => {
+      // A hub we only know by reputation has no URL. Picking it would show its name and keep calling this one.
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub({ hub: "rumour", home: false, url: "", name: "Hive Rumour" })],
+      });
+      show();
+
+      expect(await screen.findByText(en["finder.noAddress"])).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: en["finder.use"] })).toBeDisabled();
+    });
+
+    it("offers an https hub from an https page as normal", async () => {
+      const where = window.location;
+      Object.defineProperty(window, "location", {
+        value: { ...where, protocol: "https:" },
+        writable: true,
+        configurable: true,
+      });
+      try {
+        vi.spyOn(api, "directory").mockResolvedValue({
+          hubs: [hub({ hub: "zurich", home: false, url: "https://zurich.example", name: "Hive Zurich" })],
+        });
+        show();
+        expect(await screen.findByRole("button", { name: en["finder.use"] })).toBeEnabled();
+      } finally {
+        Object.defineProperty(window, "location", { value: where, writable: true, configurable: true });
+      }
+    });
   });
 
   it("offers no way to use a hub this one has blocked", async () => {

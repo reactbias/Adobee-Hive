@@ -417,6 +417,12 @@ const fr: Record<Key, string> = {
   "finder.failed.render": "Cette liste n'a pas pu être dessinée. Le hub sur lequel vous êtes reste affiché ci-dessous.",
   "finder.slow": "L'annuaire prend du temps. Le hub sur lequel vous êtes apparaît dès qu'il répond, ou réessayez.",
   "finder.retry": "Réessayer",
+  "finder.mixedContent":
+    "Cette page est servie en HTTPS et {url} en HTTP simple ; votre navigateur n'autorisera donc pas cet appel. Ouvrez ce Hive directement.",
+  "finder.pinned": "Choisir un Hive dirige cette page vers lui. Pour l'instant, elle parle à {backend}.",
+  "nav.onHub": "Hive : {hub}",
+  "app.hubUnreachable": "Ce Hive n'a pas pu être joint ; rien sur la page n'est donc en direct.",
+  "finder.noAddress": "L'adresse de ce hub n'est pas connue ici ; cette page ne peut donc pas y être dirigée.",
   "finder.loading": "Lecture de l'annuaire",
   "finder.use": "Utiliser ce Hive",
   "finder.change": "Changer de Hive",
@@ -426,8 +432,6 @@ const fr: Record<Key, string> = {
   "finder.unknownDescription": "On n'a pas demandé à ce hub ce qu'il porte.",
   "finder.thisHub": "Ce Hive",
   "finder.thisHubDescription": "Le hub sur lequel cette application tourne.",
-  "finder.peerNotWired":
-    "La recherche à travers un autre hub n'est pas encore raccordée : l'application reste sur le hub avec lequel elle a été déployée.",
   "finder.admission.open": "Admet tout ce qui passe ses contrôles",
   "finder.admission.vetted": "Une personne lit chaque candidature",
   "finder.admission.invite": "Une invitation est requise",
@@ -566,8 +570,6 @@ const fr: Record<Key, string> = {
   "network.alone": "Aucun hub voisin n'est encore configuré, ce hub répond donc seul à chaque recherche.",
   "network.legend":
     "La ligne vers un voisin porte son calibrage : l'argile signifie que le hub a tenu ou dépassé sa propre annonce, le rouge qu'il a publié plus que ce que les gens ont trouvé, le gris que les preuves manquent.",
-  "finder.pinned":
-    "Cette version communique avec {backend} quel que soit votre choix ici : l'adresse du backend est fixée à la compilation du site. Choisir un hub enregistre votre choix, mais ne déplace pas encore l'application.",
   "network.hubs": "Hubs de ce réseau",
 };
 export default fr;
