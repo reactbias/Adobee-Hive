@@ -1,6 +1,7 @@
 import type { GuardFinding, Step } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
+import { reasonText } from "../lib/reasons";
 import { chf, metres, stay } from "../lib/format";
 
 // What the traveller's agent asked over MCP and what the other side answered, as message bodies for the group chat.
@@ -82,7 +83,9 @@ function Discover({ o, guard }: { o: Rec; guard: GuardFinding[] }) {
           <li key={`${x.source ?? ""}/${x.id}`} className="out">
             <span className="ledger-rank">–</span>
             <span className="ledger-name">{String(x.name)}</span>
-            <span className="ledger-why">{(x.why_not as string[] | undefined)?.join("; ")}</span>
+            <span className="ledger-why">
+              {(x.why_not as string[] | undefined)?.map((w) => reasonText(t, w)).join("; ")}
+            </span>
             <span className="ledger-score num">{String(x.score)}</span>
           </li>
         ))}
