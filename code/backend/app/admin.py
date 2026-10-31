@@ -132,6 +132,102 @@ def _connection_counts() -> dict[str, int]:
     }
 
 
+def entities() -> dict[str, Any]:
+    """Everything this hub carries, as a table an operator can scan.
+
+    The overview counts the index; this is the list behind the count, and it is deliberately the
+    same call (`hive.list_cards`), so the two can never disagree about what the hub carries.
+    Nothing here is a side channel: every field is already on the public card.
+    """
+    rows = [_entity_row(card) for card in _cards()]
+    return {"entities": rows, "count": len(rows)}
+
+
+def _cards() -> list[dict[str, Any]]:
+    from . import hive
+
+    return hive.list_cards()
+
+
+def _entity_row(card: dict[str, Any]) -> dict[str, Any]:
+    """One row of the entity table: who it is, whether it claimed itself, and how it has been rated."""
+    trust = card.get("trust") or {}
+    reviews = trust.get("verified_reviews") or {}
+    return {
+        "id": card["id"],
+        "slug": card.get("slug") or card["id"],
+        "name": card.get("name") or card["id"],
+        "kind": card.get("kind") or "",
+        # An unclaimed card was compiled from public information: a lead, never a business that agreed.
+        "claimed": bool(trust.get("claimed")),
+        # None until a signed receipt earns one. Zero would read as a bad business, not a new one.
+        "rating": reviews.get("average"),
+        "rating_count": int(reviews.get("count") or 0),
+        "published_at": card.get("published_at"),
+        "version": card.get("version"),
+        "signature_valid": bool(trust.get("signature_valid")),
+        "bookable": bool(card.get("units")) and bool(trust.get("claimed")),
+    }
+
+
+def entity(entity_id: str) -> dict[str, Any]:
+    """One entity in full, for the operator deciding what to do about it.
+
+    Everything a decision needs in one answer: the row as the list shows it, the whole signed card,
+    the two sides of the market it is indexed by, how it can be reached and under which sharing
+    flag, its trust block, and the signature state spelled out rather than left to be read off a
+    nested dict. Raises `hive.HiveError` for an id this hub has never carried.
+
+    The sharing flag per channel is the *resolved* one — the stricter of the entity's default and
+    the channel's own — because that is what the hub actually does, and an operator looking at a
+    contact row needs to know whether it would be handed out, not what two separate fields say.
+    """
+    from . import hive, hub
+
+    card = hive.get_card(entity_id)
+    trust = card.get("trust") or {}
+    block = next((e for e in blocklist.entries(blocklist.ENTITY) if e["subject"] == card["id"]), None)
+    return {
+        "entity": _entity_row(card),
+        # The card exactly as the owner signed it. The trust block is reported separately because it
+        # is this hub's reading of the card, not part of what was signed.
+        "card": {k: v for k, v in card.items() if k != "trust"},
+        "offers": list(card.get("offers") or []),
+        "needs": list(card.get("needs") or []),
+        "contact": _contact_rows(card, hub._entity_default(card)),
+        "contact_sharing": dict(card.get("contact_sharing") or {}),
+        "sharing_default": hub._entity_default(card),
+        "trust": trust,
+        "signature": {
+            "valid": bool(trust.get("signature_valid")),
+            "signature": trust.get("signature") or "",
+            "public_key": trust.get("public_key") or "",
+            "algorithm": trust.get("algorithm") or "",
+            "fresh": bool(trust.get("fresh")),
+            "valid_until": card.get("valid_until"),
+            "version": card.get("version"),
+        },
+        # Removing is about this hub no longer carrying an entity; blocking is about refusing it
+        # wherever it comes from. Both are offered from here, so the view has to say which is on.
+        "blocked": block is not None,
+        "block": block,
+    }
+
+
+def _contact_rows(card: dict[str, Any], default: str) -> list[dict[str, Any]]:
+    """Every published contact channel with the sharing flag that actually applies to it."""
+    flags = card.get("contact_sharing") or {}
+    return [
+        {
+            "channel": channel,
+            "value": value,
+            "sharing": sharing.resolve(default, flags.get(channel)),
+            "searchable": sharing.searchable(default, flags.get(channel)),
+        }
+        for channel, value in (card.get("contact") or {}).items()
+    ]
+
+
 def neighbours() -> dict[str, Any]:
     """The peer list as a table: configured, blocked, and how each one's ratings have held up."""
     blocked = blocklist.blocked_hubs()
