@@ -108,6 +108,24 @@ def test_a_literal_hit_still_beats_a_merely_similar_one(client):
     assert salon["score_breakdown"]["semantic"] <= hive.SEMANTIC_POINTS
 
 
+def test_a_side_that_already_matched_literally_is_not_scored_twice(client):
+    """One side's evidence is counted once, at its strongest form, and there is a bug behind that rule.
+
+    Two people who both literally offer a dataviz sprint should not be reordered because one of them wrote
+    ", remote" after it and lost a little cosine similarity to the longer line. Paying the component on top of
+    a literal hit let exactly that happen. So the semantic read of a side is skipped when the words already
+    found something there, which also makes "a literal hit beats a merely similar one" true by construction.
+    """
+    quinn = _match(hive.discover(query="haircut"), "person-quinn")
+    assert quinn["score_breakdown"]["offers_needs"] > 0
+    assert quinn["score_breakdown"]["semantic"] == 0, "the word is really there; that is what it is paid for"
+    assert not any("close to" in why for why in quinn["why"])
+
+    # The other side is still read, because nothing was found there: they offer cutting, they need a cutter.
+    both = _match(hive.discover(query="hairdressing", looking_for="any"), "service-schnittwerk")
+    assert both["score_breakdown"]["semantic"] > 0
+
+
 def test_a_semantic_hit_says_why_in_words_a_person_can_read(client):
     """The open ranking promise: a number nobody can read is not a reason."""
     salon = _match(hive.discover(query="haircut"), "service-schnittwerk")

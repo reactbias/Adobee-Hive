@@ -521,15 +521,20 @@ def _side_hits(card: dict[str, Any], side: str, terms: list[str]) -> list[str]:
     return [term for term in terms if term in text]
 
 
-def _close_hit(card: dict[str, Any], query: str, sides: tuple[str, ...]) -> tuple[str, semantic.Hit] | None:
+def _close_hit(card: dict[str, Any], query: str, sides: dict[str, list[str]]) -> tuple[str, semantic.Hit] | None:
     """The closest thing this entity offers or needs to what was asked for, or None below the floor.
 
     This is the whole answer to "a search for haircut misses a card that says cut, wash and finish".
-    It looks at the same two sides `_side_hits` does and respects `looking_for` the same way, so a
-    search for who offers a thing is never answered with who wants it, semantically either.
+    It reads the same two sides `_side_hits` reads, and `sides` carries the literal hits found on each,
+    because a side that already matched literally is not scored again: one side's evidence is counted
+    once, at its strongest form. That keeps the component doing the job it was added for — finding what
+    the words missed — and keeps a wording difference between two entities that both really offer the
+    thing from deciding which of them comes first.
     """
     best: tuple[str, semantic.Hit] | None = None
-    for side in sides:
+    for side, literal in sides.items():
+        if literal:
+            continue
         hit = semantic.best(query, _side_texts(card, side))
         if hit is not None and (best is None or hit.score > best[1].score):
             best = (side, hit)
@@ -725,7 +730,7 @@ def discover(
 
         # And the same two sides read for *meaning* rather than for the exact word, which is what makes a
         # hairdresser findable by "haircut". `looking_for` gates it exactly as it gates the literal hits.
-        sides = tuple(s for s in ("offers", "needs") if looking_for in (s, "any"))
+        sides = {"offers": offer_hits, "needs": need_hits} if looking_for == "any" else {looking_for: side_hits}
         close = _close_hit(card, query, sides) if semantic_search else None
 
         trust = card["trust"]

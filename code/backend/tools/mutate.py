@@ -141,8 +141,8 @@ CURATED: list[Mutant] = [
     Mutant(
         "hive.py",
         "the semantic side ignores looking_for, so who offers a thing is answered with who wants it",
-        'sides = tuple(s for s in ("offers", "needs") if looking_for in (s, "any"))',
-        'sides = ("offers", "needs")',
+        'sides = {"offers": offer_hits, "needs": need_hits} if looking_for == "any" else {looking_for: side_hits}',
+        'sides = {"offers": offer_hits, "needs": need_hits}',
     ),
     Mutant(
         "hive.py",

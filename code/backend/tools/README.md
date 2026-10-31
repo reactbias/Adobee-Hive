@@ -1,9 +1,36 @@
 # tools
 
+## eval_search.py — is the search actually better?
+
+Semantic search is easy to believe in and hard to be sure about: a synonym table that reads well in a
+docstring can quietly make every card similar to every query. `eval_search.py` builds a hub out of
+`testdata/vaults/`, runs a list of query-to-expected pairs through `hive.discover()` twice — once with the
+semantic component off, which is the literal substring search we started from, and once with it on — and
+prints **precision at 1 and at 3** for both, plus the share of queries where the hub had any reason at all to
+return the right entity rather than returning it by the luck of a tie-break.
+
+```bash
+cd code/backend && source .venv/bin/activate
+python tools/eval_search.py              # the before and after table, and which queries changed
+python tools/eval_search.py --verbose    # every query, its top three, and the reason the hub gave
+python tools/eval_search.py --floor      # the similarity of every pair, expected and not
+python tools/eval_search.py --sweep      # precision at each candidate floor: how the floor was chosen
+```
+
+The pairs come from `testdata/README.md` when it carries a query-to-expected table, so whoever writes the
+corpus owns the scoring set; the list in the script is the fallback and the output says which was used. Exit
+code is 1 when the semantic run scores *worse* than the literal one, so a change that makes search worse can
+be caught by a machine instead of by a jury.
+
+It is a measurement, not a test, and it is deliberately not in `pytest`: the suite pins behaviour that must
+never regress, while this number is allowed to move as the corpus grows. `--sweep` is the one to run before
+touching `semantic.SIMILARITY_FLOOR`.
+
 ## mutate.py — does the suite actually notice?
 
 Coverage proves a line ran. It does not prove a test would fail if that line were wrong.
-`mutate.py` makes deliberate changes to `app/federation.py`, `app/reputation.py` and `app/hive.py`,
+`mutate.py` makes deliberate changes to `app/federation.py`, `app/reputation.py`, `app/hive.py` and
+`app/semantic.py`,
 runs the suite, and reports every change that **survived** — because a surviving mutant is a missing
 assertion, named and located.
 
@@ -26,6 +53,7 @@ even when a run is interrupted.
 | Blanking `owner_keys` in the peer parser | `HttpTransport` had **no test at all** — the fakes replace it — so the parser that supplies the keys every relayed card is verified against was never run. |
 | Inverting the filter in `hop_params()` | A forwarded query could arrive empty and nothing noticed. |
 | Blanking a peer's `ranking_policy` | Paid placement is detected from that string, so a hub silently stopped downgrading peers that sell rank. |
+| Dropping the similarity floor, and ignoring the semantic score | The floor is the whole difference between "close to what you asked for" and "everything is a bit like everything". Without it the component is a constant and ranks nothing; without the score a search for "haircut" goes back to missing *"Cut, wash and finish"*. |
 | Hiding people from discovery again, and ignoring `looking_for` | The index is `offers` and `needs` now: these two aim at a hub that quietly goes back to being a room search, and at a search for who *offers* a thing answering with who *wants* it. |
 
 ### Known survivors
