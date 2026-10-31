@@ -13,7 +13,7 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
 | # | Beat | Time | Where |
 | --- | --- | --- | --- |
 | 1 | Adobe's timeline, our next box: "the front door becomes a signed card" | 30 s | slide |
-| 2 | One tap on an example. The stage plays as a group chat: Your agent, the Hive, Hotel Rheinblick and the sceptic, each with a face and a role, about 20 s to "book this?". The one click left is Approve; then the signed receipt and three one-tap next steps. Replay restarts the chat | 90 s | chapter 1 |
+| 2 | One tap on an example. The stage plays as a group chat: Your agent, the Hive, Hotel Rheinblick, the critic and the verifier, each with a face and a role. The critic challenges the pick, your agent answers from the open ranking, the verifier checks the card, and only when all three agree does your agent ask "book this?", about 27 s in. The one click left is Approve; then the signed receipt and three one-tap next steps. Replay restarts the chat | 90 s | chapter 1 |
 | 3 | Tamper with a price: the signature check fails and agents reject the card. A forged review is rejected too | 45 s | chapter 3, owner studio |
 | 4 | Gare Central's owner sees that agents turned her away for dog-friendly and fixes it in one sentence | 60 s | chapter 3, owner studio |
 | 5 | The twist: Basel's missed-demand map, "agents write the business plan" | 45 s | chapter 3, demand map |
