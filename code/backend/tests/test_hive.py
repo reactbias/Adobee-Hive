@@ -9,7 +9,7 @@ import pytest
 from mcp import Client
 
 from app import agent, config, db, guard, hive, llm, owner, second_opinion, simulate
-from app.domains import hr
+from app.domains import examples, hr
 from app.mcp_server import server
 
 REQUEST = (
@@ -134,7 +134,7 @@ def test_demo_reset_restores_the_seed(client):
         "/api/owner/hotel-gare/publish",
         json={"proposed": {**client.get("/api/hive/cards/hotel-gare").json(), "features": ["dog-friendly"]}},
     )
-    assert client.post("/api/demo/reset").json()["cards"] == 6
+    assert client.post("/api/demo/reset").json()["cards"] == 6 + len(examples.CARDS)
     card = client.get("/api/hive/cards/hotel-gare").json()
     assert "dog-friendly" not in card["features"] and card["version"] == 1
     assert card["trust"]["signature_valid"]
