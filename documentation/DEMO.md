@@ -30,8 +30,10 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
    Click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*, and a copy
    re-signed by a stranger's key *rejected* too, because agents only accept the owner's pinned key.
 3. **Owner studio** (`/owner`), pick Gare Central. Show the missed demand ("dog-friendly" turned away). Type
-   *"add dog-friendly"*, click **Preview change**, review the diff, **Sign and publish**. The card is re-signed as a new version, and agents
-   that ask for dog-friendly now see Gare Central (the first example also asks for quiet, which it isn't).
+   *"add dog-friendly"*, click **Preview change**, review the diff (the tag, and the pets policy turns from "No pets"
+   to "Dogs welcome"), **Sign and publish**. The card is re-signed as a new version. To show the effect, ask the agent
+   for *"a dog-friendly hotel near Basel SBB, 2026-11-20 to 2026-11-21, just compare"*: Gare Central now ranks first.
+   The first example still excludes it, because it also asks for quiet.
 4. **Demand map** (`/demand`). Click **Simulate 40 traveller searches** for a busy week. Unserved demand rises to the top: pool,
    vegan breakfast, coworking. "Nobody in Basel offers this. Agents are telling you what to open."
 5. **Optional: two futures, live** (`/agent`, 45 s, fits after beat 3). Under **Stress test**, tick *Connect an

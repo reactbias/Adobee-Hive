@@ -331,3 +331,11 @@ def test_a_held_booking_is_approved_once_and_as_held(client):
     assert done["booking"]["unit_name"] != "River-view double"  # what the agent held, not what the client sent
     again = client.post("/api/agent/approve", json={"pending": out["pending"]})
     assert again.status_code == 400 and "already approved" in again.json()["detail"]
+
+
+def test_rule_edit_keeps_the_pets_policy_in_line():
+    card = {"features": ["wifi"], "policies": {"pets": "No pets"}}
+    added, _ = owner.mock_edit(card, "add dog-friendly")
+    assert "dog-friendly" in added["features"] and added["policies"]["pets"] == "Dogs welcome"
+    removed, _ = owner.mock_edit(added, "remove dog-friendly")
+    assert removed["policies"]["pets"] == "No pets"
