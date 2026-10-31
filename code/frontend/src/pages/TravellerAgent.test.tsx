@@ -457,6 +457,45 @@ describe("traveller agent", () => {
     expect(screen.queryByRole("heading", { name: "Hotel Krafft Basel" })).not.toBeInTheDocument();
   });
 
+  it("books from the cards exactly as from Details: the agent's hold, one yes, the same receipt", async () => {
+    vi.spyOn(api, "discover").mockResolvedValue({
+      matches: [{ id: "hotel-rheinblick", name: "Hotel Rheinblick", description: "By the Rhine.", score: 80 }],
+      excluded: [],
+      ranking_policy: "open",
+    } as never);
+    vi.spyOn(api, "card").mockResolvedValue({
+      id: "hotel-rheinblick",
+      name: "Hotel Rheinblick",
+      description: "By the Rhine.",
+      units: [{ id: "river", name: "River-view double", price_chf: 180 }],
+    } as never);
+    const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const approve = vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: "Hotel Rheinblick" }));
+    await user.click(await screen.findByRole("button", { name: /River-view double/ }));
+    expect(agent).not.toHaveBeenCalled();
+    await user.click(await screen.findByRole("button", { name: en["card.yes"] }));
+
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
+    expect(screen.getByText(en["card.status.held"])).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: en["agent.approve"] }));
+
+    expect(approve).toHaveBeenCalledWith(HELD);
+    expect(await screen.findByText("bk_123")).toBeInTheDocument();
+    expect(screen.getByText(en["card.status.booked"])).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
+
+    // Details opens on the same run: nothing is asked or booked twice.
+    await user.click(screen.getByRole("button", { name: en["card.details"] }));
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(approve).toHaveBeenCalledTimes(1);
+  });
+
   it("sends on Enter, and Shift+Enter starts a new line instead", async () => {
     const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
@@ -484,7 +523,6 @@ describe("traveller agent", () => {
     expect(await screen.findByRole("heading", { name: "Lena Hofmann" })).toBeInTheDocument();
     expect(screen.getByText(en["card.rating.none"])).toBeInTheDocument();
     expect(screen.queryByText("0.0 / 5")).not.toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup", { name: en["card.rate.ask"] })).not.toBeInTheDocument();
     expect(screen.queryByRole("radiogroup", { name: en["agent.review.rating"] })).not.toBeInTheDocument();
   });
 

@@ -49,6 +49,8 @@ export type Hit = {
   needs: Need[];
   /** The request asked to act, so the picked offering can ask for a yes. */
   acting: boolean;
+  /** Compiled from public information; the hub can only hand off, not book. */
+  unclaimed?: boolean;
   /** How this hub found it, when the row came from a live search. */
   found?: { why: string[]; path: string[]; hops: number; origin: string };
 };
@@ -382,26 +384,48 @@ export function readHubCard(raw: unknown): HiveCard | null {
   return card;
 }
 
+type DiscoverMatch = {
+  id: string;
+  score?: number;
+  claimed?: boolean;
+  bookable?: boolean;
+  why?: string[];
+  hops?: number;
+  provenance?: { path?: string[]; origin?: string };
+};
+
+// The hub lists every entity it carries; a zero score means nothing in the request touched it.
+const scored = (matches: DiscoverMatch[]) => {
+  const related = matches.filter((m) => typeof m.score !== "number" || m.score > 0);
+  return related.length ? related : matches;
+};
+
 /** One row per discover match, using the card the hub returned for that id. */
 export function sceneFromDiscovery(
   query: string,
-  matches: { id: string; why?: string[]; hops?: number; provenance?: { path?: string[]; origin?: string } }[],
+  matches: DiscoverMatch[],
   cards: Record<string, unknown>,
 ): Scene | null {
   const asked = plain(query);
   const acting = ACT.test(asked) && !LOOK.test(asked);
   const hits: Hit[] = [];
-  for (const match of matches) {
+  for (const match of scored(matches)) {
     const card = readHubCard(cards[match.id] ?? match);
     if (!card) continue;
     const path = match.provenance?.path?.filter((hop) => typeof hop === "string") ?? [];
+    const unclaimed = match.claimed === false;
+    // The unclaimed note is the hub's disclosure, shown from the flag, not a reason it matched.
+    const why = (match.why ?? []).filter(
+      (line) => typeof line === "string" && !(unclaimed && line.startsWith("unclaimed")),
+    );
     hits.push({
       card,
       offers: card.offers,
       needs: card.needs,
-      acting,
+      acting: acting && match.bookable !== false,
+      unclaimed,
       found: {
-        why: (match.why ?? []).filter((line) => typeof line === "string"),
+        why,
         path,
         hops: typeof match.hops === "number" ? match.hops : Math.max(0, path.length - 1),
         origin: match.provenance?.origin ?? path[0] ?? "",
