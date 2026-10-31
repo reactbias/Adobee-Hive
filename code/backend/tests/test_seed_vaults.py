@@ -8,6 +8,7 @@ and that a card built that way is actually findable by what it offers and by wha
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 
@@ -152,3 +153,49 @@ def test_the_real_hotel_krafft_folder_has_all_three_of_its_rooms():
     seed = _seed_vaults()
     units = seed.read_units(seed.VAULTS / "hotel-krafft")
     assert [u["name"] for u in units] == ["Courtyard single", "Courtyard double", "River-view double"]
+
+
+#: The answer key in testdata/README.md, between the markers, is what semantic search is measured
+#: against. A pair is only worth measuring if literal matching cannot reach it.
+ANSWER_KEY = ROOT.parents[1] / "testdata" / "README.md"
+
+
+def _answer_key_rows():
+    """The query and expected slug of every row between the answer-key markers."""
+    text = ANSWER_KEY.read_text(encoding="utf-8")
+    block = text.split("<!-- answer-key -->", 1)[1].split("<!-- /answer-key -->", 1)[0]
+    rows = []
+    for line in block.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or cells[0].startswith("---") or cells[0] == "What a person types":
+            continue
+        rows.append((cells[0], cells[1].strip("`")))
+    return rows
+
+
+def _indexed_text(card: dict) -> str:
+    """Everything hive.discover can match a query term against, offers and needs included."""
+    parts = [card.get("name", ""), card.get("tagline", ""), card.get("description", ""), *card.get("features", [])]
+    for side in ("offers", "needs"):
+        for entry in card.get(side) or []:
+            parts += [str(entry.get(f)) for f in hive.OFFER_FIELDS if entry.get(f)]
+    return " ".join(parts).lower()
+
+
+def test_the_answer_key_covers_entities_that_exist_and_is_not_a_softball():
+    """Every pair must be a real vault, and must share no searchable word with it.
+
+    This is the honesty check on the key. `hive.discover` matches a term of more than three
+    characters as a substring, so a query that shares one is already findable and proves nothing
+    about semantic search. Fourteen pairs that share none is the measurement.
+    """
+    seed = _seed_vaults()
+    rows = _answer_key_rows()
+    assert len(rows) >= 10, "the key needs ten to fifteen pairs to measure anything"
+    for query, slug in rows:
+        assert slug in seed.KIND, f"{slug} is in the answer key but not a vault"
+        text = _indexed_text(seed.build_card(seed.VAULTS / slug))
+        terms = {t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - hive.STOPWORDS
+        assert terms, f"{query!r} has nothing a hub would search for"
+        shared = sorted(t for t in terms if t in text)
+        assert not shared, f"{query!r} already finds {slug} literally through {shared}"
