@@ -140,7 +140,7 @@ export interface Pending {
   tool: "hive_book";
   input: Record<string, unknown>;
 }
-/** A second agent, on another vendor when a key is set, checks the held booking before the human is asked. */
+/** A separate, independent agent checks the held booking before the human is asked; a rule check without a key. */
 export interface SecondOpinion {
   verdict: "agree" | "concern";
   note: string;
