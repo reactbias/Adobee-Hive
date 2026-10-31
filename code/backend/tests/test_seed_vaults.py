@@ -7,9 +7,14 @@ and that a card built that way is actually findable by what it offers and by wha
 
 from __future__ import annotations
 
+import csv
 import importlib.util
+import io
 import re
+import struct
 import sys
+import zlib
+from collections import Counter
 from pathlib import Path
 
 from app import hive
@@ -197,3 +202,38 @@ def test_the_answer_key_covers_entities_that_exist_and_is_not_a_softball():
         assert terms, f"{query!r} has nothing a hub would search for"
         shared = sorted(t for t in terms if t in text)
         assert not shared, f"{query!r} already finds {slug} literally through {shared}"
+
+
+def test_every_file_in_the_corpus_is_a_real_file_of_the_type_its_name_claims():
+    """A .pdf that is not a PDF makes the digest and the size a lie, and breaks anything that reads it."""
+    seed = _seed_vaults()
+    seen = Counter()
+    for path in sorted(seed.VAULTS.rglob("*")):
+        if not path.is_file():
+            continue
+        seen[path.suffix] += 1
+        body = path.read_bytes()
+        assert body, f"{path} is empty"
+        if path.suffix == ".pdf":
+            assert body.startswith(b"%PDF-1."), path
+            assert body.rstrip().endswith(b"%%EOF"), path
+            assert b"/Root" in body and b"trailer" in body, path
+        elif path.suffix == ".png":
+            assert body[:8] == b"\x89PNG\r\n\x1a\n", path
+            length, chunk = struct.unpack(">I4s", body[8:16])
+            assert chunk == b"IHDR" and length == 13, path
+            crc = struct.unpack(">I", body[16 + 13 : 20 + 13])[0]
+            assert crc == zlib.crc32(body[12 : 16 + 13]) & 0xFFFFFFFF, f"{path} IHDR checksum"
+        elif path.suffix == ".csv":
+            rows = list(csv.reader(io.StringIO(body.decode("utf-8"))))
+            assert len(rows) > 1 and len(rows[0]) > 1, path
+        else:
+            assert path.suffix in (".md", ".txt"), f"{path} is a type nothing here checks"
+    assert seen[".pdf"] and seen[".png"] and seen[".csv"], f"the corpus has no files to connect to: {dict(seen)}"
+
+
+def test_the_corpus_stays_small_enough_to_live_in_git():
+    """Binary test data grows until somebody puts a number on it. This is the number."""
+    seed = _seed_vaults()
+    total = sum(p.stat().st_size for p in seed.VAULTS.rglob("*") if p.is_file())
+    assert total < 400_000, f"{total} bytes of test data is too much for a repository"

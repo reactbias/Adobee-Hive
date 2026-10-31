@@ -1,0 +1,4 @@
+Sanitär Hofstetter
+email: notfall@sanitaer-hofstetter.example
+phone: +41 31 000 10 77
+mobile: +41 79 000 10 77
