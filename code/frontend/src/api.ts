@@ -513,10 +513,22 @@ export interface DirectoryHub {
   name: string;
   description: string;
   admission?: string;
-  accepting?: boolean;
+  /** Three states: true, false, and null for "we have not asked". Null is never rendered as "not accepting". */
+  accepting?: boolean | null;
   verification?: string;
-  entities?: number;
+  /** null means the peer has not published a count. Never shown as 0: zero is a claim we do not have. */
+  entities?: number | null;
   apply_at?: string;
+  /** True once the peer has answered at least once, so its name and description are its own words. */
+  known?: boolean;
+  /** ISO 8601 UTC of the last ask, successful or not. null means genuinely never asked. */
+  last_asked?: string | null;
+  /** Whether that last ask was answered. null alongside a null `last_asked`. */
+  last_asked_ok?: boolean | null;
+  /** When the answer being shown arrived, which differs from `last_asked` once an ask has failed. */
+  last_answered?: string | null;
+  /** The last ask failed, so what is shown is an older answer rather than the current one. */
+  stale?: boolean;
   error: number | null;
   error_stars: number | null;
   evidence: number;
@@ -525,6 +537,10 @@ export interface DirectoryHub {
 }
 export interface Directory {
   hubs: DirectoryHub[];
+  /** Seconds between rounds of asking the peers, so a row can explain why a count is two minutes old. */
+  asked_every_seconds?: number;
+  /** Scored introductions a verdict needs, so "unproven" can say how far off it is. */
+  min_evidence?: number;
 }
 
 /** A peer and how closely its published ratings matched what our people found. Lower `error` is better. */

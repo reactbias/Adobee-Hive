@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chf, day, metres, nights, stay } from "./format";
+import { chf, day, metres, moment, nights, since, stay } from "./format";
 
 describe("format", () => {
   it("counts nights between ISO days", () => {
@@ -26,5 +26,34 @@ describe("format", () => {
   it("switches from metres to kilometres at 1000", () => {
     expect(metres(450, "en-CH")).toMatch(/450\s?m/);
     expect(metres(1500, "en-CH")).toMatch(/1\.5\s?km/);
+  });
+});
+
+// "asked 2 minutes ago" has to be true, in four languages, and must never invent a time it does not have.
+describe("how long ago", () => {
+  const now = new Date("2026-10-31T12:00:00Z");
+
+  it("counts in the largest unit that fits", () => {
+    expect(since("2026-10-31T11:59:30Z", "en-CH", now)).toBe("30 seconds ago");
+    expect(since("2026-10-31T11:58:00Z", "en-CH", now)).toBe("2 minutes ago");
+    expect(since("2026-10-31T09:00:00Z", "en-CH", now)).toBe("3 hours ago");
+    expect(since("2026-10-30T12:00:00Z", "en-CH", now)).toBe("yesterday");
+  });
+
+  it("speaks the page's language", () => {
+    expect(since("2026-10-31T11:58:00Z", "de-CH", now)).toBe("vor 2 Minuten");
+    expect(since("2026-10-31T11:58:00Z", "fr-CH", now)).toBe("il y a 2 minutes");
+    expect(since("2026-10-31T11:58:00Z", "it-CH", now)).toBe("2 minuti fa");
+  });
+
+  it("says nothing at all when there is no moment to report", () => {
+    expect(since(null, "en-CH", now)).toBe("");
+    expect(since(undefined, "en-CH", now)).toBe("");
+    expect(since("not a date", "en-CH", now)).toBe("");
+    expect(moment(null, "en-CH")).toBe("");
+  });
+
+  it("gives the exact moment for a title", () => {
+    expect(moment("2026-10-31T12:00:00Z", "en-CH")).toMatch(/2026/);
   });
 });

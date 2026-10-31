@@ -11,6 +11,7 @@ Every peer here is in-process: nothing opens a socket.
 
 import asyncio
 from datetime import UTC, datetime
+from itertools import count
 from time import perf_counter
 from unittest import mock
 
@@ -19,13 +20,17 @@ import pytest
 
 from app import admin, config, federation, registration
 
+# One address per peer built in a run. Counted, not hashed: Python randomises string hashing per process, so a
+# hashed port made two peers collide on one URL every so often and the suite failed for no reason at all.
+_ports = count(8420)
+
 
 class Peer:
     """One in-process peer Hive, as far as its discovery document goes."""
 
     def __init__(self, hub_id: str, name: str, entities: int | None = None, admission: str = "open", **extra):
         self.hub_id = hub_id
-        self.url = f"http://10.0.0.1:{8420 + abs(hash(hub_id)) % 50}/"
+        self.url = f"http://10.0.0.1:{next(_ports)}/"
         self.doc = {
             "hub_id": hub_id,
             "name": name,

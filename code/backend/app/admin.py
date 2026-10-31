@@ -222,6 +222,8 @@ def directory() -> dict[str, Any]:
         ),
         "admission_meanings": registration.policy()["means"],
         "asked_every_seconds": config.PEER_ASK_SECONDS,
+        # How many scored introductions a verdict needs, so a row can say "2 of 3" instead of a bare "unproven".
+        "min_evidence": calibration.MIN_EVIDENCE,
     }
 
 
