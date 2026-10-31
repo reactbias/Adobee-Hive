@@ -116,6 +116,8 @@ endpoint, MCP tool and page does: [ARCHITECTURE.md](documentation/ARCHITECTURE.m
 [DEPLOY.md](documentation/DEPLOY.md). If PowerShell refuses to run `Activate.ps1`, run
 `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
+Taking over the code? The [developer guide](documentation/DEVELOPER.md) shows how to start, test, call and ship every part.
+
 ## Repository
 
 | Folder | Contents |
