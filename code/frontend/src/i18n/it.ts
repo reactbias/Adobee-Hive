@@ -101,7 +101,7 @@ const it: Record<Key, string> = {
   "agent.newTrip": "Nuovo viaggio",
   "agent.try": "Provi",
   "agent.example.1":
-    "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, dal 13.11.2026 al 15.11.2026. Mi chiamo Tobi Muster.",
+    "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, dal 13.11.2026 al 15.11.2026. Mi chiamo Lena Brunner.",
   "agent.example.2":
     "In due per Art Basel, vicino a Messe Basel, con parcheggio, 3 notti dal 14.06.2027. Solo confrontare, non prenotare.",
   "agent.example.3":

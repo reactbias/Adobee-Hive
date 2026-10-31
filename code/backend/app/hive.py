@@ -712,7 +712,7 @@ def demand_map(days: int = 7) -> dict[str, Any]:
 
 
 def mask_name(name: str) -> str:
-    """Reduce a guest name to initials, for anyone who is not the owner: "Tobi Muster" -> "T. M."."""
+    """Reduce a guest name to initials, for anyone who is not the owner: "Lena Brunner" -> "L. B."."""
     return " ".join(part[0] + "." for part in name.split() if part) or "Guest"
 
 
