@@ -18,7 +18,7 @@ const it: Record<Key, string> = {
   "trust.reviews": "{avg} su {n} soggiorni verificati",
   "trust.noReviews": "Nessun soggiorno verificato",
 
-  "home.eyebrow": "Adobee Hive · Basilea",
+  "home.eyebrow": "La porta d'ingresso, firmata.",
   "home.title": "Il prossimo ospite è un agente.",
   "home.lead":
     "Adobee Hive dà a ogni attività locale una scheda firmata. Gli agenti la trovano, la verificano e prenotano attraverso di essa. Il titolare la scrive con parole sue, e nulla viene prenotato senza il sì di una persona.",

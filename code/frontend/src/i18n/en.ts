@@ -19,7 +19,7 @@ const en = {
   "trust.noReviews": "No verified stays yet",
 
   // Landing page
-  "home.eyebrow": "Adobee Hive · Basel",
+  "home.eyebrow": "The front door, signed.",
   "home.title": "The next guest is an agent.",
   "home.lead":
     "Adobee Hive gives every local business one signed card. Agents find it, verify it and book through it. The owner writes it in plain words, and nothing is booked until a person says yes.",
