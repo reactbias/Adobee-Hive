@@ -31,6 +31,9 @@ CC_SERVER = os.getenv("CLAUDECONNECT_SERVER", "")
 CC_HANDLE = os.getenv("CC_HANDLE", "")
 CC_TOKEN = os.getenv("CC_TOKEN", "")
 CC_TIMEOUT_S = float(os.getenv("CC_TIMEOUT_S", "2"))  # what one unreachable claudeconnect.io costs us
+# Where the ClaudeConnect adapter keeps its identities: one directory per handle, holding the `authz` file and the
+# `files/` tree its own server expects (see app/cc_folders.py). Not under testdata/, because these are keys.
+CC_ROOT = Path(os.getenv("CC_ROOT", str(BASE_DIR / "data" / "cc")))
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"

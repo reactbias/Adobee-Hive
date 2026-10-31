@@ -41,6 +41,7 @@ SUITE = [
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_folders.py",
+    "tests/test_cc_folders.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
 ]
@@ -205,6 +206,18 @@ CURATED: list[Mutant] = [
         "if False:",
     ),
     Mutant(
+        "cc_folders.py",
+        "a grant hands the file over: read becomes write in the file ClaudeConnect enforces",
+        'flags = "rw" if writable(path) else "r"',
+        'flags = "rw"',
+    ),
+    Mutant(
+        "cc_folders.py",
+        "the owner's visibility stops overruling the authz file, so a hidden path can be granted",
+        'if entry["visibility"] not in folders.ADMITTED:',
+        "if False:",
+    ),
+    Mutant(
         "folders.py",
         "a hidden or private file becomes readable, which is the one thing the folder link must never do",
         'if entry["visibility"] not in ADMITTED:',
@@ -329,6 +342,7 @@ SWAPS = [
 TARGETS = [
     "federation.py",
     "folders.py",
+    "cc_folders.py",
     "reputation.py",
     "calibration.py",
     "connections.py",

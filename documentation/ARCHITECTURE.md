@@ -30,6 +30,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 | `semantic.py` | Semantic similarity behind a small provider interface, so a search for "haircut" finds *"Cut, wash and finish"*. The offline provider is the default and needs no key, no network and no new dependency: accent-folded stems, a small four-language concept table and character trigrams, compared with cosine similarity above a named floor. An optional embedding provider is used when a key is set. `hive.discover()` turns a hit into one score component and a readable reason; `/api/health` says which provider is in use |
 | `reputation.py` | Two levels of trust, kept apart: a peer *hub*'s reputation, judged locally and subjectively by this hub (declared vs observed vetting, paid placement, availability, cards it relayed that failed verification here), and a *business*'s reputation, the verified reviews and attestations discovery already scores |
 | `folders.py` | The folder link: two agents connecting their private folders between the search and the booking. A *link* is handle to handle and carries no content, and unlocks only the manifest — a linked peer sees that the `shared` files exist, which the Card never said. A *grant* is per path and is the only thing that makes bytes readable. `private` and `hidden` paths are counted, never named, and a refused grant says the same words for a hidden file as for one that was never there. One protocol, two implementations chosen by `FOLDER_LINK`: `LocalFolderLink` over the folders in `testdata/vaults/` (default; no key, no network, no new dependency) and `CcFolderLink` over [ClaudeConnect](https://github.com/bstadt/cc_daemon). `/api/health` says which is in use and why |
+| `cc_folders.py` | The same folder link against the real [ClaudeConnect](https://github.com/bstadt/cc_daemon): identities as `<handle>@moltbook.cc.bot`, the link as the pair's shared folder, a grant as its own `authz` section, read-only. The library is imported lazily and every failure — not installed, no key, an unwritable root — returns a reason instead of raising, so the hub falls back to `local` and `/api/health` says why |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes, and the Postgres snapshot and restore (`DATABASE_URL`) |
 | `llm.py`, `config.py` | Structured-output calls on OpenAI or Claude; provider choice and environment settings |
@@ -240,6 +241,13 @@ backend. Without a key everything still runs offline.
 
 ## Known limits
 
+- **The folder link is local unless it is told otherwise.** `FOLDER_LINK` defaults to `local`, which links the
+  folders in `testdata/vaults/` inside one process: the handshake, the manifest and the per-path grants are real
+  and enforced, but both folders are on one disk and no key is exchanged. `FOLDER_LINK=claudeconnect` writes the
+  real library's `authz` files instead — that part is cross-checked against its own parser — and still needs the
+  library installed (it is an optional dependency, not in `requirements.txt`), a claimed handle, and, for a link
+  across two machines, a reachable sync server. Nothing in `cc_folders.py` syncs a folder or encrypts a file
+  today: it decides access, and `claudeconnect sync` is what would move the bytes.
 - The server holds each owner's signing key (the vision is owner-held keys).
 - DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
 - No real payments; restaurant table booking is not built yet.

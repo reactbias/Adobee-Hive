@@ -114,6 +114,10 @@ def health() -> dict[str, Any]:
         "model": config.CLAUDE_MODEL if claude else config.OPENAI_MODEL,
         "fast_model": config.CLAUDE_FAST_MODEL if claude else config.OPENAI_MODEL,
         "hives": config.HIVE_MCP_URLS or ["local"],
+        # Which folder link is carrying the handshake, what was asked for, and why they differ when
+        # they do. A hub quietly running on local folders while its operator believes it is talking
+        # to claudeconnect.io is the failure this field exists to make impossible.
+        **folders.status(),
     }
 
 

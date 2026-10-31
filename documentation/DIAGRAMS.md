@@ -105,6 +105,7 @@ flowchart TB
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
   FLD[folders.py<br/>two agents link their folders: link · grant · read]:::mod
+  CCF[cc_folders.py<br/>the same link in ClaudeConnect's authz files]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -126,6 +127,7 @@ flowchart TB
   HUB --> CNX
   HUB --> FLD
   CNX --> FLD
+  FLD --> CCF
   HUB --> SHR
   REST --> ADM
   ADM --> BLK
@@ -491,9 +493,18 @@ between "found you" and "booked you" there is a step of its own, and it is the o
 That is the shape [ClaudeConnect](https://github.com/bstadt/cc_daemon) already has — `add_friend` and
 `accept_friend_request` for the link, `add_recipient_to_file` for the grant, both over plain identity strings —
 which is why `LocalFolderLink` (in this process, over the folders in `testdata/vaults/`) and `CcFolderLink` (the
-real library) sit behind one protocol, chosen by `FOLDER_LINK`. The local one is the default and needs no key, no
-network and no new dependency; `/api/health` says which one is in use and, if the real one was asked for and
-could not be had, why the hub is running on the other.
+real library, `cc_folders.py`) sit behind one protocol, chosen by `FOLDER_LINK`. The local one is the default and
+needs no key, no network and no new dependency; `/api/health` says which one is in use and, if the real one was
+asked for and could not be had, why the hub is running on the other.
+
+The adapter is not a wrapper around the library's CLI. It writes the library's own `authz` file — `[/]` naming
+only the owner, the pair's shared folder for the link, one section per granted path — which is what
+ClaudeConnect's server reads when it filters a manifest or serves a file. Its parse and its most-specific-section
+rule are re-implemented in `cc_folders.py` because they live in the library's `server/` package rather than in
+what `pip install claudeconnect` ships, and a cross-check against that package's own parser agrees on every case
+of a file this hub wrote. Two things it will not write: a `*` recipient, which that same parser refuses (one such
+line voids the whole file, and then *nobody* can read anything), and `w` on one of the owner's own files — a grant
+shows a file, it does not hand it over.
 
 A connection is refused outright when there is no link, because a booking made without one is a booking made on
 what the index said rather than on what the two agents actually agreed.
@@ -546,6 +557,6 @@ find its test.
 | Pick a Hive, run a hub | `guard.py`, `admin.py`, `InstanceFinder.tsx`, `AdminPanel.tsx` | `test_admin_login.py`, `InstanceFinder.test.tsx`, `AdminPanel.test.tsx`, `calibration.test.ts` |
 | Where a result came from | `federation.py`, `TraceParts.tsx`, `provenance.ts` | `test_federation.py`, `TraceParts.test.tsx`, `provenance.test.ts` |
 | The network, live | `admin.py`, `calibration.py`, `NetworkPanel.tsx`, `network.ts` | `test_hub_api.py`, `NetworkPanel.test.tsx`, `network.test.ts` |
-| Folders linked, then booked | `folders.py`, `connections.py` | `test_folders.py`, `test_hub_trust.py` |
+| Folders linked, then booked | `folders.py`, `cc_folders.py`, `connections.py` | `test_folders.py`, `test_cc_folders.py`, `test_hub_trust.py` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |
