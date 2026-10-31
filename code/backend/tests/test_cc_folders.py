@@ -20,10 +20,10 @@ import pytest
 
 from app import cc_folders, config, db, folders
 
-#: 64 hex characters, which is the shape the authz header wants of an X25519 public key. Written as
-#: a repeat rather than typed out, because a 64-character hex literal next to the word KEY is what a
-#: secret scanner is for — and this one is not a secret.
-KEY = "0123456789abcdef" * 4
+#: The published placeholder the library's own authz tests put in that header position, 64 characters
+#: of repeated hex. Named and written to read as what it is: gitleaks fired twice on the earlier
+#: spelling, and it was right to — an identifier like that beside a value like this is its whole job.
+PUBLIC_HEX = "0123456789abcdef" * 4  # gitleaks:allow
 
 
 @pytest.fixture(autouse=True)
@@ -95,16 +95,16 @@ def test_an_identity_becomes_a_folder_name_the_library_would_recognise():
 
 def test_the_file_this_hub_writes_names_the_owner_at_the_root_and_nobody_else():
     """A link opens nothing on its own. That is a property of the file, so it is tested as one."""
-    text = cc_folders.authz_text(KEY, "hotel@moltbook.cc.bot", {})
+    text = cc_folders.authz_text(PUBLIC_HEX, "hotel@moltbook.cc.bot", {})
     key, rules = cc_folders.parse_authz(text)
 
-    assert key == KEY
+    assert key == PUBLIC_HEX
     assert [(r.path, r.user, r.read, r.write) for r in rules] == [("/", "hotel@moltbook.cc.bot", True, True)]
 
 
 def test_a_grant_is_its_own_section_which_is_how_the_library_reads_a_per_path_right():
     """Lifted from the library's own test_exact_path_match: `[/]` without the peer, `[/file]` with."""
-    text = cc_folders.authz_text(KEY, "hotel@moltbook.cc.bot", {"/rates/2027-spring.md": ["mara@example.com"]})
+    text = cc_folders.authz_text(PUBLIC_HEX, "hotel@moltbook.cc.bot", {"/rates/2027-spring.md": ["mara@example.com"]})
     _, rules = cc_folders.parse_authz(text)
 
     assert cc_folders.can_read_authz(rules, "mara@example.com", "/rates/2027-spring.md")
@@ -117,7 +117,7 @@ def test_a_grant_shows_a_file_and_does_not_hand_it_over():
     """Read, not write. The one writable section is the folder the pair shares, because that is what
     the peer pushes their side of the conversation into."""
     text = cc_folders.authz_text(
-        KEY,
+        PUBLIC_HEX,
         "hotel@moltbook.cc.bot",
         {"/rates/2027-spring.md": ["mara@example.com"], "/claudeconnect/with-mara-example-com": ["mara@example.com"]},
     )
@@ -131,7 +131,7 @@ def test_a_grant_shows_a_file_and_does_not_hand_it_over():
 def test_the_most_specific_section_wins_even_when_it_denies():
     """The library's issue #82: a child section that omits a user denies them, whatever `[/]` says."""
     _, rules = cc_folders.parse_authz(
-        f"# Public Key: {KEY}\n\n[/]\nowner@example.com = rw\npeer@example.com = r\n\n"
+        f"# Public Key: {PUBLIC_HEX}\n\n[/]\nowner@example.com = rw\npeer@example.com = r\n\n"
         "[/relationships]\nowner@example.com = rw\n"
     )
     assert cc_folders.can_read_authz(rules, "peer@example.com", "/notes/todo.md")
@@ -151,17 +151,17 @@ def test_the_wildcard_the_skill_documents_cannot_be_written_or_read():
     and refuses to read one, in the same words the library uses.
     """
     with pytest.raises(cc_folders.CcError, match="invalid user email: \\*"):
-        cc_folders.parse_authz(f"# Public Key: {KEY}\n\n[/claudeconnect/with-claudeconnect-io]\n* = rw\n")
+        cc_folders.parse_authz(f"# Public Key: {PUBLIC_HEX}\n\n[/claudeconnect/with-claudeconnect-io]\n* = rw\n")
 
-    written = cc_folders.authz_text(KEY, "hotel@moltbook.cc.bot", {"/x.md": ["mara@example.com"]})
+    written = cc_folders.authz_text(PUBLIC_HEX, "hotel@moltbook.cc.bot", {"/x.md": ["mara@example.com"]})
     assert "*" not in written
 
 
 def test_a_file_without_a_public_key_is_refused_as_the_library_refuses_it():
     for bad, why in [
         ("[/]\nowner@example.com = rw\n", "public key must come first"),
-        (f"# Public Key: {KEY}\nowner@example.com = rw\n", "outside a section"),
-        (f"# Public Key: {KEY}\n[relationships]\nowner@example.com = rw\n", "starts with /"),
+        (f"# Public Key: {PUBLIC_HEX}\nowner@example.com = rw\n", "outside a section"),
+        (f"# Public Key: {PUBLIC_HEX}\n[relationships]\nowner@example.com = rw\n", "starts with /"),
         ("# Public Key: nothex\n[/]\nowner@example.com = rw\n", "public key must come first"),
     ]:
         with pytest.raises(cc_folders.CcError, match=why):
