@@ -3,39 +3,82 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import Display from "./Display";
 
-// The page tells one story in three chapters: the traveller's agent, the same agent for any business, then the
-// business's side. Each chapter has an anchor the header jumps to.
+// The page tells one story in two chapters: your agent in a network of agents, then the business's side. Every
+// chapter has the same shape: a brief on paper (heading, lead, the input) beside one panel of the screen's height,
+// where everything generated appears and scrolls inside, so the page never grows with it.
 
-export type ChapterId = "travel" | "ask" | "business";
-export const CHAPTERS: ChapterId[] = ["travel", "ask", "business"];
+export type ChapterId = "travel" | "business";
+export const CHAPTERS: ChapterId[] = ["travel", "business"];
 
 export default function Chapter({
   id,
   heading,
   lead,
+  eyebrow,
+  headingLevel = 2,
+  side,
   sectionRef,
   children,
 }: {
   id: ChapterId;
   heading: Key;
   lead: string;
+  /** Replaces the numbered chapter name above the heading. */
+  eyebrow?: string;
+  /** The first chapter carries the page's h1. */
+  headingLevel?: 1 | 2;
+  /** The brief's working part, under the lead: the input, the switches. */
+  side?: ReactNode;
   sectionRef?: RefObject<HTMLElement>;
+  /** The panel: one `.frame` element. */
   children: ReactNode;
 }) {
   const { t } = useI18n();
   const n = String(CHAPTERS.indexOf(id) + 1).padStart(2, "0");
+  const H = headingLevel === 1 ? "h1" : "h2";
   return (
     <section id={id} className="chapter" ref={sectionRef} aria-labelledby={`${id}-title`}>
-      <div className="section-head">
-        <span className="eyebrow">
-          <span className="num">{n}</span> · {t(`chapter.${id}` as Key)}
-        </span>
-        <h2 id={`${id}-title`}>
-          <Display text={t(heading)} />
-        </h2>
-        <p className="lead">{lead}</p>
+      <div className="chapter-grid">
+        <div className="brief">
+          <div className="page-head">
+            <span className="eyebrow">
+              {eyebrow ?? (
+                <>
+                  <span className="num">{n}</span> · {t(`chapter.${id}` as Key)}
+                </>
+              )}
+            </span>
+            <H id={`${id}-title`}>
+              <Display text={t(heading)} />
+            </H>
+            <p className="lead">{lead}</p>
+          </div>
+          {side}
+        </div>
+        {children}
       </div>
-      {children}
+    </section>
+  );
+}
+
+/** The light panel beside the brief: a fixed height, an optional header, and a body that scrolls inside. */
+export function Frame({
+  label,
+  head,
+  bodyRef,
+  children,
+}: {
+  label: string;
+  head?: ReactNode;
+  bodyRef?: RefObject<HTMLDivElement>;
+  children: ReactNode;
+}) {
+  return (
+    <section className="frame" aria-label={label}>
+      {head && <header className="frame-head">{head}</header>}
+      <div className="frame-body" ref={bodyRef}>
+        {children}
+      </div>
     </section>
   );
 }

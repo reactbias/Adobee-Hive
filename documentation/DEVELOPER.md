@@ -9,7 +9,7 @@ down; if one stops working, fix the command or the code in the same PR.
 | Part | Where | Runs on | What it is |
 | --- | --- | --- | --- |
 | Backend | `code/backend/app` | http://localhost:8000 | FastAPI: the REST API for the app, the Hive MCP server at `/mcp/`, the agents, DuckDB |
-| Frontend | `code/frontend/src` | http://localhost:5173 | React + Vite: one page in three chapters (traveller agent, general agent, the business's side) |
+| Frontend | `code/frontend/src` | http://localhost:5173 | React + Vite: one page in two chapters (the agent network for a room or any business, the business's side) |
 | Data | `code/backend/data/abh.duckdb` | local file, gitignored | Signed cards, bookings, demand; seeded with fictional Basel businesses on first start |
 
 Which module does what: [ARCHITECTURE.md](ARCHITECTURE.md). Where each one is hosted: [DEPLOY.md](DEPLOY.md).
@@ -197,14 +197,15 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
 
 ## The app, chapter by chapter
 
-1. **Traveller agent (`#travel`).** Click an example or write a request and press **Enter** (Shift+Enter for a new
-   line), or tap the microphone and speak it. Your agent, the critic and the verifier talk in a group chat while the
+1. **Agent network (`#travel`).** Click an example or write a request and press **Enter** (Shift+Enter for a new
+   line), or tap the microphone and speak it. A stay goes to the booking agent; a question about any other business
+   (BaselHack, Adobe, an adventure under CHF 500) goes to the Hive's cards (`lib/route.ts` decides by the words), and
+   the businesses answer in the same chat with their cards. An action on an unclaimed card waits for your yes and
+   then only hands you to the business's own site. Your agent, the critic and the verifier talk in a group chat while the
    MCP calls run; the chat follows the newest message, waits if you scroll up to reread, and offers *New messages*
    to jump back. The booking waits for **Approve**. After it: the signed receipt and next steps, including *Show the
    hotel's side*. The stress test (a manipulated mirror listing, rules off) is folded under the examples.
-2. **General agent (`#ask`).** Ask about the five example businesses, typed or spoken. Their cards are
-   unclaimed public information, so any action only hands you off to the business's own site, after a yes.
-3. **The business (`#business`).** The demand map shows what Basel asked for that nobody offers (*Simulate 40 traveller
+2. **The business (`#business`).** The demand map shows what Basel asked for that nobody offers (*Simulate 40 traveller
    searches* fills it). Below it you are the owner of the hotel just booked: the booking arrives, you type a change in
    plain words ("add sauna"), review the diff, then **sign and publish**. Waiting agents whose request now fits get a
    signed offer. The tamper test shows a forged card failing.

@@ -9,7 +9,7 @@ stay found, trusted and bookable when its first visitor is an AI agent, not a pe
 
 | What | Where |
 | --- | --- |
-| Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · one page, three chapters: [traveller agent](https://reactbias.github.io/Adobee-Hive/#travel) · [general agent](https://reactbias.github.io/Adobee-Hive/#ask) · [business](https://reactbias.github.io/Adobee-Hive/#business) |
+| Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · one page, two chapters: [agent network](https://reactbias.github.io/Adobee-Hive/#travel) · [business](https://reactbias.github.io/Adobee-Hive/#business) |
 | Live backend | [adobee-hive.onrender.com](https://adobee-hive.onrender.com/api/health) ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)): [`/api/health`](https://adobee-hive.onrender.com/api/health), [`/docs`](https://adobee-hive.onrender.com/docs), MCP for agents [`/mcp/`](https://adobee-hive.onrender.com/mcp/) · [Render dashboard](https://dashboard.render.com) (access: ask the repository owner) |
 | Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
 | Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
@@ -50,14 +50,14 @@ over MCP. Try it with any MCP client, Claude included.
 | Hive cards for six fictional Basel businesses, signed with Ed25519 | `code/backend/app/hive.py`, `hive_seed.py` |
 | MCP server: discover, get card, check availability, book, cancel, review | `code/backend/app/mcp_server.py` |
 | Traveller agent: an OpenAI or Claude model over MCP, verifies every signature, explains its choice, books only after you approve. You watch it play out as a group chat of named agents, and after the booking it offers next steps | `code/backend/app/agent.py`, `TravellerAgent.tsx`, `GroupChat.tsx` |
-| One page in three chapters: the traveller agent, a general agent for any business, then the business's side, where the hotel sees the booking arrive | `App.tsx`, `TravellerAgent.tsx`, `components/Chapter.tsx` |
-| Owner studio (chapter 3): plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `panels/OwnerPanel.tsx` |
+| One page in two chapters: one agent chat for a room or any business, then the business's side, where the hotel sees the booking arrive | `App.tsx`, `TravellerAgent.tsx`, `components/Chapter.tsx` |
+| Owner studio (chapter 2): plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `panels/OwnerPanel.tsx` |
 | Trust: owner keys pinned in each Hive's registry (`/.well-known/hive.json`); the agent checks every card itself; a changed copy and a stranger-signed copy both fail the live tamper test in the owner studio | `hive.py`, `agent.verify_card`, `panels/OwnerPanel.tsx` |
-| Basel demand map (chapter 3): what agents asked for that nobody offers | `panels/DemandPanel.tsx` |
+| Basel demand map (chapter 2): what agents asked for that nobody offers | `panels/DemandPanel.tsx` |
 | Whose rules: signed rulesets a person picks per search ("Dogs, verified" by a dog owners' club). They only narrow, and every answer names the ruleset and what it changed | `code/backend/app/rulesets.py` |
 | Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `panels/OwnerPanel.tsx` |
 | Three agents agree before you are asked: your agent proposes, a critic always argues for the strongest alternative from the open ranking, and a verifier checks the held booking against the request and the signed card. If they don't all agree, the chat says so and you still decide | `code/backend/app/critic.py`, `second_opinion.py` |
-| Ask the Hive (chapter 2, the general agent): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `panels/AskPanel.tsx` |
+| Any business, in the same chat (chapter 1): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `components/AskParts.tsx`, `lib/route.ts` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
@@ -127,5 +127,5 @@ Taking over the code? The [developer guide](documentation/DEVELOPER.md) shows ho
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,
-[SECURITY.md](SECURITY.md) for what is protected. Layout follows the BaselHack template. The Basel businesses in the seed data are fictional; the five example cards in chapter 2 are real businesses compiled from their public websites and marked unclaimed.
+[SECURITY.md](SECURITY.md) for what is protected. Layout follows the BaselHack template. The Basel businesses in the seed data are fictional; the five example cards are real businesses compiled from their public websites and marked unclaimed.
 MIT licensed, see [license.txt](license.txt).

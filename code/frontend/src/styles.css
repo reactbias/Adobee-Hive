@@ -775,25 +775,91 @@ th.end {
   font-weight: 600;
 }
 
-/* ---------- Traveller agent: the brief on paper, the negotiation on a dark stage ---------- */
+/* ---------- Every chapter: the brief on paper beside one panel of the screen's height ---------- */
 
-.agent {
+.chapter-grid {
   display: grid;
-  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: var(--s7);
   align-items: start;
 }
 @media (max-width: 1000px) {
-  .agent {
+  .chapter-grid {
     grid-template-columns: 1fr;
+    gap: var(--s6);
   }
 }
 .brief {
   display: flex;
   flex-direction: column;
   gap: var(--s5);
+}
+.brief .page-head h1,
+.brief .page-head h2 {
+  font-size: clamp(2.25rem, 3.6vw, 3.25rem);
+}
+
+/* The panel: whatever an agent generates appears here and scrolls inside, so the page keeps its shape. */
+.frame {
   position: sticky;
   top: calc(var(--nav-h) + var(--s5));
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--nav-h) - 2 * var(--s5));
+  height: calc(100svh - var(--nav-h) - 2 * var(--s5));
+  min-height: 520px;
+  max-height: 960px;
+  border-radius: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--lift);
+  overflow: hidden;
+}
+.frame-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+.frame-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s6);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+.frame-body .stage-empty .dim {
+  color: var(--ink-3);
+}
+.frame-part + .frame-part {
+  margin-top: var(--s8);
+  padding-top: var(--s7);
+  border-top: 1px solid var(--line);
+}
+.jumps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+@media (max-width: 1000px) {
+  .frame {
+    position: relative;
+    top: 0;
+    height: calc(100vh - var(--nav-h) - 2 * var(--s4));
+    height: calc(100svh - var(--nav-h) - 2 * var(--s4));
+    min-height: 480px;
+    scroll-margin-top: calc(var(--nav-h) + var(--s4));
+  }
+}
+@media (max-width: 600px) {
+  .frame {
+    border-radius: 18px;
+  }
+  .frame-body {
+    padding: var(--s5) var(--s4);
+  }
 }
 /* On a laptop the whole brief fits beside the chat: a tighter headline, a two-line preview of each example. */
 .brief .page-head {
@@ -879,10 +945,6 @@ th.end {
   justify-content: space-between;
   gap: var(--s3);
   flex-wrap: wrap;
-}
-.composer-bar .hint {
-  font-size: var(--t-xs);
-  color: var(--ink-3);
 }
 .composer-actions {
   display: flex;
@@ -1495,24 +1557,15 @@ button.mic.blocked {
   scroll-margin-top: var(--nav-h);
   min-height: calc(100vh - var(--nav-h));
   min-height: calc(100svh - var(--nav-h));
-  display: flex;
-  flex-direction: column;
-  gap: var(--s6);
-  padding-top: var(--s8);
-  margin-top: var(--s8);
+  padding: var(--s5) 0;
   border-top: 1px solid var(--line);
 }
-.chapter.first {
-  padding-top: 0;
-  margin-top: 0;
+.chapter:first-child {
   border-top: 0;
-  min-height: 0;
 }
-main:has(> .chapter.first) {
-  padding-top: var(--s5);
-}
-.chapter > .section-head {
-  margin-bottom: 0;
+main:has(> .chapter) {
+  padding-top: 0;
+  padding-bottom: var(--s7);
 }
 .chapter .eyebrow .num {
   color: var(--clay);
@@ -1521,10 +1574,10 @@ main:has(> .chapter.first) {
   color: var(--clay);
   margin-right: 2px;
 }
-@media (max-width: 760px) {
+@media (max-width: 1000px) {
   .chapter {
-    padding-top: var(--s7);
-    margin-top: var(--s7);
+    min-height: 0;
+    padding: var(--s6) 0;
   }
 }
 
@@ -1752,32 +1805,12 @@ button.self-start {
   --st-2: #b9af9e;
   --st-3: #9d9381;
   --st-line: rgba(239, 233, 222, 0.08);
-  position: sticky;
-  top: calc(var(--nav-h) + var(--s5));
-  display: flex;
-  flex-direction: column;
-  /* Exactly the screen under the header, so the whole conversation and its Approve stay in view. */
-  height: calc(100vh - var(--nav-h) - 2 * var(--s5));
-  height: calc(100svh - var(--nav-h) - 2 * var(--s5));
-  min-height: 520px;
-  max-height: 960px;
-  border-radius: 22px;
+  border: 0;
   color: var(--st-ink);
   background: radial-gradient(90% 40% at 100% 0%, rgba(162, 79, 44, 0.16), transparent 70%), #13100c;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.04) inset,
     0 40px 80px -40px rgba(23, 20, 15, 0.6);
-  overflow: hidden;
-}
-@media (max-width: 1000px) {
-  .chat-stage {
-    position: relative;
-    top: 0;
-    height: 78vh;
-    height: calc(100svh - var(--nav-h) - 2 * var(--s4));
-    min-height: 480px;
-    scroll-margin-top: calc(var(--nav-h) + var(--s4));
-  }
 }
 .chat-stage .dim {
   color: var(--st-3);
@@ -2212,13 +2245,6 @@ button.self-start {
 
 /* On a phone the roster becomes one swipeable line of faces, so the conversation keeps the screen */
 @media (max-width: 600px) {
-  .chat-stage {
-    height: 82vh;
-    height: calc(100svh - 120px);
-    min-height: 440px;
-    scroll-margin-top: 112px;
-    border-radius: 18px;
-  }
   .roster {
     padding: var(--s4) var(--s4) var(--s3);
     gap: var(--s2);
@@ -2482,4 +2508,37 @@ button.self-start {
     min-height: 44px;
     padding: 0 var(--s3);
   }
+}
+
+/* A business's answer inside the agent chat */
+.chat-stage .ask-card {
+  margin-top: var(--s2);
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--st-line);
+  border-radius: var(--radius-sm);
+  background: rgba(239, 233, 222, 0.03);
+}
+.chat-stage .ask-items li {
+  border-top-color: var(--st-line);
+}
+.chat-stage .ask-items li:first-child {
+  border-top: 0;
+}
+.chat-stage .ask-items h4 {
+  color: var(--st-ink);
+}
+.chat-stage .ask-card .fine,
+.chat-stage .ask-card .dim {
+  color: var(--st-2);
+}
+.chat-stage .left-out {
+  margin: var(--s2) 0 0;
+  padding-left: var(--s4);
+  color: var(--st-2);
+  font-size: var(--t-sm);
+}
+.chat-stage .msg-body .btn.ghost {
+  margin-top: var(--s3);
+  color: var(--st-ink);
+  border-color: var(--st-line);
 }

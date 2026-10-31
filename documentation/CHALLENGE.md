@@ -52,8 +52,8 @@ Hands off Sunday 2026-11-01 at 12:00, pitches at 13:00.
 | The brief asks about | Our answer | Where |
 | --- | --- | --- |
 | Agent-facing storefront | Signed Hive card, served over MCP | `hive.py`, `mcp_server.py` |
-| Discovery and trust | Owner signatures, attestations, open ranking with reasons | `hive.py`, tamper test in chapter 3 |
+| Discovery and trust | Owner signatures, attestations, open ranking with reasons | `hive.py`, tamper test in chapter 2 |
 | The transaction | Agent books end to end, signed receipt, cancel | `agent.py`, chapter 1 |
-| The owner's experience | Edit in plain words, review diff, sign | `owner.py`, owner studio in chapter 3 |
-| Representation and fairness | No paid placement; missed demand shows small players what to offer | demand map in chapter 3 |
+| The owner's experience | Edit in plain words, review diff, sign | `owner.py`, owner studio in chapter 2 |
+| Representation and fairness | No paid placement; missed demand shows small players what to offer | demand map in chapter 2 |
 | The human fallback | The same signed card, readable by people in the owner studio; direct booking stays in the REST API | `POST /api/hive/cards/{card_id}/book` |

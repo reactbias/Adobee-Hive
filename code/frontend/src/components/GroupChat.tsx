@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Booking, Critic, SecondOpinion, Step } from "../api";
+import type { AskResult, Booking, Critic, Handoff, SecondOpinion, Step } from "../api";
+import { AskCard } from "./AskParts";
 import { useI18n } from "../i18n";
 import { delayFor, type Beat } from "../lib/pace";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
@@ -21,7 +22,9 @@ export type Segment =
   | { kind: "consent" }
   | { kind: "receipt"; booking: Booking }
   | { kind: "next" }
-  | { kind: "refused" };
+  | { kind: "refused" }
+  | { kind: "ask"; result: AskResult }
+  | { kind: "handoff"; handoff: Handoff };
 
 interface Msg {
   who: Who;
@@ -165,6 +168,88 @@ export default function GroupChat({
         case "refused":
           if (refused) out.push({ ...agent, beat: "think", body: refused });
           break;
+        // A question about any business: the Hive's cards answer, the critic names what was left out, the verifier
+        // reports the signatures, and your agent sums up. All of it from the one explore_ask answer.
+        case "ask": {
+          const r = seg.result;
+          const critic = { who: "critic" as const, name: t("chat.name.critic"), role: t("chat.role.critic") };
+          out.push({
+            ...agent,
+            to: hive,
+            tool: "explore_ask",
+            beat: "think",
+            body: <p>{t("chat.ask.call", { question: r.question })}</p>,
+          });
+          out.push({
+            who: "hive",
+            name: hive,
+            role: t("chat.role.hive"),
+            beat: "reply",
+            body: <p>{r.replies.length ? t("chat.ask.found", { n: r.replies.length }) : t("ask.empty")}</p>,
+          });
+          for (const reply of r.replies)
+            out.push({
+              who: "business",
+              name: reply.name,
+              role: t("chat.role.card"),
+              beat: "reply",
+              badge: (
+                <span className={`seal-badge ${!reply.signature_valid ? "no" : reply.claimed ? "ok" : "warm"}`}>
+                  {!reply.signature_valid
+                    ? t("trust.invalid")
+                    : reply.claimed
+                      ? t("trust.signed")
+                      : t("trust.unclaimed")}
+                </span>
+              ),
+              body: <AskCard reply={reply} />,
+            });
+          if (r.excluded.length)
+            out.push({
+              ...critic,
+              beat: "think",
+              body: (
+                <>
+                  <p>{t("ask.excluded")}</p>
+                  <ul className="left-out">
+                    {r.excluded.map((e) => (
+                      <li key={e.card_id + e.item}>
+                        {e.business}, {e.item}: {e.why_not.join("; ")}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ),
+            });
+          if (r.replies.length) {
+            const signed = r.replies.filter((x) => x.signature_valid && x.claimed).length;
+            const unclaimed = r.replies.filter((x) => x.signature_valid && !x.claimed).length;
+            out.push({
+              who: "sceptic",
+              name: t("chat.name.sceptic"),
+              role: t("chat.role.verifier"),
+              beat: "think",
+              body: <p>{t("chat.ask.checked", { n: r.replies.length, signed, unclaimed })}</p>,
+            });
+          }
+          if (r.answer) out.push({ ...agent, beat: "say", chars: r.answer.length, body: <p>{r.answer}</p> });
+          break;
+        }
+        case "handoff":
+          out.push({
+            ...agent,
+            beat: "say",
+            chars: 40,
+            body: (
+              <>
+                <p>{t("ask.handoff", { business: seg.handoff.business })}</p>
+                <a className="btn ghost arrow" href={seg.handoff.url} target="_blank" rel="noopener noreferrer">
+                  {t("ask.continue", { action: seg.handoff.action })}
+                </a>
+              </>
+            ),
+          });
+          break;
         case "next":
           if (followUp) out.push({ ...agent, beat: "say", chars: 60, body: followUp });
           break;
@@ -282,7 +367,7 @@ export default function GroupChat({
   for (const m of messages.slice(0, shown)) if (!m.consent) present.set(m.who, { name: m.name, role: m.role });
 
   return (
-    <section className="chat-stage" ref={stage} aria-label={t("agent.stage")}>
+    <section className="chat-stage frame" ref={stage} aria-label={t("agent.stage")}>
       <header className="roster">
         <ul>
           {[...present].map(([who, p]) => (

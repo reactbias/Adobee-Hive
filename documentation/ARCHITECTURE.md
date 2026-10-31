@@ -59,8 +59,8 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | File | Responsibility |
 | --- | --- |
 | `api.ts` | Typed client for the REST API |
-| `App.tsx`, `main.tsx` | The one page: a header with the three chapters, the AI status and the language switch |
-| `pages/TravellerAgent.tsx` | The page itself: the traveller's brief, the approval step, the signed receipt and the next steps (chapter 1), then the general agent (chapter 2) and the business's side (chapter 3) |
+| `App.tsx`, `main.tsx` | The one page: a header with the two chapters, the AI status and the language switch |
+| `pages/TravellerAgent.tsx` | The page itself: the traveller's brief, the approval step, the signed receipt and the next steps, questions about any business in the same chat (chapter 1), then the business's side (chapter 2) |
 | `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
@@ -75,16 +75,15 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 
 ## The page
 
-The app is one page (`App.tsx`, no router) that tells one story in three chapters, each with an anchor the header
-jumps to: `#travel`, the traveller agent; `#ask`, a general agent for any business; `#business`, the business's
+The app is one page (`App.tsx`, no router) that tells one story in two chapters, each with an anchor the header
+jumps to: `#travel`, the agent network (a room or any business, one chat); `#business`, the business's
 side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
 page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `AskPanel.tsx` | 2, general agent | Asks about the example businesses; approves any hand-off |
-| `DemandPanel.tsx` | 3, business | Sees what Basel asked for that nobody offers; simulates a busy week |
-| `OwnerPanel.tsx` | 3, business | Is the owner of the hotel just booked: sees the booking arrive, edits the card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand; runs the tamper test |
+| `DemandPanel.tsx` | 2, business | Sees what Basel asked for that nobody offers; simulates a busy week |
+| `OwnerPanel.tsx` | 2, business | Is the owner of the hotel just booked: sees the booking arrive, edits the card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand; runs the tamper test |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
