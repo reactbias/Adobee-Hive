@@ -1,6 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import App from "./App";
 import { I18nProvider } from "./i18n";
@@ -324,5 +324,110 @@ describe("changing hive", () => {
       </I18nProvider>,
     );
     expect(await screen.findByText(/This build talks to/)).toBeInTheDocument();
+  });
+});
+
+// "Clicking links on the website produces weird links: http://host/?admin#travel". `?admin` decides the view and
+// the page navigates by hash, so the parameter outlived every click and the URL ended up claiming two views.
+// One rule for `?admin` and `?hub=`: the address decides the view, and no address claims both.
+describe("the address and the view agree", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.setItem("adobee-hub", "local");
+    window.history.replaceState(null, "", "/");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockRejectedValue(new Error("offline"));
+  });
+
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  const app = () =>
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+  it("still opens the hub's own panel with ?admin", () => {
+    window.history.replaceState(null, "", "/?admin");
+    app();
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+  });
+
+  it("leaves admin mode, and the address, when an in-app link is followed", async () => {
+    window.history.replaceState(null, "", "/?admin");
+    app();
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+
+    // What a click on the nav's "Agent network" does: the hash changes, the query does not.
+    window.history.replaceState(null, "", "/?admin#travel");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
+    expect(window.location.search).not.toContain("admin");
+    expect(screen.queryByLabelText(en["admin.password"])).toBeNull();
+  });
+
+  it("resolves a pasted hybrid address to one view rather than both", async () => {
+    window.history.replaceState(null, "", "/?admin#travel");
+    app();
+
+    // Admin was asked for, so admin is what renders; the anchor belonged to a page nobody is looking at.
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+    expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+    await waitFor(() => expect(window.location.hash).toBe(""));
+    expect(window.location.search).toContain("admin");
+  });
+
+  it("leaves admin mode when the brand is clicked, like any other link home", async () => {
+    window.history.replaceState(null, "", "/?admin");
+    app();
+    window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
+
+    await userEvent.click(screen.getByRole("link", { name: "Adobee Hive" }));
+
+    expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
+    expect(window.location.search).not.toContain("admin");
+  });
+
+  it("keeps the other parameters, spelled the way they were written", async () => {
+    window.history.replaceState(null, "", "/?demo&admin");
+    app();
+
+    window.history.replaceState(null, "", "/?demo&admin#business");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    await waitFor(() => expect(window.location.search).toBe("?demo"));
+    expect(window.location.search).not.toBe("?demo=");
+  });
+
+  it("goes back to the finder, not to a hybrid, when the hub is dropped", async () => {
+    sessionStorage.setItem("adobee-hub", "a");
+    window.history.replaceState(null, "", "/?hub=a&demo#travel");
+    app();
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(window.location.search).toBe("?demo");
+    expect(window.location.hash).toBe("#travel");
+  });
+
+  it("follows the back button instead of leaving the view behind", async () => {
+    window.history.replaceState(null, "", "/?admin");
+    app();
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+
+    window.history.replaceState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
   });
 });

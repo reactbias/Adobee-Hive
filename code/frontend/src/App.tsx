@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, chosenHub, setChosenHub, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
@@ -7,15 +7,19 @@ import InstanceFinder from "./panels/InstanceFinder";
 import B6Bee from "./components/B6Bee";
 import { CHAPTERS } from "./components/Chapter";
 import type { Key } from "./i18n/en";
+import { hubIn, isHybrid, viewIn, without } from "./lib/view";
 
-const search = () => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+const here = () => new URL(typeof window === "undefined" ? "http://localhost/" : window.location.href);
 /** `?admin` opens the hub's own panel instead of the app. Nothing on the public page links to it. */
-const adminMode = () => search().has("admin");
+const adminMode = () => viewIn(here().search) === "admin";
 /**
  * `?hub=<id>` picks a Hive and skips the instance finder, so the pitch runbook can open straight into a booking
  * run. `?hub` on its own means the same thing for whatever this backend serves.
  */
-const hubFromUrl = () => (search().has("hub") ? search().get("hub") || "local" : "");
+const hubFromUrl = () => hubIn(here().search);
+
+/** Rewrite the address without reloading. Used only to make it agree with what is on screen. */
+const rewrite = (to: string) => history.replaceState(null, "", to);
 
 /**
  * Forget the hub and go back to the finder with nothing selected. `?hub=` has to come out of the address too:
@@ -24,14 +28,11 @@ const hubFromUrl = () => (search().has("hub") ? search().get("hub") || "local" :
  */
 function forgetHub() {
   setChosenHub("");
-  const params = search();
-  params.delete("hub");
-  const query = params.toString();
-  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+  rewrite(without(here(), "hub"));
 }
 
 // One page in three chapters. The header names them, says whether the AI is live, and switches the language.
-function Header({ onChangeHub }: { onChangeHub?: () => void }) {
+function Header({ onChangeHub, onLeaveAdmin }: { onChangeHub?: () => void; onLeaveAdmin?: () => void }) {
   const { t, locale, setLocale } = useI18n();
   const [health, setHealth] = useState<Health | null | undefined>(undefined);
   useEffect(() => {
@@ -62,7 +63,9 @@ function Header({ onChangeHub }: { onChangeHub?: () => void }) {
             e.preventDefault();
             const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
             window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
-            history.replaceState(null, "", window.location.pathname + window.location.search);
+            // The brand is a link home, so from the hub's own panel it leaves the panel like any other link.
+            if (onLeaveAdmin) onLeaveAdmin();
+            else rewrite(window.location.pathname + window.location.search);
           }}
         >
           <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
@@ -105,14 +108,44 @@ function Header({ onChangeHub }: { onChangeHub?: () => void }) {
 export default function App() {
   // Which Hive the app runs against. The finder sets it; `?hub=` in the address skips the finder entirely.
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
-  const [admin] = useState(adminMode);
+  // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
+  const [admin, setAdmin] = useState(adminMode);
+
+  /** Leave the hub's own panel and show the app, taking `?admin` out of the address with it. */
+  const leaveAdmin = useCallback((keepHash: boolean) => {
+    rewrite(without(here(), "admin", keepHash));
+    setAdmin(false);
+  }, []);
+
+  useEffect(() => {
+    // The address is the one source of truth for the view, so back and forward change what is on screen.
+    const sync = () => {
+      setAdmin(adminMode());
+      setHub((chosen) => chosen || hubFromUrl() || chosenHub());
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!admin) return;
+    // A hash is an anchor on the app's one page and the panel has none of its own, so any hash while the panel is
+    // open is in-app navigation: `#travel` means "show me the traveller app", and now it does.
+    const navigated = () => window.location.hash.length > 1 && leaveAdmin(true);
+    window.addEventListener("hashchange", navigated);
+    // A pasted `?admin#travel` claims two views at once. It resolves to the panel, with the stray anchor dropped,
+    // rather than rendering a hybrid nobody asked for.
+    if (isHybrid(window.location.search, window.location.hash))
+      rewrite(window.location.pathname + window.location.search);
+    return () => window.removeEventListener("hashchange", navigated);
+  }, [admin, leaveAdmin]);
 
   if (admin)
     return (
       <>
-        <Header />
+        <Header onLeaveAdmin={() => leaveAdmin(false)} />
         <main>
-          <AdminPanel onLeave={() => (window.location.search = "")} />
+          <AdminPanel onLeave={() => leaveAdmin(false)} />
         </main>
       </>
     );
