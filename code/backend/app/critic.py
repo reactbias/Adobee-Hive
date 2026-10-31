@@ -1,6 +1,6 @@
 """The critic: a third agent that always argues for the strongest alternative to the pick.
 
-Tobias's rule for the traveller chat: three agents talk it through and bring the human one question only when all
+The rule for the traveller chat: three agents talk it through and bring the human one question only when all
 three think it is good. The booking agent proposes, the verifier (second_opinion.py) checks the pick against the
 request and the signed card, and the critic challenges the choice itself: why this hotel and not the next one?
 

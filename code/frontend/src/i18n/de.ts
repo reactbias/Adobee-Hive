@@ -103,7 +103,7 @@ const de: Record<Key, string> = {
   "agent.newTrip": "Neue Reise",
   "agent.try": "Beispiele",
   "agent.example.1":
-    "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, 13.11.2026 bis 15.11.2026. Mein Name ist Tobi Muster.",
+    "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, 13.11.2026 bis 15.11.2026. Mein Name ist Mara Keller.",
   "agent.example.2":
     "Zu zweit zur Art Basel, nahe Messe Basel, mit Parkplatz, 3 Nächte ab 14.06.2027. Nur vergleichen, nicht buchen.",
   "agent.example.3": "Günstigstes Bett in Basel für eine Nacht, 20.11.2026 bis 21.11.2026, mein Hund kommt mit.",

@@ -36,7 +36,7 @@ weekend and book it."*
 | What | URL | Deploys | Who can change it |
 | --- | --- | --- | --- |
 | Frontend | https://reactbias.github.io/Adobee-Hive/ | GitHub Actions on push to `main` | Anyone with write access to the repo |
-| Backend | https://adobee-hive.onrender.com (`/api/health`, `/docs`, `/mcp/`) | Render auto-deploy on push to `main` | Ask Tobias ([Render dashboard](https://dashboard.render.com)) |
+| Backend | https://adobee-hive.onrender.com (`/api/health`, `/docs`, `/mcp/`) | Render auto-deploy on push to `main` | Ask the repository owner ([Render dashboard](https://dashboard.render.com)) |
 | CI and deploy runs | https://github.com/reactbias/Adobee-Hive/actions | | Repo write access |
 
 Settings that point the parts at each other (names only; values that are secret live in the dashboards, never here):

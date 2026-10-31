@@ -16,7 +16,7 @@ const HELD = {
     unit_id: "river",
     check_in: "2026-11-13",
     check_out: "2026-11-15",
-    guest_name: "Tobi Muster",
+    guest_name: "Mara Keller",
   },
 };
 
@@ -223,7 +223,7 @@ describe("traveller agent", () => {
 
     const roster = screen.getByRole("banner");
     for (const name of [
-      "Tobi",
+      "Mara",
       en["chat.name.agent"],
       en["chat.name.hive"],
       "Hotel Rheinblick",

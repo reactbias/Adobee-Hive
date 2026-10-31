@@ -105,7 +105,7 @@ const en = {
   "agent.newTrip": "New trip",
   "agent.try": "Try",
   "agent.example.1":
-    "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15. My name is Tobi Muster.",
+    "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15. My name is Mara Keller.",
   "agent.example.2":
     "Two of us for Art Basel week, close to Messe Basel, parking, 3 nights from 2027-06-14. Just compare, don't book.",
   "agent.example.3": "Cheapest bed in Basel for one night, 2026-11-20 to 2026-11-21, I bring my dog.",
