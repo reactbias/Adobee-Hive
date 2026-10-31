@@ -1912,3 +1912,50 @@ button.self-start {
 .broken li + li {
   margin-top: 2px;
 }
+
+/* ---------- Ask the Hive: the mood is a visible setting the person picks ---------- */
+
+.moods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.moods legend {
+  width: 100%;
+  margin-bottom: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.moods button {
+  min-height: 36px;
+  padding: 0 var(--s4);
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+}
+.moods button.on {
+  border-color: var(--clay);
+  background: var(--clay-tint);
+  color: var(--clay-dark);
+}
+.ask-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ask-items li {
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--line);
+}
+.ask-items h4 {
+  margin: 0 0 var(--s1);
+  font-size: var(--t-md);
+}
+.ask-items p {
+  margin: 0 0 var(--s1);
+}
