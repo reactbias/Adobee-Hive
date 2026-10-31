@@ -148,6 +148,8 @@ class HiveConnections:
             record["source"] = self.last_source
         if self.guarded:
             output = self._guard(name, output, record)
+        elif name == "hive_get_card":
+            record["signature"] = "unchecked"  # the rules-off agent takes the source's word
         steps.append(record | {"ms": round((time.perf_counter() - started) * 1000)})
         return output
 
