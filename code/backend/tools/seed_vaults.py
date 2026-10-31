@@ -4,10 +4,15 @@ Not a seeder that reaches into the database. It builds a Card from each folder a
 `POST /api/hub/register` like any applicant, so **seeding is itself a test of signup**: if
 admission is broken the hubs come up empty and we find out immediately rather than on stage.
 
-Each vault is a folder of markdown. `about.md` gives the name and description, `contact.md` the
-channels, a "What I do" / "What I need" heading anywhere in the folder gives the card its `offers`
-and `needs` (which is what discovery indexes), and every file becomes a row in `structure` — paths
-and digests, never contents.
+A vault is a folder of whatever its owner keeps: markdown, a CV, a price list, photos of the rooms.
+`about.md` gives the name and description, `contact.md` the channels, a "What I do" / "What I need"
+heading anywhere in the folder gives the card its `offers` and `needs` (which is what discovery
+indexes), and **every** file — not only the markdown — becomes a row in `structure`: path, size,
+media type, digest.
+
+That split is the product. The Card says a 182 KB `cv.pdf` exists and what it hashes to; only
+markdown is ever *read*, and a reader who wants the file has to ask the owner. `visibility.md` sets
+how much of each path the Card admits to, from `public` down to `hidden` (see VISIBILITIES).
 
     python tools/seed_vaults.py                        # against http://localhost:8000
     python tools/seed_vaults.py --hub http://localhost:8001 --only lena-hofmann grid-ops
@@ -20,6 +25,7 @@ import argparse
 import base64
 import hashlib
 import json
+import mimetypes
 import re
 import sys
 import urllib.error
@@ -244,6 +250,106 @@ def _entry(text: str) -> dict:
     return entry
 
 
+#: What `structure` admits to for each of the five visibility values, from documentation/cards/README.md.
+#: `shared` and `hidden` are **absent** from the Card rather than listed with a flag: listing a folder
+#: in order to say it is secret still leaks that it exists.
+VISIBILITIES = ("public", "public-summary", "shared", "private", "hidden")
+#: Listed with path, size, media type and digest.
+OPEN_VISIBILITIES = ("public", "public-summary")
+#: Listed as a folder and a file count, with no digest and no names: how much, never what.
+COUNT_ONLY = "private"
+#: Never listed at all.
+UNLISTED = ("shared", "hidden")
+#: What a path gets when `visibility.md` says nothing about it. Unchanged from when every vault was
+#: markdown, so a folder that never thought about visibility keeps the Card it had.
+DEFAULT_VISIBILITY = "public-summary"
+
+
+def read_visibility(vault: Path) -> dict[str, str]:
+    """Parse visibility.md into rules: `- fotos/: public-summary`, one path or folder per line.
+
+    A rule that ends in "/" covers everything under that folder. The longest rule wins, so a folder
+    can be private with one file inside it published.
+    """
+    rules: dict[str, str] = {}
+    path = vault / "visibility.md"
+    if not path.exists():
+        return rules
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip().lstrip("-").strip()
+        if ":" not in line or line.startswith("#"):
+            continue
+        target, _, value = line.partition(":")
+        value = value.strip().lower()
+        if value in VISIBILITIES:
+            rules[target.strip().lstrip("/")] = value
+    return rules
+
+
+def visibility_of(relative: str, rules: dict[str, str]) -> tuple[str, str]:
+    """The visibility of one path and the rule that decided it, so a count can be grouped by rule."""
+    best = ("", DEFAULT_VISIBILITY)
+    for target, value in rules.items():
+        covers = relative == target or (target.endswith("/") and relative.startswith(target))
+        if covers and len(target) >= len(best[0]):
+            best = (target, value)
+    return best[1], best[0] or relative
+
+
+def read_structure(vault: Path) -> list[dict]:
+    """The shape of the folder: every file, with what its visibility lets the Card admit to.
+
+    Every file, because a vault with a CV in it must say so — listing only markdown is what made
+    "point at a folder and it becomes your presence" untrue. Never any contents: a row is a path, a
+    size, a media type and a digest, and the digest is the proof that this is the shape and not the
+    thing.
+    """
+    rows: list[dict] = []
+    counted: dict[str, int] = {}
+    for file in sorted(f for f in vault.rglob("*") if f.is_file()):
+        relative = file.relative_to(vault).as_posix()
+        visibility, rule = visibility_of(relative, read_visibility(vault))
+        if visibility in UNLISTED:
+            continue
+        if visibility == COUNT_ONLY:
+            counted[rule if rule.endswith("/") else relative] = counted.get(rule, 0) + 1
+            continue
+        body = file.read_bytes()
+        rows.append(
+            {
+                "path": relative,
+                "bytes": len(body),
+                "media_type": media_type(file),
+                "visibility": visibility,
+                "digest": "sha256:" + hashlib.sha256(body).hexdigest()[:12],
+            }
+        )
+    rows += [{"path": path, "files": count, "visibility": COUNT_ONLY} for path, count in sorted(counted.items())]
+    return rows
+
+
+def media_type(file: Path) -> str:
+    """What a reader would need to open the file, guessed from the name. Markdown is not in every table."""
+    if file.suffix == ".md":
+        return "text/markdown"
+    guessed, _ = mimetypes.guess_type(file.name)
+    return guessed or "application/octet-stream"
+
+
+def readable(vault: Path) -> list[Path]:
+    """The markdown the Card may quote from: published paths only, sorted.
+
+    Contents are read only where the Card already admits the file exists. A draft in a `shared`
+    folder becoming a public offer would be the privacy model leaking through the index.
+    """
+    rules = read_visibility(vault)
+    return [
+        path
+        for path in sorted(vault.rglob("*.md"))
+        if visibility_of(path.relative_to(vault).as_posix(), rules)[0] in OPEN_VISIBILITIES
+    ]
+
+
 def read_offers_needs(vault: Path) -> tuple[list[dict], list[dict]]:
     """Parse what the folder says its owner does and wants: the card's `offers` and `needs`.
 
@@ -253,7 +359,7 @@ def read_offers_needs(vault: Path) -> tuple[list[dict], list[dict]]:
     """
     offers: list[dict] = []
     needs: list[dict] = []
-    for path in sorted(vault.rglob("*.md")):
+    for path in readable(vault):
         bucket: list[dict] | None = None
         for raw in path.read_text(encoding="utf-8").splitlines():
             line = raw.strip()
@@ -309,30 +415,18 @@ def read_units(vault: Path) -> list[dict]:
 
 def read_features(vault: Path) -> list[str]:
     """Features a search can match on, lifted from the prose the owner already wrote."""
-    text = " ".join(f.read_text(encoding="utf-8") for f in vault.rglob("*.md")).lower()
+    text = " ".join(f.read_text(encoding="utf-8") for f in readable(vault)).lower()
     return [w for w in FEATURE_WORDS if w in text]
 
 
 def build_card(vault: Path) -> dict:
-    """Turn a folder of markdown into a Card: the shape of it, never the contents."""
+    """Turn a folder into a Card: the shape of every file in it, and the contents of none."""
     about = (vault / "about.md").read_text(encoding="utf-8") if (vault / "about.md").exists() else ""
     lines = [ln.strip() for ln in about.splitlines() if ln.strip()]
     name = lines[0].lstrip("# ").strip() if lines else vault.name
     description = next((ln for ln in lines[1:] if not ln.startswith("#")), "")[:300]
     contact, contact_sharing = read_contact(vault)
     offers, needs = read_offers_needs(vault)
-
-    structure = []
-    for file in sorted(vault.rglob("*.md")):
-        body = file.read_bytes()
-        structure.append(
-            {
-                "path": file.relative_to(vault).as_posix(),
-                "bytes": len(body),
-                "visibility": "public-summary",
-                "digest": "sha256:" + hashlib.sha256(body).hexdigest()[:12],
-            }
-        )
 
     card = {
         "id": vault.name,
@@ -348,7 +442,7 @@ def build_card(vault: Path) -> dict:
         # The index: a hub searches these before it looks at anything else about the entity.
         "offers": offers,
         "needs": needs,
-        "structure": structure,
+        "structure": read_structure(vault),
     }
     units = read_units(vault)
     if units:

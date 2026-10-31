@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import importlib.util
 import io
+import json
 import re
 import struct
 import sys
@@ -202,6 +203,74 @@ def test_the_answer_key_covers_entities_that_exist_and_is_not_a_softball():
         assert terms, f"{query!r} has nothing a hub would search for"
         shared = sorted(t for t in terms if t in text)
         assert not shared, f"{query!r} already finds {slug} literally through {shared}"
+
+
+def test_structure_lists_every_file_in_the_folder_and_not_only_the_markdown(tmp_path):
+    """A vault with a CV in it must say so. Listing only markdown made the other files invisible.
+
+    "Point at a folder and it becomes your presence" is not true if the Card quietly drops the
+    four files that are not markdown, which is exactly what it used to do.
+    """
+    seed = _seed_vaults()
+    vault = tmp_path / "freia-ott"
+    (vault / "bilder").mkdir(parents=True)
+    (vault / "about.md").write_text("# Freia Ott\n\nShe fixes looms.\n", encoding="utf-8")
+    (vault / "work.md").write_text("# What I do\n\n- Loom repair — CHF 240 an hour.\n", encoding="utf-8")
+    (vault / "cv.pdf").write_bytes(b"%PDF-1.4 pretend\n%%EOF\n")
+    (vault / "rates-2026.csv").write_text("service,chf\nloom repair,240\n", encoding="utf-8")
+    (vault / "bilder" / "webstuhl.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 40)
+
+    card = seed.build_card(vault)
+    listed = {row["path"] for row in card["structure"]}
+    assert listed == {"about.md", "work.md", "cv.pdf", "rates-2026.csv", "bilder/webstuhl.png"}
+    by_path = {row["path"]: row for row in card["structure"]}
+    assert by_path["cv.pdf"]["bytes"] == 23
+    assert by_path["cv.pdf"]["digest"].startswith("sha256:")
+    assert by_path["cv.pdf"]["media_type"] == "application/pdf"
+    assert by_path["bilder/webstuhl.png"]["media_type"] == "image/png"
+
+    # The shape of the folder, never its contents: only the two markdown files were read, and the
+    # bytes of the others appear nowhere in the Card.
+    assert [o["title"] for o in card["offers"]] == ["Loom repair"]
+    assert "pretend" not in json.dumps(card)
+    assert "loom repair,240" not in json.dumps(card)
+
+
+def test_the_five_visibility_values_do_what_the_card_spec_says(tmp_path):
+    """`private` loses its digest, `shared` and `hidden` lose their row entirely.
+
+    documentation/cards/README.md defines five values. Listing a folder in order to say it is
+    secret leaks its existence, so two of the five are absent from `structure` rather than flagged.
+    """
+    seed = _seed_vaults()
+    vault = tmp_path / "pension-test"
+    for folder in ("fotos", "gaeste", "finanzen", "entwuerfe"):
+        (vault / folder).mkdir(parents=True)
+    (vault / "about.md").write_text("# Pension Test\n\nFour rooms.\n", encoding="utf-8")
+    (vault / "menu.pdf").write_bytes(b"%PDF menu\n")
+    (vault / "fotos" / "zimmer.png").write_bytes(b"\x89PNG\r\n\x1a\nfoto")
+    (vault / "gaeste" / "2026.csv").write_text("name,nights\n", encoding="utf-8")
+    (vault / "gaeste" / "2025.csv").write_text("name,nights\n", encoding="utf-8")
+    (vault / "finanzen" / "steuern.csv").write_text("chf\n", encoding="utf-8")
+    (vault / "entwuerfe" / "idee.md").write_text("# Idee\n\nSpäter.\n", encoding="utf-8")
+    (vault / "visibility.md").write_text(
+        "# Visibility\n\n- menu.pdf: public\n- fotos/: public-summary\n"
+        "- gaeste/: private\n- finanzen/: hidden\n- entwuerfe/: shared\n",
+        encoding="utf-8",
+    )
+
+    rows = {row["path"]: row for row in seed.build_card(vault)["structure"]}
+    assert rows["menu.pdf"]["visibility"] == "public"
+    assert rows["menu.pdf"]["digest"]
+    assert rows["fotos/zimmer.png"]["visibility"] == "public-summary"
+    # private: the folder and how much is in it, and nothing that identifies a guest.
+    assert rows["gaeste/"] == {"path": "gaeste/", "files": 2, "visibility": "private"}
+    assert "digest" not in rows["gaeste/"] and "bytes" not in rows["gaeste/"]
+    assert not [p for p in rows if p.startswith("gaeste/2")], "a private file must not be named"
+    # hidden and shared are absent, not flagged: a row saying "secret" is still a row.
+    assert not [p for p in rows if p.startswith(("finanzen", "entwuerfe"))]
+    # A shared folder's markdown is still not an offer: it was never published.
+    assert [row["path"] for row in seed.build_card(vault)["structure"] if row["path"].endswith("idee.md")] == []
 
 
 def test_every_file_in_the_corpus_is_a_real_file_of_the_type_its_name_claims():
