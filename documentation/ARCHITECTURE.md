@@ -158,10 +158,10 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 
 ## Stack and cost
 
-Python 3.12, FastAPI, DuckDB 2, MCP Python SDK 2, Anthropic SDK; React 18, Vite, TypeScript.
-The booking agent uses `claude-opus-5-5` at low effort with cached tool definitions; owner edits use
-`claude-haiku-5-5`. Override with `CLAUDE_MODEL` and `CLAUDE_FAST_MODEL`; `AGENT_MAX_TURNS` caps each run. This
-stretches the USD 75 demo key. Without a key everything still runs offline.
+Python 3.12, FastAPI, DuckDB, MCP Python SDK, OpenAI SDK (Anthropic SDK as the alternative); React 18, Vite,
+TypeScript. Agents use `gpt-5-mini` (`OPENAI_MODEL`); `AGENT_MAX_TURNS` caps each run and `AGENT_TIMEOUT_S` hands a
+slow run to the offline planner. Hosting is free: GitHub Pages for the app, Render and Render Postgres for the
+backend. Without a key everything still runs offline.
 
 ## Known limits
 
