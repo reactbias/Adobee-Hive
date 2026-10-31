@@ -71,8 +71,8 @@ the folders in [`testdata/vaults/`](../testdata/README.md) inside this process w
 DuckDB, so no key is exchanged and nothing is encrypted. `FOLDER_LINK=claudeconnect` is accepted and falls back to
 local with the reason in `GET /api/health`, because the adapter for the real library is not built yet.
 
-**Nothing in the app drives it.** There is no `/api/folders/*` surface. A link is made by `POST /api/hub/connect`,
-which does the handshake itself and returns the manifest it opened; a grant can only be given from Python. The
+**Nothing drives it yet.** There is no `/api/folders/*` surface, and no caller inside the hub: a link and a grant
+can only be made from Python. The booking path starts requiring a link in the change after this one, and the
 endpoints a panel would need are proposed in issue #116.
 
 ## Running a hub
