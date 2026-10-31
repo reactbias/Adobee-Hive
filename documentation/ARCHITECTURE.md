@@ -34,6 +34,7 @@ flowchart LR
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
 | `rulesets.py` | Signed rulesets a person chooses per request (e.g. "Dogs, verified" by a fictional dog owners' club). They can only narrow a search, never boost; the answer names the ruleset, its author and what it changed. Authors' keys are in `/.well-known/hive.json` under `ruleset_keys` |
 | `waiting.py` | Standing requests: an agent waits anonymously when nothing fits; the owner sees counts and budgets per missing change; a published card that now fits sends each waiting agent an offer signed with the business's key |
+| `replies.py` | What the backend writes itself (offline planner, rules-off demo, approval, rule-check second opinion) in EN, DE, FR and IT; the language comes from the app's `Accept-Language` header, and model runs are told to answer in it |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
@@ -127,6 +128,9 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/owner/{card_id}` | Owner studio data: bookings, missed demand, waiting requests; guest names as initials without the token | `X-Owner-Token` for names |
 | `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |
 | `POST /api/owner/{card_id}/publish` | Sign and publish the approved card as a new version; waiting agents get signed offers | `X-Owner-Token` |
+
+Every request carries the app's language as `Accept-Language`; `/api/agent`, `/api/agent/approve` and the
+second opinion answer in it.
 
 Rulesets, standing requests and "what was promised" are agent features, so they are MCP tools only (see above).
 

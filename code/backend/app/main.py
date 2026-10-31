@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, rulesets, simulate, waiting
+from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, replies, rulesets, simulate, waiting
 from .domains import explore
 
 logging.basicConfig(level=logging.INFO)
@@ -226,17 +226,18 @@ async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
-        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules)
+        locale = replies.locale_from(request.headers.get("accept-language", ""))
+        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules, locale)
     except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
         raise HTTPException(502, "The agent could not finish this request. Try again.") from err
 
 
 @app.post("/api/agent/approve")
-async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
+async def approve_booking(body: ApproveRequest, request: Request) -> dict[str, Any]:
     """The human's yes: the agent sends the booking it held back."""
     try:
-        return await agent.approve(body.pending)
+        return await agent.approve(body.pending, replies.locale_from(request.headers.get("accept-language", "")))
     except (ValueError, KeyError) as err:
         raise HTTPException(400, str(err)) from err
 

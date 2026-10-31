@@ -16,6 +16,7 @@ from typing import Any
 import openai
 
 from . import config
+from .replies import language_line, say
 
 log = logging.getLogger(__name__)
 
@@ -41,27 +42,33 @@ def _card_from(steps: list[dict[str, Any]], card_id: str) -> dict[str, Any] | No
     return None
 
 
-def rule_check(request: dict[str, Any], booking: dict[str, Any], card: dict[str, Any] | None) -> dict[str, str]:
+def rule_check(
+    request: dict[str, Any], booking: dict[str, Any], card: dict[str, Any] | None, locale: str = "en"
+) -> dict[str, str]:
     """Check the held booking against the parsed request with plain rules: features, budget, signature."""
     if card is None:
-        return {"verdict": "concern", "note": "The booking agent never read this card, so nothing was verified."}
+        return {"verdict": "concern", "note": say(locale, "opinion.unread")}
     if not card.get("trust", {}).get("signature_valid"):
-        return {"verdict": "concern", "note": f"{card['name']}'s signature did not verify."}
+        return {"verdict": "concern", "note": say(locale, "opinion.signature", name=card["name"])}
     missing = sorted(set(request["features"]) - {f.lower() for f in card.get("features", [])})
     if missing:
-        return {"verdict": "concern", "note": f"{card['name']} does not list: {', '.join(missing)}."}
+        return {
+            "verdict": "concern",
+            "note": say(locale, "opinion.missing", name=card["name"], missing=", ".join(missing)),
+        }
     unit = next((u for u in card.get("units", []) if u["id"] == booking.get("unit_id")), None)
     budget = request.get("max_price_chf")
     if unit and budget and unit["price_chf"] > budget:
-        return {"verdict": "concern", "note": f"CHF {unit['price_chf']} a night is above the CHF {budget:g} budget."}
-    return {"verdict": "agree", "note": "Every requested feature is on the signed card and the price fits."}
+        note = say(locale, "opinion.budget", price=unit["price_chf"], budget=f"{budget:g}")
+        return {"verdict": "concern", "note": note}
+    return {"verdict": "agree", "note": say(locale, "opinion.agree")}
 
 
-async def _ask_openai(text: str, booking: dict[str, Any], card: dict[str, Any]) -> dict[str, str]:
+async def _ask_openai(text: str, booking: dict[str, Any], card: dict[str, Any], locale: str) -> dict[str, str]:
     client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
     response = await client.responses.create(
         model=config.OPENAI_MODEL,
-        instructions=INSTRUCTIONS,
+        instructions=INSTRUCTIONS + language_line(locale),
         input=f"<request>{text}</request>\n<card>{json.dumps(card)}</card>\n<booking>{json.dumps(booking)}</booking>",
         text={"format": {"type": "json_schema", "name": "second_opinion", "schema": SCHEMA, "strict": True}},
         max_output_tokens=2000,
@@ -73,17 +80,22 @@ async def _ask_openai(text: str, booking: dict[str, Any], card: dict[str, Any]) 
     return {"verdict": result["verdict"], "note": str(result.get("note", ""))[:300]}
 
 
-async def review(text: str, request: dict[str, Any], booking: dict[str, Any], steps: list[dict[str, Any]]) -> dict:
+async def review(
+    text: str, request: dict[str, Any], booking: dict[str, Any], steps: list[dict[str, Any]], locale: str = "en"
+) -> dict:
     """Review a held booking. Returns verdict, note, who answered (vendor and model) and the round-trip time."""
     started = time.perf_counter()
     card = _card_from(steps, booking.get("card_id", ""))
     opinion: dict[str, Any] | None = None
     if config.OPENAI_API_KEY and card is not None:
         try:
-            opinion = await _ask_openai(text, booking, card) | {"by": f"OpenAI {config.OPENAI_MODEL}"}
+            opinion = await _ask_openai(text, booking, card, locale) | {"by": f"OpenAI {config.OPENAI_MODEL}"}
         except (openai.OpenAIError, ValueError):  # outage, quota, unknown model, malformed answer
             log.exception("OpenAI second opinion unavailable, using the rule check")
-            opinion = rule_check(request, booking, card) | {"by": "Rule check", "fallback": "OpenAI unavailable"}
+            opinion = rule_check(request, booking, card, locale) | {
+                "by": "Rule check",
+                "fallback": "OpenAI unavailable",
+            }
     if opinion is None:
-        opinion = rule_check(request, booking, card) | {"by": "Rule check"}
+        opinion = rule_check(request, booking, card, locale) | {"by": "Rule check"}
     return opinion | {"ms": round((time.perf_counter() - started) * 1000)}
