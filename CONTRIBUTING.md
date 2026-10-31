@@ -92,6 +92,18 @@ The web app speaks English, German, French and Italian. No user-facing text goes
 Formal register (Sie, vous, Lei), Swiss spelling (ss, not ß), CHF. Business data from a card (names, features,
 policies) is the owner's text and is not translated. Voice and names of the features: [BRAND.md](documentation/BRAND.md).
 
+## Tests first
+
+Every change starts with a test that fails without it: a bug gets a test that reproduces it, a feature gets a test
+that describes it, then the code that makes them pass. Commit the test with the change, in the same working step.
+
+- Backend: `code/backend/tests/`, pytest. Test through the API (`client`) or MCP (`Client(server)`) where a
+  traveller or an agent would; call the module directly for pure logic. Model calls are faked (see the OpenAI loop
+  test), so the suite runs with no key and no network.
+- Keep the promises tested: signatures, one-time approvals, consent, no free text in logs, the offline fallback.
+  A PR that weakens one of them needs a test that shows the new behaviour, and a line in `SECURITY.md`.
+- Never skip, loosen or delete a test to get CI green. Fix the code, or explain in the PR why the test was wrong.
+
 ## Checks to run before you push
 
 ```bash
