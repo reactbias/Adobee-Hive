@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "What a HANDSHAKED PEER sees — GET /api/manifest/hotel-krafft@example.com.",
+    "Compare with hotel-krafft.card.json, the public Card: the transcripts folder",
+    "appears HERE and nowhere in the Card. That is the whole point of visibility:",
+    "'shared'. The filtering is done by ClaudeConnect's existing authz read check",
+    "in server/routes/manifest.py — no new access-control code is required.",
+    "Contents arrive as ciphertext; only a peer holding a wrapped master key decrypts."
+  ],
+  "user": "hotel-krafft@example.com",
+  "requested_by": "traveller@example.com",
+  "files": [
+    { "path": "house/breakfast.md",                          "visibility": "public",         "sha256": "44de...", "size": 1204, "encrypted": false },
+    { "path": "rooms/012-rhine-quiet.md",                     "visibility": "public-summary", "sha256": "9f2a...", "size": 2310, "encrypted": true  },
+    { "path": "rates/2027-spring.md",                         "visibility": "public-summary", "sha256": "1c88...", "size": 1876, "encrypted": true  },
+
+    { "path": "claudeconnect/transcripts/tx-2026-09-02-anna-weber.md",  "visibility": "shared", "sha256": "c41b...", "size": 4190, "encrypted": true },
+    { "path": "claudeconnect/transcripts/tx-2026-08-18-verband.md",     "visibility": "shared", "sha256": "77a0...", "size": 3025, "encrypted": true },
+
+    { "path": "claudeconnect/with-traveller@example.com/sess-0001.md",  "visibility": "bilateral", "sha256": "ee01...", "size": 880, "encrypted": true }
+  ],
+  "withheld": {
+    "note": "Present in the vault, excluded from this manifest by authz. The requester is not told what these are, only that the manifest is filtered.",
+    "count": 252
+  }
+}
