@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n";
 
 // Team B6 easter egg: the whiteboard bee crosses the bottom of the screen and drops six little 6s.
@@ -8,7 +8,8 @@ const IDLE_MS = 60000;
 
 type Six = { id: number; x: number; y: number };
 
-export default function B6Bee() {
+/** The page's footer, with the bee asleep at its end. `children` sit between the team line and the bee. */
+export default function B6Bee({ children }: { children?: ReactNode }) {
   const { t } = useI18n();
   const [flying, setFlying] = useState(false);
   const [sixes, setSixes] = useState<Six[]>([]);
@@ -62,7 +63,8 @@ export default function B6Bee() {
   return (
     <>
       <footer className="footer">
-        <span>{t("footer.line")}</span>
+        <span className="footer-line">{t("footer.line")}</span>
+        {children && <span className="footer-hive">{children}</span>}
         <button className="b6-perch" onClick={fly} aria-label={t("footer.wake")} title="6">
           <img src={`${import.meta.env.BASE_URL}brand/mascot.svg`} alt="" className={flying ? "away" : ""} />
         </button>

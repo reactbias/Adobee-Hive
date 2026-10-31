@@ -65,10 +65,11 @@ describe("requests waiting on the owner's yes", () => {
     expect(screen.queryByRole("button", { name: en["requests.accept"] })).not.toBeInTheDocument();
   });
 
-  it("says nobody is waiting rather than showing an empty list", async () => {
-    vi.spyOn(api, "connections").mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [] });
+  it("draws nothing while nobody is waiting, so the owner's page carries no empty headings", async () => {
+    const read = vi.spyOn(api, "connections").mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [] });
     draw();
-    expect(await screen.findByText(en["requests.empty"])).toBeInTheDocument();
+    await vi.waitFor(() => expect(read).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { name: en["requests.title"] })).not.toBeInTheDocument();
   });
 
   it("draws nothing when the hub cannot say", async () => {
