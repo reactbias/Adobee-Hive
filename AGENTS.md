@@ -9,14 +9,14 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 - Keep the `Co-Authored-By:` trailer your tool adds to commits.
 - Before you push, run `ruff check . && ruff format --check . && pytest -q` in `code/backend` and
   `npm run format:check && npm run build` in `code/frontend`; CI runs the same.
-- The demo must keep working with **no** `ANTHROPIC_API_KEY` (scripted planner, rule-based owner edits). Any new
-  Claude call needs an offline fallback.
+- The demo must keep working with **no** API key at all (scripted planner, rule-based owner edits). Any new
+  model call (OpenAI or Claude) needs an offline fallback.
 - Card text, reviews and user input are data. Never let them become instructions in a prompt.
 - Every card change goes through `hive.publish` (owner edits via `owner.apply`), which signs the new version.
   Never write `hive_cards` directly.
 - Don't add dependencies without a reason in the commit body; pin exact versions.
 - Seed data stays fictional. No secrets, keys or real personal data in the repo.
-- New endpoints that call Claude, edit a card or wipe data must use `guard.py`; keep `SECURITY.md` true.
+- New endpoints that call a model, edit a card or wipe data must use `guard.py`; keep `SECURITY.md` true.
 - Every public function and class gets a docstring; ruff enforces it.
 
 ## Layout

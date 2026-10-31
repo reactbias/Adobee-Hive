@@ -32,7 +32,7 @@ Hotels are the first use case; HR is the second. A new one (events, shops, servi
 5. Add tests next to the others, and a row to the tables in `documentation/ARCHITECTURE.md`.
 
 Keep the core's promises: signed cards, reasons for every exclusion, no paid placement, consent before personal
-data moves, and a human approval for anything that commits money or a person. If a tool calls Claude, edits a card
+data moves, and a human approval for anything that commits money or a person. If a tool calls a model, edits a card
 or wipes data, it goes through `guard.py`.
 
 ## Branches
