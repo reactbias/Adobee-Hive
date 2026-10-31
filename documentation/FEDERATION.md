@@ -7,8 +7,9 @@ per association, per trade body. It is the backend half of the story in [VISION.
 traveller never sees, and the half that decides whether the index can be owned by anyone.
 
 **Status: design.** What runs on `main` today is a single Hive; `radius` is not served yet. Implementation is in
-progress on a branch. The explainer film in [`assets/hive-federation.mp4`](../assets/hive-federation.mp4) covers
-this page in sixty seconds, and the stills under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
+progress on a branch. The pitch film in [`assets/hive-federation.mp4`](../assets/hive-federation.mp4) shows this
+page at work — the hives a search visits, each one's calibration, and the `provenance.path` the answer carries —
+and the stills under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
 
 Worked examples of the Card, and the manifest that shows what it deliberately leaves out, are in
 [cards/](cards/README.md). Those files are the reference; where this page and a file disagree, the file wins.
