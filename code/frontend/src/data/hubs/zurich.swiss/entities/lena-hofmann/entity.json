@@ -1,0 +1,16 @@
+{
+  "id": "hive:hub.zurich.swiss/lena@example.com",
+  "kind": "person",
+  "name": "Lena Hofmann",
+  "description": "Interface design for data-heavy products. Nine years, three production design systems.",
+  "rating": null,
+  "rating_count": 0,
+  "skills": [
+    { "tag": "design.ui" },
+    { "tag": "design.dataviz" },
+    { "tag": "design.systems" }
+  ],
+  "policy": {
+    "human_in_loop": "any engagement > CHF 5000"
+  }
+}

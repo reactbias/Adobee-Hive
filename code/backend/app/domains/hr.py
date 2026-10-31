@@ -5,7 +5,8 @@ Owned by the HR workflows lane. This is the working skeleton to build on, not th
 - Built: the `person` card kind, `hr_find_people` (skills match with reasons, like stays discovery) and
   `hr_request_intro` (recorded for the person, who decides).
 - Next: seed fictional people, a person view and studio in the frontend, the person's yes/no on an intro,
-  CV import into a card. (`hive.discover` already skips person cards, so seeding people is safe.)
+  CV import into a card. (`hive.discover` lists person cards now — they are found by what they offer and need
+  like anyone else — so a seeded person is public presence, and only their contact stays behind consent.)
 
 Rules that make this safe to show (keep them):
 - Consent first. Contact details are never part of a person card. A company agent can only ask for an

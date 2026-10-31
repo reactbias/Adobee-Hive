@@ -17,24 +17,50 @@ Photos are downscaled and stripped of camera metadata (location, device).
 
 ## Slides
 
+Three slides, in the order the pitch tells them. Every PNG here is a still from the film below, so a
+slide and the film can never drift apart: change a scene in
+[anim/hive_federation.py](anim/README.md) and re-render both.
+
+**Slide 1 — punchline and project**
+
+| File | What |
+| --- | --- |
+| [slide-1-punchline.png](slides/slide-1-punchline.png) | A bee leaves the Hive, five more arrive, and they merge into one agent. *Agents don't browse. They ask the Hive.* |
+
+**Slide 2 — the vision. Three versions; the team picks one**
+
+| File | Version | How it argues |
+| --- | --- | --- |
+| [slide-2-vision-a-flow.png](slides/slide-2-vision-a-flow.png) | **A · flow** | Four steps in reading order: entity, hive, search, match. The shortest to narrate |
+| [slide-2-vision-b-network.png](slides/slide-2-vision-b-network.png) | **B · network** | The federation as a graph, with each hive's error written on the edge to its peer |
+| [slide-2-vision-c-data.png](slides/slide-2-vision-c-data.png) | **C · data** | The artefacts themselves: the folder shape, the served JSON, and the two ratings as a table |
+
+All three carry the same two closing lines, because they are the part a jury asks about: a hive rates
+its entities only from a signed receipt, and it rates its peer hives on `published - realised`, in
+tenths of a star, where lower is better.
+
+**Slide 3 — the hotel user journey**
+
+| File | What |
+| --- | --- |
+| [slide-3a-the-ask.png](slides/slide-3a-the-ask.png) | One sentence from a guest. Her agent is built from her own entity |
+| [slide-3b-the-hives.png](slides/slide-3b-the-hives.png) | The agent visits interconnected hotel hives, best-calibrated first, and what comes back carries its whole `provenance.path` |
+| [slide-3c-the-match.png](slides/slide-3c-the-match.png) | The hotel's listing is condensed JSON. On a match, an agent is built out of the entity |
+| [slide-3d-two-agents.png](slides/slide-3d-two-agents.png) | The two agents settle dates, price and check-in between them |
+| [slide-3e-your-yes.png](slides/slide-3e-your-yes.png) | She approves, and only then does it book. The receipt is signed |
+| [slide-4-close.png](slides/slide-4-close.png) | Closing frame |
+
+**Reference**
+
 | File | What |
 | --- | --- |
 | [baselhack-assessment-criteria.png](slides/baselhack-assessment-criteria.png) | BaselHack jury criteria: innovation, impact, technical depth, AI code review, fair play, pitch, demo |
-| [hive-1-adobee-hive.png](slides/hive-1-adobee-hive.png) | Title: the front door, signed |
-| [hive-2-one-card-signed.png](slides/hive-2-one-card-signed.png) | One card, signed, and the agent that verifies it |
-| [hive-3-many-hives.png](slides/hive-3-many-hives.png) | Many Hives: a town, an association, a trade body |
-| [hive-4-how-far-to-look.png](slides/hive-4-how-far-to-look.png) | The search radius: 0, 1 or 2 hops, chosen by the person |
-| [hive-5-two-levels-of-trust.png](slides/hive-5-two-levels-of-trust.png) | The Hive is rated, and so is the business |
-| [hive-6-open-ranking.png](slides/hive-6-open-ranking.png) | Every answer says why, and where it came from |
-| [hive-7-the-front-door-signed.png](slides/hive-7-the-front-door-signed.png) | Closing frame |
-
-Frames 1 to 7 are stills from the film below, so a slide and the film never drift apart.
 
 ## Film
 
 | File | What |
 | --- | --- |
-| [hive-federation.mp4](hive-federation.mp4) | Sixty seconds on how the federated backend works: one signed card, many Hives, the search radius, the two levels of trust. Drawn frame by frame by [anim/hive_federation.py](anim/README.md); the design it illustrates is [documentation/FEDERATION.md](../documentation/FEDERATION.md). |
+| [hive-federation.mp4](hive-federation.mp4) | About a minute: the punchline, the vision, and the hotel journey end to end. Drawn frame by frame by [anim/hive_federation.py](anim/README.md); the model it shows is [documentation/FEDERATION.md](../documentation/FEDERATION.md) and [documentation/cards/](../documentation/cards/README.md). `--variant a\|b\|c` cuts it with any of the three slide-2 versions. |
 
 ## Brand
 

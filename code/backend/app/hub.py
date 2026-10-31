@@ -28,8 +28,13 @@ class HubError(ValueError):
 
 
 def _entity_default(card: dict[str, Any]) -> str:
-    """The sharing flag an entity applies to everything it holds, unless an item is stricter."""
-    return str(card.get("sharing") or sharing.PUBLIC)
+    """The sharing flag an entity applies to everything it holds, unless an item is stricter.
+
+    A business card on a public hub is public. A person is `confirm` unless their card says
+    otherwise (hive.CONSENT_FIRST_KINDS): an introduction to a person is theirs to grant.
+    """
+    fallback = sharing.CONFIRM if card.get("kind") in hive.CONSENT_FIRST_KINDS else sharing.PUBLIC
+    return str(card.get("sharing") or fallback)
 
 
 def _published_rating(card: dict[str, Any]) -> int | None:
