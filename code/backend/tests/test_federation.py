@@ -7,7 +7,9 @@ way the REST endpoint does. No sockets, no network, so the suite still runs with
 import asyncio
 import base64
 from datetime import UTC, datetime, timedelta
+from unittest import mock
 
+import httpx
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from mcp import Client
@@ -187,16 +189,26 @@ def test_radius_zero_is_the_default_over_mcp_and_rest(client):
     assert set(rest) == {"matches", "excluded", "ranking_policy"}
 
 
-def test_a_negative_radius_is_clamped_to_a_local_search(client, net):
-    """Found by tools/mutate.py: dropping the max(0, ...) clamp passed every other test."""
+def test_a_negative_radius_cannot_reach_a_peer_at_any_layer(client, net):
+    """Found by tools/mutate.py: dropping the max(0, ...) clamp in search() passed every other test.
+
+    Three layers have to agree, because a peer controls what it forwards: the REST door refuses a
+    negative radius outright, discover() treats it as local, and search() clamps it even when called
+    directly. The clamp is the last of the three and the only one a hostile peer cannot route around.
+    """
     zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
     net(zurich)
 
+    assert client.get("/api/hive/discover", params=ASK | {"radius": -1}).status_code == 422
+
     for bad in (-1, -3, -99):
-        found = hive.discover(**ASK, radius=bad)
-        assert zurich.asks == [], f"radius {bad} must not reach a peer"
-        assert set(found) == {"matches", "excluded", "ranking_policy"}, f"radius {bad} must look local"
-    assert _ids(hive.discover(**ASK, radius=-1)) == _ids(hive.discover(**ASK, radius=0))
+        assert set(hive.discover(**ASK, radius=bad)) == {"matches", "excluded", "ranking_policy"}
+        assert zurich.asks == [], f"discover(radius={bad}) must not reach a peer"
+
+    for bad in (-1, -99):
+        report = asyncio.run(federation.search(ASK, radius=bad))["federation"]
+        assert report["radius"] == 0, f"search(radius={bad}) must clamp to a local search"
+        assert report["asked"] == [] and zurich.asks == [], "a clamped search asks nobody"
 
 
 def test_radius_zero_never_asks_a_peer_even_when_peers_are_configured(client, net):
@@ -207,6 +219,78 @@ def test_radius_zero_never_asks_a_peer_even_when_peers_are_configured(client, ne
 
 
 # ---------------------------------------------------------------- reaching peers
+
+
+async def _profile_over_http(handler, base_url: str) -> dict:
+    """Run the real HttpTransport against an in-memory peer, so its parser is exercised for real."""
+    client = httpx.AsyncClient  # bind before patching, or the replacement calls itself
+    with mock.patch.object(httpx, "AsyncClient", lambda **kw: client(transport=httpx.MockTransport(handler), **kw)):
+        return await federation.HttpTransport().profile(base_url)
+
+
+def test_the_real_http_transport_parses_a_peers_discovery_document():
+    """Found by tools/mutate.py: the fakes replace HttpTransport, so its parser had no test at all.
+
+    Blanking owner_keys here passed every federation test, because FakeNet never runs this code.
+    In production this parser is what supplies the keys every relayed card is checked against,
+    so a silent {} would turn verification into a rubber stamp.
+    """
+    doc = {
+        "federation": {"hub_id": "zurich", "verification": "signed", "paid_placement": False},
+        "ranking_policy": "No paid placement.",
+        "owner_keys": {"hotel-limmat": "AAAAkey", "cafe-null": None, "cafe-ok": "BBBBkey"},
+    }
+
+    async def handler(request):
+        assert request.url.path == "/.well-known/hive.json", "the peer is read from the well-known door"
+        return httpx.Response(200, json=doc)
+
+    profile = asyncio.run(_profile_over_http(handler, "https://zurich.example/"))
+
+    assert profile["hub_id"] == "zurich"
+    assert profile["verification"] == "signed" and profile["paid_placement"] is False
+    assert profile["ranking_policy"] == "No paid placement."
+    assert profile["owner_keys"] == {
+        "hotel-limmat": "AAAAkey",
+        "cafe-ok": "BBBBkey",
+    }, "every string key is kept and non-string values dropped"
+
+
+def test_the_http_transport_falls_back_to_the_url_when_a_peer_declares_no_hub_id():
+    """A peer that publishes nothing still gets a stable identity, so trust can be recorded against it."""
+
+    async def handler(request):
+        return httpx.Response(200, json={})
+
+    profile = asyncio.run(_profile_over_http(handler, "https://quiet.example/"))
+
+    assert profile["hub_id"] == "https://quiet.example"
+    assert profile["owner_keys"] == {} and profile["ranking_policy"] == ""
+    assert profile["verification"] is None and profile["paid_placement"] is None
+
+
+def test_a_forwarded_query_carries_the_whole_ask(client, net):
+    """Found by tools/mutate.py: inverting the filter in hop_params() forwarded an empty ask."""
+    params = federation.hop_params(ASK, radius=1, budget_ms=900, seen=["basel"])
+
+    for key, value in ASK.items():
+        assert params[key] == value, f"a hop dropped {key}: a peer would answer a different question"
+    assert params["radius"] == 1 and params["budget_ms"] == 900 and params["seen"] == ["basel"]
+    assert None not in params.values() and "" not in params.values(), "empty values are not forwarded"
+
+
+def test_a_peers_declared_ranking_policy_is_read_not_discarded(client, net):
+    """Found by tools/mutate.py: blanking ranking_policy in the profile passed every other test.
+
+    It is load-bearing. Paid placement is detected from this string, so a hub that drops it
+    silently stops downgrading peers that sell rank.
+    """
+    seller = FakeHive("seller", cards=[_card("hotel-paid", "Hotel Paid (fictional)")], paid=True)
+    net(seller)
+
+    profile = asyncio.run(federation.DEFAULT_TRANSPORT.profile(seller.url))
+    assert profile["ranking_policy"], "the peer's declared policy must survive the hop, not arrive blank"
+    assert reputation.hub_trust("seller", profile)["factors"]["open_ranking"] < 0, "selling rank must cost trust"
 
 
 def test_radius_one_reaches_a_direct_peer(client, net):

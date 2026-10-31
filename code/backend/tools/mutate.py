@@ -190,9 +190,19 @@ def random_mutants(n: int, seed: int) -> list[tuple[str, str, Path, str, str]]:
         path = APP / name
         if not path.exists():
             continue
+        in_doc = False
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             stripped = line.strip()
-            if not stripped or stripped.startswith("#") or stripped.startswith('"""'):
+            # Prose is not code. Mutating an "and" inside a docstring always survives and says
+            # nothing about the tests, so track the fences and skip the whole block.
+            fences = line.count('"""') + line.count("'''")
+            if in_doc:
+                in_doc = fences % 2 == 0
+                continue
+            if fences % 2:
+                in_doc = True
+                continue
+            if not stripped or stripped.startswith("#") or fences:
                 continue
             for pattern, repl in SWAPS:
                 if re.search(pattern, line):
