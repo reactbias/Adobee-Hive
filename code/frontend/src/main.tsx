@@ -26,10 +26,10 @@ function Nav() {
       <span className="status no">{t("nav.down")}</span>
     ) : (
       <span
-        className={`status ${health.llm === "claude" ? "ok" : "warm"}`}
+        className={`status ${health.llm !== "mock" ? "ok" : "warm"}`}
         title={`${health.model} / ${health.fast_model}`}
       >
-        {health.llm === "claude" ? t("nav.live") : t("nav.offline")}
+        {health.llm !== "mock" ? t("nav.live") : t("nav.offline")}
       </span>
     );
   return (
