@@ -114,6 +114,12 @@ CURATED: list[Mutant] = [
     ),
     Mutant(
         "hive.py",
+        "the constraint weight is granted again, so an ask with nothing to check pays everyone 50",
+        '"constraints": CONSTRAINT_POINTS if found["checked"] and not misses else 0,',
+        '"constraints": 0 if misses else CONSTRAINT_POINTS,',
+    ),
+    Mutant(
+        "hive.py",
         "what an entity offers or needs stops counting, so the index is prose again",
         '"offers_needs": min(30, 10 * len(side_hits)),',
         '"offers_needs": 0,',

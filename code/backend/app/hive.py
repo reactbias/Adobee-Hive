@@ -393,6 +393,13 @@ STAY_KINDS = ("hotel", "cafe")
 #: directory. What an entity *offers* and what it *needs* is the index; `kind` only narrows it.
 NOT_DISCOVERABLE: set[str] = set()
 
+#: What the hard constraints are worth, and they have to be earned: this is paid for constraints
+#: the ask actually carried and the card met, and not at all for an ask with nothing to check.
+#: Granting it for the absence of a check was the worst bug in the ranking — a query for "dataviz"
+#: answered with eight hotels, each on a free 50 for passing an empty test, above the one person
+#: who offers a dataviz sprint and earned 20 for it honestly.
+CONSTRAINT_POINTS = 50
+
 #: Which side of the market a search is on. "offers" finds someone who provides the thing,
 #: "needs" finds someone who wants what you provide, "any" both.
 LOOKING_FOR = ("offers", "needs", "any")
@@ -412,8 +419,8 @@ CONSENT_FIRST_KINDS = {"person"}
 NO_MISSED_DEMAND = {"person"}
 
 RANKING_POLICY = (
-    "Constraints first, then what the entity offers or needs, then relevance, proximity, verified reviews, "
-    "attestations. No paid placement."
+    "The constraints you gave first, and nothing is paid for a check nobody asked for; then what the entity "
+    "offers or needs, then relevance, proximity, verified reviews, attestations. No paid placement."
 )
 
 
@@ -477,19 +484,28 @@ def fit(
 ) -> dict[str, Any]:
     """Check one card against hard constraints: why it fits, why not, the missing tags, its price and distance.
 
+    `checked` is what the ask actually asked about and this card could be tested for, and `met` the
+    part of it that held. An ask with no features, no dates and no budget checks nothing, and
+    discover() pays nothing for passing it: a constraint score is earned, never granted.
+
     Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
     """
     reasons, misses = [], []
+    checked, met = [], []
     if not is_fresh(card):
         misses.append(f"signed facts expired on {card['valid_until'][:10]}; the owner has to re-sign")
     card_feats = {f.lower() for f in card.get("features", [])}
     missing = [f for f in features if f not in card_feats]
+    checked += features
+    met += [f for f in features if f not in missing]
     if missing:
         misses.append(f"missing {', '.join(missing)}")
     elif features:
         reasons.append(f"has {', '.join(features)}")
 
     price, unit = None, None
+    if check_in and check_out:
+        checked.append("dates")
     if check_in and check_out and not card.get("units"):
         misses.append("takes no stay bookings")
     elif check_in and check_out:
@@ -498,18 +514,34 @@ def fit(
             misses.append(f"no room for {guests} from {check_in} to {check_out}")
         else:
             unit, price = free[0], free[0]["price_chf"]
+            met.append("dates")
             reasons.append(f"{unit['name']} free at CHF {price}/night")
     elif card.get("units"):
         price = min(u["price_chf"] for u in card["units"])
-    if max_price_chf is not None and price is not None and price > max_price_chf:
-        misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+    # A budget can only be checked against a published price. An entity that publishes none is not
+    # cheap, it is unknown, so it neither fails the budget nor earns anything for passing it.
+    if max_price_chf is not None and price is not None:
+        checked.append("budget")
+        if price > max_price_chf:
+            misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+        else:
+            met.append("budget")
 
     dist = None
     if near:
         dist = (card.get("distances_m") or {}).get(near.lower())
         if dist is not None:
             reasons.append(f"{dist} m from {near}")
-    return {"reasons": reasons, "misses": misses, "missing": missing, "price": price, "unit": unit, "distance_m": dist}
+    return {
+        "reasons": reasons,
+        "misses": misses,
+        "missing": missing,
+        "price": price,
+        "unit": unit,
+        "distance_m": dist,
+        "checked": checked,
+        "met": met,
+    }
 
 
 def discover(
@@ -607,7 +639,10 @@ def discover(
 
         trust = card["trust"]
         score = {
-            "constraints": 0 if misses else 50,
+            # Earned, not granted: the weight is paid for constraints the ask carried and this card
+            # met, and an ask that carried none pays nobody. Relevance — what the entity offers,
+            # needs or says — is then free to decide a query that has nothing to verify.
+            "constraints": CONSTRAINT_POINTS if found["checked"] and not misses else 0,
             "text_relevance": min(20, 5 * len(hits)),
             # An entity that literally offers (or needs) the thing asked for beats one that merely
             # mentions it in its prose, so this outweighs text relevance.

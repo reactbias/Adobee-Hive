@@ -37,10 +37,39 @@ def _card(card_id: str, name: str, price: float = 180.0) -> dict:
     }
 
 
-class FakeHive:
-    """One in-process peer Hive: its own signing key, its own cards, and its own peers to forward to."""
+def _offer_card(card_id: str, name: str, offer: str) -> dict:
+    """A fictional person card: no rooms, one offer, which is all a hub needs to find them."""
+    return {
+        "id": card_id,
+        "slug": card_id,
+        "kind": "person",
+        "name": name,
+        "tagline": "Fictional, invented for the demo",
+        "description": "Seed data, invented for the demo.",
+        "offers": [{"title": offer}],
+        "version": 1,
+        "published_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "valid_until": (datetime.now(UTC) + timedelta(days=30)).isoformat(timespec="seconds"),
+    }
 
-    def __init__(self, hub_id: str, cards=(), relays=(), delay_ms: float = 0.0, paid: bool = False, tamper=()):
+
+class FakeHive:
+    """One in-process peer Hive: its own signing key, its own cards, and its own peers to forward to.
+
+    `match` overrides the score, breakdown and reasons this peer reports for its cards, for the
+    tests that care what the local hub does with a remote score rather than how it was reached.
+    """
+
+    def __init__(
+        self,
+        hub_id: str,
+        cards=(),
+        relays=(),
+        delay_ms: float = 0.0,
+        paid: bool = False,
+        tamper=(),
+        match: dict | None = None,
+    ):
         self.hub_id = hub_id
         self.url = f"https://{hub_id}.example/"
         self.key = Ed25519PrivateKey.generate()
@@ -50,6 +79,7 @@ class FakeHive:
         self.delay_ms = delay_ms
         self.paid = paid
         self.tamper = set(tamper)
+        self.match = match or {}
         self.asks: list[dict] = []
 
     def _sign(self, data: dict) -> dict:
@@ -82,17 +112,19 @@ class FakeHive:
         served = card
         if card["id"] in self.tamper:  # the carrier changed a signed fact after the owner signed it
             served = {**card, "units": [{**card["units"][0], "price_chf": 1.0}]}
+        units = served.get("units") or []
         return {
             "id": card["id"],
             "slug": card["slug"],
             "name": card["name"],
             "kind": card["kind"],
             "tagline": card["tagline"],
-            "from_price_chf": served["units"][0]["price_chf"],
+            "from_price_chf": units[0]["price_chf"] if units else None,
             "distance_m": None,
             "score": 60.0,
             "score_breakdown": {"constraints": 50, "text_relevance": 10},
             "why": ["has dog-friendly"],
+            **self.match,
             "signature_valid": True,
             "card": served,
             "provenance": {"path": [self.hub_id], "hops": 0, "origin": self.hub_id, "origin_url": self.url},
@@ -503,6 +535,42 @@ def test_the_three_rank_factors_are_surfaced_separately(client, net):
     near = _by_id(found, next(iter(_ids(hive.discover(**ASK, radius=0)))))
     assert near["score_breakdown"]["hub_path_trust"] == 1.0 and near["score_breakdown"]["hop_decay"] == 1.0
     assert found["federation"]["hub_trust"]["zurich"]["why"], "every hub's trust can be explained"
+
+
+def test_offering_the_queried_thing_outranks_a_free_pass_even_across_a_hop(client, net):
+    """The ranking bug two live hubs showed: a query for "dataviz" answered with eight hotels.
+
+    An ask with no dates, no budget and no features has nothing to verify, so nothing may collect
+    hive.CONSTRAINT_POINTS for passing it. Then relevance decides — and it has to keep deciding
+    after the federated discount, because a remote score is multiplied by hub trust and hop decay.
+    That is the arithmetic that buried the one person who offers a dataviz sprint: an unearned 50
+    at home beat an earned score discounted for distance.
+    """
+    hive.publish(_offer_card("person-dataviz", "Vera S. (fictional)", "Two-week dataviz sprint"))
+    local = hive.discover(query="dataviz")
+    here = _by_id(local, "person-dataviz")
+    assert local["matches"][0]["id"] == "person-dataviz", [(m["id"], m["score"]) for m in local["matches"][:3]]
+    assert here["why"] == ["offers dataviz"]
+    assert all(m["score_breakdown"]["constraints"] == 0 for m in local["matches"]), "nothing was checked"
+
+    # The same person on the far hub, reporting the score this hub's own scorer gives her.
+    zurich = FakeHive(
+        "zurich",
+        cards=[_offer_card("person-dataviz-zh", "Vera S. in Zürich (fictional)", "Two-week dataviz sprint")],
+        match={"score": here["score"], "score_breakdown": here["score_breakdown"], "why": here["why"]},
+    )
+    net(zurich)
+
+    far = hive.discover(query="dataviz", radius=1)
+    ranked = [m["id"] for m in far["matches"]]
+    hotels = [m["id"] for m in far["matches"] if m["kind"] == "hotel"]
+    assert hotels, "the seeded hotels still answer, they just have nothing to do with dataviz"
+    assert ranked.index("person-dataviz-zh") < min(ranked.index(h) for h in hotels)
+
+    # And the discount was really applied: distance still costs her, it just no longer buries her.
+    remote = _by_id(far, "person-dataviz-zh")
+    assert remote["score_breakdown"]["hub_path_trust"] < 1.0 and remote["federated_score"] < remote["score"]
+    assert ranked.index("person-dataviz") < ranked.index("person-dataviz-zh"), "the near one first"
 
 
 def test_a_hub_that_sells_rank_cannot_outrank_an_honest_one(client, net):

@@ -128,3 +128,35 @@ def test_both_sides_are_reachable_over_the_rest_api(client):
     found = next(m for m in needs["matches"] if m["id"] == "company-netz")
     assert found["score_breakdown"]["offers_needs"] > 0
     assert "offers" in needs["ranking_policy"] and "needs" in needs["ranking_policy"]
+
+
+def test_the_constraint_score_is_earned_and_not_granted(client):
+    """An ask with nothing to verify pays nobody: a free 50 for passing an empty check outranked
+    every relevance signal there is, which is how a query for "dataviz" answered with hotels.
+    """
+    empty = hive.discover(query="dataviz sprint")
+    assert all(m["score_breakdown"]["constraints"] == 0 for m in empty["matches"])
+    assert empty["matches"][0]["id"] == "person-nadia", [(m["id"], m["score"]) for m in empty["matches"][:3]]
+
+    # A real constraint, tested and met, is still worth the full weight.
+    asked = hive.discover(features=["dog-friendly"], check_in="2026-12-01", check_out="2026-12-03")
+    rheinblick = _match(asked, "hotel-rheinblick")
+    assert rheinblick["score_breakdown"]["constraints"] == hive.CONSTRAINT_POINTS
+    assert hive.fit(hive.get_card("hotel-rheinblick"), ["dog-friendly"], check_in="2026-12-01", check_out="2026-12-03")[
+        "checked"
+    ] == ["dog-friendly", "dates"]
+
+
+def test_a_budget_nobody_published_a_price_for_is_not_a_constraint_met(client):
+    """It is not cheap, it is unknown: an entity with no price neither fails a budget nor earns it."""
+    card = hive.get_card("person-nadia")
+    found = hive.fit(card, [], max_price_chf=50)
+    assert found["checked"] == [] and found["misses"] == []
+
+    priced = hive.fit(hive.get_card("hotel-rheinblick"), [], max_price_chf=1000)
+    assert priced["checked"] == ["budget"] and priced["met"] == ["budget"]
+    assert hive.fit(hive.get_card("hotel-rheinblick"), [], max_price_chf=10)["met"] == []
+
+    # So a priced stay that meets the budget outranks a card the budget could not be checked against.
+    ranked = [m["id"] for m in hive.discover(query="design", max_price_chf=1000)["matches"]]
+    assert ranked.index("hotel-rheinblick") < ranked.index("person-nadia")
