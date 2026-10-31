@@ -21,7 +21,9 @@ writes it in plain words, and nothing is booked until a person says yes.
 - **Your yes.** Agents negotiate. People decide. You see every call your agent made before you approve.
 
 And one idea beyond them, **missed demand**: every request no business could serve is recorded. A café learns that
-agents asked for vegan breakfast; Basel learns what nobody offers yet. Agents write the business plan.
+agents asked for vegan breakfast; Basel learns what nobody offers yet. Agents write the business plan. And the
+demand waits: a traveller whose agent found nothing can ask to be told, anonymously, and the moment an owner signs the
+change, that agent receives an offer signed by the business.
 
 What the Hive will not do: sell placement, profile travellers (it learns *what* was asked, never *who*), or take
 orders from a listing (card text is data, never instructions). The full story: [documentation/VISION.md](documentation/VISION.md).
@@ -42,6 +44,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Trust: owner keys pinned in each Hive's registry (`/.well-known/hive.json`); the agent checks every card itself; a changed copy and a stranger-signed copy both fail the live tamper test | `hive.py`, `agent.verify_card`, `CardPage.tsx` |
 | Human card page with direct booking | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
+| Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `OwnerStudio.tsx` |
 | Second opinion: a separate sceptic agent checks each held booking against the request and the signed card before you approve | `code/backend/app/second_opinion.py` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
