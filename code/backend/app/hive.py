@@ -347,6 +347,50 @@ STOPWORDS = {
 }
 
 
+def fit(
+    card: dict[str, Any],
+    features: list[str],
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    check_in: str | None = None,
+    check_out: str | None = None,
+    guests: int = 1,
+) -> dict[str, Any]:
+    """Check one card against hard constraints: why it fits, why not, the missing tags, its price and distance.
+
+    Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
+    """
+    reasons, misses = [], []
+    card_feats = {f.lower() for f in card.get("features", [])}
+    missing = [f for f in features if f not in card_feats]
+    if missing:
+        misses.append(f"missing {', '.join(missing)}")
+    elif features:
+        reasons.append(f"has {', '.join(features)}")
+
+    price, unit = None, None
+    if check_in and check_out and not card.get("units"):
+        misses.append("takes no stay bookings")
+    elif check_in and check_out:
+        free = _units_free(card, check_in, check_out, guests)
+        if not free:
+            misses.append(f"no room for {guests} from {check_in} to {check_out}")
+        else:
+            unit, price = free[0], free[0]["price_chf"]
+            reasons.append(f"{unit['name']} free at CHF {price}/night")
+    elif card.get("units"):
+        price = min(u["price_chf"] for u in card["units"])
+    if max_price_chf is not None and price is not None and price > max_price_chf:
+        misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+
+    dist = None
+    if near:
+        dist = (card.get("distances_m") or {}).get(near.lower())
+        if dist is not None:
+            reasons.append(f"{dist} m from {near}")
+    return {"reasons": reasons, "misses": misses, "missing": missing, "price": price, "unit": unit, "distance_m": dist}
+
+
 def discover(
     query: str = "",
     kind: str | None = None,
@@ -370,34 +414,8 @@ def discover(
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     for card in list_cards(kind):
-        reasons, misses = [], []
-        card_feats = {f.lower() for f in card.get("features", [])}
-        missing = [f for f in features if f not in card_feats]
-        if missing:
-            misses.append(f"missing {', '.join(missing)}")
-        elif features:
-            reasons.append(f"has {', '.join(features)}")
-
-        price = None
-        if check_in and check_out and not card.get("units"):
-            misses.append("takes no stay bookings")
-        elif check_in and check_out:
-            free = _units_free(card, check_in, check_out, guests)
-            if not free:
-                misses.append(f"no room for {guests} from {check_in} to {check_out}")
-            else:
-                price = free[0]["price_chf"]
-                reasons.append(f"{free[0]['name']} free at CHF {price}/night")
-        elif card.get("units"):
-            price = min(u["price_chf"] for u in card["units"])
-        if max_price_chf is not None and price is not None and price > max_price_chf:
-            misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
-
-        dist = None
-        if near:
-            dist = (card.get("distances_m") or {}).get(near.lower())
-            if dist is not None:
-                reasons.append(f"{dist} m from {near}")
+        found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
+        reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
         text = " ".join(
             [
