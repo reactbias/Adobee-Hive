@@ -174,6 +174,28 @@ def check_handle(handle: str) -> str:
     return name
 
 
+def handle_for(name: str) -> str:
+    """An arbitrary caller's name as a handle: `"Mara Keller"` → `mara-keller`.
+
+    The hub's boundary is wider than a handle. An agent names itself in whatever way its own hub
+    knows it, and refusing a booking because the name had a capital letter in it would be the folder
+    link getting in the way of the thing it exists to enable. So the name is normalised here, once,
+    and both the link and the lookup go through the same function — if they did not, a booking would
+    be made against one handle and looked up under another.
+
+    Normalising is not laxity: what comes out always satisfies `check_handle`, and a name with
+    nothing legal left in it is refused rather than quietly becoming somebody else's folder.
+    """
+    text = re.sub(r"\s+", "-", (name or "").strip().lower())
+    text = re.sub(r"[^a-z0-9._@+-]", "", text)
+    while ".." in text:
+        text = text.replace("..", ".")
+    text = text.strip("._@+-")[:100]
+    if not text or not HANDLE.match(text):
+        raise FolderError(f"{name!r} cannot be a handle: it has no letters or digits in it")
+    return text
+
+
 def split_path(path: str) -> tuple[str, str]:
     """An owner-qualified path as its two halves: `"hotel-krafft/rooms.md"` → handle, relative.
 

@@ -8,8 +8,10 @@ What an agent can do:
 
 - `search` the index, across peer Hives at a chosen radius, getting JSON back. Items the owner
   closed never appear, and blocked hubs and entities are filtered on the way in and on the way out.
-- `connect` to something it found. A `public` item opens at once; a `confirm` item waits for the
-  owner's yes; a `push` item cannot be asked for at all. Either way the introduction is logged.
+- `connect` to something it found. The two agents' folders link first (folders.py) and the answer
+  carries the manifest that link opened; then a `public` item opens at once, a `confirm` item waits
+  for the owner's yes, and a `push` item cannot be asked for at all. Either way the introduction is
+  logged.
 - `score` the introduction afterwards, once the human has actually met whoever it was.
 
 That last step is what everything else is built on. The hub learns nothing useful from a search and
@@ -20,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import blocklist, calibration, config, connections, hive, sharing
+from . import blocklist, calibration, config, connections, folders, hive, sharing
 
 
 class HubError(ValueError):
@@ -122,8 +124,15 @@ def connect(
             else f"{entity_id} is not shared"
         )
 
+    # The folders meet before the booking does. A published, freely connectable Card is a standing
+    # yes to being contacted — that is what publishing one means — so its link is accepted in the
+    # same step. A `confirm` Card's owner has said nothing yet, so its link waits for the same
+    # moment they confirm the introduction. Either way the link opens no contents: that needs a
+    # grant, which is the owner's to give (folders.py).
+    who, them = folders.handle_for(requester), folders.handle_for(entity_id)
+    link = folders.open_link(who, them, auto_accept=flag == sharing.PUBLIC, by=them)
     published = _published_rating(card)
-    return connections.request(
+    row = connections.request(
         requester,
         entity_id,
         requester_hub=requester_hub or config.HIVE_HUB_ID,
@@ -132,7 +141,9 @@ def connect(
         sharing=flag,
         published_rating=published,
         needs_confirmation=flag == sharing.CONFIRM,
+        folder_link=link["id"],
     )
+    return {**row, "folder": folders.manifest(them, who)}
 
 
 def score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:

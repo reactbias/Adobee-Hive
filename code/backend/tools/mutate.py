@@ -193,6 +193,18 @@ CURATED: list[Mutant] = [
         "if False:",
     ),
     Mutant(
+        "connections.py",
+        "a booking can be made with no folder link at all, so the whole handshake is decorative",
+        "link = link_for(requester, target, folder_link, opening=not needs_confirmation)",
+        'link = {"id": ""}',
+    ),
+    Mutant(
+        "connections.py",
+        "a booking opens on a folder link the other side never accepted",
+        'if opening and link["state"] != folders.ESTABLISHED:',
+        "if False:",
+    ),
+    Mutant(
         "folders.py",
         "a hidden or private file becomes readable, which is the one thing the folder link must never do",
         'if entry["visibility"] not in ADMITTED:',
