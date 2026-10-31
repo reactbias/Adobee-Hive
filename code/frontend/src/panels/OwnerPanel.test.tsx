@@ -168,17 +168,33 @@ describe("the business chapter", () => {
     expect(screen.getByText("v2")).toBeInTheDocument();
   });
 
-  it("Use writes the command in the page's language", async () => {
+  it("opens with an empty box: a hint in the owner's voice, never another business's change", async () => {
+    const user = setup("de");
+    await screen.findByText("Mara Keller");
+    const box = screen.getByRole("textbox", { name: de["owner.change"] });
+    expect(box).toHaveValue("");
+    expect(box).toHaveAttribute("placeholder", de["owner.placeholder"]);
+    // The button names what it shows: the next signed version of this card, not yet live.
+    expect(screen.getByRole("button", { name: de["owner.previewVersion"].replace("{version}", "2") })).toBeDisabled();
+    await user.type(box, "Ab heute Frühstück inklusive");
+    await user.selectOptions(screen.getByRole("combobox", { name: de["owner.business"] }), "x-taxi");
+    await user.selectOptions(screen.getByRole("combobox", { name: de["owner.business"] }), "hotel-rheinblick");
+    expect(await screen.findByRole("textbox", { name: de["owner.change"] })).toHaveValue("");
+  });
+
+  it("Use writes the command in the page's language and previews it at once", async () => {
+    const propose = vi.spyOn(api, "propose").mockResolvedValue(PROPOSAL);
     const user = setup("de");
     await user.click((await screen.findAllByRole("button", { name: de["owner.waiting.use"] }))[0]);
     expect(screen.getByRole("textbox", { name: de["owner.change"] })).toHaveValue("vegan breakfast hinzufügen");
+    expect(propose).toHaveBeenCalledWith("hotel-rheinblick", "vegan breakfast hinzufügen");
+    expect(await screen.findByRole("button", { name: de["owner.publish"] })).toBeInTheDocument();
   });
 
   it("words the offline summary in the page's language", async () => {
     const propose = vi.spyOn(api, "propose").mockResolvedValue(PROPOSAL);
     const user = setup("it");
     await user.click((await screen.findAllByRole("button", { name: it_["owner.waiting.use"] }))[0]);
-    await user.click(screen.getByRole("button", { name: it_["owner.preview"] }));
     expect(propose).toHaveBeenCalledWith("hotel-rheinblick", "aggiungi vegan breakfast");
     expect(await screen.findByText(/Aggiunto: vegan breakfast/)).toBeInTheDocument();
     expect(screen.queryByText(/Mock mode/)).not.toBeInTheDocument();

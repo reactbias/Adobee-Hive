@@ -37,8 +37,8 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
    turns from "No pets" to "Dogs welcome". **Sign and publish**: the panel says the new version is live. To show the effect, ask the agent
    for *"a dog-friendly hotel near Basel SBB, 2026-11-20 to 2026-11-21, just compare"*: Gare Central now ranks first.
    The first example still excludes it, because it also asks for quiet.
-   Optional, 20 s: under **What agents asked you for**, click **Use** on a waiting row, then **Preview change** and
-   **Sign and publish**. The studio says how many waiting agents just received an offer signed by the hotel. "Missed
+   Optional, 20 s: under **What agents asked you for**, click **Use** on a waiting row: the box fills with
+   the ask and the diff appears at once. **Sign and publish**. The studio says how many waiting agents just received an offer signed by the hotel. "Missed
    demand was a chart. Now it is a guest at the door." (The rows come from the simulated searches, so they vary.)
 4. **Demand map** (the second tab in chapter 2). Click the small **Simulate 40 traveller searches** for a busy week. Unserved demand rises to the top: pool,
    vegan breakfast, coworking. "Nobody in Basel offers this. Agents are telling you what to open."

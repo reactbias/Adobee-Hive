@@ -16,7 +16,7 @@ const it: Record<Key, string> = {
   "trust.noReviews": "Nessun soggiorno verificato",
 
   "owner.business": "Attività",
-  "owner.sample": "Aggiungi la sauna. La doppia sul cortile costa 165 franchi da oggi.",
+  "owner.placeholder": "Da oggi …",
   "owner.tokenNeeded": "In questo Hive solo il titolare può modificare le schede. Inserisca il token del titolare.",
   "owner.token": "Token del titolare",
   "owner.useToken": "Usa il token",
@@ -24,6 +24,7 @@ const it: Record<Key, string> = {
   "owner.week.missed": "richieste mancate",
   "owner.week.booked": "prenotazioni",
   "owner.preview": "Anteprima della modifica",
+  "owner.previewVersion": "Anteprima v{version}",
   "owner.noChange": "Nessuna modifica rilevata.",
   "owner.publish": "Firma e pubblica",
   "owner.discard": "Scarta",
