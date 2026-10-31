@@ -26,8 +26,16 @@ Photos are downscaled and stripped of camera metadata (location, device).
 
 | File | What |
 | --- | --- |
-| [adobee-hive-logo-1024.png](brand/adobee-hive-logo-1024.png) | Clay adobe-brick logo |
+| [adobee-hive-logo-1024.png](brand/adobee-hive-logo-1024.png) | The mark: a bee in an open hexagon, from the whiteboard sketch |
 | [adobee-hive-wordmark.png](brand/adobee-hive-wordmark.png) | Logo and name |
 | [b6-bee-mascot.png](brand/b6-bee-mascot.png) | The B6 bee |
+| [hero-clay.svg](brand/hero-clay.svg) | Source of the landing hero's lit clay honeycomb |
 
-Sources (SVG) live in `code/frontend/public/brand/`; see [documentation/BRAND.md](../documentation/BRAND.md).
+Logo sources (SVG) live in `code/frontend/public/brand/`; see [documentation/BRAND.md](../documentation/BRAND.md).
+
+## Screens
+
+Every page on a 375 px phone, offline mode, fictional data: [home](screens/phone-375-home.jpg),
+[traveller agent](screens/phone-375-agent.jpg), [ask the Hive](screens/phone-375-ask.jpg),
+[owner studio](screens/phone-375-owner.jpg), [card](screens/phone-375-card.jpg),
+[demand map](screens/phone-375-demand.jpg).
