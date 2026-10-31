@@ -395,6 +395,10 @@ const en = {
   "card.count.one": "1 result",
   "card.count.other": "{n} results",
   "card.more": "More about {name}",
+  "card.next.title": "Next steps",
+  "card.next.agent": "Continue with my agent",
+  "card.next.agent.body": "Your agent takes it to {name} and asks you again before anything is booked or paid.",
+  "card.next.other": "See other offerings",
   "card.try.person": "A designer for a dataviz sprint.",
   "card.try.staff": "Seasonal front-desk staff.",
   // The instance finder (the first screen) and the hub admin panel

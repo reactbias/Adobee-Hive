@@ -844,12 +844,7 @@ th.end {
   color: var(--ink-3);
 }
 .card-hit + .card-hit {
-  margin-top: var(--s7);
-  padding-top: var(--s6);
   border-top: 1px solid var(--line);
-}
-.card-hit h3 {
-  margin: var(--s2) 0;
 }
 .card-rating {
   margin: 0 0 var(--s3);
@@ -885,24 +880,74 @@ th.end {
   border-top: 1px solid var(--line);
   font-size: var(--t-sm);
 }
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+/* A closed card is one row: name, tagline, rating. The whole row is the name's button. */
+.card-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: baseline;
   gap: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s var(--ease);
 }
-.card-top .card-rating {
-  margin: var(--s5) 0 0;
-  text-align: right;
-  white-space: nowrap;
+.card-row:hover {
+  background: var(--paper-2);
 }
-.card-hit h3 {
+.card-row::after {
+  content: "›";
+  color: var(--ink-3);
+  transition: transform 0.2s var(--ease);
+}
+.card-hit.open .card-row::after {
+  transform: rotate(90deg);
+}
+.card-hit .card-row h3 {
+  margin: 0;
   font-size: var(--t-lg);
 }
-.card-tagline {
-  margin: 0 0 var(--s3);
-  font-size: var(--t-base, 1rem);
+.card-row h3 button {
+  all: unset;
+  cursor: pointer;
+}
+.card-row h3 button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.card-row h3 button:focus-visible::after {
+  outline: 2px solid var(--clay-glow);
+  outline-offset: 2px;
+}
+.card-row .card-tagline {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ink-2);
+}
+.card-row .card-rating {
+  margin: 0;
+  white-space: nowrap;
+}
+.card-body {
+  padding: 0 var(--s4) var(--s4);
+}
+.card-hit.open .card-row .card-tagline {
+  white-space: normal;
+}
+.card-next p {
+  margin: var(--s2) 0;
+}
+@media (max-width: 640px) {
+  .card-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .card-row .card-tagline {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
 }
 .card-description {
   margin: 0 0 var(--s3);

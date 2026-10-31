@@ -395,6 +395,11 @@ const de: Record<Key, string> = {
   "card.count.one": "1 Ergebnis",
   "card.count.other": "{n} Ergebnisse",
   "card.more": "Mehr zu {name}",
+  "card.next.title": "Nächste Schritte",
+  "card.next.agent": "Mit meinem Agenten weiter",
+  "card.next.agent.body":
+    "Ihr Agent bringt es zu {name} und fragt Sie nochmals, bevor etwas gebucht oder bezahlt wird.",
+  "card.next.other": "Andere Angebote ansehen",
   "card.try.person": "Eine Designerin für einen Dataviz-Sprint.",
   "card.try.staff": "Saisonales Front-desk-Personal.",
   // The instance finder (the first screen) and the hub admin panel

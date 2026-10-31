@@ -435,6 +435,7 @@ describe("traveller agent", () => {
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
 
     expect(await screen.findByRole("heading", { name: "Pension Limmat" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pension Limmat" }));
     expect(screen.getByText("Through zurich → basel")).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: /River room/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Hotel Krafft Basel" })).not.toBeInTheDocument();
