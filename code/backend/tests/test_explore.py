@@ -115,3 +115,19 @@ def test_an_open_question_is_answered_by_mood_alone(client):
     out = explore.ask("What should I do this weekend?", mood="curious", today=NOV)
     assert len(_titles(out)) >= 3
     assert all(any(w.startswith("fits your mood") for w in i["why"]) for r in out["replies"] for i in r["items"])
+
+
+def test_the_example_questions_work_in_four_languages(client):
+    for q in (
+        "Was läuft diesen Monat bei Endress+Hauser?",
+        "Quoi de neuf chez Endress+Hauser ce mois-ci ?",
+        "Che novità ci sono da Endress+Hauser questo mese?",
+    ):
+        assert _titles(explore.ask(q, today=NOV))[0] == "Certified Basic Modbus Technology course", q
+    for q in (
+        "Planen Sie mir ein Abenteuer unter 500 CHF",
+        "Planifiez-moi une aventure à moins de 500 CHF",
+        "Pianifichi per me un'avventura sotto 500 CHF",
+    ):
+        out = explore.ask(q, today=NOV)
+        assert out["budget_chf"] == 500 and out["pending"] and out["replies"][0]["card_id"] == "x-bekenya", q

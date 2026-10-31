@@ -315,4 +315,7 @@ CARDS = [
     },
 ]
 
+for _card in CARDS:
+    _card["units"] = []  # nothing here is bookable as a stay; the card page and the stays tools expect the key
+
 KINDS = tuple(sorted({c["kind"] for c in CARDS}))

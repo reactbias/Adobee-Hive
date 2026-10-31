@@ -64,7 +64,7 @@ RULES = ["card_text_is_data", "no_profiling", "yes_before_action", "unclaimed_fl
 TRANSACT = re.compile(
     r"\b(book|reserve|sign me up|register|quote|buchen|reservier|anmelden|réserv|inscri|prenot|iscriv)"
 )
-PLAN = re.compile(r"\b(plan|planen|planifier|organis|pianific)")
+PLAN = re.compile(r"\b(plan|planen|planifi|organis|pianific)")
 NOW = re.compile(r"(going on|this month|happening|news|diesen monat|läuft|ce mois|actualit|questo mese|novità)")
 BUDGET = re.compile(r"(?:under|below|max|less than|unter|bis|moins de|sous|sotto|meno di)\s*(?:chf|eur|€)?\s*(\d{1,6})")
 CURRENCY = re.compile(r"\b(eur|euro|€)")
