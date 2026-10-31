@@ -1,0 +1,54 @@
+# Builds the frontend and publishes it to GitHub Pages on every push to main.
+# Repo variable VITE_API_URL points the site at the backend (the Render URL). Without it the
+# site loads but shows no data.
+name: Deploy frontend (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+    paths: ["code/frontend/**", ".github/workflows/deploy-frontend-pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: code/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: code/frontend/package-lock.json
+      - run: npm ci
+      - name: Build for /<repo>/
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: npm run build
+      # Pages has no rewrites: serving index.html as 404.html makes deep links like /card/rheinblick work.
+      - run: cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: code/frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
