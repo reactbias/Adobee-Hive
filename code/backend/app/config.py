@@ -28,6 +28,11 @@ LLM_CALLS_TOTAL_HOUR = int(os.getenv("LLM_CALLS_TOTAL_HOUR", "300"))
 
 LLM_ENABLED = bool(ANTHROPIC_API_KEY)
 
+# Optional second opinion from another vendor: a sceptic agent on OpenAI checks a held booking before the
+# traveller approves. Without a key a rule check answers instead.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+
 # MCP endpoints the booking agent searches. Empty = this server's own Hive, in-process.
 # Comma-separated URLs federate several Hives, e.g. another team's https://.../mcp/
 HIVE_MCP_URLS = [u.strip() for u in os.getenv("HIVE_MCP_URLS", "").split(",") if u.strip()]

@@ -1,7 +1,8 @@
 # Architecture
 
 One FastAPI backend serves the web app over REST and agents over MCP. Both read the same signed Hive cards in
-DuckDB. Claude is called only by the booking agent and for owner edits.
+DuckDB. Claude is called only by the booking agent and for owner edits; OpenAI, if a key is set, only for the
+second opinion on a held booking.
 
 ```mermaid
 flowchart LR
@@ -12,6 +13,7 @@ flowchart LR
   API --> AG[Traveller agent<br/>agent.py]
   AG -->|MCP client| MCP[Hive MCP server<br/>mcp_server.py]
   AG --> C[(Claude API)]
+  AG --> SO[Second opinion<br/>second_opinion.py] --> OA[(OpenAI API)]
   API --> OW[Owner studio<br/>owner.py] --> C
   MCP --> H[Hive core<br/>hive.py]
   API --> H
@@ -26,11 +28,24 @@ flowchart LR
 | `hive_seed.py` | Six fictional Basel businesses (five hotels, one café) with distances and attestations |
 | `mcp_server.py` | The MCP server agents connect to |
 | `agent.py` | The traveller agent: a Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
+| `second_opinion.py` | A sceptic agent on another vendor (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
 | `simulate.py` | Simulated traveller searches for the demand map |
-| `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude (see `SECURITY.md`) |
+| `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
 | `llm.py`, `config.py` | Claude client with structured outputs and fallbacks; environment settings |
+
+## Use cases (`code/backend/app/domains`)
+
+The core knows cards, trust, events and bookings. A use case adds a card kind and its own MCP tools:
+
+| Domain | Card kind | Tools | Where |
+| --- | --- | --- | --- |
+| Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
+| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py` |
+
+Each domain module has a `register(server)` function and is listed in `domains.DOMAINS`. How to add one:
+[CONTRIBUTING.md](../CONTRIBUTING.md#add-a-use-case).
 
 ## Frontend (`code/frontend/src`)
 
@@ -56,6 +71,8 @@ flowchart LR
 | `hive_book` | Book a unit; returns a signed receipt |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
+| `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
+| `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
 Agents can find the endpoint from `/.well-known/hive.json`.
 

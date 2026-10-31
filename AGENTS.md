@@ -23,6 +23,7 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 
 ```
 code/backend/app/     FastAPI app, Hive core, MCP server, agents (Python 3.12)
+code/backend/app/domains/   one module per use case beyond stays (hr.py first); see CONTRIBUTING.md
 code/backend/tests/   pytest, including an end-to-end booking over MCP
 code/frontend/src/    React + Vite + TypeScript; api.ts is the typed client
 documentation/        vision, demo script, architecture, deploy, brand, team

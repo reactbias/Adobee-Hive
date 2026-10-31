@@ -1,10 +1,15 @@
 """The challenge's core mechanism: an agent discovers and books a Basel hotel over MCP."""
 
 import asyncio
+import json
 
+import httpx
+import openai
+import pytest
 from mcp import Client
 
-from app import agent, config, guard, hive, simulate
+from app import agent, config, guard, hive, second_opinion, simulate
+from app.domains import hr
 from app.mcp_server import server
 
 REQUEST = (
@@ -17,6 +22,7 @@ def test_agent_books_end_to_end_over_mcp(client):
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability"]
     assert out["pending"]["tool"] == "hive_book"  # nothing is booked until the traveller approves
+    assert out["second_opinion"]["verdict"] == "agree" and out["second_opinion"]["by"] == "Rule check"
 
     done = client.post("/api/agent/approve", json={"pending": out["pending"]}).json()
     assert [s["tool"] for s in done["steps"]] == ["hive_book"]
@@ -161,3 +167,75 @@ def test_bad_input_is_a_clear_400_not_a_crash(client):
     assert client.post(book, json=too_long).status_code == 400
     oversized = {"messages": [{"role": "user", "content": "x" * 5000}]}
     assert client.post("/api/agent", json=oversized).status_code == 422
+
+
+def test_hr_domain_finds_people_by_skill_and_asks_for_consent(client):
+    hive.publish(dict(hr.EXAMPLE_CARD))
+    found = hr.find_people(["Figma", "user research", "rust"])
+    mira = found["matches"][0]
+    assert mira["matched"] == ["figma", "user research"] and mira["signature_valid"]
+    assert "contact" not in mira and "email" not in json.dumps(found)
+    intro = hr.request_intro("person-mira", "Fictional Hotel Group", "We'd like to talk about agent-facing design.")
+    assert intro["status"] == "pending_consent"
+    assert "intro_request" in client.get("/api/owner/person-mira").json()["last_7_days"]
+
+
+def test_hr_tools_are_on_the_same_mcp_server(client):
+    async def tools():
+        async with Client(server) as c:
+            return {t.name for t in (await c.list_tools()).tools}
+
+    assert {"hr_find_people", "hr_request_intro", "hive_discover"} <= asyncio.run(tools())
+
+
+def test_second_opinion_flags_a_missing_feature():
+    card = {"name": "Gare Central", "trust": {"signature_valid": True}, "features": ["late check-in"], "units": []}
+    request = {"features": ["dog-friendly", "late check-in"], "max_price_chf": None}
+    assert second_opinion.rule_check(request, {"unit_id": "x"}, card)["verdict"] == "concern"
+    assert second_opinion.rule_check(request, {}, None)["verdict"] == "concern"
+
+
+def test_second_opinion_falls_back_when_openai_fails(client, monkeypatch):
+    async def broken(*_args, **_kwargs):
+        raise openai.APIConnectionError(request=httpx.Request("POST", "https://api.openai.com"))
+
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "test-only")
+    monkeypatch.setattr(second_opinion, "_ask_openai", broken)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["second_opinion"]["by"] == "Rule check" and out["second_opinion"]["fallback"] == "OpenAI unavailable"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, "
+        "13.11.2026 bis 15.11.2026. Mein Name ist Tobi Muster.",
+        "Réserve-moi un hôtel calme, accueillant les chiens, près de Basel SBB, à moins de CHF 200, arrivée tardive, "
+        "du 13.11.2026 au 15.11.2026. Je m'appelle Tobi Muster.",
+        "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, "
+        "dal 13.11.2026 al 15.11.2026. Mi chiamo Tobi Muster.",
+    ],
+)
+def test_offline_planner_reads_localized_requests(text):
+    req = agent.parse_request(text)
+    assert req["features"] == ["dog-friendly", "late check-in", "quiet"]
+    assert (req["check_in"], req["check_out"]) == ("2026-11-13", "2026-11-15")
+    assert req["max_price_chf"] == 200 and req["near"] == "basel sbb"
+    assert req["guest_name"] == "Tobi Muster" and req["wants_booking"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Zu zweit zur Art Basel, nahe Messe Basel, mit Parkplatz, 3 Nächte ab 14.06.2027. "
+        "Nur vergleichen, nicht buchen.",
+        "À deux pour Art Basel, près de Messe Basel, avec parking, 3 nuits dès le 14.06.2027. Compare seulement, "
+        "ne réserve pas.",
+        "In due per Art Basel, vicino a Messe Basel, con parcheggio, 3 notti dal 14.06.2027. Solo confrontare, "
+        "non prenotare.",
+    ],
+)
+def test_offline_planner_respects_localized_dont_book(text):
+    req = agent.parse_request(text)
+    assert not req["wants_booking"] and req["guests"] == 2
+    assert (req["check_in"], req["check_out"]) == ("2027-06-14", "2027-06-17")

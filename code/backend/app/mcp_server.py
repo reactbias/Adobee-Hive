@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import hive
+from . import domains, hive
 
 server = MCPServer(
     name="Adobee Hive",
@@ -23,11 +23,7 @@ server = MCPServer(
 )
 
 
-def _safe(fn, *args, **kwargs) -> dict[str, Any]:
-    try:
-        return fn(*args, **kwargs)
-    except hive.HiveError as err:
-        return {"error": str(err)}
+_safe = domains.safe
 
 
 @server.tool()
@@ -92,10 +88,14 @@ def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
     return _safe(hive.review, receipt, rating, text)
 
 
+# The stays tools above came first; every other use case registers its tools from app/domains.
+domains.register_all(server)
+
+
 def http_app():
-    # Behind App Runner / Amplify the Host header is the public domain, so host checks are off;
-    # the MCP surface only exposes the public card data and booking actions above.
     """Return the MCP server as an ASGI app for Streamable HTTP, mounted at /mcp."""
+    # Behind App Runner / Amplify the Host header is the public domain, so host checks are off;
+    # the MCP surface only exposes public card data and actions that don't reveal private data.
     return server.streamable_http_app(
         streamable_http_path="/",
         stateless_http=True,

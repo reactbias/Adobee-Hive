@@ -106,7 +106,7 @@ Adobee Hive's rules for the forum layer, some built, some next:
 | Outreach only to agents whose principal opted in, rate-limited per business | Next |
 | Agents of competing businesses cannot see each other's prices before the traveller does | Next |
 
-
+## Where is the human?
 
 The whiteboard's central question. The Hive answers it with four modes:
 
@@ -117,14 +117,33 @@ The whiteboard's central question. The Hive answers it with four modes:
 | H2A | Human pulls from an agent | The traveller asks their agent to compare dog-friendly hotels near Basel SBB |
 | H2H | Human meets human | Check-in at the desk, or the Herbstmesse crowd |
 
+## One business, many agents, many use cases
+
+A Hive card is not a hotel feature. It is how anyone with something to offer becomes legible and trustworthy to
+agents. The same core (a signed card, attested claims, an open ranking, a human who approves) carries very
+different relationships:
+
+| Use case | The card | The agents | Status |
+| --- | --- | --- | --- |
+| **Stays** | A hotel or café: rooms, prices, policies | A traveller's agent finds, compares and books | Built end to end |
+| **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`) |
+| Events, shops, services | Tickets, stock, appointments | Same pattern | Next |
+
+The arc runs from one booking today to agents that handle whole business relationships on our behalf: finding,
+negotiating, booking, hiring, following up. Taken far enough, that is the AGI horizon. The more an agent can do
+alone, the more the guardrails matter: signed facts, consent before contact, a human approval for anything that
+commits us, and every step visible. We build those first, because they are what makes the far end of the arc safe
+to reach.
+
 ## Beyond the weekend
 
 - **Federated Hives.** Any town, association or chain runs its own Hive; an agent searches several at once. The
   prototype already federates through `HIVE_MCP_URLS`. No single platform owns the front door again.
 - **Owner-held keys.** Today the server holds each owner's signing key. In the real thing the key lives with the
   owner (a wallet, or their Adobe account), and the Hive only stores what they signed.
-- **People as Hive cards.** The whiteboard started with hiring: applicants publish a persona card with skills,
-  calendar and direction, and company agents find them the way travellers find hotels.
+- **People as Hive cards.** The whiteboard started with hiring, and the HR lane is building it: person cards with
+  skills and availability, found by company agents, contacted only after the person agrees. Next: the person's
+  yes/no, a person studio, CV import.
 - **The website comes to you.** Profile-tailored presentation, compact text for fewer tokens, and a peer-to-peer
   marketplace on an open protocol.
 
