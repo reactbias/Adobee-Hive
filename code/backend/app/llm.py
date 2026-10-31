@@ -1,7 +1,7 @@
-"""Thin wrapper around the Claude API for structured-JSON calls.
+"""Thin wrapper around the model APIs (OpenAI or Claude, per LLM_PROVIDER) for structured-JSON calls.
 
-Every call uses server-side refusal fallbacks (beta) unless CLAUDE_FALLBACKS=off,
-and checks stop_reason before reading the content.
+Claude calls use server-side refusal fallbacks (beta) unless CLAUDE_FALLBACKS=off, and check stop_reason before
+reading the content. OpenAI calls use structured outputs and store nothing at OpenAI.
 """
 
 import json
@@ -9,6 +9,7 @@ import logging
 from typing import Any
 
 import anthropic
+import openai
 
 from . import config
 
@@ -19,7 +20,11 @@ _fallbacks_ok = config.CLAUDE_FALLBACKS != "off"
 
 
 class LLMError(RuntimeError):
-    """Claude returned nothing usable (refusal, no text, or invalid structured output)."""
+    """The model returned nothing usable (refusal, no text, or invalid structured output)."""
+
+
+# What callers catch to fall back to the offline path: any vendor error or an unusable answer.
+FAILURES = (LLMError, anthropic.APIError, openai.OpenAIError, json.JSONDecodeError)
 
 
 def client() -> anthropic.Anthropic:
@@ -71,7 +76,9 @@ def structured(
     max_tokens: int = 8000,
     model: str | None = None,
 ) -> dict[str, Any]:
-    """Ask Claude for JSON matching `schema` (structured outputs) and return it parsed."""
+    """Ask the configured model for JSON matching `schema` (structured outputs) and return it parsed."""
+    if config.LLM_PROVIDER == "openai":
+        return _structured_openai(system, user, schema, max_tokens)
     response = _create(
         model=model or config.CLAUDE_MODEL,
         max_tokens=max_tokens,
@@ -80,3 +87,24 @@ def structured(
         output_config={"effort": effort, "format": {"type": "json_schema", "schema": schema}},
     )
     return json.loads(_text(response))
+
+
+_openai: openai.OpenAI | None = None
+
+
+def _structured_openai(system: str, user: str | list, schema: dict[str, Any], max_tokens: int) -> dict[str, Any]:
+    global _openai
+    if _openai is None:
+        _openai = openai.OpenAI(api_key=config.OPENAI_API_KEY)
+    response = _openai.responses.create(
+        model=config.OPENAI_MODEL,
+        instructions=system,
+        input=user if isinstance(user, str) else json.dumps(user),
+        text={"format": {"type": "json_schema", "name": "result", "schema": schema, "strict": True}},
+        reasoning={"effort": "low"},
+        max_output_tokens=max_tokens,
+        store=False,
+    )
+    if response.status != "completed" or not response.output_text:
+        raise LLMError(f"OpenAI returned no usable answer ({response.status}).")
+    return json.loads(response.output_text)

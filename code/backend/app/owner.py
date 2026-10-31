@@ -5,10 +5,13 @@ new card plus a field-by-field diff. Nothing is published until they approve it.
 """
 
 import json
+import logging
 import re
 from typing import Any
 
 from . import config, hive, llm
+
+log = logging.getLogger(__name__)
 
 EDIT_SCHEMA = {
     "type": "object",
@@ -50,15 +53,19 @@ def diff(old: dict[str, Any], new: dict[str, Any], prefix: str = "") -> list[dic
 def propose(card_id: str, instruction: str) -> dict[str, Any]:
     """Turn the owner's plain-language change into a proposed card, a diff and a summary. Publishes nothing."""
     current = _strip(hive.get_card(card_id))
+    proposed = None
     if config.LLM_ENABLED:
-        out = llm.structured(
-            SYSTEM,
-            f"<card>{json.dumps(current, ensure_ascii=False)}</card>\n<instruction>{instruction}</instruction>",
-            EDIT_SCHEMA,
-            model=config.CLAUDE_FAST_MODEL,
-        )
-        proposed, summary, mode = json.loads(out["card_json"]), out["summary"], "claude"
-    else:
+        try:
+            out = llm.structured(
+                SYSTEM,
+                f"<card>{json.dumps(current, ensure_ascii=False)}</card>\n<instruction>{instruction}</instruction>",
+                EDIT_SCHEMA,
+                model=config.CLAUDE_FAST_MODEL,
+            )
+            proposed, summary, mode = json.loads(out["card_json"]), out["summary"], config.LLM_PROVIDER
+        except llm.FAILURES:  # outage or unusable answer: the rule-based edit still works
+            log.exception("Model edit failed, using the rule-based edit")
+    if not isinstance(proposed, dict):
         proposed, summary = mock_edit(current, instruction)
         mode = "mock"
     for key in LOCKED:

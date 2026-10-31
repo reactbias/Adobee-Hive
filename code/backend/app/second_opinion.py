@@ -1,8 +1,8 @@
-"""A second opinion before the traveller approves: a sceptic agent on another vendor checks the pick.
+"""A second opinion before the traveller approves: a separate sceptic agent checks the pick.
 
 The vision's agent forum says accuracy comes from specialised personas arguing, not from trusting one source. Here
-the booking agent (Claude, or the offline planner) proposes, and an independent checker on OpenAI reviews the held
-booking against the traveller's request and the signed card. It can only raise a concern; the human still decides.
+the booking agent proposes, and a sceptic with its own instructions and no shared context, on OpenAI, reviews the
+held booking against the traveller's request and the signed card. It can only raise a concern; the human still decides.
 
 Without OPENAI_API_KEY, or if the call fails, a rule check compares the same facts, so the demo never depends on it.
 Card text and the request are passed as data inside tags, never as instructions.

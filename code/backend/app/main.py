@@ -56,12 +56,13 @@ def _hive_call(fn, *args, **kwargs):
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    """Report whether the backend is up and whether Claude is configured."""
+    """Report whether the backend is up and which model vendor the agents use."""
+    claude = config.LLM_PROVIDER == "claude"
     return {
         "status": "ok",
-        "llm": "claude" if config.LLM_ENABLED else "mock",
-        "model": config.CLAUDE_MODEL,
-        "fast_model": config.CLAUDE_FAST_MODEL,
+        "llm": config.LLM_PROVIDER if config.LLM_ENABLED else "mock",
+        "model": config.CLAUDE_MODEL if claude else config.OPENAI_MODEL,
+        "fast_model": config.CLAUDE_FAST_MODEL if claude else config.OPENAI_MODEL,
         "hives": config.HIVE_MCP_URLS or ["local"],
     }
 
