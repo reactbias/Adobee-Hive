@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { api, chosenHub, setChosenHub, type Health } from "./api";
+import { api, chosenHub, setChosenHub, type DirectoryHub, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
+import Onboarding from "./panels/Onboarding";
 import B6Bee from "./components/B6Bee";
 import { CHAPTERS } from "./components/Chapter";
 import type { Key } from "./i18n/en";
@@ -106,6 +107,8 @@ export default function App() {
   // Which Hive the app runs against. The finder sets it; `?hub=` in the address skips the finder entirely.
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
   const [admin] = useState(adminMode);
+  // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
+  const [joining, setJoining] = useState<DirectoryHub | null>(null);
 
   if (admin)
     return (
@@ -122,7 +125,19 @@ export default function App() {
       <>
         <Header />
         <main>
-          <InstanceFinder onPick={setHub} />
+          {joining ? (
+            <Onboarding
+              hub={joining}
+              onBack={() => setJoining(null)}
+              onUse={(picked) => {
+                setChosenHub(picked);
+                setJoining(null);
+                setHub(picked);
+              }}
+            />
+          ) : (
+            <InstanceFinder onPick={setHub} onJoin={setJoining} />
+          )}
         </main>
       </>
     );

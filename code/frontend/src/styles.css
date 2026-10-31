@@ -3290,10 +3290,11 @@ button.self-start {
 
 /* ---------- The instance finder, and the hub admin panel ---------- */
 
-/* Deliberately plain: a readable column of rows on paper, nothing laid out cleverly, nothing that moves. It is a
-   first pass, and it should look like one. Paper, ink and the one accent, as everywhere else. */
+/* Each hive is a card that answers three questions side by side: what it carries, whether it will have you,
+   whether to trust it. Paper, ink and the one accent, as everywhere else; the hive you are on gets the accent's
+   tint and a badge, never the top of the list. */
 .finder {
-  max-width: 44rem;
+  max-width: 60rem;
   margin: 0 auto;
   padding: var(--s5) var(--s4) var(--s7);
   display: grid;
@@ -3317,36 +3318,265 @@ button.self-start {
   font-size: var(--t-sm);
   background: var(--sunk);
 }
-.finder-list {
+.hive-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+.hive-search input[type="search"] {
+  flex: 1 1 16rem;
+}
+.hive-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+button.hive-filter {
+  border-color: var(--line-strong);
+  padding: 0 var(--s4);
+}
+button.hive-filter[aria-pressed="true"],
+button.hive-filter[aria-pressed="true"]:hover:not(:disabled) {
+  background: var(--clay-tint);
+  border-color: var(--clay);
+  color: var(--clay-dark);
+}
+.hive-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--s3);
+  gap: var(--s4);
 }
-.finder-row {
+.hive {
+  display: grid;
+  gap: var(--s4);
+  padding: var(--s5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.hive--home {
+  border-color: var(--clay);
+  background: linear-gradient(var(--clay-tint), var(--surface) 6rem);
+}
+.hive-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--s3);
-  padding: var(--s4) 0;
+  align-items: baseline;
+  gap: var(--s2) var(--s3);
+}
+.hive-head h3 {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: var(--t-lg);
+  font-weight: 400;
+  line-height: 1.1;
+}
+.hive-head p {
+  margin: 0;
+}
+.hive-head .stack {
+  flex: 1 1 auto;
+}
+.hive-badge {
+  font-size: var(--t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--clay-dark);
+  border: 1px solid var(--clay);
+  border-radius: 999px;
+  padding: 2px var(--s3);
+}
+.hive-questions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--s4);
+  margin: 0;
+}
+.hive-questions > div {
+  display: grid;
+  align-content: start;
+  gap: var(--s1);
+  padding-top: var(--s3);
   border-top: 1px solid var(--line);
 }
-.finder-row h3 {
+.hive-questions dd {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--t-sm);
 }
-.finder-row p {
-  margin: 0;
+.hive-questions .status {
+  white-space: normal;
 }
-.finder-facts {
+.hive-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--s2) var(--s4);
+  gap: var(--s2) var(--s3);
+}
+.hive-actions p {
+  margin: 0;
+  flex-basis: 100%;
+}
+
+/* Joining a hive: one column of numbered steps, the folder promise in a box of its own, the exact JSON shown. */
+.onboard {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s7);
+}
+.onboard h1 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0;
+}
+.onboard p {
+  margin: 0;
+}
+button.onboard-back {
+  align-self: flex-start;
+}
+.onboard-step {
+  padding-top: var(--s5);
+  border-top: 1px solid var(--line);
+}
+.onboard-step h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin: 0;
+  font-size: var(--t-md);
+}
+.onboard-n {
+  display: inline-grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  background: var(--clay-tint);
+  color: var(--clay-dark);
   font-size: var(--t-sm);
+}
+.onboard-local {
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--clay);
+  background: var(--clay-tint);
+  color: var(--clay-dark);
+}
+.onboard-groups li {
+  justify-content: space-between;
+  align-items: center;
+}
+.onboard-fields {
+  display: grid;
+  grid-template-columns: minmax(6rem, max-content) 1fr;
+  gap: var(--s3) var(--s4);
+  align-items: start;
+}
+.onboard-fields label,
+.onboard fieldset legend {
+  font-size: var(--t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-top: var(--s2);
+}
+.onboard fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.onboard-contact,
+.onboard-listing {
+  display: grid;
+  grid-template-columns: 5rem 1fr auto;
+  gap: var(--s2);
+  align-items: center;
+}
+.onboard-listing {
+  grid-template-columns: 1fr 2fr auto;
+}
+.onboard-custody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+}
+.onboard-custody label,
+.onboard label.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  font-size: var(--t-base);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--ink);
+}
+.onboard input[type="radio"],
+.onboard input[type="checkbox"] {
+  width: 1.125rem;
+  min-height: 0;
+  height: 1.125rem;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--clay);
+}
+.onboard fieldset > button,
+.onboard-step > button,
+.onboard-groups + p + button {
+  align-self: flex-start;
+}
+.onboard-save {
+  align-self: flex-start;
+}
+.onboard-cost {
+  padding: var(--s3) var(--s4);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--sunk);
+  font-size: var(--t-sm);
+}
+.onboard-warn {
+  color: var(--clay-dark);
+  font-weight: 500;
+}
+.onboard-json {
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+  padding: var(--s4);
+  border-radius: var(--radius-sm);
+  background: var(--sunk);
+  font-size: var(--t-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.onboard-outcome {
+  padding: var(--s5);
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.onboard-outcome--admitted {
+  border-left-color: var(--clay);
+}
+.onboard-outcome--rejected {
+  border-left-color: var(--ink);
+}
+.onboard-outcome h2 {
+  margin: 0;
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: var(--t-lg);
+  font-weight: 400;
+}
+.onboard-outcome .rows li {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s1);
 }
 .nav-hub {
   min-height: 32px;
@@ -3404,11 +3634,16 @@ button.self-start {
 }
 
 @media (max-width: 480px) {
-  .finder-row button,
+  .hive-actions button,
   .admin-fields input,
   .admin-fields select {
     width: 100%;
     max-width: none;
+  }
+  .onboard-contact,
+  .onboard-listing,
+  .onboard-fields {
+    grid-template-columns: 1fr;
   }
 }
 
