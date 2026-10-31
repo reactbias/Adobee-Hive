@@ -17,7 +17,9 @@ from pydantic import BaseModel, Field
 from . import (
     activity,
     agent,
+    blocklist,
     config,
+    connections,
     db,
     federation,
     guard,
@@ -44,6 +46,8 @@ async def lifespan(_: FastAPI):
     hive.init()
     waiting.init()
     activity.init()
+    blocklist.init()
+    connections.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
