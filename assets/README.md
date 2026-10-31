@@ -29,7 +29,7 @@ Photos are downscaled and stripped of camera metadata (location, device).
 | [adobee-hive-logo-1024.png](brand/adobee-hive-logo-1024.png) | The mark: a bee in an open hexagon, from the whiteboard sketch |
 | [adobee-hive-wordmark.png](brand/adobee-hive-wordmark.png) | Logo and name |
 | [b6-bee-mascot.png](brand/b6-bee-mascot.png) | The B6 bee |
-| [hero-clay.svg](brand/hero-clay.svg) | Source of the landing hero's lit clay honeycomb |
+| [hero-clay.svg](brand/hero-clay.svg) | Lit clay honeycomb, for slides |
 
 Logo sources (SVG) live in `code/frontend/public/brand/`; see [documentation/BRAND.md](../documentation/BRAND.md).
 

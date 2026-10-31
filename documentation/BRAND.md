@@ -17,7 +17,7 @@ because it is the honeycomb cell.
 | File | Use |
 | --- | --- |
 | `code/frontend/public/brand/logo.svg` | The mark in clay, on paper |
-| `code/frontend/public/brand/logo-light.svg` | The same mark in lit clay, on dark grounds (the landing hero's bar) |
+| `code/frontend/public/brand/logo-light.svg` | The same mark in lit clay, on dark grounds (slides) |
 | `code/frontend/public/brand/favicon.svg` | The mark itself; simple enough for tab size |
 | `code/frontend/public/brand/wordmark.svg` | Mark plus name, self-contained |
 | `assets/brand/*.png` | Exports for slides |
@@ -91,8 +91,8 @@ Type, all bundled with their licence texts in `code/frontend/public/fonts/`:
 
 Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
 
-Imagery: the landing hero is lit clay honeycomb (`public/brand/hero-clay.jpg`, rendered from
-`assets/brand/hero-clay.svg`). No stock photos, no people.
+Imagery: lit clay honeycomb for slides (`assets/brand/hero-clay.svg`). The app itself has no photographs. No stock
+photos, no people.
 
 Personas on the agent stage are abstract hexagon avatars (`public/personas/`), one per voice: the guest, *Your agent*,
 the Hive, the business, *the sceptic* (second opinion), *the mirror* (an unverified copy) and the owner. They are

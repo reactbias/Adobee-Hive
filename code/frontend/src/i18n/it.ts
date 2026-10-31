@@ -2,9 +2,6 @@ import type { Key } from "./en";
 
 // Italiano della Svizzera italiana, registro formale.
 const it: Record<Key, string> = {
-  "nav.agent": "Agente di viaggio",
-  "nav.owner": "Studio per gli host",
-  "nav.demand": "Mappa della domanda",
   "nav.language": "Lingua",
   "nav.live": "IA attiva",
   "nav.offline": "Modalità offline",
@@ -18,55 +15,6 @@ const it: Record<Key, string> = {
   "trust.reviews": "{avg} su {n} soggiorni verificati",
   "trust.noReviews": "Nessun soggiorno verificato",
 
-  "home.eyebrow": "La porta d'ingresso, firmata.",
-  "home.title": "Il prossimo ospite è *un agente.*",
-  "home.lead":
-    "Adobee Hive dà a ogni attività locale una scheda firmata. Gli agenti la trovano, la verificano e prenotano attraverso di essa. Il titolare la scrive con parole sue, e nulla viene prenotato senza il sì di una persona.",
-  "home.fact.cards": "Schede firmate nell'Hive di Basilea",
-  "home.fact.signature": "Firma del titolare",
-  "home.fact.signatureValue": "Ed25519",
-  "home.fact.protocol": "Protocollo aperto",
-  "home.fact.placement": "Posizioni a pagamento",
-  "home.cta.agent": "Guardi un agente prenotare",
-  "home.cta.owner": "Per gli host",
-  "home.from": "da {price} a notte",
-  "home.specimen":
-    "Una scheda Hive, in diretta dall'Hive di Basilea. Se si cambia un solo dato senza la chiave del titolare, ogni agente la rifiuta.",
-  "home.principles.eyebrow": "Principi",
-  "home.principles.title": "Una fiducia *verificabile.*",
-  "home.p1.title": "Fatti firmati",
-  "home.p1.body":
-    "Ogni scheda porta la firma del titolare. Gli agenti la verificano da sé e scartano qualsiasi copia alterata.",
-  "home.p2.title": "Classifica aperta",
-  "home.p2.body":
-    "Ogni risultato spiega perché è in testa e perché gli altri sono stati esclusi. La posizione non si compra.",
-  "home.p3.title": "Prova di soggiorno",
-  "home.p3.body":
-    "Solo una ricevuta di prenotazione firmata permette di recensire. Niente soggiorno, niente recensione.",
-  "home.p4.title": "Il Suo sì",
-  "home.p4.body": "Gli agenti negoziano. Le persone decidono. Nulla viene prenotato senza il Suo consenso.",
-  "home.twist.eyebrow": "Domanda mancata",
-  "home.twist.title": "Gli agenti scrivono il *business plan.*",
-  "home.twist.body":
-    "Ogni richiesta che nessuna attività ha potuto soddisfare viene registrata. Un caffè scopre che gli agenti cercavano una colazione vegana. Una città scopre ciò che nessuno offre ancora.",
-  "home.twist.cta": "Apri la mappa della domanda",
-  "home.hive.eyebrow": "Nell'Hive",
-  "home.hive.title": "Sei attività. *Una porta aperta.*",
-  "home.hive.body":
-    "Attività fittizie di Basilea, ognuna con la sua scheda firmata. Qualsiasi client MCP, Claude incluso, si collega a",
-  "home.no.eyebrow": "Misura",
-  "home.no.title": "Ciò che l'Hive *non* farà.",
-  "home.no1.title": "Vendere posizioni",
-  "home.no1.body": "La classifica si spiega da sé, anche chi è stato escluso e perché.",
-  "home.no2.title": "Profilare i viaggiatori",
-  "home.no2.body": "L'Hive impara che cosa è stato chiesto, mai chi l'ha chiesto.",
-  "home.no3.title": "Prendere ordini da un annuncio",
-  "home.no3.body":
-    "Il testo di una scheda arriva agli agenti come dato, mai come istruzione. Ogni chiamata viene mostrata alla persona.",
-  "home.closing":
-    "Su GitHub trova progetti su cui lavorare. Su Adobee Hive gli agenti trovano le attività e le persone con cui lavorare.",
-
-  "owner.eyebrow": "Studio per gli host",
   "owner.title": "Dica che cosa è *cambiato.*",
   "owner.lead":
     "Nessun sito da mantenere. Scriva la modifica con parole Sue, la controlli, la firmi. Ogni agente legge la nuova scheda appena la pubblica.",
@@ -109,24 +57,12 @@ const it: Record<Key, string> = {
   "owner.missed.title": "Ciò che gli agenti hanno chiesto e Lei non offre",
   "owner.missed.empty": "Ancora nulla di mancato. Avvii qualche ricerca con l'agente di viaggio.",
   "owner.agents.title": "Come La vedono gli agenti",
-  "owner.agents.human": "Come La vedono le persone",
+  "owner.agents.mcp": "Qualsiasi client MCP, Claude compreso, legge questa scheda a",
   "owner.bookings.title": "Prenotazioni",
   "owner.bookings.guest": "Ospite",
   "owner.bookings.dates": "Date",
   "owner.bookings.empty": "Ancora nessuna prenotazione.",
 
-  "card.loading": "Caricamento della scheda",
-  "card.walkIn": "Ospite di passaggio",
-  "card.address": "Indirizzo",
-  "card.book.title": "Prenoti direttamente",
-  "card.in": "Arrivo",
-  "card.out": "Partenza",
-  "card.guests": "Ospiti",
-  "card.name": "Il Suo nome",
-  "card.check": "Verifica disponibilità",
-  "card.full": "Completo in queste date.",
-  "card.bookFor": "Prenota per {price}",
-  "card.booked": "Prenotato: {unit}, riferimento {id}.",
   "card.tamper.eyebrow": "Fatti firmati",
   "card.tamper.title": "Uno scraper può falsificare questa scheda?",
   "card.tamper.body":
@@ -139,10 +75,7 @@ const it: Record<Key, string> = {
   "card.tamper.valid": "Valida",
   "card.tamper.invalid": "Non valida",
   "card.tamper.rejected": "Rifiutata",
-  "card.footer":
-    "Scheda versione {version}, pubblicata il {date}. Gli agenti leggono gli stessi dati all'endpoint MCP dell'Hive.",
 
-  "demand.eyebrow": "Mappa della domanda",
   "demand.title": "Che cosa hanno *chiesto* gli agenti di Basilea.",
   "demand.lead":
     "Ogni ricerca lascia una traccia. Quando nessuna attività può soddisfarla, non è una prenotazione persa. È un business plan, scritto dagli agenti e letto dagli host locali.",
@@ -157,11 +90,10 @@ const it: Record<Key, string> = {
   "demand.empty": "Ancora nessuna ricerca. Avvii l'agente di viaggio o simuli del traffico.",
   "demand.ofAsked": "{unserved} su {asked} insoddisfatte",
 
-  "agent.eyebrow": "Agente di viaggio",
-  "agent.title": "Una frase. *Un sì.*",
+  "agent.eyebrow": "La porta d'ingresso, firmata.",
+  "agent.title": "Il prossimo ospite è *un agente.*",
   "agent.lead":
     "Dica al Suo agente di che cosa ha bisogno. Parla con le attività di Basilea tramite MCP, verifica da sé ogni firma e confronta le offerte. Nulla viene prenotato senza il Suo consenso.",
-  "agent.you": "Lei",
   "agent.intent": "La Sua richiesta",
   "agent.followUp": "Risponda al Suo agente",
   "agent.placeholder": "Dove desidera soggiornare?",
@@ -176,18 +108,6 @@ const it: Record<Key, string> = {
     "Il letto più economico di Basilea per una notte, dal 20.11.2026 al 21.11.2026, porto il mio cane.",
   "agent.declined": "Inteso. Non è stato prenotato nulla.",
   "agent.stage": "Da agente ad agente",
-  "agent.role.you": "Agisce per Lei",
-  "agent.role.hive": "Per l'attività",
-  "agent.you.idle": "Pronto",
-  "agent.you.busy": "Negozia",
-  "agent.you.pending": "Attende il Suo sì",
-  "agent.you.booked": "Fatto",
-  "agent.you.reported": "Ha riferito",
-  "agent.hive.idle": "In ascolto",
-  "agent.hive.busy": "Risponde",
-  "agent.hive.pending": "Tiene la camera",
-  "agent.hive.booked": "Confermato",
-  "agent.hive.reported": "In ascolto",
   "agent.mode.claude": "Claude",
   "agent.mode.openai": "OpenAI",
   "agent.mode.offline": "Pianificatore offline",
@@ -197,8 +117,6 @@ const it: Record<Key, string> = {
   "agent.empty.title": "La linea è aperta.",
   "agent.empty.body":
     "Invii una richiesta e guardi il Suo agente parlare con l'Hive, chiamata dopo chiamata: chi può ospitarLa, quale scheda è davvero firmata, che cosa è libero e a che prezzo.",
-  "agent.working.ask": "Il Suo agente interroga l'Hive",
-  "agent.working.book": "Il Suo agente prenota presso {name}",
   "agent.gate.eyebrow": "Il Suo agente chiede",
   "agent.gate.question": "Prenotare «{unit}» presso {name}?",
   "agent.gate.why": "Perché questa",
@@ -239,19 +157,17 @@ const it: Record<Key, string> = {
   "chat.replay": "Rivedi",
   "chat.skip": "Salta",
   "chat.thinking": "sta pensando",
-  "next.intro": "Fatto. Tre cose di cui posso ancora occuparmi, un tocco ciascuna.",
+  "next.intro": "Fatto. Ecco di cosa posso ancora occuparmi per lei.",
   "next.calendar.title": "Aggiungi al calendario",
   "next.calendar.body": "{dates}, con la ricevuta firmata nella nota.",
   "next.calendar.cta": "Scarica .ics",
   "next.coffee.because": "Perché hai chiesto {feature}",
   "next.coffee.nearby": "Qui vicino, dall'Hive",
-  "next.coffee.cta": "Apri la scheda firmata",
   "next.route.title": "Arrivi in treno?",
   "next.route.body": "Da Basel SBB a {name}, {distance} a piedi.",
   "next.route.cta": "Mostra il percorso",
   "next.fine": "Qui nulla prenota né paga. Ogni tocco fa una sola cosa visibile.",
 
-  "trace.you": "Il Suo agente",
   "trace.hive": "Hive di Basilea",
   "trace.near": "vicino a {place}",
   "trace.under": "sotto {price} a notte",
@@ -312,18 +228,13 @@ const it: Record<Key, string> = {
   "trace.sig.unchecked": "Firma non verificata",
 
   // Ask the Hive
-  "nav.ask": "Chiedere alla Hive",
   "trust.unclaimed": "Non rivendicata, dal sito pubblico",
-  "ask.eyebrow": "Chiedere alla Hive",
-  "ask.title": "Chieda di qualsiasi azienda.",
-  "ask.lead":
-    "La risposta viene dalle carte, mai da uno scraping. Le cinque aziende qui sono reali ma non rivendicate: le loro carte sono state compilate da siti pubblici e non sono verificate da loro.",
   "ask.label": "La Sua domanda",
   "ask.send": "Chiedere",
   "ask.examples": "Per esempio",
-  "ask.ex1": "Che novità ci sono da Endress+Hauser questo mese?",
+  "ask.ex1": "Che novità ci sono da BaselHack questo mese?",
   "ask.ex2": "Pianifichi per me un'avventura sotto 500 CHF",
-  "ask.ex3": "Servizio di calibrazione di Endress+Hauser",
+  "ask.ex3": "4XOR può automatizzare un processo per me?",
   "ask.ex4": "Cosa fa Adobe con le Content Credentials?",
   "ask.mood.label": "Il Suo umore, se vuole",
   "ask.mood.none": "Non indicato",
@@ -364,5 +275,19 @@ const it: Record<Key, string> = {
   "ask.rule.yes_before_action": "Nulla si fa senza il Suo sì",
   "ask.rule.unclaimed_flagged": "Le carte non rivendicate lo dichiarano",
   "ask.answer.by": "Formulato dal modello a partire dalle carte qui sotto; i fatti sono delle carte.",
+  "next.business.title": "Come la vede {name}",
+  "next.business.body": "La stessa prenotazione dal lato dell'hotel, e cosa chiedono ancora gli agenti.",
+  "next.business.cta": "Mostra il lato dell'hotel",
+  "nav.chapters": "Capitoli",
+  "chapter.travel": "Agente di viaggio",
+  "chapter.ask": "Agente generale",
+  "chapter.business": "Attività",
+  "chapter.ask.lead":
+    "Lo stesso tipo di agente, oltre gli hotel: chieda di qualsiasi attività nell'Hive e, se vuole, dica come si sente. Risponde dalle schede delle attività stesse, e tutto ciò che farebbe aspetta il suo sì.",
+  "chapter.business.lead":
+    "Ora l'altro lato della porta. Prima cosa hanno chiesto gli agenti di Basilea che nessuno offre. Poi è lei la titolare di {name}: vede arrivare la prenotazione e cambia la sua scheda con una frase.",
+  "owner.role": "Lei è la titolare di {name}",
+  "chapter.ask.title": "Una domanda, *qualsiasi attività.*",
+  "chapter.business.title": "Cosa hanno chiesto gli agenti, *e la risposta della titolare.*",
 };
 export default it;

@@ -1,9 +1,6 @@
 // English is the source language: it defines every key. Placeholders in {braces} are filled at runtime.
 const en = {
   // Shell
-  "nav.agent": "Traveller agent",
-  "nav.owner": "Owner studio",
-  "nav.demand": "Demand map",
   "nav.language": "Language",
   "nav.live": "AI live",
   "nav.offline": "Offline mode",
@@ -18,53 +15,7 @@ const en = {
   "trust.reviews": "{avg} from {n} verified stays",
   "trust.noReviews": "No verified stays yet",
 
-  // Landing page
-  "home.eyebrow": "The front door, signed.",
-  "home.title": "The next guest is *an agent.*",
-  "home.lead":
-    "Adobee Hive gives every local business one signed card. Agents find it, verify it and book through it. The owner writes it in plain words, and nothing is booked until a person says yes.",
-  "home.fact.cards": "Signed cards in the Basel Hive",
-  "home.fact.signature": "Owner signature",
-  "home.fact.signatureValue": "Ed25519",
-  "home.fact.protocol": "Open protocol",
-  "home.fact.placement": "Paid placements",
-  "home.cta.agent": "Watch an agent book",
-  "home.cta.owner": "For business owners",
-  "home.from": "from {price} a night",
-  "home.specimen":
-    "A Hive card, live from the Basel Hive. Change one fact without the owner's key and every agent rejects it.",
-  "home.principles.eyebrow": "Principles",
-  "home.principles.title": "Trust you can *check.*",
-  "home.p1.title": "Signed facts",
-  "home.p1.body":
-    "Every card carries the owner's signature. Agents verify it themselves and turn away any copy that was altered.",
-  "home.p2.title": "Open ranking",
-  "home.p2.body": "Every result says why it won and why the others were left out. Placement cannot be bought.",
-  "home.p3.title": "Proof of stay",
-  "home.p3.body": "Only a signed booking receipt can leave a review. No stay, no review.",
-  "home.p4.title": "Your yes",
-  "home.p4.body": "Agents negotiate. People decide. Nothing is booked without your approval.",
-  "home.twist.eyebrow": "Missed demand",
-  "home.twist.title": "Agents write the *business plan.*",
-  "home.twist.body":
-    "Every request no business could serve is recorded. A café learns that agents asked for vegan breakfast. A city learns what nobody offers yet.",
-  "home.twist.cta": "Open the demand map",
-  "home.hive.eyebrow": "In the Hive",
-  "home.hive.title": "Six businesses. *One open door.*",
-  "home.hive.body": "Fictional Basel businesses, each with a signed card. Any MCP client, Claude included, connects at",
-  "home.no.eyebrow": "Restraint",
-  "home.no.title": "What the Hive will *not* do.",
-  "home.no1.title": "Sell placement",
-  "home.no1.body": "Ranking explains itself, including who was left out and why.",
-  "home.no2.title": "Profile travellers",
-  "home.no2.body": "The Hive learns what was asked, never who asked.",
-  "home.no3.title": "Take orders from a listing",
-  "home.no3.body": "Card text reaches agents as data, never as instructions. Every call is shown to the person.",
-  "home.closing":
-    "On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.",
-
-  // Owner studio
-  "owner.eyebrow": "Owner studio",
+  // The owner's side, under the chat
   "owner.title": "Say what *changed.*",
   "owner.lead":
     "No website to maintain. Write the change in plain words, review it, sign it. Every agent reads the new card the moment you publish.",
@@ -107,25 +58,13 @@ const en = {
   "owner.missed.title": "What agents asked for that you don't offer",
   "owner.missed.empty": "Nothing missed yet. Run a few searches with the traveller agent.",
   "owner.agents.title": "How agents see you",
-  "owner.agents.human": "How people see you",
+  "owner.agents.mcp": "Any MCP client, Claude included, reads this card at",
   "owner.bookings.title": "Bookings",
   "owner.bookings.guest": "Guest",
   "owner.bookings.dates": "Dates",
   "owner.bookings.empty": "No bookings yet.",
 
-  // Human card page
-  "card.loading": "Loading the card",
-  "card.walkIn": "Walk-in guest",
-  "card.address": "Address",
-  "card.book.title": "Book directly",
-  "card.in": "Check-in",
-  "card.out": "Check-out",
-  "card.guests": "Guests",
-  "card.name": "Your name",
-  "card.check": "Check availability",
-  "card.full": "Fully booked for these dates.",
-  "card.bookFor": "Book for {price}",
-  "card.booked": "Booked: {unit}, reference {id}.",
+  // The signed card, under the chat
   "card.tamper.eyebrow": "Signed facts",
   "card.tamper.title": "Can a scraper fake this card?",
   "card.tamper.body":
@@ -138,10 +77,8 @@ const en = {
   "card.tamper.valid": "Valid",
   "card.tamper.invalid": "Invalid",
   "card.tamper.rejected": "Rejected",
-  "card.footer": "Card version {version}, published {date}. Agents read the same data at the Hive's MCP endpoint.",
 
-  // Demand map
-  "demand.eyebrow": "Demand map",
+  // The demand map, under the chat
   "demand.title": "What Basel's agents *asked for.*",
   "demand.lead":
     "Every search leaves a trace. When no business can serve it, that is not a lost booking. It is a business plan, written by agents and read by local owners.",
@@ -157,11 +94,10 @@ const en = {
   "demand.ofAsked": "{unserved} of {asked} unserved",
 
   // Traveller agent
-  "agent.eyebrow": "Traveller agent",
-  "agent.title": "One sentence. *One yes.*",
+  "agent.eyebrow": "The front door, signed.",
+  "agent.title": "The next guest is *an agent.*",
   "agent.lead":
     "Tell your agent what you need. It talks to Basel's businesses over MCP, checks every signature itself and compares the offers. Nothing is booked until you approve.",
-  "agent.you": "You",
   "agent.intent": "Your request",
   "agent.followUp": "Reply to your agent",
   "agent.placeholder": "Where do you want to stay?",
@@ -175,18 +111,6 @@ const en = {
   "agent.example.3": "Cheapest bed in Basel for one night, 2026-11-20 to 2026-11-21, I bring my dog.",
   "agent.declined": "Understood. Nothing was booked.",
   "agent.stage": "Agent to agent",
-  "agent.role.you": "Acts for you",
-  "agent.role.hive": "For the business",
-  "agent.you.idle": "Ready",
-  "agent.you.busy": "Negotiating",
-  "agent.you.pending": "Waiting for your yes",
-  "agent.you.booked": "Done",
-  "agent.you.reported": "Reported back",
-  "agent.hive.idle": "Listening",
-  "agent.hive.busy": "Answering",
-  "agent.hive.pending": "Holding the room",
-  "agent.hive.booked": "Confirmed",
-  "agent.hive.reported": "Listening",
   "agent.mode.claude": "Claude",
   "agent.mode.openai": "OpenAI",
   "agent.mode.offline": "Offline planner",
@@ -196,8 +120,6 @@ const en = {
   "agent.empty.title": "The line is open.",
   "agent.empty.body":
     "Send a request and watch your agent speak with the Hive, call by call: who can host you, whose card is genuinely signed, what is free, and at what price.",
-  "agent.working.ask": "Your agent is asking the Hive",
-  "agent.working.book": "Your agent is booking with {name}",
   "agent.gate.eyebrow": "Your agent asks",
   "agent.gate.question": "Book the {unit} at {name}?",
   "agent.gate.why": "Why this one",
@@ -238,20 +160,18 @@ const en = {
   "chat.replay": "Replay",
   "chat.skip": "Skip",
   "chat.thinking": "is thinking",
-  "next.intro": "Done. Three things I can take off your plate, one tap each.",
+  "next.intro": "Done. Here is what I can take off your plate next.",
   "next.calendar.title": "Put it in your calendar",
   "next.calendar.body": "{dates}, with the signed receipt in the note.",
   "next.calendar.cta": "Download .ics",
   "next.coffee.because": "Because you asked for {feature}",
   "next.coffee.nearby": "Nearby, from the Hive",
-  "next.coffee.cta": "Open the signed card",
   "next.route.title": "Arriving by train?",
   "next.route.body": "Basel SBB to {name}, {distance} on foot.",
   "next.route.cta": "Show the walk",
   "next.fine": "Nothing here books or pays. Each tap does one thing you can see.",
 
   // Agent-to-agent trace
-  "trace.you": "Your agent",
   "trace.hive": "Basel Hive",
   "trace.near": "near {place}",
   "trace.under": "under {price} a night",
@@ -310,18 +230,13 @@ const en = {
   "trace.sig.unchecked": "Signature not checked",
 
   // Ask the Hive
-  "nav.ask": "Ask the Hive",
   "trust.unclaimed": "Unclaimed, from the public website",
-  "ask.eyebrow": "Ask the Hive",
-  "ask.title": "Ask about any business.",
-  "ask.lead":
-    "The answer comes from cards, never from a scrape. The five businesses here are real but unclaimed: their cards were compiled from public websites and are not verified by them.",
   "ask.label": "Your question",
   "ask.send": "Ask",
   "ask.examples": "Try",
-  "ask.ex1": "What's going on at Endress+Hauser this month?",
+  "ask.ex1": "What's going on at BaselHack this month?",
   "ask.ex2": "Plan me an adventure under 500 CHF",
-  "ask.ex3": "I need calibration for a flowmeter",
+  "ask.ex3": "Can 4XOR help me automate a workflow?",
   "ask.ex4": "What is Adobe doing about content credentials?",
   "ask.mood.label": "Your mood, if you want to say",
   "ask.mood.none": "Not set",
@@ -361,6 +276,20 @@ const en = {
   "ask.rule.yes_before_action": "Nothing is done without your yes",
   "ask.rule.unclaimed_flagged": "Unclaimed cards say so",
   "ask.answer.by": "Phrased by the model from the cards below; the facts are the cards'.",
+  "next.business.title": "How {name} sees it",
+  "next.business.body": "The same booking from the hotel's side, and what agents still ask for.",
+  "next.business.cta": "Show the hotel's side",
+  "nav.chapters": "Chapters",
+  "chapter.travel": "Traveller agent",
+  "chapter.ask": "General agent",
+  "chapter.business": "Business",
+  "chapter.ask.lead":
+    "The same kind of agent, beyond hotels: ask about any business in the Hive and, if you like, say how you feel. It answers from the businesses' own cards, and anything it would do waits for your yes.",
+  "chapter.business.lead":
+    "Now the other side of the door. First what Basel's agents asked for that nobody offers. Then you are the owner of {name}: you see the booking arrive and change your card in one sentence.",
+  "owner.role": "You are the owner of {name}",
+  "chapter.ask.title": "One question, *any business.*",
+  "chapter.business.title": "What agents asked for, *and the owner's answer.*",
 } as const;
 
 export type Key = keyof typeof en;

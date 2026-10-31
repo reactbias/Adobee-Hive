@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type Card, type OwnerOverview, type Proposal } from "../api";
 import { I18nProvider } from "../i18n";
 import de from "../i18n/de";
+import en from "../i18n/en";
 import it_ from "../i18n/it";
-import OwnerStudio from "./OwnerStudio";
+import OwnerPanel from "./OwnerPanel";
 
 // The owner studio speaks the page's language even offline: the Use button writes a command in that language and the
 // offline summary is worded from items, not from the backend's English sentence. api.ts is mocked.
@@ -17,6 +17,8 @@ const CARD = {
   slug: "rheinblick",
   name: "Hotel Rheinblick",
   version: 1,
+  units: [],
+  features: [],
   trust: TRUST,
 } as unknown as Card;
 
@@ -51,9 +53,7 @@ function setup(locale: string) {
   vi.spyOn(api, "owner").mockResolvedValue(OVERVIEW);
   render(
     <I18nProvider>
-      <MemoryRouter>
-        <OwnerStudio />
-      </MemoryRouter>
+      <OwnerPanel />
     </I18nProvider>,
   );
   return userEvent.setup();
@@ -77,5 +77,24 @@ describe("owner studio in every language", () => {
     expect(propose).toHaveBeenCalledWith("hotel-rheinblick", "aggiungi vegan breakfast");
     expect(await screen.findByText(/Aggiunto: vegan breakfast/)).toBeInTheDocument();
     expect(screen.queryByText(/Mock mode/)).not.toBeInTheDocument();
+  });
+
+  it("shows the owner that a forged copy of the card is rejected", async () => {
+    vi.spyOn(api, "forge").mockResolvedValue(CARD);
+    vi.spyOn(api, "verify")
+      .mockResolvedValueOnce({ signature_valid: true })
+      .mockResolvedValueOnce({ signature_valid: false })
+      .mockResolvedValueOnce({ signature_valid: false });
+    const user = setup("en");
+
+    await user.click(await screen.findByRole("button", { name: en["card.tamper.perk"] }));
+
+    expect(await screen.findByText(en["card.tamper.valid"])).toBeInTheDocument();
+    expect(screen.getAllByText(en["card.tamper.rejected"])).toHaveLength(2);
+  });
+
+  it("says plainly whose side this is", async () => {
+    setup("en");
+    expect(await screen.findByText(en["owner.role"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
   });
 });

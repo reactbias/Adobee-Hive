@@ -1,4 +1,4 @@
-"""The docs are a map of what runs: every endpoint, MCP tool and page in the app has a row in ARCHITECTURE.md."""
+"""The docs are a map of what runs: every endpoint, MCP tool and panel of the app has a row in ARCHITECTURE.md."""
 
 import asyncio
 import re
@@ -12,7 +12,7 @@ from app.mcp_server import server
 
 ROOT = Path(__file__).resolve().parents[3]
 ARCHITECTURE = (ROOT / "documentation" / "ARCHITECTURE.md").read_text(encoding="utf-8")
-FRONTEND_ROUTES = (ROOT / "code" / "frontend" / "src" / "main.tsx").read_text(encoding="utf-8")
+FRONTEND = ROOT / "code" / "frontend" / "src"
 
 
 def _section(title: str) -> str:
@@ -45,12 +45,15 @@ def test_every_mcp_tool_is_documented(client):
     assert documented - served == set(), "these are documented but not served"
 
 
-def test_every_page_is_documented():
-    served = set(re.findall(r'<Route path="([^"]+)"', FRONTEND_ROUTES))
-    documented = _first_cells("Pages")
-    assert served, "no routes found in main.tsx"
-    assert served - documented == set(), "add these to the Pages table in ARCHITECTURE.md"
-    assert documented - served == set(), "these are documented but not routed"
+def test_the_app_is_one_page_and_every_panel_is_documented():
+    pages = {p.name for p in (FRONTEND / "pages").glob("*.tsx") if not p.name.endswith(".test.tsx")}
+    panels = {p.name for p in (FRONTEND / "panels").glob("*.tsx") if not p.name.endswith(".test.tsx")}
+    assert pages == {"TravellerAgent.tsx"}, "the app is one page; fold new views into it as a panel"
+    assert "<Route" not in (FRONTEND / "App.tsx").read_text(encoding="utf-8")
+    documented = _first_cells("The page")
+    assert panels, "no panels found"
+    assert panels - documented == set(), "add these to the table under 'The page' in ARCHITECTURE.md"
+    assert documented - panels == set(), "these are documented but not in src/panels"
 
 
 def test_the_interactive_api_docs_are_served(client):

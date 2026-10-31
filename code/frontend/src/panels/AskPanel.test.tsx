@@ -1,11 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type AskResult, type Handoff } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
-import AskHive from "./AskHive";
+import AskPanel from "./AskPanel";
 
 // /ask as a person sees it: a mood they set, answers marked unclaimed, and a yes before any hand-off. api.ts is mocked.
 
@@ -78,9 +77,7 @@ const HANDOFF: Handoff = {
 function setup() {
   render(
     <I18nProvider>
-      <MemoryRouter>
-        <AskHive />
-      </MemoryRouter>
+      <AskPanel />
     </I18nProvider>,
   );
   return userEvent.setup();

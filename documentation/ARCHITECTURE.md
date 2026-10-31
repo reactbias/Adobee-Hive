@@ -29,7 +29,7 @@ flowchart LR
 | `mcp_server.py` | The MCP server agents connect to |
 | `agent.py` | The traveller agent: an OpenAI or Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
 | `injection.py` | The guard on every tool result: text that addresses agents (EN, DE, FR, IT rules) is withheld before the agent reads it and reported in the trace |
-| `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test on `/agent` |
+| `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test in chapter 1 |
 | `second_opinion.py` | A separate sceptic agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked. Without a key, a rule-based edit understands add, remove and room prices in EN, DE, FR and IT and returns `summary_items` the studio words in the page's language |
 | `rulesets.py` | Signed rulesets a person chooses per request (e.g. "Dogs, verified" by a fictional dog owners' club). They can only narrow a search, never boost; the answer names the ruleset, its author and what it changed. Authors' keys are in `/.well-known/hive.json` under `ruleset_keys` |
@@ -58,33 +58,32 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | File | Responsibility |
 | --- | --- |
 | `api.ts` | Typed client for the REST API |
-| `pages/TravellerAgent.tsx` | The traveller's brief, the approval step, the signed receipt and the next steps |
+| `App.tsx`, `main.tsx` | The one page: a header with the three chapters, the AI status and the language switch |
+| `pages/TravellerAgent.tsx` | The page itself: the traveller's brief, the approval step, the signed receipt and the next steps (chapter 1), then the general agent (chapter 2) and the business's side (chapter 3) |
+| `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
-| `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB. None of them books or pays |
+| `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB, and the hotel's side further down. None of them books or pays |
 | `components/Icon.tsx`, `components/Display.tsx` | Our icon set; headlines with one italic phrase |
-| `pages/OwnerStudio.tsx` | Plain-language edits, diff, sign and publish, missed demand |
-| `pages/CardPage.tsx` | The human view of a card, direct booking and the tamper test |
-| `pages/DemandMap.tsx` | What Basel asked for that nobody offers |
-| `pages/AskHive.tsx` | Ask the Hive: a question, a mood the person sets, answers per business with their source, and the approval before a hand-off |
+| `panels/` | The parts of chapters 2 and 3, one file each; see [The page](#the-page) |
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
-## Pages
+## The page
 
-Routes in `code/frontend/src/main.tsx`. `tests/test_docs.py` fails when a route has no row here.
+The app is one page (`App.tsx`, no router) that tells one story in three chapters, each with an anchor the header
+jumps to: `#travel`, the traveller agent; `#ask`, a general agent for any business; `#business`, the business's
+side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
+page appears or when a panel in `code/frontend/src/panels` has no row here.
 
-| Route | Page | What a person does there |
+| Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `/` | `Home.tsx` | The idea in one screen, and the way into each demo |
-| `/agent` | `TravellerAgent.tsx` | States a trip; watches the two agents negotiate; approves or declines the held booking; the stress test |
-| `/card/:slug` | `CardPage.tsx` | Reads a business's signed card as a page, books directly, runs the tamper test |
-| `/owner` | `OwnerStudio.tsx` | Edits a card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand |
-| `/demand` | `DemandMap.tsx` | Sees what Basel asked for that nobody offers; simulates a busy week |
-| `/ask` | `AskHive.tsx` | Asks about the example businesses with a chosen mood; approves any hand-off |
+| `AskPanel.tsx` | 2, general agent | Asks about the example businesses with a chosen mood; approves any hand-off |
+| `DemandPanel.tsx` | 3, business | Sees what Basel asked for that nobody offers; simulates a busy week |
+| `OwnerPanel.tsx` | 3, business | Is the owner of the hotel just booked: sees the booking arrive, edits the card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand; runs the tamper test |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
@@ -119,7 +118,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
-| `POST /api/hive/cards/{card_id}/book` | A person's direct booking from the card page; returns a signed receipt | |
+| `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
 | `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
 | `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
 | `POST /api/hive/demo/forge/{card_id}` | Tamper demo: a copy re-signed by a stranger, which must fail | rate limit |
@@ -142,7 +141,7 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 ## Trust by design
 
 - **Signatures.** Each card version is signed over canonical JSON (sorted keys, compact separators) with the
-  owner's Ed25519 key. Agents verify client-side; the card page has a live tamper test.
+  owner's Ed25519 key. Agents verify client-side; the owner studio has a live tamper test.
 - **Expiry.** `publish` signs a `valid_until` into every version (`FRESH_DAYS`, 90); discovery leaves out an
   expired card with the reason, and `trust.fresh` says whether it still holds.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
@@ -155,13 +154,13 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
   city sees what nobody offers.
 - **Prompt safety.** Card text is treated as data in the agent's prompt, never as instructions. A guard withholds
   text addressed to agents before the agent reads it, and the agent checks every card's signature itself. Try it with
-  the stress test on `/agent`, or `POST /api/agent` with `"scenario": "injection"` (and `"rules": "off"` for the
+  the stress test in chapter 1, or `POST /api/agent` with `"scenario": "injection"` (and `"rules": "off"` for the
   unguarded counterfactual, which is scripted and never books).
 - **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`).
 - **Unclaimed cards.** A card with `provenance.verified_by_owner: false` was compiled from a public website and is
   signed by the Hive as compiler. `trust.claimed` is false, the UI and every answer say so, owner edits refuse it,
   and an approved action only hands the person off to the business's own site.
-- **Chosen, not inferred.** The mood on `/ask` is a preference the person sets; the answer echoes it with its
+- **Chosen, not inferred.** The mood in chapter 2 is a preference the person sets; the answer echoes it with its
   effects. Only the mood and the cards asked about are counted, never the question text or who asked.
 - **Abuse limits.** Owner edits can require a token, model calls are rate-limited, all input is bounded.
   Details and known limits: [SECURITY.md](../SECURITY.md).
