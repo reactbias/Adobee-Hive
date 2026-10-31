@@ -222,7 +222,7 @@ export default function TravellerAgent() {
             <span />
           </div>
           <Presence
-            mark={<img className="hex hive" src="/brand/favicon.svg" alt="" />}
+            mark={<img className="hex hive" src={`${import.meta.env.BASE_URL}brand/favicon.svg`} alt="" />}
             name={counterpart}
             role={t("agent.role.hive")}
             status={t(`agent.hive.${phase}` as Key)}

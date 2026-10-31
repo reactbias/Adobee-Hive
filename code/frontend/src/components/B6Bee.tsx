@@ -64,12 +64,12 @@ export default function B6Bee() {
       <footer className="footer">
         <span>{t("footer.line")}</span>
         <button className="b6-perch" onClick={fly} aria-label={t("footer.wake")} title="6">
-          <img src="/brand/mascot.svg" alt="" className={flying ? "away" : ""} />
+          <img src={`${import.meta.env.BASE_URL}brand/mascot.svg`} alt="" className={flying ? "away" : ""} />
         </button>
       </footer>
       {flying && (
         <div className="b6-flight" style={{ animationDuration: `${FLIGHT_MS}ms` }} aria-hidden>
-          <img ref={bee} src="/brand/mascot.svg" alt="" className="b6-bob" />
+          <img ref={bee} src={`${import.meta.env.BASE_URL}brand/mascot.svg`} alt="" className="b6-bob" />
         </div>
       )}
       {sixes.map((s) => (
