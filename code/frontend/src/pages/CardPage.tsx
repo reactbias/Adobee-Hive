@@ -16,7 +16,7 @@ export default function CardPage() {
   const [units, setUnits] = useState<FreeUnit[] | null>(null);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [error, setError] = useState("");
-  const [tamper, setTamper] = useState<{ original: boolean; tampered: boolean } | null>(null);
+  const [tamper, setTamper] = useState<{ original: boolean; tampered: boolean; stranger: boolean } | null>(null);
 
   useEffect(() => {
     api
@@ -58,8 +58,18 @@ export default function CardPage() {
     const forged: Card = JSON.parse(JSON.stringify(card));
     if (forged.units.length) forged.units[0].price_chf = 1;
     else forged.features = [...forged.features, "free breakfast"];
-    const [original, tampered] = await Promise.all([api.verify(card), api.verify(forged)]);
-    setTamper({ original: original.signature_valid, tampered: tampered.signature_valid });
+    // A smarter forger re-signs the changed copy with their own key; only the owner's pinned key catches that.
+    const resigned = await api.forge(card.id);
+    const [original, tampered, stranger] = await Promise.all([
+      api.verify(card),
+      api.verify(forged),
+      api.verify(resigned),
+    ]);
+    setTamper({
+      original: original.signature_valid,
+      tampered: tampered.signature_valid,
+      stranger: stranger.signature_valid,
+    });
   }
 
   if (!card) return <p className={error ? "error" : "muted"}>{error || t("card.loading")}</p>;
@@ -204,6 +214,10 @@ export default function CardPage() {
             <div className={tamper.tampered ? "ok" : "no"}>
               <dt>{t("card.tamper.forged")}</dt>
               <dd>{tamper.tampered ? t("card.tamper.valid") : t("card.tamper.rejected")}</dd>
+            </div>
+            <div className={tamper.stranger ? "ok" : "no"}>
+              <dt>{t("card.tamper.stranger")}</dt>
+              <dd>{tamper.stranger ? t("card.tamper.valid") : t("card.tamper.rejected")}</dd>
             </div>
           </dl>
         )}

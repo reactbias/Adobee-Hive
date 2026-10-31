@@ -100,6 +100,7 @@ export interface Booking {
   cancellation?: string;
 }
 export interface Pending {
+  id: string; // one-time: the server books what it held under this id, once
   tool: "hive_book";
   input: Record<string, unknown>;
 }
@@ -185,6 +186,7 @@ export const api = {
     post<Proposal>(`/api/owner/${id}/propose`, { instruction }, ownerHeaders()),
   publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }, ownerHeaders()),
   verify: (card: Card) => post<{ signature_valid: boolean }>("/api/hive/verify", { card }),
+  forge: (cardId: string) => post<Card>(`/api/hive/demo/forge/${encodeURIComponent(cardId)}`, {}),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
 };

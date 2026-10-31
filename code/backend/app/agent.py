@@ -11,12 +11,14 @@ The agent never spends money on its own: when it is ready to book, it holds the 
 import json
 import logging
 import re
+import secrets
 import time
 from contextlib import AsyncExitStack
 from datetime import date, timedelta
 from typing import Any
 
 import anthropic
+import httpx
 import openai
 from mcp import Client
 
@@ -45,6 +47,20 @@ def _tool_result_text(result) -> str:
     return "\n".join(getattr(c, "text", "") for c in result.content)
 
 
+async def _pinned_keys(target: Any) -> dict[str, str]:
+    """Owner keys from a Hive's registry: in-process for the local Hive, /.well-known/hive.json for a remote one."""
+    if not isinstance(target, str):
+        return hive.owner_keys()
+    origin = target.split("/mcp")[0].rstrip("/")
+    try:
+        async with httpx.AsyncClient(timeout=5) as http:
+            keys = (await http.get(f"{origin}/.well-known/hive.json")).json().get("owner_keys", {})
+    except (httpx.HTTPError, ValueError, AttributeError):
+        log.warning("No key registry at %s; its cards will fail verification", origin)
+        return {}
+    return {k: v for k, v in keys.items() if isinstance(k, str) and isinstance(v, str)}
+
+
 class HiveConnections:
     """One or more MCP clients; tool names are routed to the client that advertised them."""
 
@@ -52,10 +68,12 @@ class HiveConnections:
         self.stack = AsyncExitStack()
         self.routes: dict[str, Client] = {}
         self.tools: list[dict[str, Any]] = []
+        self.pins: dict[str, str] = {}  # card id -> the owner's pinned public key, from each Hive's registry
 
     async def __aenter__(self) -> "HiveConnections":
         targets = config.HIVE_MCP_URLS or [local_server]
         for target in targets:
+            self.pins |= await _pinned_keys(target)
             client = await self.stack.enter_async_context(Client(target))
             for tool in (await client.list_tools()).tools:
                 if tool.name in self.routes:
@@ -76,9 +94,13 @@ class HiveConnections:
         result = await self.routes[name].call_tool(name, args)
         text = _tool_result_text(result)
         try:
-            return json.loads(text)
+            output = json.loads(text)
         except json.JSONDecodeError:
             return {"text": text}
+        if name == "hive_get_card" and isinstance(output.get("trust"), dict):
+            # The agent's own check replaces the server's word, for every planner and model alike.
+            output["trust"]["signature_valid"] = verify_card(output, self.pins)
+        return output
 
     async def step(self, steps: list[dict[str, Any]], name: str, args: dict[str, Any]) -> dict[str, Any]:
         """Call a tool and record the exchange, with its round-trip time, for the agent-to-agent trace."""
@@ -113,12 +135,13 @@ async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
 
 
 async def approve(pending: dict[str, Any]) -> dict[str, Any]:
-    """The traveller said yes: send the held hive_book call, unchanged, over MCP."""
+    """The traveller said yes: send the held hive_book call, unchanged, over MCP. Each hold can be approved once."""
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
+    args = _take(str(pending.get("id", "")))
     steps: list[dict[str, Any]] = []
     async with HiveConnections() as hives:
-        booking = await hives.step(steps, "hive_book", dict(pending["input"]))
+        booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
         return {"reply": f"Booking failed: {booking.get('error')}", "steps": steps, "booking": None}
     return {
@@ -129,8 +152,30 @@ async def approve(pending: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Held bookings live here, not with the client: approve() books exactly what the agent held, once. In memory is
+# enough because the backend runs as one instance; a restart only means asking the agent again.
+_HELD: dict[str, tuple[float, dict[str, Any]]] = {}
+HOLD_TTL_S = 30 * 60
+MAX_HELD = 1000
+
+
 def _hold(args: dict[str, Any]) -> dict[str, Any]:
-    return {"tool": "hive_book", "input": args}
+    now = time.time()
+    for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
+        del _HELD[key]
+    while len(_HELD) >= MAX_HELD:
+        del _HELD[next(iter(_HELD))]  # the oldest hold
+    hold_id = secrets.token_urlsafe(16)
+    _HELD[hold_id] = (now, dict(args))
+    return {"id": hold_id, "tool": "hive_book", "input": args}
+
+
+def _take(hold_id: str) -> dict[str, Any]:
+    """Remove and return a held booking's arguments; it cannot be approved again."""
+    held = _HELD.pop(hold_id, None)
+    if held is None or time.time() - held[0] > HOLD_TTL_S:
+        raise ValueError("This booking was already approved or has expired. Ask your agent again.")
+    return held[1]
 
 
 def _call_tool(name: str, args: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
@@ -355,7 +400,7 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
 
     best = matches[0]
     card = await step("hive_get_card", {"card_id": best["id"]})
-    if not verify_card(card):  # checked here, on the agent side, not taken from the server's word
+    if not card.get("trust", {}).get("signature_valid"):  # set by the agent's own check in HiveConnections.call
         return {
             "reply": f"{best['name']}'s card failed signature verification, so I did not book.",
             "steps": steps,
@@ -405,8 +450,6 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
     return {"reply": reply, "steps": steps, "pending": pending, "mode": "scripted"}
 
 
-def verify_card(card: dict[str, Any]) -> bool:
-    """Client-side check an agent can run on any card it fetched."""
-    trust = card.get("trust", {})
-    data = {k: v for k, v in card.items() if k != "trust"}
-    return hive.verify(data, trust.get("signature", ""), trust.get("public_key", ""))
+def verify_card(card: dict[str, Any], pins: dict[str, str]) -> bool:
+    """Client-side check an agent runs on any card it fetched: a valid signature by the owner's pinned key."""
+    return hive.verify_pinned(card, pins)
