@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # One-time AWS setup for the backend. Idempotent enough to re-run.
-#   AWS_PROFILE=... ANTHROPIC_API_KEY=sk-ant-... ./scripts/aws/bootstrap.sh
-# Creates: ECR repo, S3 bucket for the DuckDB snapshot, Secrets Manager secret for the
-# Claude key, IAM roles, and an App Runner service that auto-deploys new :latest images.
+#   AWS_PROFILE=... ANTHROPIC_API_KEY=sk-ant-... [OPENAI_API_KEY=...] ./scripts/aws/bootstrap.sh
+# Creates: ECR repo, S3 bucket for the DuckDB snapshot, Secrets Manager secrets for the
+# Claude key (and the optional OpenAI key), IAM roles, and an App Runner service that auto-deploys new :latest images.
 set -euo pipefail
 
 REGION="${AWS_REGION:-eu-central-1}"
@@ -30,13 +30,26 @@ aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null ||
   aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" \
     --create-bucket-configuration LocationConstraint="$REGION" >/dev/null
 
-echo "==> Secret for the Claude API key"
-SECRET_ARN=$(aws secretsmanager describe-secret --secret-id "$NAME/anthropic" --region "$REGION" --query ARN --output text 2>/dev/null || true)
-if [ -z "$SECRET_ARN" ]; then
-  SECRET_ARN=$(aws secretsmanager create-secret --name "$NAME/anthropic" --secret-string "$ANTHROPIC_API_KEY" \
-    --region "$REGION" --query ARN --output text)
-else
-  aws secretsmanager put-secret-value --secret-id "$NAME/anthropic" --secret-string "$ANTHROPIC_API_KEY" --region "$REGION" >/dev/null
+# put_secret NAME VALUE: create or update a Secrets Manager secret and print its ARN.
+put_secret() {
+  local arn
+  arn=$(aws secretsmanager describe-secret --secret-id "$1" --region "$REGION" --query ARN --output text 2>/dev/null || true)
+  if [ -z "$arn" ]; then
+    arn=$(aws secretsmanager create-secret --name "$1" --secret-string "$2" --region "$REGION" --query ARN --output text)
+  else
+    aws secretsmanager put-secret-value --secret-id "$1" --secret-string "$2" --region "$REGION" >/dev/null
+  fi
+  echo "$arn"
+}
+
+echo "==> Secrets for the API keys"
+SECRET_ARN=$(put_secret "$NAME/anthropic" "$ANTHROPIC_API_KEY")
+SECRET_ARNS="\"$SECRET_ARN\""
+APP_SECRETS="\"ANTHROPIC_API_KEY\": \"$SECRET_ARN\""
+if [ -n "${OPENAI_API_KEY:-}" ]; then  # optional: the second-opinion agent on OpenAI
+  OPENAI_ARN=$(put_secret "$NAME/openai" "$OPENAI_API_KEY")
+  SECRET_ARNS="$SECRET_ARNS, \"$OPENAI_ARN\""
+  APP_SECRETS="$APP_SECRETS, \"OPENAI_API_KEY\": \"$OPENAI_ARN\""
 fi
 
 echo "==> IAM roles"
@@ -56,7 +69,7 @@ aws iam put-role-policy --role-name "$INSTANCE_ROLE" --policy-name "$NAME-runtim
   \"Version\": \"2012-10-17\",
   \"Statement\": [
     {\"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\", \"s3:PutObject\"], \"Resource\": \"arn:aws:s3:::$BUCKET/*\"},
-    {\"Effect\": \"Allow\", \"Action\": \"secretsmanager:GetSecretValue\", \"Resource\": \"$SECRET_ARN\"}
+    {\"Effect\": \"Allow\", \"Action\": \"secretsmanager:GetSecretValue\", \"Resource\": [$SECRET_ARNS]}
   ]}"
 ACCESS_ARN=$(aws iam get-role --role-name "$ACCESS_ROLE" --query Role.Arn --output text)
 INSTANCE_ARN=$(aws iam get-role --role-name "$INSTANCE_ROLE" --query Role.Arn --output text)
@@ -82,7 +95,7 @@ if [ -z "$SERVICE_ARN" ]; then
           \"Port\": \"8000\",
           \"RuntimeEnvironmentVariables\": {\"DUCKDB_S3_URI\": \"s3://$BUCKET/abh.duckdb\", \"CORS_ORIGINS\": \"*\",
             \"OWNER_EDIT_TOKEN\": \"$OWNER_EDIT_TOKEN\", \"DEMO_RESET_TOKEN\": \"$DEMO_RESET_TOKEN\"},
-          \"RuntimeEnvironmentSecrets\": {\"ANTHROPIC_API_KEY\": \"$SECRET_ARN\"}
+          \"RuntimeEnvironmentSecrets\": {$APP_SECRETS}
         }
       }
     }" --query Service.ServiceArn --output text)
