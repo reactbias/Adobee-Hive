@@ -20,6 +20,21 @@ Photos are downscaled and stripped of camera metadata (location, device).
 | File | What |
 | --- | --- |
 | [baselhack-assessment-criteria.png](slides/baselhack-assessment-criteria.png) | BaselHack jury criteria: innovation, impact, technical depth, AI code review, fair play, pitch, demo |
+| [hive-1-adobee-hive.png](slides/hive-1-adobee-hive.png) | Title: the front door, signed |
+| [hive-2-one-card-signed.png](slides/hive-2-one-card-signed.png) | One card, signed, and the agent that verifies it |
+| [hive-3-many-hives.png](slides/hive-3-many-hives.png) | Many Hives: a town, an association, a trade body |
+| [hive-4-how-far-to-look.png](slides/hive-4-how-far-to-look.png) | The search radius: 0, 1 or 2 hops, chosen by the person |
+| [hive-5-two-levels-of-trust.png](slides/hive-5-two-levels-of-trust.png) | The Hive is rated, and so is the business |
+| [hive-6-open-ranking.png](slides/hive-6-open-ranking.png) | Every answer says why, and where it came from |
+| [hive-7-the-front-door-signed.png](slides/hive-7-the-front-door-signed.png) | Closing frame |
+
+Frames 1 to 7 are stills from the film below, so a slide and the film never drift apart.
+
+## Film
+
+| File | What |
+| --- | --- |
+| [hive-federation.mp4](hive-federation.mp4) | Sixty seconds on how the federated backend works: one signed card, many Hives, the search radius, the two levels of trust. Drawn frame by frame by [anim/hive_federation.py](anim/README.md); the design it illustrates is [documentation/FEDERATION.md](../documentation/FEDERATION.md). |
 
 ## Brand
 
