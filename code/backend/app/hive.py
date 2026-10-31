@@ -229,6 +229,10 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
     """Sign and publish a new version of a card. `card` must carry id, slug, kind."""
     card = json.loads(json.dumps(card, default=str))
     card.pop("trust", None)
+    # Fill the standard contact channels before signing, so the guarantee is part of what the
+    # owner signed rather than something added on the way out. Doing it after signing would
+    # change the card's canonical form and break every signature check.
+    card = with_contact(card)
     existing = get_record(card["id"])
     card["version"] = (existing["version"] + 1) if existing else 1
     signed_at = datetime.now(UTC)
@@ -306,6 +310,27 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
         "freshness_days": age_days,
         "fresh": is_fresh(rec["data"]),
     }
+
+
+#: Channels every card carries, even when empty. A caller should never have to guard
+#: `contact?.email?`: the key is there, and "" means "not published", which is renderable.
+#: The map stays open — an entity may add mobile, address, mcp, or anything it actually uses.
+CONTACT_CHANNELS = ("email", "phone")
+
+
+def with_contact(card: dict[str, Any]) -> dict[str, Any]:
+    """Guarantee `contact` exists and carries the standard channels, without inventing values.
+
+    An absent channel and an empty one are not the same thing to a reader, so this only fills in
+    the keys; it never fabricates a value. A channel the owner marked `never` stays absent
+    entirely, because listing it in order to say it is private announces that it exists.
+    """
+    contact = dict(card.get("contact") or {})
+    for channel in CONTACT_CHANNELS:
+        if (card.get("contact_sharing") or {}).get(channel) in ("never", "push"):
+            continue
+        contact.setdefault(channel, "")
+    return {**card, "contact": contact}
 
 
 def get_card(card_id_or_slug: str) -> dict[str, Any]:

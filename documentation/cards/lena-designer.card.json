@@ -1,0 +1,196 @@
+{
+  "hive": "0.1",
+  "id": "hive:hub.zurich.swiss/lena@example.com",
+  "seq": 12,
+  "updated": "2026-10-29T16:44:00Z",
+  "kind": "person",
+  "name": "Lena Hofmann",
+  "description": "Interface design for data-heavy products. Nine years, three production design systems.",
+  "rating": null,
+  "rating_count": 0,
+  "rating_scale": {
+    "min": 0,
+    "max": 50,
+    "unit": "tenths of a star",
+    "shown_as": "4.3 / 5"
+  },
+  "contact": {
+    "email": "lena@lena.example",
+    "phone": "",
+    "address": ""
+  },
+  "contact_sharing": {
+    "phone": "confirm",
+    "address": "never"
+  },
+  "identity": {
+    "name": "Lena Hofmann",
+    "tagline": "Interface design for data-heavy products",
+    "locales": [
+      "de",
+      "en"
+    ],
+    "place": {
+      "locality": "Zürich",
+      "country": "CH"
+    },
+    "timezone": "Europe/Zurich"
+  },
+  "keys": {
+    "sig": {
+      "alg": "ed25519",
+      "pub": "cc71aa02..."
+    },
+    "kex": {
+      "alg": "x25519",
+      "pub": "5e9b17f3..."
+    }
+  },
+  "links": [
+    {
+      "rel": "portfolio",
+      "href": "https://lena.example",
+      "proof": "dns-txt",
+      "verified": "2026-09-02T09:00:00Z"
+    },
+    {
+      "rel": "github",
+      "href": "https://github.com/lenah",
+      "proof": "rel-me",
+      "verified": "2026-09-02T09:03:00Z"
+    },
+    {
+      "rel": "linkedin",
+      "href": "https://linkedin.com/in/lenah",
+      "proof": "rel-me",
+      "verified": "2026-09-02T09:05:00Z"
+    }
+  ],
+  "skills": [
+    {
+      "tag": "design.ui",
+      "level": "primary",
+      "years": 9
+    },
+    {
+      "tag": "design.dataviz",
+      "level": "primary",
+      "years": 6
+    },
+    {
+      "tag": "design.systems",
+      "level": "primary",
+      "note": "Built 3 production design systems"
+    },
+    {
+      "tag": "frontend.svelte",
+      "level": "working"
+    },
+    {
+      "tag": "research.usability",
+      "level": "secondary"
+    }
+  ],
+  "offers": [
+    {
+      "id": "dataviz-sprint",
+      "title": "Two-week dataviz sprint",
+      "modality": "remote",
+      "price": {
+        "amount": 9600,
+        "currency": "CHF",
+        "unit": "engagement"
+      },
+      "availability": {
+        "status": "open",
+        "next_free": "2026-11-17"
+      },
+      "portfolio": [
+        "https://lena.example/case/grid-ops"
+      ]
+    },
+    {
+      "id": "design-system-audit",
+      "title": "Design system audit",
+      "price": {
+        "amount": 180,
+        "currency": "CHF",
+        "unit": "hour"
+      },
+      "availability": {
+        "status": "open"
+      }
+    }
+  ],
+  "needs": [
+    {
+      "id": "fe-partner",
+      "title": "Svelte contractor for overflow work",
+      "modality": "remote",
+      "budget": {
+        "amount": 120,
+        "currency": "CHF",
+        "unit": "hour"
+      }
+    }
+  ],
+  "structure": [
+    {
+      "path": "work/cases/",
+      "summary": "Written case studies, problem → outcome",
+      "files": 14,
+      "visibility": "public",
+      "digest": "sha256:aa31..."
+    },
+    {
+      "path": "work/current/",
+      "summary": "Active engagements (client names redacted)",
+      "files": 3,
+      "visibility": "public-summary",
+      "digest": "sha256:70bc..."
+    },
+    {
+      "path": "profile/",
+      "summary": "How I work, what I turn down",
+      "files": 6,
+      "visibility": "public",
+      "digest": "sha256:19ff..."
+    },
+    {
+      "path": "clients/",
+      "summary": "Per-client context and rates",
+      "files": 48,
+      "visibility": "private",
+      "digest": null
+    }
+  ],
+  "endpoints": {
+    "handshake": "https://hub.zurich.swiss/api/handshake",
+    "contact": "agent://hub.zurich.swiss/lena@example.com"
+  },
+  "policy": {
+    "handshake": "agent-review",
+    "human_in_loop": "any engagement > CHF 5000",
+    "excludes": [
+      "unpaid pitch work",
+      "equity-only"
+    ],
+    "rate_limit": "30 queries/hour/agent"
+  },
+  "attestations": [
+    {
+      "by": "hive:hub.zurich.swiss/gridops@example.com",
+      "claim": "Delivered dataviz sprint Q2 2026, on time, would rehire",
+      "receipt": "sha256:5512...",
+      "countersigned": true,
+      "sig": "ed25519:9b20..."
+    }
+  ],
+  "provenance": {
+    "generator": "claudeconnect-card/0.1",
+    "vault_digest": "sha256:cd9018...",
+    "policy": "claudeconnect/privacy-policy.md@sha256:3301...",
+    "human_reviewed": "2026-10-29T16:40:00Z"
+  },
+  "sig": "ed25519:4d8e71aa..."
+}

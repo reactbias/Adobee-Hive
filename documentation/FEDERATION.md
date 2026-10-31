@@ -12,6 +12,8 @@ this page in sixty seconds, and the stills under [`assets/slides/`](../assets/RE
 
 How someone gets into a hub in the first place is [REGISTRATION.md](REGISTRATION.md), and the two are the
 same argument seen from different ends: admission is strict because calibration measures what admission let in.
+Worked examples of the Card, and the manifest that shows what it deliberately leaves out, are in
+[cards/](cards/README.md). Those files are the reference; where this page and a file disagree, the file wins.
 
 ## Why federate at all
 
