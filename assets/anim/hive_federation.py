@@ -401,7 +401,7 @@ class Canvas:
 
 # --------------------------------------------------------------------- the film
 SCENES = [
-    ("Adobee Hive", 9.0),
+    ("Adobee Hive", 10.5),
     ("The vision", 12.5),
     ("The ask", 5.0),
     ("The hives", 10.0),
@@ -437,12 +437,12 @@ MERGE = (1162, 300)
 
 #: Each arriving agent's route: start, two controls, and the point they all become one.
 FLIGHTS = [
-    (HOME, (470, 436), (852, 430), MERGE, 0.20, 0.60),
-    ((-150, 120), (220, 36), (700, 62), MERGE, 0.26, 0.605),
-    ((706, -170), (862, -24), (1010, 92), MERGE, 0.30, 0.615),
-    ((1782, 86), (1580, 36), (1392, 142), MERGE, 0.33, 0.625),
-    ((1782, 452), (1556, 496), (1336, 406), MERGE, 0.36, 0.635),
-    ((500, 540), (790, 520), (1004, 448), MERGE, 0.39, 0.645),
+    (HOME, (470, 436), (852, 430), MERGE, 0.15, 0.580),
+    ((-150, 120), (220, 36), (700, 62), MERGE, 0.19, 0.595),
+    ((706, -170), (862, -24), (1010, 92), MERGE, 0.22, 0.600),
+    ((1782, 86), (1580, 36), (1392, 142), MERGE, 0.25, 0.605),
+    ((1782, 452), (1556, 496), (1336, 406), MERGE, 0.28, 0.610),
+    ((500, 540), (790, 520), (1004, 448), MERGE, 0.31, 0.615),
 ]
 
 PUNCHLINE = "Agents don't browse. They ask the Hive."
@@ -459,16 +459,16 @@ def s_title(c, t, dur):
         HOME[0], HOME[1], 104 * (0.94 + 0.06 * ha), outline=fade(CLAY, ha), width=4.5,
         open_corners=True,
     )
-    if p < 0.21:
+    if p < 0.16:
         # Still at home, wings going, about to leave.
         c.bee(HOME[0], HOME[1], -0.28, 40 * ha, ha, abs(math.sin(t * 17)))
     # Once it has gone, the cell is not empty: the entities the Hive lists stay behind.
-    ca = ease(seg(p, 0.24, 0.42))
+    ca = ease(seg(p, 0.20, 0.38))
     for ex, ey in ((-34, -20), (0, 24), (34, -20)):
         c.hexagon(HOME[0] + ex, HOME[1] + ey, 21, outline=fade(INK3, ca * 0.8), width=1.6, open_corners=True)
     c.text(
         HOME[0], HOME[1] + 142, "THE HIVE", "mono", 13,
-        fade(INK3, ease(seg(p, 0.10, 0.24))), anchor="mm", tracking=2.4,
+        fade(INK3, ease(seg(p, 0.08, 0.20))), anchor="mm", tracking=2.4,
     )
 
     # Six agents converge. The first one came out of the Hive; the others from elsewhere.
@@ -486,15 +486,15 @@ def s_title(c, t, dur):
         )
 
     # The merge: one pulse, then the mark again — many bees, one agent.
-    pulse = seg(p, 0.60, 0.78)
+    pulse = seg(p, 0.58, 0.76)
     if 0 < pulse < 1:
         c.hexagon(
             MERGE[0], MERGE[1], 60 + 90 * ease_out(pulse),
             outline=fade(CLAYGLOW, (1 - pulse) * 0.7), width=2, open_corners=True,
         )
-    ma = ease(seg(p, 0.60, 0.74))
+    ma = ease(seg(p, 0.59, 0.73))
     if ma > 0.01:
-        pop = 1 + 0.22 * (1 - ease_out(seg(p, 0.60, 0.80)))
+        pop = 1 + 0.22 * (1 - ease_out(seg(p, 0.59, 0.79)))
         c.hexagon(
             MERGE[0], MERGE[1], 104 * pop, outline=fade(CLAY, ma), width=4.5,
             open_corners=True,
@@ -729,30 +729,30 @@ def v_data(c, p):
     c.rect(56, 306, 520, 272, fill=fade(SURFACE, a0), outline=fade(INK3, a0), width=1.5)
     c.text(84, 340, "THE ENTITY'S OWN FOLDERS", "monob", 12, fade(CLAY, a0), anchor="lm", tracking=1.8)
     c.tree(84, 384, ENTITY_TREE_FULL, a0, 15, 30, note_x=250)
-    c.text(56, 612, "The card carries the shape. The contents never leave.", "text", 17, fade(INK3, a0), anchor="lm")
+    c.text(56, 632, "The card carries the shape. The contents never leave.", "text", 17, fade(INK3, a0), anchor="lm")
 
     a1 = ease(seg(p, 0.26, 0.44))
     c.json_card(628, 306, 916, CARD_JSON_FULL, a1, 14, 23, label="WHAT THE HIVE SERVES", pad=22)
-    c.text(628, 612, "No page is rendered. This is the whole listing.", "text", 17, fade(INK3, a1), anchor="lm")
+    c.text(628, 632, "No page is rendered. This is the whole listing.", "text", 17, fade(INK3, a1), anchor="lm")
 
     ra = ease(seg(p, 0.50, 0.64))
-    c.line(56, 648, W - 56, 648, fade(LINE, ra), 1)
+    c.line(56, 662, W - 56, 662, fade(LINE, ra), 1)
     cols = [("WHAT IS RATED", 56), ("BY WHAT", 560), ("WHAT YOU SEE", 1020)]
     for s, x in cols:
-        c.text(x, 684, s, "mono", 12, fade(INK3, ra), anchor="lm", tracking=1.8)
+        c.text(x, 696, s, "mono", 12, fade(INK3, ra), anchor="lm", tracking=1.8)
     rows = [
         ("an entity on a hive", "a signed receipt, or a scored meeting", "rating 43  ·  4.3 / 5  ·  18 receipts"),
         ("a hive, by another hive", "published minus realised", "error -3  ·  under-promises  ·  lower is better"),
     ]
     for i, (what, by, shown) in enumerate(rows):
         a = ease(seg(p, 0.58 + i * 0.09, 0.74 + i * 0.09))
-        yy = 726 + i * 42
+        yy = 738 + i * 42
         c.text(56, yy, what, "textb", 19, fade(INK, a), anchor="lm")
         c.text(560, yy, by, "text", 19, fade(INK2, a), anchor="lm")
         c.text(1020, yy, shown, "mono", 15, fade(CLAY if i else INK2, a), anchor="lm")
     fa = ease(seg(p, 0.80, 0.94))
     c.text(
-        56, 812, "A hive is judged on whether it told the truth about its members, never on how good they were.",
+        56, 822, "A hive is judged on whether it told the truth about its members, never on how good they were.",
         "italic", 22, fade(CLAY, fa), anchor="lm",
     )
 
