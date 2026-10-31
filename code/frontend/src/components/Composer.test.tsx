@@ -58,6 +58,16 @@ describe("composer", () => {
     expect(onSend).toHaveBeenCalledWith("hi");
   });
 
+  it("puts the send button under the example chips on the search bar", () => {
+    setup({ onSend: vi.fn(), bar: true, start: "hi" });
+    const chip = screen.getByRole("button", { name: en["agent.example.2"] });
+    const send = screen.getByRole("button", { name: en["agent.send"] });
+    expect(chip.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const bar = document.querySelector(".composer.bar");
+    expect(bar?.contains(send)).toBe(false);
+    expect(bar?.contains(screen.getByRole("textbox"))).toBe(true);
+  });
+
   it("sends an example with one tap", async () => {
     const onSend = vi.fn();
     const user = setup({ onSend });

@@ -31,10 +31,12 @@ describe("styles", () => {
     expect(css).toMatch(/\.chapter-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 
-  it("wraps a long search in the bar instead of hiding it off to the side", () => {
+  it("keeps the search bar on screen, and wraps a long request inside it", () => {
+    expect(rule(".search-top")).toMatch(/position:\s*sticky/);
+    expect(rule(".search-top")).toMatch(/top:\s*var\(--nav-h\)/);
     expect(rule(".search-top .composer.bar")).toMatch(/border-radius:\s*24px/);
-    expect(rule(".search-top .composer.bar")).toMatch(/align-items:\s*end/);
     expect(rule(".search-top .composer.bar textarea")).toMatch(/white-space:\s*pre-wrap/);
+    expect(rule(".search-top .composer.bar textarea")).toMatch(/width:\s*100%/);
     expect(rule(".search-top .composer.bar textarea")).not.toMatch(/overflow-x:\s*auto/);
   });
 
@@ -45,8 +47,16 @@ describe("styles", () => {
     expect(rule(".search-top .examples .example:hover:not(:disabled)")).toMatch(/border-color:\s*var\(--clay\)/);
   });
 
-  it("keeps the count and the Details toggle in view beside a long question", () => {
+  it("keeps the question in full and locks the count and Details on that row", () => {
+    // A long question wraps instead of being cut off, and the count and Details stay beside it.
     expect(rule(".result-head")).toMatch(/min-width:\s*0/);
+    expect(rule(".result-head")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".result-query")).toMatch(/white-space:\s*normal/);
+    expect(rule(".result-query")).not.toMatch(/text-overflow/);
+    expect(rule(".result-actions")).toMatch(/flex:\s*none/);
+    expect(css).toMatch(
+      /@media \(max-width: 600px\) \{\s*\.result-head \{\s*flex-wrap:\s*wrap;\s*\}\s*\.result-query \{\s*flex-basis:\s*100%;/,
+    );
   });
 
   it("rings the search bar while you type in it", () => {

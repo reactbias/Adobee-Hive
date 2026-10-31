@@ -95,6 +95,26 @@ The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API ke
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
 web app speaks English, German, French and Italian.
 
+## Who tests the tests
+
+Coverage proves a line ran. It does not prove a test would fail if that line were wrong. So on every pull
+request, after the ordinary tests pass, CI **deliberately breaks the code** and checks the suite notices:
+remove the loop guard that stops a federated search revisiting a hub, flip the sign of a hub's calibration
+error, let a stale introduction be scored, let a blocked entity back into a search. Thirty-five of these,
+each aimed at a promise the design rests on. **Every one must fail the tests.** A change nothing notices is
+a hole in the tests, named and located.
+
+It has already found four real holes. The clearest: `HttpTransport` had **no test at all** — the fakes
+replaced it wholesale, so the parser that supplies the keys every relayed card is verified against was
+never executed. Blanking `owner_keys` there passed all twenty-four federation tests. Coverage could not see
+it, because the line *was* covered, by a fake.
+
+The harness is itself tested (`tests/test_mutation.py`), because the one failure mode that makes such a tool
+worse than useless is a confident false all-clear — which happened once, when two test files were missing
+from its list and eight breakages were reported as "survived" while the real tests caught every one.
+
+How it works and how to run it: [code/backend/tools/README.md](code/backend/tools/README.md).
+
 ## Run it locally in 5 minutes
 
 You need **Git**, **Python 3.12** and **Node 22**. No API key: without one, the agent runs on a scripted planner
