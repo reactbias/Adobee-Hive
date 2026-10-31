@@ -3,6 +3,7 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { reasonText } from "../lib/reasons";
 import { chf, metres, stay } from "../lib/format";
+import { readSource, type Route } from "../lib/provenance";
 
 // What the traveller's agent asked over MCP and what the other side answered, as message bodies for the group chat.
 // Every line comes from a real tool call.
@@ -18,6 +19,31 @@ export function namesFrom(steps: Step[]): Record<string, string> {
     if (s.output.id && s.output.name) names[String(s.output.id)] = String(s.output.name);
   }
   return names;
+}
+
+/**
+ * Which hub a result came from. Never silent: a local result says "from this hub", so a row with no label never
+ * reads as an origin nobody knows. Above one hop it adds the distance, the relays it travelled through, and the
+ * whole route on demand. It changes no order: distance is already in the backend's score as `hop_decay`, and
+ * sorting by it again here would quietly bury other hubs.
+ */
+export function Source({ match }: { match: Rec }) {
+  const { t } = useI18n();
+  const read = readSource({ hops: match.hops as number | undefined, provenance: match.provenance as Route | null });
+  if (read.local) return <span className="ledger-source">{t("result.fromThisHub")}</span>;
+  return (
+    <span className="ledger-source away">
+      {t("result.fromHub", { hub: read.origin })} · {t("result.hopsAway", { n: read.hops })}
+      {read.relays.length > 0 && <> · {t("result.relayedVia", { hubs: read.relays.join(" · ") })}</>}
+      {read.alsoReachedBy > 0 && <> · {t("result.alsoReachedBy", { n: read.alsoReachedBy })}</>}
+      {read.path.length > 1 && (
+        <details className="result-route">
+          <summary>{t("result.route")}</summary>
+          <span className="num">{read.path.join(" \u2192 ")}</span>
+        </details>
+      )}
+    </span>
+  );
 }
 
 export function Ask({ step, names }: { step: Step; names: Record<string, string> }) {
@@ -70,7 +96,10 @@ function Discover({ o, guard }: { o: Rec; guard: GuardFinding[] }) {
         {matches.map((m, n) => (
           <li key={`${m.source ?? ""}/${m.id}`} className={flagged(m) ? "flagged" : ""}>
             <span className="ledger-rank num">{n + 1}</span>
-            <span className="ledger-name">{String(m.name)}</span>
+            <span className="ledger-name">
+              {String(m.name)}
+              <Source match={m} />
+            </span>
             <span className="ledger-why">
               {flagged(m)
                 ? t("trace.guard.row", { source: String(m.source) })
@@ -82,7 +111,10 @@ function Discover({ o, guard }: { o: Rec; guard: GuardFinding[] }) {
         {excluded.map((x) => (
           <li key={`${x.source ?? ""}/${x.id}`} className="out">
             <span className="ledger-rank">–</span>
-            <span className="ledger-name">{String(x.name)}</span>
+            <span className="ledger-name">
+              {String(x.name)}
+              <Source match={x} />
+            </span>
             <span className="ledger-why">
               {(x.why_not as string[] | undefined)?.map((w) => reasonText(t, w)).join("; ")}
             </span>

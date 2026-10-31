@@ -62,6 +62,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
+| `lib/provenance.ts`, `lib/calibration.ts` | Which hub a result came from (origin first, answering hub last, so a relay is visible) and how a hub's calibration reads (lower is better; negative means it undersold what it offered) |
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 

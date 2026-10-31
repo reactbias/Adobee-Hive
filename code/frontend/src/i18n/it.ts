@@ -428,5 +428,15 @@ const it: Record<Key, string> = {
   "admin.block.empty": "Questo hub non ha escluso nessuno.",
   "admin.block.lift": "Revoca",
   "admin.neighbours.empty": "Non è configurato alcun hub vicino.",
+
+  // Where a result came from, and one note on the hub's own settings
+  "result.fromThisHub": "da questo hub",
+  "result.fromHub": "da {hub}",
+  "result.hopsAway": "a {n} salti",
+  "result.relayedVia": "inoltrato tramite {hubs}",
+  "result.alsoReachedBy": "raggiunto anche da altre {n} rotte",
+  "result.route": "Percorso",
+  "admin.settingsEnglish":
+    "Questo hub descrive le proprie impostazioni in inglese, qualunque sia la lingua dell'applicazione.",
 };
 export default it;

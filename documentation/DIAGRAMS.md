@@ -427,5 +427,6 @@ find its test.
 | Owner studio | `owner.py`, `waiting.py` | `test_owner_languages.py`, `test_waiting.py`, `test_card_stats.py` |
 | Live activity feed | `activity.py`, `ActivityPanel.tsx` | `test_activity.py`, `ActivityPanel.test.tsx` |
 | Pick a Hive, run a hub | `guard.py`, `admin.py`, `InstanceFinder.tsx`, `AdminPanel.tsx` | `test_admin_login.py`, `InstanceFinder.test.tsx`, `AdminPanel.test.tsx`, `calibration.test.ts` |
+| Where a result came from | `federation.py`, `TraceParts.tsx`, `provenance.ts` | `test_federation.py`, `TraceParts.test.tsx`, `provenance.test.ts` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |

@@ -2866,3 +2866,37 @@ button.self-start {
     max-width: none;
   }
 }
+
+/* ---------- Where a result came from ---------- */
+
+/* Every result row names its hub, local ones included, so a row with no label never reads as unknown. */
+.ledger-source {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-xs);
+  color: var(--st-3);
+}
+.ledger-source::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 0.5em;
+  border-radius: 50%;
+  background: var(--st-3);
+  vertical-align: middle;
+}
+.ledger-source.away::before {
+  background: var(--clay-glow);
+}
+.result-route {
+  display: inline;
+}
+.result-route summary {
+  display: inline;
+  cursor: pointer;
+  color: var(--clay-glow);
+}
+.result-route[open] summary {
+  display: block;
+}

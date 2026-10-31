@@ -424,6 +424,15 @@ const en = {
   "admin.block.empty": "This hub has shut nobody out.",
   "admin.block.lift": "Lift",
   "admin.neighbours.empty": "No neighbouring hubs are configured.",
+
+  // Where a result came from, and one note on the hub's own settings
+  "result.fromThisHub": "from this hub",
+  "result.fromHub": "from {hub}",
+  "result.hopsAway": "{n} hops away",
+  "result.relayedVia": "relayed via {hubs}",
+  "result.alsoReachedBy": "also reached by {n} other routes",
+  "result.route": "Route",
+  "admin.settingsEnglish": "This hub describes its own settings in English, whatever language you read the app in.",
 } as const;
 
 export type Key = keyof typeof en;
