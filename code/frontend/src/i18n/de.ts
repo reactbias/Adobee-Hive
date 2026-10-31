@@ -147,6 +147,8 @@ const de: Record<Key, string> = {
   "chat.role.mirror": "Agent · ungeprüfte Kopie",
   "chat.ask.call": "Wer kann das beantworten? {question}",
   "chat.ask.found": "Betriebe mit einer Antwort auf ihrer Karte: {n}.",
+  "chat.ask.handoff_only":
+    "Diese Karten sind nicht beansprucht, darum kann ich dort nichts buchen. Nennen Sie eines, und ich leite Sie auf seine eigene Website weiter.",
   "clarify.route_time": "Von wo nach wo, und wann?",
   "clarify.route": "Von wo nach wo?",
   "clarify.time": "Und wann?",
@@ -233,7 +235,7 @@ const de: Record<Key, string> = {
   "trace.sig.unchecked": "Signatur nicht geprüft",
 
   // Ask the Hive
-  "trust.unclaimed": "Nicht beansprucht, von der öffentlichen Website",
+  "trust.unclaimed": "Nicht beansprucht · nur Weiterleitung",
   "ask.ex1": "Was läuft diesen Monat bei BaselHack?",
   "ask.ex2": "Planen Sie mir ein Abenteuer unter 500 CHF",
   "ask.empty": "Noch keine Karte beantwortet das. Es wird als verpasste Nachfrage festgehalten, ohne Ihre Frage.",

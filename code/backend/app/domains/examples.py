@@ -190,6 +190,16 @@ CARDS = [
                 "tags": ["practical", "learning"],
                 "action": "Open the portal",
             },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Endress+Hauser",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
+            },
         ],
         "events": [
             {
@@ -264,6 +274,16 @@ CARDS = [
                 "price": None,
                 "tags": ["learning"],
                 "action": "Learn more",
+            },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Adobe",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
             },
         ],
         "events": [
@@ -345,6 +365,16 @@ CARDS = [
                 "price": None,
                 "tags": ["practical", "calm"],
                 "action": "Learn more",
+            },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Pax",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
             },
         ],
         "events": [
