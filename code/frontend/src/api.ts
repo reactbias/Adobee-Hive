@@ -4,6 +4,12 @@ const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 /** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
 export const OFFLINE = "error.offline";
 
+/** A status code or a lost connection is one case for the page: the backend is out of reach. */
+export function shownError(message: string): string {
+  if (message === OFFLINE || /^\d{3}\b/.test(message)) return OFFLINE;
+  return message;
+}
+
 /**
  * A refusal from the backend, with the status, so a caller can tell a lost session (401, 403) or a lockout
  * (429, with the seconds to wait) from anything else. `message` is the backend's own detail, as before.

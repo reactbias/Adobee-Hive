@@ -1,5 +1,15 @@
 import { useEffect, useState, type RefObject } from "react";
-import { api, mcpUrl, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
+import {
+  api,
+  OFFLINE,
+  shownError,
+  mcpUrl,
+  setOwnerToken,
+  type Card,
+  type OwnerOverview,
+  type Proposal,
+  type SummaryItem,
+} from "../api";
 import Chapter, { Frame } from "../components/Chapter";
 import Composer from "../components/Composer";
 import TrustBadge from "../components/TrustBadge";
@@ -93,7 +103,7 @@ export default function OwnerPanel({
     api
       .owner(cardId)
       .then(setOverview)
-      .catch((e) => setError(e.message));
+      .catch((e) => setError(shownError(e.message)));
   }, [cardId]);
 
   async function propose(text: string) {
@@ -107,7 +117,7 @@ export default function OwnerPanel({
       if (window.matchMedia?.("(max-width: 1000px)").matches)
         document.getElementById("business-tabpanel")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     } catch (e) {
-      setError((e as Error).message);
+      setError(shownError((e as Error).message));
     } finally {
       setBusy(false);
     }
@@ -124,7 +134,7 @@ export default function OwnerPanel({
       setOverview(after);
       setPublished({ version: after.card.version, offers: after.waiting.offers_sent - offersBefore });
     } catch (e) {
-      setError((e as Error).message);
+      setError(shownError((e as Error).message));
     } finally {
       setBusy(false);
     }
@@ -217,7 +227,11 @@ export default function OwnerPanel({
               busyLabel={t("owner.checking")}
             />
           )}
-          {error && <p className="error">{needsToken ? t("owner.tokenNeeded") : error}</p>}
+          {error && (
+            <p className="error">
+              {needsToken ? t("owner.tokenNeeded") : error === OFFLINE ? t("error.offline") : error}
+            </p>
+          )}
           {needsToken && (
             <div className="row token">
               <input

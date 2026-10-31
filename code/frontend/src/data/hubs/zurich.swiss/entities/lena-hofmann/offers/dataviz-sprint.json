@@ -1,0 +1,8 @@
+{
+  "id": "dataviz-sprint",
+  "title": "Two-week dataviz sprint",
+  "modality": "remote",
+  "price": { "amount": 9600, "currency": "CHF", "unit": "engagement" },
+  "terms": "Two weeks, problem to a shipped view.",
+  "availability": { "status": "open", "next_free": "2026-11-17" }
+}

@@ -1,0 +1,8 @@
+{
+  "id": "room-booking",
+  "title": "Room reservation",
+  "modality": "in-person",
+  "price": { "from": 165, "to": 310, "currency": "CHF", "unit": "night" },
+  "terms": "Free cancellation 48h. No prepayment.",
+  "availability": "Quiet side rooms, dogs welcome"
+}
