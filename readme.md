@@ -16,6 +16,22 @@ stay found, trusted and bookable when its first visitor is an AI agent, not a pe
 | Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
 | Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
 
+## Where to read what
+
+Six questions a reviewer asks, one hop each.
+
+| Question | Page |
+| --- | --- |
+| What is this, and why is it plausible in five years? | [VISION.md](documentation/VISION.md) |
+| How does a search reach another Hive? | [FEDERATION.md](documentation/FEDERATION.md#how-far-to-look-the-radius) |
+| How is a Hive measured, and how is a business? | [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
+| How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
+| How do I run it, and what does each part do? | [DEVELOPER.md](documentation/DEVELOPER.md) · [ARCHITECTURE.md](documentation/ARCHITECTURE.md) · [DIAGRAMS.md](documentation/DIAGRAMS.md) |
+| How is it tested, and what is protected? | [DEVELOPER.md](documentation/DEVELOPER.md#tests-and-checks) · [tools/README.md](code/backend/tools/README.md) · [SECURITY.md](SECURITY.md) |
+
+And the one a jury asks last: **what does it not do?**
+[LIMITS.md](documentation/LIMITS.md) — every gap we know of, checked against the code.
+
 ## The next guest is an agent
 
 The website was the front door. Then platforms took it. Now agents walk in, and today they read whatever they
@@ -63,6 +79,17 @@ over MCP. Try it with any MCP client, Claude included.
 | Live activity feed (`?demo#activity`): one line per agent step, partner or web, never a person | `code/backend/app/activity.py`, `panels/ActivityPanel.tsx` |
 | Persistence: the Hive lives in DuckDB and is snapshotted to Postgres when `DATABASE_URL` is set, so a redeploy keeps cards, bookings and demand; without it the backend seeds a fresh Basel | `code/backend/app/storage.py` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
+| Federated search with a hop radius: a query carries how far it may travel, the time it has left and the hubs it has already visited; every card that comes back is verified against the key pinned in *its own* hub, so a relaying hub can withhold a card but never forge one ([how](documentation/FEDERATION.md)) | `code/backend/app/federation.py`, `components/Reach.tsx` |
+| Two levels of trust: a peer *hub*'s reputation from how it has behaved, and its *calibration* from whether its published ratings matched what our people found afterwards (published minus realised, lower is better) | `reputation.py`, `calibration.py`, `connections.py` |
+| Joining a hub: one signed JSON application, five checks in order, and an admission policy of `open`, `vetted`, `invite` or `closed`. A refusal is an answer with a reason and a next step ([how](documentation/REGISTRATION.md)) | `code/backend/app/registration.py` |
+| Item-level sharing: `public`, `confirm`, `push` (held, never searchable) or `never`, set per item, and the stricter of the item's flag and the entity's default always wins | `code/backend/app/sharing.py` |
+| A hub directory and an instance finder: pick a Hive before you use one, instances.social style, with the one column a Mastodon directory cannot offer — how honest each hub's ratings turned out to be | `admin.directory`, `panels/InstanceFinder.tsx` |
+| Running a hub in a browser: `?admin`, the hub's password for a short-lived session, then the overview, the signup queue, the entity list, the blocklist and the neighbours | `code/backend/app/admin.py`, `panels/AdminPanel.tsx` |
+| The network, live: this hub in the centre of a honeycomb, each peer a cell with an edge coloured by its calibration, a blocked peer still drawn and visibly cut | `panels/NetworkPanel.tsx`, `lib/network.ts` |
+| Three peered hubs on one machine, reachable from any phone on the wifi, seeded through the real signup endpoint ([how](documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh)) | `lan.sh`, `tools/seed_vaults.py` |
+| A test corpus whose cards never use the words a person would type, with an answer key, so search can be measured rather than demonstrated | [`testdata/`](testdata/README.md), `tools/make_corpus.py` |
+| `contact` on every entity: the key is always there, an empty value means "not published", and a channel the owner marked `never` is absent rather than listed as withheld | `hive.with_contact`, `documentation/cards/README.md` |
+| Semantic similarity with no key, no network and no new dependency: stems, a four-language concept table and character trigrams above a measured floor. **Written and tested; discovery does not call it yet**, so matching is still literal — one of the gaps in [LIMITS.md](documentation/LIMITS.md) | `code/backend/app/semantic.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
@@ -127,7 +154,8 @@ Taking over the code? The [diagrams](documentation/DIAGRAMS.md) show how the par
 | Folder | Contents |
 | --- | --- |
 | [`code/`](code) | `backend/` FastAPI + DuckDB (Postgres snapshot) + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Federation](documentation/FEDERATION.md) · [The Card](documentation/cards/README.md) · [Joining a hub](documentation/REGISTRATION.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Federation](documentation/FEDERATION.md) · [The Card](documentation/cards/README.md) · [Joining a hub](documentation/REGISTRATION.md) · [Known limits](documentation/LIMITS.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`testdata/`](testdata/README.md) | Fictional vaults and the answer key search is measured against; `lan.sh` seeds them into three hubs through the real signup endpoint |
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,
