@@ -76,7 +76,7 @@ policies) is the owner's text and is not translated. Voice and names of the feat
 
 ```bash
 cd code/backend && ruff check . && ruff format --check . && pytest -q
-cd code/frontend && npm run format:check && npm run build
+cd code/frontend && npm run format:check && npm test && npm run build
 ```
 
 Fix formatting with `ruff format .` and `npm run format`. Every public Python function and class gets a docstring
