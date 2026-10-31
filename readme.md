@@ -54,15 +54,57 @@ The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API ke
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
 web app speaks English, German, French and Italian.
 
-## Quick start
+## Run it locally in 5 minutes
+
+You need **Git**, **Python 3.12** and **Node 22**. No API key: without one, the agent runs on a scripted planner
+over the same MCP tools and the header shows **Offline mode**.
+
+**1. Clone and configure**
 
 ```bash
-cd code/backend && pip install -r requirements.txt -r requirements-dev.txt && pytest -q
-uvicorn app.main:app --port 8000          # add OPENAI_API_KEY for the live agent
-cd ../frontend && npm install && npm test && npm run dev   # http://localhost:5173
+git clone https://github.com/reactbias/Adobee-Hive.git && cd Adobee-Hive
+cp code/.env.example code/.env        # Windows PowerShell: copy code\.env.example code\.env
 ```
 
-Docker, AWS auto-deploy and connecting Claude: [documentation/DEPLOY.md](documentation/DEPLOY.md).
+For the live agent, put the team's key after `OPENAI_API_KEY=` in `code/.env`. That file is gitignored; never
+commit a key or paste it in a chat.
+
+**2. Backend** (one terminal, from `code/backend`)
+
+| macOS, Linux | Windows (PowerShell) |
+| --- | --- |
+| `python3.12 -m venv .venv` | `py -3.12 -m venv .venv` |
+| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
+
+Then, on both:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest -q                                              # all green, including a booking over MCP
+uvicorn app.main:app --port 8000 --env-file ../.env
+```
+
+**3. Frontend** (a second terminal, from `code/frontend`)
+
+```bash
+npm ci
+npm test                                               # component tests, no backend needed
+npm run dev
+```
+
+**4. Open it**
+
+| URL | What |
+| --- | --- |
+| http://localhost:5173 | The app; start with `/agent` and click the first example |
+| http://localhost:8000/docs | Every REST endpoint, to read and try |
+| http://localhost:8000/api/health | `"llm": "openai"` with a key, `"mock"` offline |
+| http://localhost:8000/mcp/ | The MCP endpoint for any agent, Claude included ([how](documentation/DEPLOY.md#point-any-agent-at-the-hive)) |
+
+Before you push, run the checks in [CONTRIBUTING.md](CONTRIBUTING.md#checks-to-run-before-you-push). What each
+endpoint, MCP tool and page does: [ARCHITECTURE.md](documentation/ARCHITECTURE.md). Docker and hosting:
+[DEPLOY.md](documentation/DEPLOY.md). If PowerShell refuses to run `Activate.ps1`, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
 ## Repository
 

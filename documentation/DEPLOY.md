@@ -2,13 +2,15 @@
 
 ## Locally
 
+Step by step, for macOS, Linux and Windows: [readme](../readme.md#run-it-locally-in-5-minutes).
+
 ```bash
 # backend
 cd code/backend
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 pytest -q                                   # includes an end-to-end booking over MCP
-OPENAI_API_KEY=... uvicorn app.main:app --reload --port 8000   # the key is optional
+uvicorn app.main:app --reload --port 8000 --env-file ../.env   # code/.env; the key in it is optional
 
 # frontend (another terminal)
 cd code/frontend && npm install && npm run dev   # http://localhost:5173
