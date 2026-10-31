@@ -282,7 +282,7 @@ export default function GroupChat({
   for (const m of messages.slice(0, shown)) if (!m.consent) present.set(m.who, { name: m.name, role: m.role });
 
   return (
-    <section className="chat-stage" ref={stage} aria-label={t("agent.stage")}>
+    <section className="chat-stage frame" ref={stage} aria-label={t("agent.stage")}>
       <header className="roster">
         <ul>
           {[...present].map(([who, p]) => (

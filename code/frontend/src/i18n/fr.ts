@@ -248,6 +248,11 @@ const fr: Record<Key, string> = {
   "ask.ex3": "4XOR peut-il automatiser un processus pour moi ?",
   "ask.ex4": "Que fait Adobe avec les Content Credentials ?",
   "ask.working": "Les cartes sont interrogées",
+  "ask.stage.title": "Les commerces répondent ici.",
+  "ask.stage.body":
+    "Chaque réponse vient de la carte d'un commerce, dit ce qui a été écarté et pourquoi, et attend votre oui avant toute action.",
+  "business.jump.demand": "Carte de la demande",
+  "business.jump.owner": "Studio du propriétaire",
   "ask.empty": "Aucune carte n'y répond encore. C'est noté comme demande manquée, sans votre question.",
   "ask.source": "Compilé d'après {url} le {date}. Non vérifié par l'entreprise.",
   "ask.free": "Gratuit",

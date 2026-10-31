@@ -30,10 +30,20 @@ function Header() {
   return (
     <header className="nav">
       <div className="nav-inner">
-        <span className="brand">
+        <a
+          className="brand"
+          href="#top"
+          aria-label="Adobee Hive"
+          onClick={(e) => {
+            e.preventDefault();
+            const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+            window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
+            history.replaceState(null, "", window.location.pathname + window.location.search);
+          }}
+        >
           <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
           <span>Adobee Hive</span>
-        </span>
+        </a>
         <nav className="nav-links" aria-label={t("nav.chapters")}>
           {CHAPTERS.map((c, i) => (
             <a key={c} className="link" href={`#${c}`}>

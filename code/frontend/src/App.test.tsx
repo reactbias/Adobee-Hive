@@ -44,4 +44,42 @@ describe("the app", () => {
     expect(screen.getByRole("heading", { name: en["demand.title"].replace(/\*/g, "") })).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: en["ask.label"] })).toBeInTheDocument();
   });
+
+  it("gives every chapter the same layout: a brief beside one fixed-height panel", () => {
+    const { container } = render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    for (const id of ["travel", "ask", "business"]) {
+      const grid = container.querySelector(`section#${id} > .chapter-grid`);
+      expect(grid, id).not.toBeNull();
+      expect(grid!.querySelector(":scope > .brief"), id).not.toBeNull();
+      expect(grid!.querySelector(":scope > .frame"), id).not.toBeNull();
+    }
+    // Chapters 1 and 2 take their request through the same input.
+    expect(container.querySelectorAll("section#travel .brief .composer, section#ask .brief .composer")).toHaveLength(2);
+  });
+
+  it("lets the business chapter jump between the demand map and the owner studio", () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("button", { name: en["business.jump.demand"] })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["business.jump.owner"] })).toBeInTheDocument();
+  });
+
+  it("scrolls back to the top when the logo is clicked", async () => {
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    screen.getByRole("link", { name: "Adobee Hive" }).click();
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
+  });
 });

@@ -250,6 +250,11 @@ const en = {
   "ask.ex3": "Can 4XOR help me automate a workflow?",
   "ask.ex4": "What is Adobe doing about content credentials?",
   "ask.working": "Asking the cards",
+  "ask.stage.title": "The businesses answer here.",
+  "ask.stage.body":
+    "Each answer comes from a business's own card, says what was left out and why, and waits for your yes before anything happens.",
+  "business.jump.demand": "Demand map",
+  "business.jump.owner": "Owner studio",
   "ask.empty": "No card answers this yet. That is recorded as missed demand, without your question.",
   "ask.source": "Compiled from {url} on {date}. Not verified by the business.",
   "ask.free": "Free",

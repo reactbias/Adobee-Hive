@@ -145,4 +145,9 @@ describe("ask the Hive", () => {
     await user.type(screen.getByRole("textbox", { name: en["ask.label"] }), "Anything for kids?{Enter}");
     expect(ask).toHaveBeenCalledWith("Anything for kids?", null);
   });
+
+  it("shows where the answers will appear before the first question", () => {
+    setup();
+    expect(screen.getByText(en["ask.stage.title"])).toBeInTheDocument();
+  });
 });
