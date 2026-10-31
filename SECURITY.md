@@ -1,7 +1,8 @@
 # Security
 
 Adobee Hive is a hackathon prototype, deployed as a public demo. This page says what is protected, how, and what
-is knowingly left open, so reviewers don't have to guess.
+is knowingly left open, so reviewers don't have to guess. The product's own gaps — what it does not do yet, as
+opposed to what it does not defend — are in [documentation/LIMITS.md](documentation/LIMITS.md).
 
 ## Reporting
 
@@ -48,8 +49,11 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
   demo's unverified mirror (`mirror.py`) and the rules-off run are reachable only through the `scenario` and `rules`
   options of `POST /api/agent`; the rules-off run is scripted, never calls Claude and never sends a booking.
 
-- **Key custody.** The server holds each owner's signing key, so a server compromise could sign cards. The real
-  design moves keys to the owner (a wallet or their Adobe account).
+- **Key custody.** The server holds a signing key for every card, so a server compromise could sign cards. An
+  application may bring a `public_key`, which proves who applied and is recorded as `custody: "owner"` with
+  `owner_public_key`, but the card version is still signed by the hub's own key and that is the key in
+  `owner_keys` that every check uses. The real design moves signing to the owner (a wallet or their Adobe
+  account).
 - **Trust in the registry.** Agents trust the keys a Hive publishes for its own cards. A forger who controls the Hive
   itself is not caught by this; the real design anchors owner keys outside it (a city or association registry).
 - **Owner identity.** One shared owner token protects all cards in the demo; production needs per-owner accounts.
@@ -86,6 +90,11 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
   it. The admin panel says exactly this next to the field rather than implying a protection that was not
   built; an operator who needs more should keep using the deployment's environment, which this still
   honours as the seed. Per-hub envelope encryption is the fix.
+- **Five `/api/admin/*` reads need no credential.** `overview`, `settings`, `neighbours` and `blocklist` are open
+  on purpose: what a hub blocks, who it peers with and how it describes itself is what it should be willing to say
+  out loud, and the public node view is built from two of them. `GET /api/admin/applications` is in that set and
+  should not be — it carries each applicant's id, name, public key and the checks that ran. Every admin **write**
+  fails closed.
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
   alike, as on any booking site. CORS is `*` for the same reason. MCP host-header checks are off because the host
   serves the public domain; the MCP surface exposes only these public actions.
