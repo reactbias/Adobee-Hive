@@ -931,8 +931,9 @@ def folder_caller(authorization: FolderBearer = None) -> dict[str, Any]:
     if key is None:
         raise HTTPException(
             401,
-            "This needs a folder link secret in Authorization: Bearer. Missing, wrong, revoked and "
-            "expired all say this, because telling them apart would be an oracle.",
+            "This needs a folder link secret in Authorization: Bearer. A missing one, a wrong one, "
+            "a revoked one and one whose link has been withdrawn all say exactly this, because "
+            "telling them apart would be an oracle.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return key

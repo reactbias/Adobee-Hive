@@ -306,7 +306,7 @@ the whole relationship, `DELETE /api/folders/grants/{grant_id}`.
 | `DELETE` | `/api/folders/grants/{id}` | `Bearer <link secret>` | Take one grant back. Only the owner who gave it may |
 | `DELETE` | `/api/folders/links/{id}` | `Bearer <link secret>` | Withdraw the link, and with it every secret and read it allowed |
 | `POST` | `/api/folders/keys` | `X-Admin-Token`, fails closed | Mint a link secret for one party, returned once. The operator's door, not the owner's |
-| `POST` | `/api/hub/connect` | rate limit | Unchanged, except that it now also returns `folder_key` for the requester it names |
+| `POST` | `/api/hub/connect` | rate limit | Also returns `folder_key` for the requester it names, once. And takes `card` + `target_hub` for an entity on a **peer**, verified against that hub's pinned key (#143) |
 
 `GET /api/folders/file` sets `ETag` to the manifest's digest, `Accept-Ranges: none`,
 `Cache-Control: private, no-store` and `X-Folder-Link`. A file over `FOLDER_READ_MAX_BYTES`
