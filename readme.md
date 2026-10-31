@@ -34,6 +34,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Owner studio: plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `OwnerStudio.tsx` |
 | Human card page with direct booking and a live tamper test | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
+| Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 Without an API key everything still runs on a scripted planner over the same tools, so the demo never dies.
 
