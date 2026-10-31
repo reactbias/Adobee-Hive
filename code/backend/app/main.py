@@ -109,6 +109,7 @@ def _hive_call(fn, *args, **kwargs):
         hive.HiveError,
         hub.HubError,
         connections.ConnectionError_,
+        folders.FolderError,
         blocklist.BlockError,
         registration.RegistrationError,
         removals.RemovalError,

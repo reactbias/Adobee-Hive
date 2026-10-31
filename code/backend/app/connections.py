@@ -20,15 +20,28 @@ think in stars, tenths because 4.3 is a real answer and floats drift when you av
 The field that makes the trust layer work is `published_rating`: whatever the other hub claimed
 this entity was worth, captured at the moment of introduction. Compare it with what the human
 reports later and you have measured that hub's honesty. See calibration.py.
+
+**A booking stands on a folder link.** Before a row exists here, the two agents' folders have met
+(folders.py): a connection cannot be *made* without a link between requester and target, and cannot
+be *opened* until that link is established. A booking made with no link is a booking made on what
+the public index said rather than on what the two agents actually agreed, which is the one thing
+this product is arguing against. `folder_link` holds the link the row stands on.
+
+The precondition is on making a new booking, not on reading the log of bookings already made. A row
+written before any of this existed carries no link, and nothing here asks it for one: it can still
+be confirmed, scored, counted and gone stale. Old evidence does not stop being evidence.
 """
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from . import db
+from . import db, folders
+
+log = logging.getLogger(__name__)
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hub_connections (
@@ -46,7 +59,8 @@ CREATE TABLE IF NOT EXISTS hub_connections (
     stale_at TIMESTAMP,
     rated_at TIMESTAMP,
     rating INTEGER,
-    note VARCHAR
+    note VARCHAR,
+    folder_link VARCHAR
 );
 """
 
@@ -66,9 +80,18 @@ class ConnectionError_(ValueError):
 
 
 def init() -> None:
-    """Create the table."""
+    """Create the table, add `folder_link` to one that predates it, and make sure folders.py is ready.
+
+    The column is added rather than assumed, because the demo hub has a Postgres snapshot of rows
+    written before folder links existed. A missing link on an old row is a fact about that row, not
+    a reason for the hub to fall over on boot.
+    """
+    folders.init()
     with db.write() as cur:
         cur.execute(SCHEMA_SQL)
+        held = {r[1] for r in cur.execute("PRAGMA table_info('hub_connections')").fetchall()}
+        if "folder_link" not in held:
+            cur.execute("ALTER TABLE hub_connections ADD COLUMN folder_link VARCHAR")
 
 
 def _now() -> datetime:
@@ -106,6 +129,7 @@ def _row(r: tuple) -> dict[str, Any]:
         "rated_at",
         "rating",
         "note",
+        "folder_link",
     )
     out: dict[str, Any] = {}
     for key, value in zip(keys, r, strict=True):
@@ -117,8 +141,42 @@ def _row(r: tuple) -> dict[str, Any]:
 
 SELECT = (
     "SELECT id, created_at, state, requester, requester_hub, target, target_hub, via_hub, sharing, "
-    "published_rating, opened_at, stale_at, rated_at, rating, note FROM hub_connections"
+    "published_rating, opened_at, stale_at, rated_at, rating, note, folder_link FROM hub_connections"
 )
+
+
+def link_for(requester: str, target: str, folder_link: str = "", *, opening: bool = False) -> dict[str, Any]:
+    """The folder link this booking stands on, or a refusal naming what is missing.
+
+    Two bars, which are the two states a link has. Making a booking needs a link to *exist*: these
+    two agents have at least asked to connect their folders. Opening one needs that link to be
+    *established*, because an open connection is the hub saying the introduction happened, and it
+    has not happened while one side is still waiting to be let in.
+
+    `folder_link` is checked against the pair rather than trusted. A link id is not a capability —
+    passing someone else's would otherwise book on the strength of a handshake between two other
+    agents.
+    """
+    try:
+        link = folders.between(folders.handle_for(requester), folders.handle_for(target))
+    except folders.FolderError as err:  # a name with nothing legal in it is nobody's handle
+        raise ConnectionError_(str(err)) from err
+    if link is None:
+        raise ConnectionError_(
+            f"{requester} and {target} have no folder link; the two agents connect their folders"
+            " before a booking is made"
+        )
+    if folder_link and folder_link != link["id"]:
+        raise ConnectionError_(
+            f"folder link {folder_link} is not the link between {requester} and {target};"
+            " a booking stands on their own handshake, not on somebody else's"
+        )
+    if opening and link["state"] != folders.ESTABLISHED:
+        raise ConnectionError_(
+            f"the folder link between {requester} and {target} is {link['state']}, not established;"
+            f" a booking opens once {target} has accepted it"
+        )
+    return link
 
 
 def request(
@@ -131,8 +189,12 @@ def request(
     sharing: str = "",
     published_rating: int | None = None,
     needs_confirmation: bool = True,
+    folder_link: str = "",
 ) -> dict[str, Any]:
     """Record an introduction. Open at once when the item was public, otherwise await the owner's yes.
+
+    Refused outright unless the two agents have a folder link, and refused as an *open* connection
+    unless that link is established (see `link_for`). The row keeps the link it stood on.
 
     `published_rating` is what the carrying hub said this entity was worth, in tenths of a star,
     frozen here. Later honesty is measured against this number and not against whatever the hub
@@ -142,6 +204,7 @@ def request(
         raise ConnectionError_("a connection needs both a requester and a target")
     if published_rating is not None:
         check_rating(published_rating)
+    link = link_for(requester, target, folder_link, opening=not needs_confirmation)
     now, cid = _now(), f"cx-{uuid.uuid4().hex[:12]}"
     state = REQUESTED if needs_confirmation else OPEN
     opened = None if needs_confirmation else now
@@ -149,7 +212,7 @@ def request(
     with db.write() as cur:
         cur.execute(
             "INSERT INTO hub_connections (id, created_at, state, requester, requester_hub, target, target_hub,"
-            " via_hub, sharing, published_rating, opened_at, stale_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            " via_hub, sharing, published_rating, opened_at, stale_at, folder_link) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [
                 cid,
                 now,
@@ -163,16 +226,30 @@ def request(
                 published_rating,
                 opened,
                 stale_at,
+                link["id"],
             ],
         )
     return get(cid)
 
 
 def confirm(connection_id: str) -> dict[str, Any]:
-    """The owner says yes. The clock to score it starts now, not when the request was made."""
+    """The owner says yes, to the introduction and to the folder link in the same breath.
+
+    They are one decision and the hub asks it once. A `confirm` Card's link waits precisely because
+    its owner had not yet said anything; when they do, the folders are linked and the connection
+    opens together.
+
+    A row whose link has gone — written before links existed, or left behind by a demo reset — is
+    confirmed anyway. The precondition is on making a booking, and this booking was made.
+    """
     row = get(connection_id)
     if row["state"] != REQUESTED:
         raise ConnectionError_(f"only a requested connection can be confirmed, this one is {row['state']}")
+    if row["folder_link"]:
+        try:
+            folders.accept_link(row["folder_link"], by=row["target"])
+        except folders.FolderError as err:
+            log.warning("connections: %s has no folder link to accept (%s); confirming anyway", connection_id, err)
     now = _now()
     with db.write() as cur:
         cur.execute(

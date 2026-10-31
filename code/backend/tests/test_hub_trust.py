@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app import blocklist, calibration, connections, db, sharing
+from app import blocklist, calibration, connections, db, folders, sharing
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +18,9 @@ def clean_slate(client):
     with db.write() as cur:
         cur.execute("DELETE FROM hub_connections")
         cur.execute("DELETE FROM hub_blocklist")
+        cur.execute("DELETE FROM folder_links")
+        cur.execute("DELETE FROM folder_grants")
+    folders.reset()
     yield
 
 
@@ -101,7 +104,17 @@ def test_hubs_and_entities_are_blocked_separately(client):
 # ---------------------------------------------------------------- the connection log
 
 
+def _folders_met(requester: str, target: str) -> str:
+    """The step a booking now stands on: the two agents link their folders (folders.py).
+
+    Written out in the tests rather than hidden in a fixture, because it is the thing under test
+    everywhere below — a booking that skips it is refused, and that is the point.
+    """
+    return folders.open_link(requester, target, auto_accept=True)["id"]
+
+
 def _introduce(client, published=50, confirm=False) -> dict:
+    _folders_met("mara@example.com", "hotel-limmat")
     row = connections.request(
         "mara@example.com",
         "hotel-limmat",
@@ -115,14 +128,65 @@ def _introduce(client, published=50, confirm=False) -> dict:
 
 
 def test_a_public_item_opens_at_once_and_a_confirm_item_waits(client):
+    _folders_met("mara@example.com", "cafe-open")
     straight = connections.request("mara@example.com", "cafe-open", needs_confirmation=False)
     assert straight["state"] == connections.OPEN
 
+    folders.request_link("mara@example.com", "lena")  # asked for; lena has not answered yet
     waiting = connections.request("mara@example.com", "lena", needs_confirmation=True)
     assert waiting["state"] == connections.REQUESTED
     assert connections.pending_confirmation("lena")[0]["id"] == waiting["id"]
 
     assert connections.confirm(waiting["id"])["state"] == connections.OPEN
+    assert folders.linked("mara@example.com", "lena"), "the owner's yes is one answer to one question"
+
+
+def test_a_booking_cannot_be_made_without_a_folder_link(client):
+    """The invariant this hub is for. A booking made on the index alone is a booking made on a claim."""
+    with pytest.raises(connections.ConnectionError_, match="no folder link"):
+        connections.request("mara@example.com", "cafe-open", needs_confirmation=False)
+    with pytest.raises(connections.ConnectionError_, match="no folder link"):
+        connections.request("mara@example.com", "cafe-open", needs_confirmation=True)
+    assert connections.awaiting_rating() == [], "a refused booking leaves no row behind"
+
+
+def test_a_booking_cannot_open_on_a_link_the_other_side_has_not_accepted(client):
+    """Asking to link is not linking. An open connection says the introduction happened."""
+    folders.request_link("mara@example.com", "cafe-open")
+    with pytest.raises(connections.ConnectionError_, match="not established"):
+        connections.request("mara@example.com", "cafe-open", needs_confirmation=False)
+
+    waiting = connections.request("mara@example.com", "cafe-open", needs_confirmation=True)
+    assert waiting["state"] == connections.REQUESTED, "it may still be asked for"
+
+
+def test_a_booking_cannot_stand_on_somebody_elses_handshake(client):
+    """A link id is not a capability. Two other agents' handshake books nothing here."""
+    elsewhere = _folders_met("someone", "cafe-open")
+    _folders_met("mara@example.com", "cafe-open")
+    with pytest.raises(connections.ConnectionError_, match="not the link between"):
+        connections.request("mara@example.com", "cafe-open", needs_confirmation=False, folder_link=elsewhere)
+
+
+def test_the_row_keeps_the_link_it_stood_on(client):
+    link = _folders_met("mara@example.com", "cafe-open")
+    row = connections.request("mara@example.com", "cafe-open", needs_confirmation=False)
+    assert row["folder_link"] == link
+    assert connections.get(row["id"])["folder_link"] == link
+
+
+def test_a_row_written_before_folder_links_existed_still_works(client):
+    """The demo hub restores rows from Postgres that predate all of this. They are still evidence."""
+    link = _folders_met("mara@example.com", "cafe-open")
+    row = connections.request("mara@example.com", "cafe-open", needs_confirmation=True)
+    with db.write() as cur:  # as an old snapshot has it: a row with no link at all
+        cur.execute("UPDATE hub_connections SET folder_link = NULL WHERE id = ?", [row["id"]])
+        cur.execute("DELETE FROM folder_links WHERE id = ?", [link])
+
+    assert connections.get(row["id"])["folder_link"] is None
+    assert connections.confirm(row["id"])["state"] == connections.OPEN, "confirming it must not crash the hub"
+    assert connections.rate(row["id"], 43)["state"] == connections.RATED
+    assert connections.pending_confirmation() == []
 
 
 def test_a_rating_is_given_once_and_only_on_an_open_connection(client):
@@ -137,6 +201,7 @@ def test_a_rating_is_given_once_and_only_on_an_open_connection(client):
 
 
 def test_a_declined_introduction_can_never_become_a_rating(client):
+    _folders_met("mara@example.com", "lena")
     row = connections.request("mara@example.com", "lena", needs_confirmation=True)
     connections.decline(row["id"], "not taking new clients")
 

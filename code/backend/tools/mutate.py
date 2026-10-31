@@ -282,6 +282,18 @@ CURATED: list[Mutant] = [
         "if False:",
     ),
     Mutant(
+        "connections.py",
+        "a booking can be made with no folder link at all, so the whole handshake is decorative",
+        "link = link_for(requester, target, folder_link, opening=not needs_confirmation)",
+        'link = {"id": ""}',
+    ),
+    Mutant(
+        "connections.py",
+        "a booking opens on a folder link the other side never accepted",
+        'if opening and link["state"] != folders.ESTABLISHED:',
+        "if False:",
+    ),
+    Mutant(
         "folders.py",
         "a hidden or private file becomes readable, which is the one thing the folder link must never do",
         'if entry["visibility"] not in ADMITTED:',
@@ -501,8 +513,13 @@ def live_mutants() -> list[Mutant]:
     return found
 
 
-def run_suite(timeout: int = 120) -> bool:
-    """True when the suite is green. A timeout counts as caught: the mutant hung it."""
+def run_suite(timeout: int = 120, keep: list[str] | None = None) -> bool:
+    """True when the suite is green. A timeout counts as caught: the mutant hung it.
+
+    `keep` collects pytest's own output for the one caller that needs it — the pre-flight, which
+    reports "the suite is already red" and must be able to say which test. Without that, a red
+    pre-flight in CI is a dead end: the harness swallows the only copy of the failure.
+    """
     try:
         done = subprocess.run(
             [sys.executable, "-m", "pytest", "-x", "-q", "--no-header", "-p", "no:cacheprovider", *SUITE],
@@ -512,7 +529,11 @@ def run_suite(timeout: int = 120) -> bool:
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
+        if keep is not None:
+            keep.append(f"pytest did not finish within {timeout}s")
         return False
+    if keep is not None:
+        keep.append((done.stdout or "") + (done.stderr or ""))
     return done.returncode == 0
 
 
@@ -615,8 +636,10 @@ def main() -> int:
         return len(stray)
 
     print("Checking the suite is green before we start...")
-    if not run_suite():
+    output: list[str] = []
+    if not run_suite(keep=output):
         print("The suite is already red. Fix that first; mutation results would be meaningless.")
+        print("\n".join("    " + line for line in "\n".join(output).strip().splitlines()[-30:]))
         return 1
     print("Green.\n")
 

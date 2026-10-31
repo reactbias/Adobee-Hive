@@ -213,6 +213,13 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 - **Expiry.** `publish` signs a `valid_until` into every version (`FRESH_DAYS`, 90); discovery leaves out an
   expired card with the reason, and `trust.fresh` says whether it still holds.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
+- **A booking stands on a folder link** (`folders.py`). A connection cannot be made between two agents who have
+  no link, and cannot be *opened* until that link is established — asking to link is not linking. The link itself
+  carries no content: it opens the manifest, where a linked peer finally sees that the `shared` files exist, and
+  reading one still needs a per-path grant from the owner. A booking made with no link would be a booking made on
+  what the index claimed rather than on what the two agents agreed, which is the thing this product argues
+  against. Rows written before links existed carry none and are still confirmed, scored and counted: the
+  precondition is on making a booking, not on reading the log of bookings already made.
 - **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once. The receipt pins the card
   version and its digest; every signed version is kept, so the receipt can later show what was promised.
 - **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks

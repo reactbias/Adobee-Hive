@@ -146,7 +146,7 @@ outside `t()`. How to write tests first: [CONTRIBUTING.md](../CONTRIBUTING.md#te
 
 ```bash
 cd code/backend && source .venv/bin/activate
-python tools/mutate.py                  # the 49 curated mutants; all must die
+python tools/mutate.py                  # the 51 curated mutants; all must die
 python tools/mutate.py --random 8       # seeded random operator and constant flips
 python tools/mutate.py --all
 ```
