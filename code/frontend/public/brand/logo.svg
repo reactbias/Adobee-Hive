@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Adobee Hive logo: a clay-brick hexagon with a bee inside">
+  <defs>
+    <!-- Hand-moulded clay: wobbly edges plus a soft grain lit from the top left -->
+    <filter id="clay" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="warp"/>
+      <feDisplacementMap in="SourceGraphic" in2="warp" scale="3.5" xChannelSelector="R" yChannelSelector="G" result="shape"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="grain"/>
+      <feDiffuseLighting in="grain" surfaceScale="1.6" lighting-color="#fff4e6" result="lit">
+        <feDistantLight azimuth="225" elevation="65"/>
+      </feDiffuseLighting>
+      <feComposite in="lit" in2="shape" operator="in" result="litShape"/>
+      <feBlend in="shape" in2="litShape" mode="multiply"/>
+    </filter>
+    <clipPath id="hex-outer"><polygon points="60,6 107,33 107,87 60,114 13,87 13,33"/></clipPath>
+  </defs>
+
+  <g filter="url(#clay)">
+    <!-- adobe brick hexagon: courses of bricks with darker mortar -->
+    <polygon points="60,6 107,33 107,87 60,114 13,87 13,33" fill="#b85c34"/>
+    <g clip-path="url(#hex-outer)" stroke="#7a3a1f" stroke-width="2.2" fill="none" stroke-linecap="round">
+      <path d="M8 22H112M8 38H112M8 54H112M8 70H112M8 86H112M8 102H112"/>
+      <path d="M30 6V22M62 6V22M94 6V22M46 22V38M78 22V38M30 38V54M94 38V54M30 70V86M94 70V86M46 86V102M78 86V102M30 102V118M62 102V118M94 102V118"/>
+    </g>
+    <!-- inner recess in lighter, smoothed clay -->
+    <polygon points="60,26 90,43 90,77 60,94 30,77 30,43" fill="#e3a679" stroke="#7a3a1f" stroke-width="2.5" stroke-linejoin="round"/>
+    <!-- bee -->
+    <ellipse cx="50" cy="50" rx="11" ry="7.5" fill="#f6e7d3" stroke="#5a2e1a" stroke-width="2" transform="rotate(-25 50 50)"/>
+    <ellipse cx="70" cy="50" rx="11" ry="7.5" fill="#f6e7d3" stroke="#5a2e1a" stroke-width="2" transform="rotate(25 70 50)"/>
+    <ellipse cx="60" cy="66" rx="14" ry="17" fill="#e9a52f" stroke="#5a2e1a" stroke-width="2.5"/>
+    <path d="M47 60Q60 64 73 60M46.5 68Q60 72 73.5 68M49 76Q60 79 71 76" stroke="#5a2e1a" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+    <circle cx="54" cy="53" r="2" fill="#5a2e1a"/>
+    <circle cx="66" cy="53" r="2" fill="#5a2e1a"/>
+    <path d="M55 46Q52 38 47 36M65 46Q68 38 73 36" stroke="#5a2e1a" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

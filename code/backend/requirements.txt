@@ -1,0 +1,8 @@
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+duckdb==2.0.0
+anthropic==2.3.0
+mcp==2.3.0
+cryptography==50.0.2
+pydantic==2.14.2
+boto3==1.43.123
