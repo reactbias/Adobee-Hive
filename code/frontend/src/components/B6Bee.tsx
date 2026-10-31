@@ -71,7 +71,9 @@ export default function B6Bee() {
         </div>
       )}
       {sixes.map((s) => (
-        <span key={s.id} className="b6-six" style={{ left: s.x, top: s.y }} aria-hidden>6</span>
+        <span key={s.id} className="b6-six" style={{ left: s.x, top: s.y }} aria-hidden>
+          6
+        </span>
       ))}
     </>
   );

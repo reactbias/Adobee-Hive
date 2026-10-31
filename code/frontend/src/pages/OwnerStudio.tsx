@@ -14,7 +14,11 @@ export default function OwnerStudio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const load = (id: string) => api.owner(id).then(setOverview).catch((e) => setError(e.message));
+  const load = (id: string) =>
+    api
+      .owner(id)
+      .then(setOverview)
+      .catch((e) => setError(e.message));
 
   useEffect(() => {
     api.cards().then(setCards);
@@ -56,10 +60,16 @@ export default function OwnerStudio() {
       <div className="row">
         <h1 style={{ marginRight: "auto" }}>Owner studio</h1>
         <select value={cardId} onChange={(e) => setCardId(e.target.value)} style={{ width: 280 }}>
-          {cards.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {cards.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
         </select>
       </div>
-      <p className="muted">No website to maintain. Say what changed; your agent-facing card is updated, re-signed and live for every agent.</p>
+      <p className="muted">
+        No website to maintain. Say what changed; your agent-facing card is updated, re-signed and live for every agent.
+      </p>
       {error && <p className="error">{error}</p>}
 
       <div className="grid two">
@@ -67,7 +77,9 @@ export default function OwnerStudio() {
           <h3>Tell the Hive what changed</h3>
           <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} />
           <div className="row">
-            <button onClick={propose} disabled={busy || !instruction.trim()}>Preview change</button>
+            <button onClick={propose} disabled={busy || !instruction.trim()}>
+              Preview change
+            </button>
             {proposal && <span className="muted">{proposal.summary}</span>}
           </div>
           {proposal && (
@@ -81,8 +93,12 @@ export default function OwnerStudio() {
                 </div>
               ))}
               <div className="row">
-                <button onClick={publish} disabled={busy || proposal.changes.length === 0}>Sign and publish</button>
-                <button className="ghost" onClick={() => setProposal(null)}>Discard</button>
+                <button onClick={publish} disabled={busy || proposal.changes.length === 0}>
+                  Sign and publish
+                </button>
+                <button className="ghost" onClick={() => setProposal(null)}>
+                  Discard
+                </button>
               </div>
             </div>
           )}
@@ -94,7 +110,12 @@ export default function OwnerStudio() {
             <table>
               <tbody>
                 {overview.missed_demand.map((m) => (
-                  <tr key={m.detail}><td>{m.detail}</td><td><strong>{m.times}x</strong></td></tr>
+                  <tr key={m.detail}>
+                    <td>{m.detail}</td>
+                    <td>
+                      <strong>{m.times}x</strong>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -103,7 +124,9 @@ export default function OwnerStudio() {
           )}
           <div className="row">
             {Object.entries(overview?.last_7_days ?? {}).map(([k, v]) => (
-              <span key={k} className="chip">{k.replace("_", " ")}: {v} this week</span>
+              <span key={k} className="chip">
+                {k.replace("_", " ")}: {v} this week
+              </span>
             ))}
           </div>
         </section>
@@ -123,12 +146,26 @@ export default function OwnerStudio() {
             <h3>Bookings</h3>
             {overview?.bookings.length ? (
               <table>
-                <thead><tr><th>Guest</th><th>Dates</th><th>CHF</th><th>Via</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>Guest</th>
+                    <th>Dates</th>
+                    <th>CHF</th>
+                    <th>Via</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {overview.bookings.map((b) => (
                     <tr key={b.id}>
-                      <td>{b.guest_name}<div className="muted">{b.unit_id} · {b.status}</div></td>
-                      <td>{b.check_in} to {b.check_out}</td>
+                      <td>
+                        {b.guest_name}
+                        <div className="muted">
+                          {b.unit_id} · {b.status}
+                        </div>
+                      </td>
+                      <td>
+                        {b.check_in} to {b.check_out}
+                      </td>
                       <td>{b.total_chf}</td>
                       <td className="muted">{b.agent}</td>
                     </tr>

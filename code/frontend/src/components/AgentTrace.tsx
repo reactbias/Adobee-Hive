@@ -39,7 +39,11 @@ function answer(step: Step, names: Record<string, string>): { who: string; text:
       const m = list(o.matches);
       const x = list(o.excluded);
       const top = m[0] ? `Best fit ${m[0].name} (score ${m[0].score}). ` : "";
-      return { who: "Hive", text: `${m.length} ${m.length === 1 ? "match" : "matches"}, ${x.length} ruled out, each with a reason. ${top}No paid placement.`, ok: m.length > 0 };
+      return {
+        who: "Hive",
+        text: `${m.length} ${m.length === 1 ? "match" : "matches"}, ${x.length} ruled out, each with a reason. ${top}No paid placement.`,
+        ok: m.length > 0,
+      };
     }
     case "hive_get_card": {
       const t = (o.trust ?? {}) as Rec;
@@ -54,12 +58,18 @@ function answer(step: Step, names: Record<string, string>): { who: string; text:
       const u = list(o.available_units);
       return {
         who: names[String((step.input as Rec).card_id)] ?? "Business",
-        text: u.length ? u.map((x) => `${x.name}: CHF ${x.total_chf} total, ${x.left} left`).join(" · ") : "Fully booked.",
+        text: u.length
+          ? u.map((x) => `${x.name}: CHF ${x.total_chf} total, ${x.left} left`).join(" · ")
+          : "Fully booked.",
         ok: u.length > 0,
       };
     }
     case "hive_book":
-      return { who: String(o.business ?? "Business"), text: `Confirmed ${o.booking_id}. Signed receipt issued.`, ok: o.status === "confirmed" };
+      return {
+        who: String(o.business ?? "Business"),
+        text: `Confirmed ${o.booking_id}. Signed receipt issued.`,
+        ok: o.status === "confirmed",
+      };
     default:
       return { who: "Hive", text: "Done.", ok: true };
   }
@@ -67,7 +77,8 @@ function answer(step: Step, names: Record<string, string>): { who: string; text:
 
 export default function AgentTrace({ steps }: { steps: Step[] }) {
   const names: Record<string, string> = {};
-  for (const s of steps) if (s.tool === "hive_get_card" && s.output.id) names[String(s.output.id)] = String(s.output.name);
+  for (const s of steps)
+    if (s.tool === "hive_get_card" && s.output.id) names[String(s.output.id)] = String(s.output.name);
   return (
     <ol className="a2a">
       {steps.map((s, n) => {
@@ -76,13 +87,17 @@ export default function AgentTrace({ steps }: { steps: Step[] }) {
           <li key={n} style={{ animationDelay: `${n * 350}ms` }}>
             {s.tool === "hive_book" && <div className="a2a-human">You approved the booking</div>}
             <div className="a2a-msg mine">
-              <span className="a2a-who">Your agent · <code>{s.tool}</code></span>
+              <span className="a2a-who">
+                Your agent · <code>{s.tool}</code>
+              </span>
               {ask(s)}
             </div>
             <div className={`a2a-msg theirs ${a.ok ? "" : "bad"}`}>
               <span className="a2a-who">
                 {a.who}
-                {s.tool === "hive_get_card" && <span className={`chip ${a.ok ? "ok" : "no"}`}>{a.ok ? "signature valid" : "signature invalid"}</span>}
+                {s.tool === "hive_get_card" && (
+                  <span className={`chip ${a.ok ? "ok" : "no"}`}>{a.ok ? "signature valid" : "signature invalid"}</span>
+                )}
                 {s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
               </span>
               {a.text}

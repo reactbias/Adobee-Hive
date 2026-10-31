@@ -14,7 +14,10 @@ export default function CardPage() {
   const [tamper, setTamper] = useState<{ original: boolean; tampered: boolean } | null>(null);
 
   useEffect(() => {
-    api.card(slug).then(setCard).catch((e) => setError(e.message));
+    api
+      .card(slug)
+      .then(setCard)
+      .catch((e) => setError(e.message));
   }, [slug]);
 
   async function check() {
@@ -30,7 +33,15 @@ export default function CardPage() {
   async function book(unit: FreeUnit) {
     if (!card) return;
     try {
-      setBooking(await api.bookAsHuman(card.id, { unit_id: unit.id, check_in: dates.check_in, check_out: dates.check_out, guest_name: dates.name || "Walk-in guest", guests: dates.guests }));
+      setBooking(
+        await api.bookAsHuman(card.id, {
+          unit_id: unit.id,
+          check_in: dates.check_in,
+          check_out: dates.check_out,
+          guest_name: dates.name || "Walk-in guest",
+          guests: dates.guests,
+        }),
+      );
     } catch (e) {
       setError((e as Error).message);
     }
@@ -56,41 +67,102 @@ export default function CardPage() {
       <div className="grid two">
         <section className="panel stack">
           <p>{card.description}</p>
-          <div>{card.features.map((f) => <span key={f} className="chip">{f}</span>)}</div>
-          {card.address && <div><strong>Address:</strong> {card.address}</div>}
-          {card.contact && <div><strong>Contact:</strong> {Object.values(card.contact).join(" · ")}</div>}
+          <div>
+            {card.features.map((f) => (
+              <span key={f} className="chip">
+                {f}
+              </span>
+            ))}
+          </div>
+          {card.address && (
+            <div>
+              <strong>Address:</strong> {card.address}
+            </div>
+          )}
+          {card.contact && (
+            <div>
+              <strong>Contact:</strong> {Object.values(card.contact).join(" · ")}
+            </div>
+          )}
           {card.policies && (
-            <table><tbody>
-              {Object.entries(card.policies).map(([k, v]) => <tr key={k}><th>{k.replace("_", " ")}</th><td>{v}</td></tr>)}
-            </tbody></table>
+            <table>
+              <tbody>
+                {Object.entries(card.policies).map(([k, v]) => (
+                  <tr key={k}>
+                    <th>{k.replace("_", " ")}</th>
+                    <td>{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
           {card.opening_hours && (
-            <table><tbody>
-              {Object.entries(card.opening_hours).map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}
-            </tbody></table>
+            <table>
+              <tbody>
+                {Object.entries(card.opening_hours).map(([k, v]) => (
+                  <tr key={k}>
+                    <th>{k}</th>
+                    <td>{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
           {card.trust.verified_reviews.recent.map((r, i) => (
-            <div key={i} className="muted">{"★".repeat(r.rating)} {r.text}</div>
+            <div key={i} className="muted">
+              {"★".repeat(r.rating)} {r.text}
+            </div>
           ))}
         </section>
         {card.units.length > 0 && (
           <section className="panel stack">
             <h3>Book directly</h3>
             <div className="row">
-              <div style={{ flex: 1 }}><label>Check in</label><input type="date" value={dates.check_in} onChange={(e) => setDates({ ...dates, check_in: e.target.value })} /></div>
-              <div style={{ flex: 1 }}><label>Check out</label><input type="date" value={dates.check_out} onChange={(e) => setDates({ ...dates, check_out: e.target.value })} /></div>
-              <div style={{ width: 90 }}><label>Guests</label><input type="number" min={1} value={dates.guests} onChange={(e) => setDates({ ...dates, guests: Number(e.target.value) })} /></div>
+              <div style={{ flex: 1 }}>
+                <label>Check in</label>
+                <input
+                  type="date"
+                  value={dates.check_in}
+                  onChange={(e) => setDates({ ...dates, check_in: e.target.value })}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Check out</label>
+                <input
+                  type="date"
+                  value={dates.check_out}
+                  onChange={(e) => setDates({ ...dates, check_out: e.target.value })}
+                />
+              </div>
+              <div style={{ width: 90 }}>
+                <label>Guests</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={dates.guests}
+                  onChange={(e) => setDates({ ...dates, guests: Number(e.target.value) })}
+                />
+              </div>
             </div>
-            <div><label>Your name</label><input value={dates.name} onChange={(e) => setDates({ ...dates, name: e.target.value })} /></div>
+            <div>
+              <label>Your name</label>
+              <input value={dates.name} onChange={(e) => setDates({ ...dates, name: e.target.value })} />
+            </div>
             <button onClick={check}>Check availability</button>
             {units?.length === 0 && <p className="muted">Fully booked for these dates.</p>}
             {units?.map((u) => (
               <div key={u.id} className="row" style={{ justifyContent: "space-between" }}>
-                <span>{u.name} · CHF {u.price_chf}/night · {u.left} left</span>
+                <span>
+                  {u.name} · CHF {u.price_chf}/night · {u.left} left
+                </span>
                 <button onClick={() => book(u)}>Book CHF {u.total_chf}</button>
               </div>
             ))}
-            {booking && <p><strong>Booked.</strong> {booking.unit_name}, reference {booking.booking_id}.</p>}
+            {booking && (
+              <p>
+                <strong>Booked.</strong> {booking.unit_name}, reference {booking.booking_id}.
+              </p>
+            )}
             {error && <p className="error">{error}</p>}
           </section>
         )}
@@ -101,16 +173,25 @@ export default function CardPage() {
           Agents re-check the owner's Ed25519 signature on every card. Try changing one fact without the owner's key.
         </p>
         <div className="row">
-          <button onClick={tamperTest}>{card.units.length ? "Set the first room to CHF 1 and verify" : "Add a fake perk and verify"}</button>
+          <button onClick={tamperTest}>
+            {card.units.length ? "Set the first room to CHF 1 and verify" : "Add a fake perk and verify"}
+          </button>
           {tamper && (
             <>
-              <span className={`chip ${tamper.original ? "ok" : "no"}`}>original: {tamper.original ? "valid" : "invalid"}</span>
-              <span className={`chip ${tamper.tampered ? "ok" : "no"}`}>tampered: {tamper.tampered ? "valid" : "rejected"}</span>
+              <span className={`chip ${tamper.original ? "ok" : "no"}`}>
+                original: {tamper.original ? "valid" : "invalid"}
+              </span>
+              <span className={`chip ${tamper.tampered ? "ok" : "no"}`}>
+                tampered: {tamper.tampered ? "valid" : "rejected"}
+              </span>
             </>
           )}
         </div>
       </section>
-      <p className="muted">Card version {card.version}, published {card.published_at}. Agents read the same data at the Hive's MCP endpoint.</p>
+      <p className="muted">
+        Card version {card.version}, published {card.published_at}. Agents read the same data at the Hive's MCP
+        endpoint.
+      </p>
     </div>
   );
 }

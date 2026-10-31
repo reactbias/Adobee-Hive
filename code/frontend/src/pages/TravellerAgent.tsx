@@ -80,18 +80,36 @@ export default function TravellerAgent() {
         <div className="panel chat">
           {history.length === 0 && <p className="muted">Try one of the requests below.</p>}
           {history.map((m, i) => (
-            <div key={i} className={`bubble ${m.role}`}>{m.content}</div>
+            <div key={i} className={`bubble ${m.role}`}>
+              {m.content}
+            </div>
           ))}
           {busy && <div className="bubble assistant">Asking the Hive...</div>}
         </div>
         <textarea value={input} onChange={(e) => setInput(e.target.value)} placeholder="Where do you want to stay?" />
         <div className="row">
-          <button onClick={send} disabled={busy || !input.trim()}>Send to my agent</button>
-          <button className="ghost" onClick={() => { setHistory([]); setResult(null); setBooking(null); }}>New trip</button>
+          <button onClick={send} disabled={busy || !input.trim()}>
+            Send to my agent
+          </button>
+          <button
+            className="ghost"
+            onClick={() => {
+              setHistory([]);
+              setResult(null);
+              setBooking(null);
+            }}
+          >
+            New trip
+          </button>
         </div>
         <div className="row">
           {EXAMPLES.map((ex) => (
-            <button key={ex} className="ghost" style={{ fontSize: "0.8rem", fontWeight: 400 }} onClick={() => setInput(ex)}>
+            <button
+              key={ex}
+              className="ghost"
+              style={{ fontSize: "0.8rem", fontWeight: 400 }}
+              onClick={() => setInput(ex)}
+            >
               {ex.slice(0, 48)}...
             </button>
           ))}
@@ -105,7 +123,9 @@ export default function TravellerAgent() {
           <>
             <p className="muted">
               <span className={`chip ${result.mode === "claude" ? "ok" : ""}`}>
-                {result.mode === "claude" ? "this run: Claude" : `this run: offline planner${result.fallback ? ` (${result.fallback})` : ""}`}
+                {result.mode === "claude"
+                  ? "this run: Claude"
+                  : `this run: offline planner${result.fallback ? ` (${result.fallback})` : ""}`}
               </span>{" "}
               talking to the Hive over MCP. You only see the conversation; neither side opened a website.
             </p>
@@ -118,12 +138,17 @@ export default function TravellerAgent() {
           <div className="panel stack approval">
             <h3>Your agent asks: book this?</h3>
             <div>
-              {String(result.pending.input.unit_id)} at {String(result.pending.input.card_id)}, {String(result.pending.input.check_in)} to{" "}
-              {String(result.pending.input.check_out)}, for {String(result.pending.input.guest_name)}
+              {String(result.pending.input.unit_id)} at {String(result.pending.input.card_id)},{" "}
+              {String(result.pending.input.check_in)} to {String(result.pending.input.check_out)}, for{" "}
+              {String(result.pending.input.guest_name)}
             </div>
             <div className="row">
-              <button onClick={approve} disabled={busy}>Approve booking</button>
-              <button className="ghost" onClick={decline} disabled={busy}>Not now</button>
+              <button onClick={approve} disabled={busy}>
+                Approve booking
+              </button>
+              <button className="ghost" onClick={decline} disabled={busy}>
+                Not now
+              </button>
             </div>
           </div>
         )}
@@ -133,15 +158,27 @@ export default function TravellerAgent() {
             <div>
               {booking.unit_name}, {booking.check_in} to {booking.check_out}, CHF {booking.total_chf}
             </div>
-            <div className="muted">{booking.payment}. {booking.cancellation}</div>
+            <div className="muted">
+              {booking.payment}. {booking.cancellation}
+            </div>
             <label>Signed receipt (proves the stay; needed to cancel or review)</label>
             <pre style={{ maxHeight: 80 }}>{booking.receipt}</pre>
             <label>After the stay: leave a verified review</label>
             <div className="row">
-              <select value={review.rating} onChange={(e) => setReview({ ...review, rating: Number(e.target.value) })} style={{ width: 80 }}>
-                {[5, 4, 3, 2, 1].map((n) => <option key={n}>{n}</option>)}
+              <select
+                value={review.rating}
+                onChange={(e) => setReview({ ...review, rating: Number(e.target.value) })}
+                style={{ width: 80 }}
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
               </select>
-              <input value={review.text} onChange={(e) => setReview({ ...review, text: e.target.value })} style={{ flex: 1 }} />
+              <input
+                value={review.text}
+                onChange={(e) => setReview({ ...review, text: e.target.value })}
+                style={{ flex: 1 }}
+              />
               <button onClick={leaveReview}>Review</button>
             </div>
             {reviewed && <p className="muted">{reviewed}</p>}

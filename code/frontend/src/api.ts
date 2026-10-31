@@ -19,8 +19,18 @@ export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
 
 // ---------- Hive ----------
 
-export interface Unit { id: string; name: string; max_guests: number; price_chf: number; quantity: number }
-export interface FreeUnit extends Unit { left: number; nights: number; total_chf: number }
+export interface Unit {
+  id: string;
+  name: string;
+  max_guests: number;
+  price_chf: number;
+  quantity: number;
+}
+export interface FreeUnit extends Unit {
+  left: number;
+  nights: number;
+  total_chf: number;
+}
 export interface Trust {
   signature_valid: boolean;
   signature: string;
@@ -49,19 +59,64 @@ export interface Card {
   trust: Trust;
   [key: string]: unknown;
 }
-export interface Step { tool: string; input: Record<string, unknown>; output: Record<string, unknown>; ms?: number }
-export interface Booking {
-  status: string; booking_id: string; business: string; unit_name: string; check_in: string; check_out: string;
-  total_chf: number; receipt: string; payment: string; cancellation?: string;
+export interface Step {
+  tool: string;
+  input: Record<string, unknown>;
+  output: Record<string, unknown>;
+  ms?: number;
 }
-export interface Pending { tool: "hive_book"; input: Record<string, unknown> }
-export interface AgentResult { reply: string; steps: Step[]; pending: Pending | null; mode: string; fallback?: string }
-export interface Approval { reply: string; steps: Step[]; booking: Booking | null }
-export interface Change { field: string; before: unknown; after: unknown }
-export interface Proposal { card_id: string; proposed: Card; changes: Change[]; summary: string; mode: string }
+export interface Booking {
+  status: string;
+  booking_id: string;
+  business: string;
+  unit_name: string;
+  check_in: string;
+  check_out: string;
+  total_chf: number;
+  receipt: string;
+  payment: string;
+  cancellation?: string;
+}
+export interface Pending {
+  tool: "hive_book";
+  input: Record<string, unknown>;
+}
+export interface AgentResult {
+  reply: string;
+  steps: Step[];
+  pending: Pending | null;
+  mode: string;
+  fallback?: string;
+}
+export interface Approval {
+  reply: string;
+  steps: Step[];
+  booking: Booking | null;
+}
+export interface Change {
+  field: string;
+  before: unknown;
+  after: unknown;
+}
+export interface Proposal {
+  card_id: string;
+  proposed: Card;
+  changes: Change[];
+  summary: string;
+  mode: string;
+}
 export interface OwnerOverview {
   card: Card;
-  bookings: { id: string; unit_id: string; guest_name: string; check_in: string; check_out: string; total_chf: number; status: string; agent: string }[];
+  bookings: {
+    id: string;
+    unit_id: string;
+    guest_name: string;
+    check_in: string;
+    check_out: string;
+    total_chf: number;
+    status: string;
+    agent: string;
+  }[];
   missed_demand: { detail: string; times: number }[];
   last_7_days: Record<string, number>;
 }
@@ -71,17 +126,27 @@ export interface DemandMap {
   unserved_searches: number;
   features: { feature: string; asked: number; unserved: number; unserved_share: number }[];
 }
-export interface Health { status: string; llm: "claude" | "mock"; model: string; fast_model: string }
+export interface Health {
+  status: string;
+  llm: "claude" | "mock";
+  model: string;
+  fast_model: string;
+}
 
 export const api = {
   health: () => call<Health>("/api/health"),
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),
   card: (id: string) => call<Card>(`/api/hive/cards/${id}`),
   availability: (id: string, checkIn: string, checkOut: string, guests: number) =>
-    call<{ available_units: FreeUnit[] }>(`/api/hive/cards/${id}/availability?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`),
-  bookAsHuman: (id: string, body: { unit_id: string; check_in: string; check_out: string; guest_name: string; guests: number }) =>
-    post<Booking>(`/api/hive/cards/${id}/book`, body),
-  review: (receipt: string, rating: number, text: string) => post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
+    call<{ available_units: FreeUnit[] }>(
+      `/api/hive/cards/${id}/availability?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`,
+    ),
+  bookAsHuman: (
+    id: string,
+    body: { unit_id: string; check_in: string; check_out: string; guest_name: string; guests: number },
+  ) => post<Booking>(`/api/hive/cards/${id}/book`, body),
+  review: (receipt: string, rating: number, text: string) =>
+    post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
   agent: (messages: { role: string; content: string }[]) => post<AgentResult>("/api/agent", { messages }),
   approve: (pending: Pending) => post<Approval>("/api/agent/approve", { pending }),
   owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`),
@@ -90,5 +155,4 @@ export const api = {
   verify: (card: Card) => post<{ signature_valid: boolean }>("/api/hive/verify", { card }),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
-
 };

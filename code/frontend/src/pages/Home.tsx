@@ -6,7 +6,10 @@ import TrustBadge from "../components/TrustBadge";
 export default function Home() {
   const [cards, setCards] = useState<Card[]>([]);
   useEffect(() => {
-    api.cards().then(setCards).catch(() => setCards([]));
+    api
+      .cards()
+      .then(setCards)
+      .catch(() => setCards([]));
   }, []);
 
   return (
@@ -20,8 +23,12 @@ export default function Home() {
             One presence serves agents and humans.
           </p>
           <div className="row">
-            <Link className="btn" to="/agent">Watch an agent book</Link>
-            <Link className="btn" to="/owner" style={{ background: "transparent" }}>I own a business</Link>
+            <Link className="btn" to="/agent">
+              Watch an agent book
+            </Link>
+            <Link className="btn" to="/owner" style={{ background: "transparent" }}>
+              I own a business
+            </Link>
           </div>
         </div>
         <figure className="hero-logo">
@@ -35,15 +42,23 @@ export default function Home() {
       <section className="grid three" style={{ marginBottom: 28 }}>
         <div className="panel">
           <h3>Provenance, not promises</h3>
-          <p className="muted">Each card version is signed with the owner's Ed25519 key. Agents verify it themselves, and third parties attest single claims.</p>
+          <p className="muted">
+            Each card version is signed with the owner's Ed25519 key. Agents verify it themselves, and third parties
+            attest single claims.
+          </p>
         </div>
         <div className="panel">
           <h3>Proof-of-stay reviews</h3>
-          <p className="muted">Only a guest holding a signed booking receipt can review. No receipt, no review, no review farms.</p>
+          <p className="muted">
+            Only a guest holding a signed booking receipt can review. No receipt, no review, no review farms.
+          </p>
         </div>
         <div className="panel">
           <h3>Fair, explainable ranking</h3>
-          <p className="muted">Agents get the score breakdown and the reasons a business was left out. Owners see that missed demand. No paid boosts.</p>
+          <p className="muted">
+            Agents get the score breakdown and the reasons a business was left out. Owners see that missed demand. No
+            paid boosts.
+          </p>
         </div>
       </section>
 

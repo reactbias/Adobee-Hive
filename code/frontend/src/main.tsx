@@ -13,7 +13,10 @@ import "./styles.css";
 function Nav() {
   const [health, setHealth] = useState<Health | null>(null);
   useEffect(() => {
-    api.health().then(setHealth).catch(() => setHealth(null));
+    api
+      .health()
+      .then(setHealth)
+      .catch(() => setHealth(null));
   }, []);
   const link = ({ isActive }: { isActive: boolean }) => `link${isActive ? " active" : ""}`;
   return (
@@ -21,9 +24,15 @@ function Nav() {
       <NavLink to="/" className="brand">
         <img src="/brand/logo.svg" alt="" width={36} height={36} /> Adobee Hive
       </NavLink>
-      <NavLink to="/agent" className={link}>Traveller agent</NavLink>
-      <NavLink to="/owner" className={link}>Owner studio</NavLink>
-      <NavLink to="/demand" className={link}>Demand map</NavLink>
+      <NavLink to="/agent" className={link}>
+        Traveller agent
+      </NavLink>
+      <NavLink to="/owner" className={link}>
+        Owner studio
+      </NavLink>
+      <NavLink to="/demand" className={link}>
+        Demand map
+      </NavLink>
       <span className="mode" title={health ? `${health.model} / ${health.fast_model}` : "backend unreachable"}>
         {health ? (health.llm === "claude" ? "Claude live" : "offline mode") : "backend down"}
       </span>
