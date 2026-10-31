@@ -79,6 +79,58 @@ def test_a_seeded_person_is_found_by_what_she_offers_and_by_what_she_needs(clien
     assert offers_side["grid-ops"]["score_breakdown"]["offers_needs"] == 0
 
 
+def _make_corpus():
+    """Load tools/make_corpus.py the same way: the curated table is a script, not a package."""
+    if "make_corpus" in sys.modules:
+        return sys.modules["make_corpus"]
+    spec = importlib.util.spec_from_file_location("make_corpus", ROOT / "tools" / "make_corpus.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["make_corpus"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_every_folder_is_assigned_a_hub_and_a_kind_the_backend_accepts():
+    """A folder missing from either map is a folder no hub ever sees, and a bad kind is a dead card."""
+    seed, corpus = _seed_vaults(), _make_corpus()
+    folders = {v.name for v in seed.VAULTS.iterdir() if v.is_dir()}
+    assert folders == set(seed.HOME), "every vault needs a home hub"
+    assert folders == set(seed.KIND), "every vault needs a kind"
+    assert set(seed.HOME.values()) <= {"basel", "zurich", "bern"}
+    assert set(seed.KIND.values()) <= set(corpus.KINDS), "a kind the backend does not accept"
+    assert folders >= seed.UNCLAIMED, "an unclaimed folder that does not exist"
+
+
+def test_the_generated_folders_still_say_what_the_curated_table_says():
+    """The table in make_corpus.py is the source. Drift between it and disk is a silent fork."""
+    corpus = _make_corpus()
+    drift = {e.slug: corpus.drifted(e) for e in corpus.ENTITIES}
+    assert not {slug: names for slug, names in drift.items() if names}
+    assert not {e.slug for e in corpus.ENTITIES} & corpus.PRE_EXISTING, "the hand-written ten stay hand-written"
+
+
+def test_the_generator_and_the_seeder_agree_on_every_hub_and_kind():
+    """Two files hold the same fact, so a test holds them together rather than a convention."""
+    seed, corpus = _seed_vaults(), _make_corpus()
+    for entity in corpus.ENTITIES:
+        assert seed.HOME[entity.slug] == entity.hub, entity.slug
+        assert seed.KIND[entity.slug] == entity.kind, entity.slug
+    assert {e.slug for e in corpus.ENTITIES if e.unclaimed} == seed.UNCLAIMED & {e.slug for e in corpus.ENTITIES}
+
+
+def test_an_unclaimed_folder_registers_as_a_lead_and_not_as_a_business_that_agreed(client):
+    """Variety in the trust signals has to survive the round trip, or it is only a comment."""
+    seed = _seed_vaults()
+    slug = sorted(seed.UNCLAIMED)[0]
+    hive.publish(seed.build_card(seed.VAULTS / slug))
+    assert hive.get_card(slug)["trust"]["claimed"] is False
+    claimed = sorted(set(seed.KIND) - seed.UNCLAIMED)[0]
+    hive.publish(seed.build_card(seed.VAULTS / claimed))
+    assert hive.get_card(claimed)["trust"]["claimed"] is True
+    # Nothing seeded carries a rating: that needs the signed receipt of a stay that happened.
+    assert hive.get_card(slug)["trust"]["verified_reviews"]["average"] is None
+
+
 def test_a_room_name_with_a_hyphen_in_it_is_still_a_bookable_unit(tmp_path):
     """`River-view double` parsed as nothing, so the room existed in the prose and not in the hub."""
     vault = tmp_path / "haus-am-hang"

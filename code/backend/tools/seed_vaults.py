@@ -37,6 +37,25 @@ HOME = {
     # basel — hospitality
     "hotel-krafft": "basel",
     "cafe-rhein": "basel",
+    # basel — the rest of the test corpus (tools/make_corpus.py)
+    "wirtshaus-anker": "basel",
+    "gaestehaus-sonnenrain": "basel",
+    "zimmer-ob-der-baeckerei": "basel",
+    "herberge-dreiland": "basel",
+    "logis-vieux-moulin": "basel",
+    "kanalhaus-lofts": "basel",
+    "villa-hirzbrunnen": "basel",
+    "schiffsquartier-mathilde": "basel",
+    "beizli-sternen": "basel",
+    "roesterei-vogelsang": "basel",
+    "teestube-amselhof": "basel",
+    "imbiss-rheinbord": "basel",
+    "trattoria-barcarola": "basel",
+    "suppenkueche-dreirosen": "basel",
+    "textilpflege-gundeli": "basel",
+    "kuechenkollektiv-klybeck": "basel",
+    "schluesseldienst-spalen": "basel",
+    "mira-luetolf": "basel",
     # zurich — developer and freelance work
     "lena-hofmann": "zurich",
     "grid-ops": "zurich",
@@ -62,7 +81,36 @@ KIND = {
     "schnittwerk-bern": "service",
     "velowerk-bern": "service",
     "lichtfeld-foto": "service",
+    # the rest of the test corpus (tools/make_corpus.py)
+    "wirtshaus-anker": "hotel",
+    "gaestehaus-sonnenrain": "hotel",
+    "zimmer-ob-der-baeckerei": "hotel",
+    "herberge-dreiland": "hotel",
+    "logis-vieux-moulin": "hotel",
+    "kanalhaus-lofts": "hotel",
+    "villa-hirzbrunnen": "hotel",
+    "schiffsquartier-mathilde": "hotel",
+    "beizli-sternen": "cafe",
+    "roesterei-vogelsang": "cafe",
+    "teestube-amselhof": "cafe",
+    "imbiss-rheinbord": "cafe",
+    "trattoria-barcarola": "cafe",
+    "suppenkueche-dreirosen": "cafe",
+    "textilpflege-gundeli": "service",
+    "kuechenkollektiv-klybeck": "service",
+    "schluesseldienst-spalen": "service",
+    "mira-luetolf": "person",
 }
+
+#: Folders whose card was compiled from public information rather than written by its subject. The
+#: hub reports these as unclaimed and no caller may treat one as a business that agreed to anything,
+#: which is a trust signal a test corpus needs a few of: in the real directory most cards are leads.
+UNCLAIMED = frozenset(
+    {
+        "villa-hirzbrunnen",
+        "imbiss-rheinbord",
+    }
+)
 
 #: Words that mean something to `fit()`. Pulled out of the prose rather than typed twice, so the
 #: folder stays the single source and nobody has to maintain a parallel list of tags.
@@ -236,6 +284,14 @@ def build_card(vault: Path) -> dict:
     units = read_units(vault)
     if units:
         card["units"] = units
+    if vault.name in UNCLAIMED:
+        # Same shape as domains/examples.py: the trust block reads `verified_by_owner` and reports
+        # the card as unclaimed, so a lead is never answered as a business that agreed.
+        card["provenance"] = {
+            "source": "public information",
+            "verified_by_owner": False,
+            "note": "Fictional test card, nobody claimed it. Hand-off only.",
+        }
     return card
 
 
