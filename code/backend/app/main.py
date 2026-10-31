@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate
+from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate, waiting
 from .domains import explore
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,7 @@ async def lifespan(_: FastAPI):
     """Open the database, seed it if empty, and run the MCP session manager for the app's lifetime."""
     db.init()
     hive.init()
+    waiting.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -272,6 +273,7 @@ def ask_approve(body: AskApprove) -> dict[str, Any]:
 def owner_overview(card_id: str, request: Request) -> dict[str, Any]:
     """Return the owner studio data for one card. Without the owner token, guest names show as initials."""
     overview = _hive_call(hive.owner_overview, card_id)
+    overview["waiting"] = waiting.owner_view(card_id)
     try:
         guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
     except HTTPException:

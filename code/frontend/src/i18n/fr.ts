@@ -83,6 +83,16 @@ const fr: Record<Key, string> = {
   "owner.publishNote":
     "La publication signe une nouvelle version de la carte avec votre clé. Les agents refusent toute copie qui en diffère.",
   "owner.published": "Signée et publiée. Les agents voient désormais la nouvelle version.",
+  "owner.publishedOffers": "Signée et publiée. {n} agents en attente ont reçu une offre signée par vous.",
+  "owner.waiting.eyebrow": "Demandes en attente · maintenant",
+  "owner.waiting.title": "Des agents vous attendent encore",
+  "owner.waiting.body":
+    "Leurs agents n'ont rien trouvé et ont demandé à être prévenus. Signez le changement et chacun reçoit une offre signée par vous. Vous voyez combien, jamais qui.",
+  "owner.waiting.agents": "{n} en attente",
+  "owner.waiting.budget": "budget jusqu'à {chf}",
+  "owner.waiting.cheaper": "un prix plus bas",
+  "owner.waiting.use": "Reprendre",
+  "owner.waiting.empty": "Aucun agent n'attend un changement que vous pourriez faire.",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Demande manquée · 7 derniers jours",
   "owner.missed.title": "Ce que les agents ont demandé et que vous n'offrez pas",

@@ -82,6 +82,16 @@ const en = {
   "owner.publishNote":
     "Publishing signs a new card version with your key. Agents reject any copy that differs from it.",
   "owner.published": "Signed and published. Agents see the new version now.",
+  "owner.publishedOffers": "Signed and published. {n} waiting agents were sent an offer signed by you.",
+  "owner.waiting.eyebrow": "Standing requests · now",
+  "owner.waiting.title": "Agents still waiting for you",
+  "owner.waiting.body":
+    "Their agents found nothing and asked to be told. Sign the change and each one receives an offer signed by you. You see how many, never who.",
+  "owner.waiting.agents": "{n} waiting",
+  "owner.waiting.budget": "budget up to {chf}",
+  "owner.waiting.cheaper": "a lower price",
+  "owner.waiting.use": "Use",
+  "owner.waiting.empty": "No agent is waiting for a change you could make.",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Missed demand · last 7 days",
   "owner.missed.title": "What agents asked for that you don't offer",

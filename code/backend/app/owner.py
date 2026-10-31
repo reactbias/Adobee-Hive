@@ -9,7 +9,7 @@ import logging
 import re
 from typing import Any
 
-from . import config, hive, llm
+from . import config, hive, llm, waiting
 
 log = logging.getLogger(__name__)
 
@@ -125,4 +125,6 @@ def apply(card_id: str, proposed: dict[str, Any]) -> dict[str, Any]:
     current = _owned(card_id)
     for key in LOCKED:
         proposed[key] = current.get(key)
-    return hive.publish(_strip(proposed))
+    card = hive.publish(_strip(proposed))
+    waiting.on_publish(card)  # agents waiting for exactly this change get a signed offer
+    return card

@@ -165,6 +165,30 @@ def _sign_receipt(card_id: str, payload: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(canonical(payload)).decode() + "." + base64.urlsafe_b64encode(sig).decode()
 
 
+def sign_statement(card_id: str, payload: dict[str, Any]) -> str:
+    """Sign a statement (a receipt, an offer) with the business's key: base64url(body).base64url(signature)."""
+    return _sign_receipt(card_id, payload)
+
+
+def read_statement(statement: str) -> dict[str, Any]:
+    """Return a signed statement's body without checking it; verify_statement() is the check."""
+    try:
+        return json.loads(base64.urlsafe_b64decode(statement.split(".")[0]))
+    except (ValueError, IndexError) as err:
+        raise HiveError("Malformed statement.") from err
+
+
+def verify_statement(statement: str, public_key: str) -> bool:
+    """What any agent can do on its own: check a signed statement against a business's pinned public key."""
+    try:
+        body_b64, sig_b64 = statement.split(".")
+        pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key))
+        pub.verify(base64.urlsafe_b64decode(sig_b64), base64.urlsafe_b64decode(body_b64))
+        return True
+    except (InvalidSignature, ValueError):
+        return False
+
+
 def _check_receipt(card_id: str, receipt: str) -> dict[str, Any]:
     try:
         body_b64, sig_b64 = receipt.split(".")
@@ -294,7 +318,8 @@ MAX_TEXT = 2000  # review text and booking notes
 MAX_NAME = 100
 
 
-def _nights(check_in: str, check_out: str) -> int:
+def stay_nights(check_in: str, check_out: str) -> int:
+    """Return the nights between two ISO dates; refuses bad dates and stays over MAX_NIGHTS."""
     try:
         n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
     except (TypeError, ValueError) as err:
@@ -314,7 +339,7 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
                 [card["id"], check_out, check_in],
             ).fetchall()
         )
-    nights = _nights(check_in, check_out)
+    nights = stay_nights(check_in, check_out)
     free = []
     for unit in card.get("units", []):
         left = unit["quantity"] - booked.get(unit["id"], 0)
@@ -355,6 +380,50 @@ STOPWORDS = {
 }
 
 
+def fit(
+    card: dict[str, Any],
+    features: list[str],
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    check_in: str | None = None,
+    check_out: str | None = None,
+    guests: int = 1,
+) -> dict[str, Any]:
+    """Check one card against hard constraints: why it fits, why not, the missing tags, its price and distance.
+
+    Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
+    """
+    reasons, misses = [], []
+    card_feats = {f.lower() for f in card.get("features", [])}
+    missing = [f for f in features if f not in card_feats]
+    if missing:
+        misses.append(f"missing {', '.join(missing)}")
+    elif features:
+        reasons.append(f"has {', '.join(features)}")
+
+    price, unit = None, None
+    if check_in and check_out and not card.get("units"):
+        misses.append("takes no stay bookings")
+    elif check_in and check_out:
+        free = _units_free(card, check_in, check_out, guests)
+        if not free:
+            misses.append(f"no room for {guests} from {check_in} to {check_out}")
+        else:
+            unit, price = free[0], free[0]["price_chf"]
+            reasons.append(f"{unit['name']} free at CHF {price}/night")
+    elif card.get("units"):
+        price = min(u["price_chf"] for u in card["units"])
+    if max_price_chf is not None and price is not None and price > max_price_chf:
+        misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+
+    dist = None
+    if near:
+        dist = (card.get("distances_m") or {}).get(near.lower())
+        if dist is not None:
+            reasons.append(f"{dist} m from {near}")
+    return {"reasons": reasons, "misses": misses, "missing": missing, "price": price, "unit": unit, "distance_m": dist}
+
+
 def discover(
     query: str = "",
     kind: str | None = None,
@@ -381,34 +450,8 @@ def discover(
     for card in cards:
         if card["kind"] in NOT_DISCOVERABLE:
             continue
-        reasons, misses = [], []
-        card_feats = {f.lower() for f in card.get("features", [])}
-        missing = [f for f in features if f not in card_feats]
-        if missing:
-            misses.append(f"missing {', '.join(missing)}")
-        elif features:
-            reasons.append(f"has {', '.join(features)}")
-
-        price = None
-        if check_in and check_out and not card.get("units"):
-            misses.append("takes no stay bookings")
-        elif check_in and check_out:
-            free = _units_free(card, check_in, check_out, guests)
-            if not free:
-                misses.append(f"no room for {guests} from {check_in} to {check_out}")
-            else:
-                price = free[0]["price_chf"]
-                reasons.append(f"{free[0]['name']} free at CHF {price}/night")
-        elif card.get("units"):
-            price = min(u["price_chf"] for u in card["units"])
-        if max_price_chf is not None and price is not None and price > max_price_chf:
-            misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
-
-        dist = None
-        if near:
-            dist = (card.get("distances_m") or {}).get(near.lower())
-            if dist is not None:
-                reasons.append(f"{dist} m from {near}")
+        found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
+        reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
         text = " ".join(
             [

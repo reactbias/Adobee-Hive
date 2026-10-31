@@ -201,6 +201,13 @@ export interface OwnerOverview {
   }[];
   missed_demand: { detail: string; times: number }[];
   last_7_days: Record<string, number>;
+  // Standing requests this card could win by an edit: counts and budgets only, never a single traveller.
+  waiting: {
+    agents: number;
+    budget_chf: number;
+    asks: { missing: string[]; cheaper: boolean; agents: number; budget_chf: number }[];
+    offers_sent: number;
+  };
 }
 export interface DemandMap {
   days: number;

@@ -32,6 +32,7 @@ flowchart LR
 | `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test on `/agent` |
 | `second_opinion.py` | A separate sceptic agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
+| `waiting.py` | Standing requests: an agent waits anonymously when nothing fits; the owner sees counts and budgets per missing change; a published card that now fits sends each waiting agent an offer signed with the business's key |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
@@ -75,6 +76,8 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `hive_book` | Book a unit; returns a signed receipt |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
+| `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
+| `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the example cards, with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
@@ -96,6 +99,8 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
   owner's Ed25519 key. Agents verify client-side; the card page has a live tamper test.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
 - **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once.
+- **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks
+  it against the pinned key. It holds no room: the agent still asks its human before `hive_book`.
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
 - **Missed demand.** Every exclusion and every search is logged; owners see what they were turned away for, the
   city sees what nobody offers.
