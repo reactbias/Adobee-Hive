@@ -32,6 +32,8 @@ Trust is built in, not bolted on:
   club, the city). This is Adobe's Content Credentials idea applied to business facts instead of images.
 - **Reviewed only by real guests.** A booking returns a signed receipt, and only that receipt can leave a review.
   Proof of stay, no fake reviews.
+- **Facts expire.** Each signed version says until when it holds (90 days in the prototype). A copy scraped last
+  season goes out of date on its own, and agents leave out a card whose owner stopped re-signing it.
 - **Promises on file.** A receipt names the exact card version it was booked against, and the Hive keeps every
   signed version. If the room, price or policy differs on arrival, the guest's agent shows the owner's own signed
   words from that day.

@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS hive_events (
 """
 
 
+# Signed facts go stale: every version says until when it holds, so a copy scraped last season expires on its own.
+FRESH_DAYS = 90
+
+
+def is_fresh(card: dict[str, Any]) -> bool:
+    """Whether a card's signed facts still hold. Cards signed before expiry existed count as fresh."""
+    until = card.get("valid_until")
+    return not until or datetime.fromisoformat(until) > datetime.now(UTC)
+
+
 class HiveError(ValueError):
     """A request the Hive refuses, such as an unknown card or a sold-out room. Maps to HTTP 400."""
 
@@ -221,7 +231,9 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
     card.pop("trust", None)
     existing = get_record(card["id"])
     card["version"] = (existing["version"] + 1) if existing else 1
-    card["published_at"] = datetime.now(UTC).isoformat(timespec="seconds")
+    signed_at = datetime.now(UTC)
+    card["published_at"] = signed_at.isoformat(timespec="seconds")
+    card["valid_until"] = (signed_at + timedelta(days=FRESH_DAYS)).isoformat(timespec="seconds")
     key = _key_for(card["id"])
     signature = base64.b64encode(key.sign(canonical(card))).decode()
     with db.write() as cur:
@@ -292,6 +304,7 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
             "rule": "only guests with a signed booking receipt can review",
         },
         "freshness_days": age_days,
+        "fresh": is_fresh(rec["data"]),
     }
 
 
@@ -412,6 +425,8 @@ def fit(
     Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
     """
     reasons, misses = [], []
+    if not is_fresh(card):
+        misses.append(f"signed facts expired on {card['valid_until'][:10]}; the owner has to re-sign")
     card_feats = {f.lower() for f in card.get("features", [])}
     missing = [f for f in features if f not in card_feats]
     if missing:
