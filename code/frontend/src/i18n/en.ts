@@ -358,7 +358,7 @@ const en = {
 
   // A search draws a Card. The chat is one click away.
   "card.stage": "Result",
-  "card.found": "From the card",
+  "card.searching": "Asking the hubs…",
   "card.drawing": "Drawing…",
   "card.details": "Details",
   "card.log": "Log",
@@ -377,6 +377,11 @@ const en = {
   "card.field.policies": "Policies",
   "card.field.max_guests": "Guests",
   "card.field.quantity": "Rooms",
+  "card.field.contact": "Contact",
+  "card.field.distances_m": "Distances",
+  "card.field.website": "Website",
+  "card.field.events": "Events",
+  "card.field.duration": "Duration",
   "card.through": "Through {path}",
   "card.rating.none": "No rating yet",
   "card.rating.score": "{score} / 5",
@@ -387,6 +392,9 @@ const en = {
   "card.rate.ask": "How did it go?",
   "card.rate.yours": "Your rating",
   "card.fine": "Nothing is sent until you say yes.",
+  "card.count.one": "1 result",
+  "card.count.other": "{n} results",
+  "card.more": "More about {name}",
   "card.try.person": "A designer for a dataviz sprint.",
   "card.try.staff": "Seasonal front-desk staff.",
   // The instance finder (the first screen) and the hub admin panel

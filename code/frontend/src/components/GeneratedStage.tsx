@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
-import { money } from "../lib/format";
+import { metres, money } from "../lib/format";
 import { ratingScore, type Field, type Hit, type Price, type Scene } from "../lib/cardView";
 import { Frame } from "./Chapter";
 
@@ -10,10 +10,19 @@ import { Frame } from "./Chapter";
 
 const STEP_MS = 520;
 
-const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
-export default function GeneratedStage({ scene, onDetails }: { scene: Scene; onDetails: () => void }) {
+export default function GeneratedStage({
+  scene,
+  onDetails,
+  detailsOpen = false,
+}: {
+  scene: Scene;
+  onDetails: () => void;
+  detailsOpen?: boolean;
+}) {
   const { t } = useI18n();
+  const count = scene.hits.length;
   const total = scene.hits.reduce((n, hit) => n + partsIn(hit), 0);
   const [shown, setShown] = useState(() => (reducedMotion() ? total : 1));
   const [following, setFollowing] = useState(false);
@@ -28,9 +37,15 @@ export default function GeneratedStage({ scene, onDetails }: { scene: Scene; onD
     <Frame
       label={t("card.stage")}
       head={
-        <div className="spread">
-          <span className="eyebrow">{shown < total || following ? t("card.drawing") : t("card.found")}</span>
-          <button className="quiet" onClick={onDetails}>
+        <div className="spread result-head">
+          <span className="eyebrow">
+            {shown < total || following
+              ? t("card.drawing")
+              : count === 1
+                ? t("card.count.one")
+                : t("card.count.other", { n: count })}
+          </span>
+          <button className="ghost small" aria-pressed={detailsOpen} onClick={onDetails}>
             {t("card.details")}
           </button>
         </div>
@@ -83,37 +98,46 @@ function CardHit({
   const showNeeds = hit.needs.length > 0 && visible >= 1 + (hit.offers.length > 0 ? 1 : 0) + 1;
   const chosen =
     hit.offers.find((o) => `offer:${o.id}` === picked) ?? hit.needs.find((n) => `search:${n.id}` === picked);
+  const path = hit.found?.path ?? [];
+  const why = hit.found?.why ?? [];
   return (
     <article className="card-hit">
       <div className="card-step">
-        <span className="eyebrow">{t(card.kind === "person" ? "card.kind.person" : "card.kind.business")}</span>
-        <h3>{card.name}</h3>
-        {score === null ? (
-          <p className="card-rating none">{t("card.rating.none")}</p>
-        ) : (
-          <p className="card-rating">
-            <b>{t("card.rating.score", { score })}</b>
-            <span className="dim"> {t("card.rating.count", { n: card.rating_count })}</span>
-          </p>
-        )}
-        <p>{card.description}</p>
-        {hit.found && hit.found.path.length > 0 && (
-          <p className="dim">{t("card.through", { path: hit.found.path.join(" → ") })}</p>
-        )}
-        {hit.found?.why.map((line) => (
-          <p key={line} className="dim">
-            {line}
-          </p>
-        ))}
-        {card.facts.length > 0 && (
-          <dl className="offer-fields">
-            {card.facts.map((field) => (
-              <div key={field.key}>
-                <dt>{fieldLabel(field.key, t)}</dt>
-                <dd>{field.text}</dd>
-              </div>
+        <header className="card-top">
+          <div>
+            <span className="eyebrow">{t(card.kind === "person" ? "card.kind.person" : "card.kind.business")}</span>
+            <h3>{card.name}</h3>
+            {card.tagline && <p className="card-tagline">{card.tagline}</p>}
+          </div>
+          {score === null ? (
+            <p className="card-rating none">{t("card.rating.none")}</p>
+          ) : (
+            <p className="card-rating">
+              <b>{t("card.rating.score", { score })}</b>
+              <span className="dim"> {t("card.rating.count", { n: card.rating_count })}</span>
+            </p>
+          )}
+        </header>
+        <p className="card-description">{card.description}</p>
+        {(why.length > 0 || card.features.length > 0) && (
+          <ul className="chips">
+            {why.map((line) => (
+              <li key={`why:${line}`} className="chip match">
+                {line}
+              </li>
             ))}
-          </dl>
+            {card.features.map((feature) => (
+              <li key={`f:${feature}`} className="chip">
+                {feature}
+              </li>
+            ))}
+          </ul>
+        )}
+        {(card.place || path.length > 1) && (
+          <p className="card-meta">
+            {card.place && <span>{card.place}</span>}
+            {path.length > 1 && <span>{t("card.through", { path: path.join(" → ") })}</span>}
+          </p>
         )}
       </div>
       {showOffers && (
@@ -122,6 +146,7 @@ function CardHit({
           rows={hit.offers.map((offer) => ({
             key: `offer:${offer.id}`,
             title: offer.title,
+            summary: offer.summary,
             money: offer.price ? priced(offer.price, intl) : "",
           }))}
           picked={picked}
@@ -134,6 +159,7 @@ function CardHit({
           rows={hit.needs.map((need) => ({
             key: `search:${need.id}`,
             title: need.title,
+            summary: need.summary,
             money: need.budget ? priced(need.budget, intl) : "",
           }))}
           picked={picked}
@@ -150,7 +176,40 @@ function CardHit({
           onFollowing={onFollowing}
         />
       )}
+      {visible >= partsIn(hit) && <MoreAbout name={card.name} facts={card.facts} />}
     </article>
+  );
+}
+
+/** The rest of the card, folded: contact, distances, policies, whatever the hub added. */
+function MoreAbout({ name, facts }: { name: string; facts: Field[] }) {
+  const { t, intl } = useI18n();
+  if (!facts.length) return null;
+  return (
+    <details className="card-more card-step">
+      <summary>{t("card.more", { name })}</summary>
+      <dl className="offer-fields">
+        {facts.map((field) => (
+          <div key={field.key}>
+            <dt>{fieldLabel(field.key, t)}</dt>
+            <dd>
+              {field.pairs?.length ? (
+                <ul className="pairs">
+                  {field.pairs.map(([label, value]) => (
+                    <li key={label}>
+                      <span>{label.replace(/_/g, " ")}</span>
+                      <span>{typeof value === "number" && field.key.endsWith("_m") ? metres(value, intl) : value}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                field.text
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 
@@ -161,19 +220,20 @@ function Listing({
   onPick,
 }: {
   title: string;
-  rows: { key: string; title: string; money: string }[];
+  rows: { key: string; title: string; summary?: string; money: string }[];
   picked: string | null;
   onPick: (key: string) => void;
 }) {
   return (
     <section className="card-step">
       <h4>{title}</h4>
-      <ul className="ask-items">
+      <ul className="offer-grid">
         {rows.map((row) => (
           <li key={row.key}>
-            <button className="quiet offer-pick" aria-pressed={picked === row.key} onClick={() => onPick(row.key)}>
-              <span>{row.title}</span>
-              {row.money && <span className="fine">{row.money}</span>}
+            <button className="offer-pick" aria-pressed={picked === row.key} onClick={() => onPick(row.key)}>
+              <span className="offer-title">{row.title}</span>
+              {row.money && <span className="offer-price">{row.money}</span>}
+              {row.summary && <span className="offer-summary">{row.summary}</span>}
             </button>
           </li>
         ))}
