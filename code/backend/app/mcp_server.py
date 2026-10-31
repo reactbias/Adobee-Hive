@@ -52,6 +52,13 @@ def hive_discover(
 
 
 @server.tool()
+def hive_what_was_promised(receipt: str) -> dict[str, Any]:
+    """Show the signed card version a booking was made against (prices, policies), and which fields changed since.
+    Use it when the stay differs from what was booked. Verify the old card against the owner's pinned key."""
+    return _safe(hive.what_was_promised, receipt)
+
+
+@server.tool()
 def hive_rulesets() -> dict[str, Any]:
     """List the rulesets a user can choose for hive_discover, each signed by its author (keys in
     /.well-known/hive.json under ruleset_keys). A ruleset only narrows results; it never boosts a business."""
