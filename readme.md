@@ -13,6 +13,7 @@ stay found, trusted and bookable when its first visitor is an AI agent, not a pe
 | Live backend | [adobee-hive.onrender.com](https://adobee-hive.onrender.com/api/health) ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)): [`/api/health`](https://adobee-hive.onrender.com/api/health), [`/docs`](https://adobee-hive.onrender.com/docs), MCP for agents [`/mcp/`](https://adobee-hive.onrender.com/mcp/) · [Render dashboard](https://dashboard.render.com) (access: ask the repository owner) |
 | Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
 | Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
+| Developer guide: start, use and test everything | [documentation/DEVELOPING.md](documentation/DEVELOPING.md) |
 | Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
 
 ## The next guest is an agent
@@ -57,7 +58,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Whose rules: signed rulesets a person picks per search ("Dogs, verified" by a dog owners' club). They only narrow, and every answer names the ruleset and what it changed | `code/backend/app/rulesets.py` |
 | Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `panels/OwnerPanel.tsx` |
 | Three agents agree before you are asked: your agent proposes, a critic always argues for the strongest alternative from the open ranking, and a verifier checks the held booking against the request and the signed card. If they don't all agree, the chat says so and you still decide | `code/backend/app/critic.py`, `second_opinion.py` |
-| Ask the Hive (chapter 2, the general agent): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a mood you choose and a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `panels/AskPanel.tsx` |
+| Ask the Hive (chapter 2, the general agent): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `panels/AskPanel.tsx` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
@@ -121,7 +122,7 @@ endpoint, MCP tool and page does: [ARCHITECTURE.md](documentation/ARCHITECTURE.m
 | Folder | Contents |
 | --- | --- |
 | [`code/`](code) | `backend/` FastAPI + DuckDB + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Developer guide](documentation/DEVELOPING.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,

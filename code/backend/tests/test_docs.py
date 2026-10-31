@@ -89,3 +89,25 @@ def test_the_readme_starts_with_the_links_everyone_needs():
     links = readme[readme.index("## Links") : readme.index("## The next guest")]
     for needed in ["github.io/Adobee-Hive", "/pulls", "/actions", "localhost:5173", "localhost:8000/docs", "TEAM.md"]:
         assert needed in links
+
+
+def test_developers_have_a_guide_to_start_and_use_everything():
+    guide_path = ROOT / "documentation" / "DEVELOPING.md"
+    assert guide_path.exists(), "documentation/DEVELOPING.md is the developer guide"
+    guide = guide_path.read_text(encoding="utf-8")
+    for needed in [
+        "uvicorn app.main:app",
+        "npm run dev",
+        "pytest -q",
+        "npm test",
+        "localhost:8000/mcp/",
+        "#travel",
+        "#ask",
+        "#business",
+        "OPENAI_API_KEY",
+        "Offline mode",
+    ]:
+        assert needed in guide, f"DEVELOPING.md should cover {needed}"
+    readme = (ROOT / "readme.md").read_text(encoding="utf-8")
+    links = readme[readme.index("## Links") : readme.index("## The next guest")]
+    assert "documentation/DEVELOPING.md" in links, "link the developer guide from the readme's Links table"
