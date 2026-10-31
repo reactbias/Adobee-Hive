@@ -145,6 +145,9 @@ const en = {
   "chat.role.mirror": "Agent · unverified copy",
   "chat.ask.call": "Who can answer this? {question}",
   "chat.ask.found": "Businesses with an answer on their card: {n}.",
+  "clarify.route_time": "From where to where, and when?",
+  "clarify.route": "From where to where?",
+  "clarify.time": "And when?",
   "chat.ask.uncovered":
     "No card covers this, so I won't send you the nearest one. Asked often enough, it shows a business what to offer next.",
   "error.offline": "The backend is waking up or out of reach. Please try again in a moment.",

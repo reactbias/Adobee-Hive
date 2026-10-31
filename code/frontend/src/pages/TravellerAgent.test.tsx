@@ -352,4 +352,39 @@ describe("traveller agent", () => {
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
     expect(screen.getByRole("button", { name: en["agent.sending"] })).toBeDisabled();
   });
+
+  it("asks from where to where for a bare taxi, then sends the whole request", async () => {
+    const asked = {
+      question: "book me a taxi",
+      preference: { mood: null, effects: [], source: "chosen by you" },
+      replies: [],
+      excluded: [],
+      budget_chf: null,
+      rate: null,
+      pending: null,
+      rules: [],
+      answer: null,
+      mode: "offline",
+      unserved: false,
+      clarify: ["route", "time"],
+    };
+    const ask = vi
+      .spyOn(api, "ask")
+      .mockResolvedValueOnce(asked)
+      .mockResolvedValueOnce({ ...asked, question: "x", clarify: [], unserved: true });
+    const scout = vi
+      .spyOn(api, "scout")
+      .mockResolvedValue({ status: "none", added: [], rejected: [], result: null } as never);
+    const user = setup();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+
+    await user.clear(box);
+    await user.type(box, "book me a taxi{Enter}");
+    await skipAhead(user);
+    expect(await screen.findByText(en["clarify.route_time"])).toBeInTheDocument();
+    expect(scout).not.toHaveBeenCalled(); // nothing to look for yet
+
+    await user.type(box, "from Basel SBB to Aesch at 17:00{Enter}");
+    expect(ask).toHaveBeenLastCalledWith("book me a taxi from Basel SBB to Aesch at 17:00", null);
+  });
 });

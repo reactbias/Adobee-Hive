@@ -62,6 +62,8 @@ export default function TravellerAgent() {
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
   async function send(raw = input, base = history, off = rulesOff) {
     const text = raw.trim();
+    // An answer to the agent's question ("From where to where?") completes the request it asked about.
+    if (!mirror && askResult?.clarify?.length) return askCards(text, `${askResult.question} ${text}`);
     if (!mirror && routeFor(text, Boolean(result)) === "ask") return askCards(text);
     setAskResult(null);
     const messages = [...base, { role: "user", content: text }];
@@ -102,7 +104,7 @@ export default function TravellerAgent() {
   }
 
   // Any business: one call to the Hive's cards. Nothing is done until the person says yes to a hand-off.
-  async function askCards(text: string) {
+  async function askCards(text: string, query = text) {
     const before = history.length ? segments : [];
     setBusy(true);
     setError("");
@@ -112,7 +114,7 @@ export default function TravellerAgent() {
     setHistory([...history, { role: "user", content: text }]);
     setSegments([...before, { kind: "guest", text }]);
     try {
-      const r = await api.ask(text, null);
+      const r = await api.ask(query, null);
       setAskResult(r);
       setHistory((h) => [
         ...h,
@@ -126,8 +128,8 @@ export default function TravellerAgent() {
       ];
       setSegments(asked);
       // No card answers: the agents look beyond the Hive, on the public web, in the same conversation.
-      if (!r.replies.length) {
-        const scouted = await api.scout(text).catch(() => null);
+      if (!r.replies.length && !r.clarify?.length) {
+        const scouted = await api.scout(query).catch(() => null);
         if (scouted?.result) setAskResult(scouted.result);
         setSegments([...asked, { kind: "scout", scout: scouted }]);
       }

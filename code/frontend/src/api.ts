@@ -317,6 +317,8 @@ export interface AskResult {
   /** No card covers the request: an honest empty answer, counted as demand. */
   unserved?: boolean;
   relevance?: { by: string; reason: string | null };
+  /** What the request still has to say before anyone can act, e.g. ["route", "time"] for "book me a taxi". */
+  clarify?: string[];
 }
 /** No card answered: the scout looked on the public web. Only cards verified on their own site were added. */
 export interface ScoutResult {

@@ -7,6 +7,13 @@ import { delayFor, type Beat } from "../lib/pace";
 import { demoMode } from "../lib/demo";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
 
+// The one question the agent asks when a request lacks what is needed to act on it.
+const CLARIFY: Record<string, Key> = {
+  route_time: "clarify.route_time",
+  route: "clarify.route",
+  time: "clarify.time",
+};
+
 // The traveller page as a group chat: people and agents in one conversation. Every message comes from real data,
 // the guest's words, an MCP call or its answer. Playback paces the messages so a room can follow who is talking.
 
@@ -197,13 +204,15 @@ export default function GroupChat({
             beat: "think",
             body: <p>{t("chat.ask.call", { question: r.question })}</p>,
           });
-          out.push({
-            who: "hive",
-            name: hive,
-            role: t("chat.role.hive"),
-            beat: "reply",
-            body: <p>{r.replies.length ? t("chat.ask.found", { n: r.replies.length }) : t("ask.empty")}</p>,
-          });
+          const clarify = r.clarify?.length ? (CLARIFY[r.clarify.join("_")] ?? "clarify.route_time") : null;
+          if (r.replies.length || !clarify)
+            out.push({
+              who: "hive",
+              name: hive,
+              role: t("chat.role.hive"),
+              beat: "reply",
+              body: <p>{r.replies.length ? t("chat.ask.found", { n: r.replies.length }) : t("ask.empty")}</p>,
+            });
           for (const reply of r.replies) out.push(cardMsg(reply));
           if (r.excluded.length)
             out.push({
@@ -235,6 +244,8 @@ export default function GroupChat({
             });
           }
           if (r.answer) out.push({ ...agent, beat: "say", chars: r.answer.length, body: <p>{r.answer}</p> });
+          // Something is missing ("book me a taxi"): one short question; the next message completes the request.
+          if (clarify) out.push({ ...agent, beat: "say", chars: 30, body: <p>{t(clarify)}</p> });
           break;
         }
         // Nothing in the Hive answered: your agent looks on the public web, the verifier opens every site, and only
