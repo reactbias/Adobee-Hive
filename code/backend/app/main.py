@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate, waiting
+from .domains import explore
 
 logging.basicConfig(level=logging.INFO)
 
@@ -237,6 +238,35 @@ async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
         return await agent.approve(body.pending)
     except (ValueError, KeyError) as err:
         raise HTTPException(400, str(err)) from err
+
+
+class AskRequest(BaseModel):
+    """A question for the Hive and, only if the person picked one, their mood."""
+
+    question: str = Field(min_length=1, max_length=explore.MAX_QUESTION)
+    mood: Literal["curious", "stressed", "planning", "celebrating"] | None = None
+
+
+class AskApprove(BaseModel):
+    """The held action the person approves."""
+
+    id: str = Field(min_length=1, max_length=64)
+
+
+@app.post("/api/ask")
+async def ask_hive(body: AskRequest, request: Request) -> dict[str, Any]:
+    """Answer a question from the example cards. Anything transactional comes back held, as pending."""
+    result = _hive_call(explore.ask, body.question, body.mood)
+    if config.LLM_ENABLED and result["replies"]:
+        guard.llm_calls.check(request)
+        result = await asyncio.to_thread(explore.phrase, result)
+    return result
+
+
+@app.post("/api/ask/approve")
+def ask_approve(body: AskApprove) -> dict[str, Any]:
+    """The person's yes: hand the held action off to the business."""
+    return _hive_call(explore.approve, body.id)
 
 
 @app.get("/api/owner/{card_id}")

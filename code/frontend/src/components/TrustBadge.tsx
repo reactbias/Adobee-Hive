@@ -7,8 +7,12 @@ export default function TrustBadge({ trust, compact = false }: { trust: Trust; c
   const reviews = trust.verified_reviews;
   return (
     <div className="statuses">
-      <span className={`status ${trust.signature_valid ? "ok" : "no"}`}>
-        {trust.signature_valid ? t("trust.signed") : t("trust.invalid")}
+      <span className={`status ${!trust.signature_valid ? "no" : trust.claimed === false ? "warm" : "ok"}`}>
+        {!trust.signature_valid
+          ? t("trust.invalid")
+          : trust.claimed === false
+            ? t("trust.unclaimed")
+            : t("trust.signed")}
       </span>
       {!compact &&
         trust.attestations.map((a) => (
@@ -16,9 +20,13 @@ export default function TrustBadge({ trust, compact = false }: { trust: Trust; c
             {t("trust.attested", { claim: a.claim })}
           </span>
         ))}
-      <span className="status">
-        {reviews.count ? t("trust.reviews", { avg: String(reviews.average), n: reviews.count }) : t("trust.noReviews")}
-      </span>
+      {trust.claimed !== false && (
+        <span className="status">
+          {reviews.count
+            ? t("trust.reviews", { avg: String(reviews.average), n: reviews.count })
+            : t("trust.noReviews")}
+        </span>
+      )}
     </div>
   );
 }

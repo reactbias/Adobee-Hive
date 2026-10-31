@@ -9,7 +9,7 @@ import pytest
 from mcp import Client
 
 from app import agent, config, db, guard, hive, llm, owner, second_opinion, simulate
-from app.domains import hr
+from app.domains import examples, hr
 from app.mcp_server import server
 
 REQUEST = (
@@ -134,7 +134,7 @@ def test_demo_reset_restores_the_seed(client):
         "/api/owner/hotel-gare/publish",
         json={"proposed": {**client.get("/api/hive/cards/hotel-gare").json(), "features": ["dog-friendly"]}},
     )
-    assert client.post("/api/demo/reset").json()["cards"] == 6
+    assert client.post("/api/demo/reset").json()["cards"] == 6 + len(examples.CARDS)
     card = client.get("/api/hive/cards/hotel-gare").json()
     assert "dog-friendly" not in card["features"] and card["version"] == 1
     assert card["trust"]["signature_valid"]
@@ -339,3 +339,11 @@ def test_rule_edit_keeps_the_pets_policy_in_line():
     assert "dog-friendly" in added["features"] and added["policies"]["pets"] == "Dogs welcome"
     removed, _ = owner.mock_edit(added, "remove dog-friendly")
     assert removed["policies"]["pets"] == "No pets"
+
+
+def test_business_discovery_never_lists_people(client):
+    hive.publish(dict(hr.EXAMPLE_CARD))
+    found = hive.discover(features=["dog-friendly"])
+    assert "person-mira" not in {c["id"] for c in found["matches"] + found["excluded"]}
+    assert not any(m["detail"] for m in client.get("/api/owner/person-mira").json()["missed_demand"])
+    assert hive.discover(kind="person")["matches"] == []  # not even when asked by kind

@@ -3,6 +3,7 @@
 import copy
 
 from . import db, hive, waiting
+from .domains import examples
 
 SBB, MESSE, MARKT, BADISCHER = "basel sbb", "messe basel", "marktplatz", "badischer bahnhof"
 
@@ -153,8 +154,8 @@ ATTESTATIONS = [
 
 
 def run() -> None:
-    """Publish the fictional Basel cards and their attestations."""
-    for card in CARDS:
+    """Publish the fictional Basel cards, their attestations and the unclaimed example cards."""
+    for card in CARDS + examples.CARDS:
         hive.publish(copy.deepcopy(card))  # publish stamps the dict; keep the seed pristine for reset()
     for card_id, claim, by in ATTESTATIONS:
         hive.attest(card_id, claim, by)
