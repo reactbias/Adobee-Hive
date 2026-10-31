@@ -91,6 +91,22 @@ the measurement.
 
 <!-- /answer-key -->
 
+## Scoring it
+
+```bash
+cd code/backend
+python tools/eval_answer_key.py           # every pair, with where it actually ranks
+python tools/eval_answer_key.py --quiet   # just the totals
+python tools/eval_answer_key.py --hub bern
+```
+
+It publishes the whole corpus into a throwaway database and calls `hive.discover` in process, so it
+needs no running hub. Its exit code is the number of pairs not in the top three, so CI can gate on it.
+
+**The baseline, measured on `main` at the time of writing: `0/41` first, `0/41` in the top three.**
+Every pair is a miss while matching is literal; `app/semantic.py` has landed with its own tests but
+is not yet wired into `discover`, so this number is the one to watch, not a bug in the key.
+
 ## Near-misses: what must rank *below*
 
 Precision is only measurable against something that nearly fits. These cards literally contain the
