@@ -9,13 +9,15 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import connections, domains, hive, hub, rulesets, waiting
+from . import admin, connections, domains, hive, hub, registration, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
     instructions=(
         "Adobee Hive is a directory of signed, agent-facing business cards for Basel. "
-        "Use hive_discover to find businesses for the user's constraints, hive_get_card to read one card and "
+        "Use hive_discover to find anyone on it by what they offer or need — a hotel, a developer, a café — "
+        "with kind as a filter and looking_for to say which side of the market you are on; hive_get_card to read "
+        "one card and "
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
         "Only state facts that come from cards. Tell the user why you picked a business (score_breakdown, why) "
         "and keep the booking receipt: it is needed to cancel or to leave a verified review. "
@@ -50,10 +52,16 @@ def hive_discover(
     guests: int = 1,
     ruleset: str | None = None,
     radius: int = 0,
+    looking_for: str = "offers",
 ) -> dict[str, Any]:
-    """Find local businesses in the Hive.
+    """Find anyone in the Hive by what they offer or what they need: a hotel, a developer, a café.
 
-    kind: hotel | cafe. near: a landmark such as 'basel sbb', 'messe basel', 'marktplatz', 'badischer bahnhof'.
+    looking_for: which side of the market you are on. "offers" (the default) finds whoever provides the thing,
+    "needs" finds whoever wants what you provide, "any" finds both. Every result says whether it is claimed by
+    its subject and whether it is bookable: an unclaimed card was compiled from public information, so it can
+    only be handed off to the business's own site after the user says yes, and nothing on it can be booked.
+    kind: a filter, not a gate — hotel | cafe | person | event and whatever else this hub holds.
+    near: a landmark such as 'basel sbb', 'messe basel', 'marktplatz', 'badischer bahnhof'.
     features: exact tags such as 'dog-friendly', 'late check-in', 'quiet', 'breakfast', 'parking'.
     Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
     businesses with why_not, so you can explain the choice to the user.
@@ -62,7 +70,19 @@ def hive_discover(
     Above 0 each match says in provenance which hubs it travelled and how many hops, and its score_breakdown adds
     local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive.
     """
-    found = _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests, radius)
+    found = _safe(
+        hive.discover,
+        query,
+        kind,
+        near,
+        max_price_chf,
+        features,
+        check_in,
+        check_out,
+        guests,
+        radius,
+        looking_for=looking_for,
+    )
     return found if "error" in found or not ruleset else _safe(rulesets.apply, found, ruleset)
 
 
@@ -197,3 +217,43 @@ def hub_standing() -> dict[str, Any]:
     `error` is published minus realised, in tenths of a star: lower is better, negative means the Hive
     undersold what it offered. A Hive with too little evidence is reported as unproven rather than guessed at."""
     return hub.standing()
+
+
+@server.tool()
+def hub_registration() -> dict[str, Any]:
+    """Read what this Hive asks of someone who wants to join, before writing an application.
+
+    Returns the admission policy, the checks an application goes through, the proof types accepted, and an
+    example document. Read this first: a hub may be invite-only or closed, and the answer says so."""
+    return registration.policy()
+
+
+@server.tool()
+def hub_register(
+    entity: dict[str, Any],
+    public_key: str = "",
+    proofs: list[dict[str, Any]] | None = None,
+    invite: str = "",
+    signature: str = "",
+) -> dict[str, Any]:
+    """Apply to join this Hive on behalf of your user, with one signed JSON document.
+
+    `entity` is the card: id, kind, name, description, sharing. Bring a `public_key` and your user keeps the
+    private half — sign the canonical JSON of the whole application except `signature` to prove they hold it.
+    Omit the key and this Hive generates and holds one, which is weaker and is recorded as such.
+
+    A refusal is an answer, not a failure: the reply always carries the checks, the reason and what to do next.
+    Never invent proofs — they are claims about the world and a hub that catches a false one will block you."""
+    return _safe(
+        registration.apply,
+        {"entity": entity, "public_key": public_key, "proofs": proofs or [], "invite": invite, "signature": signature},
+    )
+
+
+@server.tool()
+def hub_directory() -> dict[str, Any]:
+    """List the Hives this one knows of, so a user can choose which to join before applying.
+
+    Each row says whether it is taking members, what it asks of them, and how closely its published ratings
+    have matched what real people found: `error` is published minus realised, and lower is better."""
+    return admin.directory()

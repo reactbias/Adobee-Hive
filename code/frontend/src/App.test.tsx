@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import App from "./App";
@@ -6,16 +7,26 @@ import { I18nProvider } from "./i18n";
 import en from "./i18n/en";
 
 // The app is one page: the traveller's group chat, with everything else behind the same door. api.ts is mocked.
+//
+// A first visit now lands on the instance finder, because you pick a Hive before you use one. These tests
+// describe the app *after* a hub is chosen, so they set the choice the finder would have made; the finder's own
+// behaviour is at the bottom of this file and in panels/InstanceFinder.test.tsx.
 
 describe("the app", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
+    sessionStorage.setItem("adobee-hub", "local");
     vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
     vi.spyOn(api, "cards").mockResolvedValue([]);
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
+    vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockRejectedValue(new Error("offline"));
   });
 
   it("opens on the traveller agent and links to no other page", async () => {
@@ -31,7 +42,7 @@ describe("the app", () => {
     expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
-  it("tells one story in two chapters: your agent, then the business's side", () => {
+  it("tells one journey: Search, then Opportunities", () => {
     render(
       <I18nProvider>
         <App />
@@ -39,22 +50,29 @@ describe("the app", () => {
     );
 
     const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
-    expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
+    const links = chapters.getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
+    expect(links[0]).toHaveTextContent(en["chapter.travel"]);
+    expect(links[1]).toHaveTextContent(en["chapter.business"]);
     expect(screen.getByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    // Nothing is drawn until an endpoint returns it: no empty stage, no empty log.
+    expect(screen.queryByRole("region", { name: en["card.stage"] })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
   });
 
-  it("gives every chapter the same layout: a brief beside one fixed-height panel", () => {
+  it("keeps Search as one stack and Opportunities as a brief beside one panel", () => {
     const { container } = render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    for (const id of ["travel", "business"]) {
-      const grid = container.querySelector(`section#${id} > .chapter-grid`);
-      expect(grid, id).not.toBeNull();
-      expect(grid!.querySelector(":scope > .brief"), id).not.toBeNull();
-      expect(grid!.querySelector(":scope > .frame"), id).not.toBeNull();
-    }
+    const search = container.querySelector("section#travel");
+    expect(search?.classList.contains("stack")).toBe(true);
+    expect(search?.querySelector(":scope > .frame")).toBeNull();
+    const grid = container.querySelector("section#business > .chapter-grid");
+    expect(grid).not.toBeNull();
+    expect(grid!.querySelector(":scope > .brief")).not.toBeNull();
+    expect(grid!.querySelector(":scope > .frame")).not.toBeNull();
   });
 
   it("opens the business chapter on the owner studio, with the demand map one tab away", () => {
@@ -101,5 +119,179 @@ describe("the app", () => {
     screen.getByRole("tab", { name: en["business.tab.demand"] }).click();
     expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
     window.history.replaceState(null, "", "/");
+  });
+
+  it("offers an obvious way back to change hub", () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("button", { name: en["finder.change"] })).toBeInTheDocument();
+  });
+});
+
+// Pick a door before you walk through it. The finder must never stand between the pitch driver and a booking run,
+// so a remembered choice and `?hub=` both skip it.
+describe("the first screen", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
+  });
+
+  it("is the instance finder when no hub has been chosen", async () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+  });
+
+  it("is skipped once a hub has been chosen in this tab", () => {
+    sessionStorage.setItem("adobee-hub", "local");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+  });
+
+  it("is skipped by ?hub= in the address, which is what the pitch runbook uses", () => {
+    window.history.replaceState(null, "", "/?hub=local");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("opens the hub's own panel with ?admin, and asks for the password", () => {
+    window.history.replaceState(null, "", "/?admin");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+    expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+    window.history.replaceState(null, "", "/");
+  });
+});
+
+// "Clicking change-hive brings you back to a page that is not the correct hive log." It did: ?hub= stayed in the
+// address, so the finder re-applied it on the next read and bounced straight past itself.
+describe("changing hive", () => {
+  const offline = () => {
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [
+        {
+          hub: "a",
+          url: "",
+          home: true,
+          blocked: false,
+          name: "Hive A",
+          description: "",
+          accepting: true,
+          error: null,
+          error_stars: null,
+          evidence: 0,
+          verdict: "unproven",
+          why: "",
+        },
+        {
+          hub: "b",
+          url: "",
+          home: false,
+          blocked: false,
+          name: "Hive B",
+          description: "",
+          accepting: true,
+          error: null,
+          error_stars: null,
+          evidence: 0,
+          verdict: "unproven",
+          why: "",
+        },
+      ],
+    });
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    offline();
+  });
+
+  it("goes back to the finder with nothing selected, and a reload stays there", async () => {
+    sessionStorage.setItem("adobee-hub", "a");
+    window.history.replaceState(null, "", "/?hub=a");
+    const { unmount } = render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(sessionStorage.getItem("adobee-hub")).toBeNull();
+    expect(window.location.search).not.toContain("hub");
+
+    // A reload at that point must not auto-select the hub that was just dropped.
+    unmount();
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+  });
+
+  it("lets the next pick be a different hub, and remembers that one", async () => {
+    sessionStorage.setItem("adobee-hub", "a");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+    const rows = await screen.findAllByRole("listitem");
+    await userEvent.click(within(rows[1]).getByRole("button", { name: en["finder.use"] }));
+
+    expect(sessionStorage.getItem("adobee-hub")).toBe("b");
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+  });
+
+  it("says plainly which backend the build is pinned to, rather than looking like it switched", async () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/This build talks to/)).toBeInTheDocument();
   });
 });

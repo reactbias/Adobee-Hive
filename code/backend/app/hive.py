@@ -409,11 +409,44 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
-# People are found only through their own domain's tools (domains/hr.py), never in a search for businesses.
-NOT_DISCOVERABLE = {"person"}
-# What discovery searches when no kind is given. Other domains (example cards) have their own tools.
+# Kept so the stay-specific paths (availability, booking) still know which kinds have rooms.
+# It is no longer what discovery searches: see `discover`.
 STAY_KINDS = ("hotel", "cafe")
-RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
+
+#: Nothing is hidden from discovery by its kind any more. A hub holds hotels, developers and
+#: hairdressers side by side, and a directory that can only answer "where do I sleep" is not a
+#: directory. What an entity *offers* and what it *needs* is the index; `kind` only narrows it.
+NOT_DISCOVERABLE: set[str] = set()
+
+#: What the hard constraints are worth, and they have to be earned: this is paid for constraints
+#: the ask actually carried and the card met, and not at all for an ask with nothing to check.
+#: Granting it for the absence of a check was the worst bug in the ranking — a query for "dataviz"
+#: answered with eight hotels, each on a free 50 for passing an empty test, above the one person
+#: who offers a dataviz sprint and earned 20 for it honestly.
+CONSTRAINT_POINTS = 50
+
+#: Which side of the market a search is on. "offers" finds someone who provides the thing,
+#: "needs" finds someone who wants what you provide, "any" both.
+LOOKING_FOR = ("offers", "needs", "any")
+
+#: Words in an offer or a need that a search should match on even when they are not in the prose.
+OFFER_FIELDS = ("title", "id", "tags", "summary", "description", "unit", "skills")
+
+#: Kinds whose sharing default is `confirm` rather than `public` when their card sets no flag of
+#: its own: an introduction to a person is that person's to grant, even if their card never said
+#: so. Only reachable since discovery stopped hiding people — before, nobody could find one to ask.
+CONSENT_FIRST_KINDS = {"person"}
+
+#: Kinds that never get a `missed_demand` row written against them. Missed demand is a market
+#: signal a business asked for ("agents wanted X and you don't have it"); kept against a person it
+#: is a log of the times they were passed over, which is not the hub's to keep. People are
+#: discoverable now, so this is what used to be the side effect of hiding them.
+NO_MISSED_DEMAND = {"person"}
+
+RANKING_POLICY = (
+    "The constraints you gave first, and nothing is paid for a check nobody asked for; then what the entity "
+    "offers or needs, then relevance, proximity, verified reviews, attestations. No paid placement."
+)
 
 
 STOPWORDS = {
@@ -441,6 +474,30 @@ STOPWORDS = {
 }
 
 
+def _side_hits(card: dict[str, Any], side: str, terms: list[str]) -> list[str]:
+    """Query terms that appear in an entity's offers or needs.
+
+    An offer may be a string, or an object with a title, tags and a summary; a hub carries all
+    sorts and the format should not decide whether someone is findable. Returns the terms that
+    matched, so a result can say *why* it matched rather than only that it did.
+    """
+    blob = []
+    for entry in card.get(side) or []:
+        if isinstance(entry, str):
+            blob.append(entry)
+            continue
+        if not isinstance(entry, dict):
+            continue
+        for field in OFFER_FIELDS:
+            value = entry.get(field)
+            if isinstance(value, str):
+                blob.append(value)
+            elif isinstance(value, list):
+                blob.extend(str(v) for v in value)
+    text = " ".join(blob).lower()
+    return [term for term in terms if term in text]
+
+
 def fit(
     card: dict[str, Any],
     features: list[str],
@@ -452,19 +509,28 @@ def fit(
 ) -> dict[str, Any]:
     """Check one card against hard constraints: why it fits, why not, the missing tags, its price and distance.
 
+    `checked` is what the ask actually asked about and this card could be tested for, and `met` the
+    part of it that held. An ask with no features, no dates and no budget checks nothing, and
+    discover() pays nothing for passing it: a constraint score is earned, never granted.
+
     Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
     """
     reasons, misses = [], []
+    checked, met = [], []
     if not is_fresh(card):
         misses.append(f"signed facts expired on {card['valid_until'][:10]}; the owner has to re-sign")
     card_feats = {f.lower() for f in card.get("features", [])}
     missing = [f for f in features if f not in card_feats]
+    checked += features
+    met += [f for f in features if f not in missing]
     if missing:
         misses.append(f"missing {', '.join(missing)}")
     elif features:
         reasons.append(f"has {', '.join(features)}")
 
     price, unit = None, None
+    if check_in and check_out:
+        checked.append("dates")
     if check_in and check_out and not card.get("units"):
         misses.append("takes no stay bookings")
     elif check_in and check_out:
@@ -473,18 +539,34 @@ def fit(
             misses.append(f"no room for {guests} from {check_in} to {check_out}")
         else:
             unit, price = free[0], free[0]["price_chf"]
+            met.append("dates")
             reasons.append(f"{unit['name']} free at CHF {price}/night")
     elif card.get("units"):
         price = min(u["price_chf"] for u in card["units"])
-    if max_price_chf is not None and price is not None and price > max_price_chf:
-        misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+    # A budget can only be checked against a published price. An entity that publishes none is not
+    # cheap, it is unknown, so it neither fails the budget nor earns anything for passing it.
+    if max_price_chf is not None and price is not None:
+        checked.append("budget")
+        if price > max_price_chf:
+            misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+        else:
+            met.append("budget")
 
     dist = None
     if near:
         dist = (card.get("distances_m") or {}).get(near.lower())
         if dist is not None:
             reasons.append(f"{dist} m from {near}")
-    return {"reasons": reasons, "misses": misses, "missing": missing, "price": price, "unit": unit, "distance_m": dist}
+    return {
+        "reasons": reasons,
+        "misses": misses,
+        "missing": missing,
+        "price": price,
+        "unit": unit,
+        "distance_m": dist,
+        "checked": checked,
+        "met": met,
+    }
 
 
 def discover(
@@ -499,13 +581,27 @@ def discover(
     radius: int = 0,
     budget_ms: float | None = None,
     seen: list[str] | None = None,
+    looking_for: str = "offers",
 ) -> dict[str, Any]:
-    """Find businesses for an agent. Returns matches with score breakdown and the near-misses.
+    """Find anyone on this Hive, by what they offer or what they need.
+
+    Not a room search with other things bolted on. A hub carries hotels, developers and
+    hairdressers side by side, so the index is `offers` and `needs`, and `kind` is a filter the
+    caller may apply rather than a gate the hub applies on their behalf.
+
+    looking_for is which side of the market you are on: "offers" (the default) finds someone who
+    provides the thing, "needs" finds someone who wants what you provide, "any" finds both.
+
+    Returns matches with a score breakdown, and the near-misses with why they missed. Every result
+    says whether it is `claimed` by its subject and whether it is `bookable`: an unclaimed card is
+    a lead compiled from public information, and no caller may treat one as a business that agreed.
 
     radius is the hop limit across peer Hives: 0, the default, is this Hive only; 1 adds its direct peers, 2
     theirs, up to federation.MAX_RADIUS. budget_ms is the whole query's time budget and seen lists the hubs it
     has already visited (loop prevention); both only matter above radius 0. See federation.py.
     """
+    if looking_for not in LOOKING_FOR:
+        raise HiveError(f"looking_for must be one of {', '.join(LOOKING_FOR)}, not {looking_for!r}")
     if int(radius or 0) > 0:
         from . import federation  # imported here: federation builds on discover, so it imports this module
 
@@ -518,8 +614,10 @@ def discover(
             "check_in": check_in,
             "check_out": check_out,
             "guests": guests,
+            "looking_for": looking_for,
         }
         return federation.run(ask, int(radius), budget_ms, seen)
+    forwarded = bool(seen)  # a non-empty `seen` means a peer hub forwarded this, not a local client
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
     # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
@@ -531,9 +629,18 @@ def discover(
     )
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
-    cards = list_cards(kind) if kind else [c for k in STAY_KINDS for c in list_cards(k)]
+    # Every entity, whatever it is. A hub carries hotels, developers and hairdressers together,
+    # so the search is over what they offer and what they need; `kind` is a filter a caller may
+    # apply, not a gate the hub applies for them.
+    cards = list_cards(kind) if kind else list_cards()
+    # An admin block has to bite here, on the path the API actually calls. Enforcing it only in
+    # the hub façade left a blocked business still listed in every ordinary search, which is a
+    # block that does nothing — found by blocking one and watching it come back.
+    from . import blocklist
+
+    blocked = blocklist.blocked_entities()
     for card in cards:
-        if card["kind"] in NOT_DISCOVERABLE:
+        if card["kind"] in NOT_DISCOVERABLE or card["id"] in blocked:
             continue
         found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
         reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
@@ -548,10 +655,23 @@ def discover(
         ).lower()
         hits = [t for t in terms if t in text]
 
+        # The two sides of the market, and the reason one query can find a room, a developer or a
+        # hairdresser. `looking_for` says which side the caller is on: "offers" to find someone who
+        # provides, "needs" to find someone who wants what you provide, "any" for both.
+        offer_hits = _side_hits(card, "offers", terms) if looking_for in ("offers", "any") else []
+        need_hits = _side_hits(card, "needs", terms) if looking_for in ("needs", "any") else []
+        side_hits = offer_hits + need_hits
+
         trust = card["trust"]
         score = {
-            "constraints": 0 if misses else 50,
+            # Earned, not granted: the weight is paid for constraints the ask carried and this card
+            # met, and an ask that carried none pays nobody. Relevance — what the entity offers,
+            # needs or says — is then free to decide a query that has nothing to verify.
+            "constraints": CONSTRAINT_POINTS if found["checked"] and not misses else 0,
             "text_relevance": min(20, 5 * len(hits)),
+            # An entity that literally offers (or needs) the thing asked for beats one that merely
+            # mentions it in its prose, so this outweighs text relevance.
+            "offers_needs": min(30, 10 * len(side_hits)),
             "proximity": 0 if dist is None else max(0, 15 - dist // 150),
             # What this one business earned: verified reviews, attestations, a valid signature (reputation.py).
             **reputation.business_points(trust),
@@ -567,16 +687,33 @@ def discover(
             "description": card.get("description") or "",
             "rating": trust["verified_reviews"]["average"],
             "rating_count": trust["verified_reviews"]["count"],
+            # How to reach them, on the result itself. An agent that found someone should not have
+            # to fetch the whole card to know whether there is an address to write to, and a
+            # federated result has no cheap way to fetch it at all.
+            "contact": (card.get("contact") or {}),
+            "contact_sharing": (card.get("contact_sharing") or {}),
+            # An unclaimed card was compiled from public information and the business never
+            # published it, so it is a lead, not a presence: findable, never bookable, and a
+            # hand-off to the business's own site only after a human says yes (domains/explore.py).
+            "claimed": trust["claimed"],
+            "bookable": bool(card.get("units")) and trust["claimed"],
             "from_price_chf": price,
             "distance_m": dist,
             "score": round(sum(score.values()), 1),
             "score_breakdown": score,
-            "why": reasons + ([f"mentions {', '.join(hits)}"] if hits else []),
+            "why": reasons
+            + ([f"offers {', '.join(offer_hits)}"] if offer_hits else [])
+            + ([f"needs {', '.join(need_hits)}"] if need_hits else [])
+            + ([f"mentions {', '.join(hits)}"] if hits else [])
+            + ([] if trust["claimed"] else ["unclaimed: compiled from public information, hand-off only"]),
             "signature_valid": trust["signature_valid"],
         }
         if misses:
             excluded.append({**summary, "why_not": misses})
-            events.append((card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {asked})" if asked else "")))
+            if card["kind"] not in NO_MISSED_DEMAND:
+                events.append(
+                    (card["id"], "missed_demand", "; ".join(misses) + (f" (asked: {asked})" if asked else ""))
+                )
         else:
             matches.append(summary)
             events.append((card["id"], "shown", asked or "open search"))
@@ -597,6 +734,13 @@ def discover(
     )
     _log_many(events)
     matches.sort(key=lambda m: m["score"], reverse=True)
+    if forwarded:
+        # A peer asked this, and it will verify every card against our key registry before showing
+        # it to anyone. It can only do that if the signed card travels with the match, so attach it.
+        # A direct caller gets the answer unchanged — backward compatibility is about them, not
+        # about hops. Without this a federated search rejects every remote result with "no card to
+        # check against the owner's key", which is what two real hubs showed the moment they met.
+        matches = [{**m, "card": get_card(m["id"])} for m in matches]
     return {
         "matches": matches,
         "excluded": excluded,

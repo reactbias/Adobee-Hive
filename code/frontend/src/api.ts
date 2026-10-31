@@ -3,6 +3,27 @@ const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 /** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
 export const OFFLINE = "error.offline";
+
+/** A status code or a lost connection is one case for the page: the backend is out of reach. */
+export function shownError(message: string): string {
+  if (message === OFFLINE || /^\d{3}\b/.test(message)) return OFFLINE;
+  return message;
+}
+
+/**
+ * A refusal from the backend, with the status, so a caller can tell a lost session (401, 403) or a lockout
+ * (429, with the seconds to wait) from anything else. `message` is the backend's own detail, as before.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfter: string | null = null,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 // Render's free backend sleeps and takes up to a minute to wake. Past this, the chat stops "thinking" and says so.
 const TIMEOUT_MS = 90_000;
 const COLD = new Set([502, 503, 504]);
@@ -37,7 +58,9 @@ async function call<T>(path: string, init?: RequestInit, retry = true): Promise<
     const body = await res.json().catch(() => ({}));
     // FastAPI sends a string for our errors and a list of field errors for invalid input
     const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
-    throw new Error(detail ?? `${res.status} ${res.statusText}`);
+    // `headers` is optional only because a stubbed Response in a test may not carry it.
+    const retry = res.headers?.get("Retry-After") ?? null;
+    throw new ApiError(detail ?? `${res.status} ${res.statusText}`, res.status, retry);
   }
   return res.json() as Promise<T>;
 }
@@ -63,6 +86,53 @@ function ownerHeaders(): Record<string, string> {
     return {};
   }
 }
+
+// The hub's administration needs a credential in X-Admin-Token: a session token from POST /api/admin/login, or
+// the static ADMIN_TOKEN for curl. It lives in this tab's sessionStorage only, so closing the tab signs out.
+const ADMIN_TOKEN_KEY = "adobee-admin-session";
+export function setAdminToken(token: string) {
+  try {
+    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+    else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  } catch {
+    /* storage blocked: the session lasts as long as the panel's own state */
+  }
+}
+export function adminToken(): string {
+  try {
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+function adminHeaders(): Record<string, string> {
+  const token = adminToken();
+  return token ? { "X-Admin-Token": token } : {};
+}
+
+// The hub the app is pointed at, chosen in the instance finder. Remembered for this tab only.
+const HUB_KEY = "adobee-hub";
+export function setChosenHub(hub: string) {
+  try {
+    if (hub) sessionStorage.setItem(HUB_KEY, hub);
+    else sessionStorage.removeItem(HUB_KEY);
+  } catch {
+    /* storage blocked: the finder asks again on the next load */
+  }
+}
+export function chosenHub(): string {
+  try {
+    return sessionStorage.getItem(HUB_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * The backend this build talks to. VITE_API_URL is baked in at build time, so a deployed build can only reach
+ * the hub it was built against: the instance finder says so rather than pretending a pick moves the app.
+ */
+export const apiOrigin = () => BASE || window.location.origin;
 
 export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
 
@@ -434,6 +504,109 @@ function discoverPath({ features = [], ...rest }: DiscoverQuery): string {
   return `/api/hive/discover${query ? `?${query}` : ""}`;
 }
 
+// ---------- The hub directory, and running a hub ----------
+
+/**
+ * One Hive in the directory. `error` is this hub's calibration: published rating minus what people actually
+ * found, in tenths of a star. **Lower is better**, and a negative number means the hub undersold what it
+ * offered. It is null, and `verdict` is "unproven", until enough introductions have been scored to say.
+ */
+export interface DirectoryHub {
+  hub: string;
+  url: string;
+  home: boolean;
+  blocked: boolean;
+  name: string;
+  description: string;
+  admission?: string;
+  accepting?: boolean;
+  verification?: string;
+  entities?: number;
+  apply_at?: string;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+export interface Directory {
+  hubs: DirectoryHub[];
+}
+
+/** A peer and how closely its published ratings matched what our people found. Lower `error` is better. */
+export interface Peer {
+  hub: string;
+  url?: string;
+  blocked?: boolean;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+export interface AdminOverview {
+  hub: string;
+  name: string;
+  index: { entities: number };
+  neighbours: { configured: number; blocked: number; with_evidence: number };
+  blocklist: { hubs: number; entities: number };
+  connections: Record<string, number>;
+  peers: Peer[];
+}
+/** One settings field, shaped so a form can be generated from it rather than hardcoded. */
+export interface SettingsField {
+  key: string;
+  label: string;
+  value: string | number | boolean | null;
+  help: string;
+  options?: string[];
+  editable: boolean;
+}
+export interface AdminSettings {
+  fields: SettingsField[];
+  calibration: { lower_is_better: boolean; help: string; min_evidence: number; half_life_days: number };
+}
+export interface AdminNeighbours {
+  peers: Peer[];
+  blocked_hubs: string[];
+}
+export interface BlockEntry {
+  kind: string;
+  subject: string;
+  reason: string;
+  added_at: string | null;
+  added_by: string;
+}
+export interface Blocklist {
+  entries: BlockEntry[];
+  kinds: string[];
+}
+/** One signed application to join this hub. `checks` ran in order and stopped at the first failure. */
+export interface Application {
+  id: string;
+  created_at: string;
+  state: string;
+  entity_id: string;
+  kind: string;
+  name: string;
+  custody: string;
+  verification: string;
+  proofs: { type: string; subject: string }[];
+  checks: { check: string; ok: boolean; detail: string }[];
+  decided_at: string | null;
+  decided_by: string | null;
+  reason: string;
+  next: string;
+}
+export interface Applications {
+  applications: Application[];
+  policy: { policy: string; means: string };
+}
+export interface AdminSession {
+  token: string;
+  expires_in: number;
+}
+
 export const api = {
   health: () => call<Health>("/api/health"),
   /** Search the Hive. Without a radius the answer is this Hive's own cards, exactly as before. */
@@ -459,6 +632,28 @@ export const api = {
   scout: (question: string) => post<ScoutResult>("/api/ask/scout", { question }),
   askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
   activity: (after = 0) => call<ActivityFeed>(`/api/activity?after=${after}`),
+
+  /** The Hives to choose between. Not on `main` yet (PR #71): the finder falls back to this hub on a 404. */
+  directory: () => call<Directory>("/api/hub/directory"),
+
+  /** Trade the hub's password for a session token. A 429 carries the seconds to wait in `retryAfter`. */
+  adminLogin: (password: string) => post<AdminSession>("/api/admin/login", { password }),
+  adminLogout: () => post<{ signed_out: boolean }>("/api/admin/logout", {}, adminHeaders()),
+  adminOverview: () => call<AdminOverview>("/api/admin/overview"),
+  adminSettings: () => call<AdminSettings>("/api/admin/settings"),
+  adminNeighbours: () => call<AdminNeighbours>("/api/admin/neighbours"),
+  adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
+  adminBlock: (kind: string, subject: string, reason: string) =>
+    post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),
+  adminUnblock: (kind: string, subject: string) =>
+    call<{ lifted: boolean }>(`/api/admin/blocklist/${kind}/${encodeURIComponent(subject)}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    }),
+  /** Not on `main` yet (PR #71): the panel shows an honest "not deployed" line on a 404. */
+  adminApplications: (state = "") => call<Applications>(`/api/admin/applications${state ? `?state=${state}` : ""}`),
+  adminDecide: (id: string, admit: boolean, reason: string) =>
+    post<Application>(`/api/admin/applications/${encodeURIComponent(id)}`, { admit, reason }, adminHeaders()),
 };
 
 // ---------- The live activity feed (?demo) ----------

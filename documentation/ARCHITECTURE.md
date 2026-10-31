@@ -39,7 +39,7 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | Domain | Card kind | Tools | Where |
 | --- | --- | --- | --- |
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
-| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py` |
+| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py`; people are in `hive_discover` too, their contact never is |
 | Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
 | Scout | any kind found on the web (`taxi`, ...) | `hive_scout` | `domains/scout.py`: web search, verifier, unclaimed cards `w-*` |
 
@@ -62,6 +62,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
+| `lib/provenance.ts`, `lib/calibration.ts` | Which hub a result came from (origin first, answering hub last, so a relay is visible) and how a hub's calibration reads (lower is better; negative means it undersold what it offered) |
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
@@ -72,8 +73,20 @@ jumps to: `#travel`, the agent network (a room or any business, one chat); `#bus
 side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
 page appears or when a panel in `code/frontend/src/panels` has no row here.
 
+Two screens sit beside that story rather than inside it, because neither belongs to the traveller:
+
+- **The instance finder** is what a first visit lands on. You pick a Hive before you use one, which is what a
+  federated directory means. The choice is remembered in `sessionStorage` for the tab, and `?hub=<id>` in the
+  address skips the screen entirely — that is what the pitch runbook uses, so nothing stands between the driver
+  and the booking run at 0:15.
+- **The admin panel** opens only with `?admin`. Nothing on the public page links to it. It asks for the hub's
+  password, and the session token it gets back lives in `sessionStorage` for the tab only.
+
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
+| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `NetworkPanel.tsx` | after 2, always (`#network`) | The live node view of the hub network: this hub in the centre of a honeycomb, each configured peer a cell around it with an edge coloured by its calibration, a blocked peer still drawn and visibly cut. Four counts above it, the same hubs as rows below, and the rows alone on a phone. Open to anyone, built from `GET /api/admin/overview` and `/api/admin/neighbours`, with names and entity counts from `/api/hub/directory` where it is deployed; a hub we have not asked reads as unknown, never as zero. Polls every 10 s, only while on screen |
+| `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use, instances.social style: what each hub carries, whether it is accepting members, its admission policy, how many entities, and how closely its published ratings matched what people found. Deliberately a plain first pass, and it says so on screen. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
 | `DemandPanel.tsx` | 2, business | The Demand map tab: what Basel asked for that nobody offers; simulates a busy week with `?demo` |
 | `OwnerPanel.tsx` | 2, business | The whole business chapter: the change box in the brief; in the panel, the owner studio (the booking just made, what agents asked for, the diff, sign and publish, the new version live) and the demand map as a tab; the tamper test with `?demo` |
@@ -82,7 +95,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown, and every excluded business with why. Every entity carries `name`, `description` and `rating` (`rating` is null until a signed receipt earns one); a federated match adds `provenance`, `hops` and the three federated rank factors. People never show up here, only through the HR tools |
+| `hive_discover` | Search **everything on the hub** by what it offers and what it needs: hotels, people, cafés, unclaimed example cards. `looking_for` says which side of the market the caller is on — `offers` (the default) finds whoever provides the thing, `needs` whoever wants what the caller provides, `any` both. `kind` is a filter the caller may apply, not a gate the hub applies for them. Hard constraints as before (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown (`constraints`, `offers_needs`, `text_relevance`, `proximity`, reputation) and every excluded entity with why. `constraints` is earned, not granted: it is paid for the constraints the ask actually carried and the entity met, so an ask with no dates, no budget and no features pays nobody and relevance decides. Every entity carries `name`, `description`, `rating` (null until a signed receipt earns one), `contact`, `claimed` and `bookable`: an unclaimed card is a lead compiled from public information, never bookable. A federated match adds `provenance`, `hops` and the three federated rank factors |
 | `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
@@ -95,6 +108,9 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 | `hub_score` | Record how an introduction actually went, after the real meeting: tenths of a star out of five, once, and only while the connection is still open. The only input to how far this Hive trusts another |
 | `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale |
 | `hub_standing` | What this Hive makes of its neighbours: published minus realised, lower is better, unproven when the evidence is thin |
+| `hub_registration` | What this Hive asks of someone who wants to join: policy, checks, proof types and an example document |
+| `hub_register` | Apply to join with one signed JSON document. Bring a public key and the user keeps the private half |
+| `hub_directory` | The Hives this one knows of, so a user can choose which to join, with each one's calibration |
 | `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
@@ -114,18 +130,27 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/health` | Up, and which model provider the agents use (`openai`, `claude` or `mock`) | |
 | `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
-| `GET /api/hive/discover` | Search with the same constraints as `hive_discover`, plus `radius` (0 = this Hive, up to 3 hops over peer Hives), `budget_ms` and `seen`. Also the door one Hive uses to forward a query to another | rate limit above radius 0 |
+| `GET /api/hive/discover` | Search with the same constraints and `looking_for` as `hive_discover`, plus `radius` (0 = this Hive, up to 3 hops over peer Hives), `budget_ms` and `seen`. Also the door one Hive uses to forward a query to another | rate limit above radius 0 |
 | `POST /api/hub/connect` | Ask to be introduced to an entity, and log it | rate limit |
 | `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
 | `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
 | `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
 | `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
+| `POST /api/admin/login` | Exchange the hub's `ADMIN_PASSWORD` for a short-lived session token, so a person can administer the hub from a browser. A refusal says nothing about the password; a lockout says when to try again | rate limit per client IP **and** in total, fails closed |
+| `POST /api/admin/logout` | End this session token | `X-Admin-Token` |
+| `GET /api/hub/registration` | The admission policy and the exact document to send | — |
+| `POST /api/hub/register` | Apply to join. A refusal is 200 with `state: rejected`, not a 4xx | rate limit |
+| `GET /api/hub/register/{application_id}` | Check on an application | — |
+| `POST /api/hub/register/{application_id}/withdraw` | Withdraw before a decision | — |
+| `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
+| `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
+| `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
 | `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |
 | `GET /api/admin/blocklist` | Everything this hub has shut out; readable without a token on purpose | — |
-| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token`, fails closed |
+| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token` (static or a session token), declared so `/docs` shows a box, fails closed |
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |

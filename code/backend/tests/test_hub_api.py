@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from mcp import Client
 
-from app import blocklist, config, connections, db, hive, sharing
+from app import blocklist, config, connections, db, hive, registration, sharing
 from app.mcp_server import server
 
 
@@ -207,3 +207,36 @@ def test_the_neighbours_table_shows_calibration_next_to_each_peer(client):
     assert "peers" in out and "blocked_hubs" in out
     for row in out["peers"]:
         assert {"hub", "blocked", "verdict", "why"} <= set(row)
+
+
+# ---------------------------------------------------------------- found by using it as an admin
+
+
+def test_a_blocked_entity_disappears_from_an_ordinary_search(client):
+    """The block was enforced in the hub façade only, so every normal search still listed it.
+
+    An admin blocks a business, it stays visible, and nobody notices until someone checks. A block
+    that does not block is worse than no block, because it is believed.
+    """
+    visible = hive.discover(query="")["matches"]
+    assert visible, "the seed must answer an empty query"
+    target_id = visible[0]["id"]
+
+    blocklist.block(blocklist.ENTITY, target_id, "fabricated reviews")
+
+    after = hive.discover(query="")
+    assert all(m["id"] != target_id for m in after["matches"])
+    assert all(
+        m["id"] != target_id for m in after["excluded"]
+    ), "a blocked entity is gone, not listed as excluded — being excluded still names it"
+
+
+def test_refusing_an_application_without_a_reason_is_a_bad_request_not_a_crash(client, monkeypatch):
+    """It returned 500. A refusal with no reason is the operator's mistake, and they should be told."""
+    monkeypatch.setattr(config, "ADMISSION_POLICY", registration.VETTED)
+    monkeypatch.setattr(config, "ADMIN_TOKEN", "s3cret")
+    app_id = registration.apply({"entity": {"id": "cafe-test-x", "kind": "cafe", "name": "Test"}})["id"]
+
+    res = client.post(f"/api/admin/applications/{app_id}", json={"admit": False}, headers={"X-Admin-Token": "s3cret"})
+    assert res.status_code == 400, "an operator mistake is a 400 with a message, never a 500"
+    assert "reason" in res.json()["detail"]

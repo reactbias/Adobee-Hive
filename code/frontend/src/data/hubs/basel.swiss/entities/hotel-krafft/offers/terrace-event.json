@@ -1,0 +1,8 @@
+{
+  "id": "terrace-event",
+  "title": "Small event on the Rhine terrace",
+  "modality": "in-person",
+  "price": { "from": 800, "currency": "CHF", "unit": "evening" },
+  "terms": "Terrace holds 40. Contract needs a yes.",
+  "availability": "Evenings on the Rhine"
+}

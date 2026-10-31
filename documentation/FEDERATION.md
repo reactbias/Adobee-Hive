@@ -11,6 +11,8 @@ progress on a branch. The pitch film in [`assets/hive-federation.mp4`](../assets
 page at work — the hives a search visits, each one's calibration, and the `provenance.path` the answer carries —
 and the stills under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
 
+How someone gets into a hub in the first place is [REGISTRATION.md](REGISTRATION.md), and the two are the
+same argument seen from different ends: admission is strict because calibration measures what admission let in.
 Worked examples of the Card, and the manifest that shows what it deliberately leaves out, are in
 [cards/](cards/README.md). Those files are the reference; where this page and a file disagree, the file wins.
 

@@ -8,7 +8,7 @@ import Composer from "./Composer";
 
 // One input for every agent on the page: the same box, hint, microphone, send button and Try list.
 
-function Harness(props: { onSend: (text: string) => void; busy?: boolean; start?: string }) {
+function Harness(props: { onSend: (text: string) => void; busy?: boolean; start?: string; bar?: boolean }) {
   const [value, setValue] = useState(props.start ?? "");
   return (
     <Composer
@@ -22,6 +22,7 @@ function Harness(props: { onSend: (text: string) => void; busy?: boolean; start?
       busyLabel={en["agent.sending"]}
       tryLabel={en["agent.try"]}
       examples={[en["agent.example.2"], en["agent.example.3"]]}
+      bar={props.bar}
     />
   );
 }
@@ -92,6 +93,34 @@ describe("composer box", () => {
     setup({ onSend: vi.fn(), start: "lang" });
     const box = screen.getByRole("textbox");
     expect(parseInt(box.style.height)).toBeLessThan(400);
+    expect(box.style.overflowY).toBe("auto");
+    spy.mockRestore();
+  });
+
+  it("starts the search bar as one row", () => {
+    const spy = vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockReturnValue(28);
+    setup({ onSend: vi.fn(), start: "kurz", bar: true });
+    const box = screen.getByRole("textbox");
+    expect(box.style.height).toBe("28px");
+    expect(box.style.overflowY).toBe("hidden");
+    spy.mockRestore();
+  });
+
+  it("wraps a long search onto more rows, so the whole request stays readable", () => {
+    const spy = vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockReturnValue(84);
+    setup({ onSend: vi.fn(), start: "lang", bar: true });
+    const box = screen.getByRole("textbox");
+    expect(box.style.height).toBe("84px");
+    expect(box.style.overflowY).toBe("hidden");
+    expect(box.style.overflowX).not.toBe("auto");
+    spy.mockRestore();
+  });
+
+  it("stops the search bar at five rows and scrolls from there", () => {
+    const spy = vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockReturnValue(2000);
+    setup({ onSend: vi.fn(), start: "lang", bar: true });
+    const box = screen.getByRole("textbox");
+    expect(box.style.height).toBe("140px");
     expect(box.style.overflowY).toBe("auto");
     spy.mockRestore();
   });
