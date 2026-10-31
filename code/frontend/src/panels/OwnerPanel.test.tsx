@@ -103,11 +103,15 @@ describe("the business chapter", () => {
     expect(screen.getByText(en["chapter.business.lead"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
   });
 
-  it("counts what agents did with this card: shown, read, booked or handed off", async () => {
+  it("shows the card as agents read it, with its seal, and counts bookings and asks in the headings", async () => {
     setup("en");
-    const kpis = await screen.findByRole("group", { name: en["owner.week.title"] });
-    expect(within(kpis).getByText(en["owner.week.read"]).previousSibling).toHaveTextContent("3");
-    expect(within(kpis).getByText(en["owner.week.booked"]).previousSibling).toHaveTextContent("2");
+    await screen.findByText("Mara Keller");
+    expect(screen.getByRole("heading", { name: en["owner.agents.title"] })).toBeInTheDocument();
+    expect(screen.getByText(en["trust.signed"])).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: en["owner.bookings.title"] })).toHaveTextContent("1");
+    expect(screen.getByRole("heading", { name: en["owner.asked.title"] })).toHaveTextContent("2");
+    // No row of figures: a fresh card reads as fresh, not as failing.
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 
   it("lists every business in the Hive, unclaimed ones too, and shows the one picked", async () => {
@@ -117,8 +121,6 @@ describe("the business chapter", () => {
     expect(
       await screen.findByText(en["chapter.business.leadUnclaimed"].replace("{name}", "Taxi Zentrale Basel")),
     ).toBeInTheDocument();
-    const kpis = screen.getByRole("group", { name: en["owner.week.title"] });
-    expect(within(kpis).getByText(en["owner.week.shown"]).previousSibling).toHaveTextContent("7");
     // Nobody has claimed it, so there is nothing to edit: a line says so instead of the change box.
     expect(screen.queryByRole("textbox", { name: en["owner.change"] })).not.toBeInTheDocument();
     expect(screen.getByText(en["owner.unclaimed"])).toBeInTheDocument();
@@ -128,11 +130,9 @@ describe("the business chapter", () => {
     const user = setup("de");
     await screen.findByText("Mara Keller");
     await user.selectOptions(screen.getByRole("combobox", { name: de["owner.business"] }), "x-taxi");
-    expect(await screen.findByRole("heading", { name: de["owner.handoffs.title"] })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: de["owner.handoffs.title"] })).toHaveTextContent("1");
     expect(screen.getByText("Advice meeting")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: de["owner.bookings.title"] })).not.toBeInTheDocument();
-    const kpis = screen.getByRole("group", { name: de["owner.week.title"] });
-    expect(within(kpis).getByText(de["owner.week.handedOff"]).previousSibling).toHaveTextContent("1");
   });
 
   it("puts what agents asked for in one list, waiting first, with a Use for each", async () => {

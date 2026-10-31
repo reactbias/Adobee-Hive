@@ -63,8 +63,7 @@ flowchart LR
 ```
 
 Inside the backend, one Hive core sits under both doors. The REST endpoints call the agents; the agents reach the
-Hive only as MCP clients, the same way an outside agent would. Every arrow is a real import: `semantic.py` is drawn
-without one because nothing calls it yet ([LIMITS.md](LIMITS.md#discovery)).
+Hive only as MCP clients, the same way an outside agent would.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
@@ -105,6 +104,11 @@ flowchart TB
   SEM[semantic.py<br/>offline similarity · stems · compounds · concepts<br/>optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
+  RMV[removals.py<br/>withdrawn entities: the hub stops carrying, history stays]:::mod
+  AUD[audit.py<br/>the admin ledger: what changed, when, why]:::mod
+  PRS[peers.py<br/>the peer list, stored: env is only the seed]:::mod
+  SVC[services.py<br/>optional keys, write-only: in, never out]:::mod
+  FLD[folders.py<br/>two agents link their folders: link · grant · read]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -116,16 +120,28 @@ flowchart TB
 
   REST --> GRD
   REST --> A
+  HIVE --> SEM
+  HIVE --> SHR
   HIVE --> BLK
+  FED --> BLK
+  CNX --> CAL
+  CAL --> REP
   REST --> HUB
   MCP --> HUB
   HUB --> CNX
+  HUB --> FLD
+  CNX --> FLD
   HUB --> SHR
-  HUB --> BLK
-  HUB --> CAL --> CNX
   REST --> ADM
-  MCP --> ADM
   ADM --> BLK
+  ADM --> RMV
+  REST --> RMV --> AUD
+  HIVE --> RMV
+  REST --> PRS --> AUD
+  ADM --> PRS
+  FED --> PRS
+  REST --> SVC --> AUD
+  LLM --> SVC
   REST --> LIM
   ADM --> SHR
   ADM --> CAL
@@ -156,7 +172,7 @@ flowchart TB
   REST --> HIVE
   SEED --> HIVE
   HIVE -->|radius > 0| FED --> REP
-  FED -->|peer Hives, HTTP| PEERS([Peer Hives<br/>HIVE_PEER_URLS]):::guard
+  FED -->|peer Hives, HTTP| PEERS([Peer Hives<br/>stored list, HIVE_PEER_URLS seeds it]):::guard
   HIVE --> REP
   HIVE --> DB
 ```
@@ -344,7 +360,14 @@ flowchart LR
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
     D0 -. "X-Admin-Token" .-> D3
-    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id}"]:::door
+    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id} · GET /api/admin/audit"]:::door
+    D7["POST /api/admin/entities/{entity_id}/remove · POST /api/admin/entities/{entity_id}/restore"]:::held
+    D8["GET /api/admin/peers · GET /api/admin/services"]:::door
+    D10["POST /api/admin/services/{name} · DELETE /api/admin/services/{name} · POST /api/admin/services/{name}/check"]:::held
+    D0 -. "X-Admin-Token" .-> D10
+    D9["POST /api/admin/peers · PUT /api/admin/peers · POST /api/admin/peers/remove · POST /api/admin/peers/check"]:::held
+    D0 -. "X-Admin-Token" .-> D9
+    D0 -. "X-Admin-Token" .-> D7
     D4["GET /api/admin/applications"]:::door
     D5["POST /api/admin/applications/{application_id}"]:::held
   end
@@ -403,13 +426,11 @@ Four modules carry the hub's own side of that. [sharing.py](../code/backend/app/
 leave at all — `public`, `confirm`, `push` (held, but never searchable) or `never` — and the stricter of the item's flag
 and the entity's default always wins. [blocklist.py](../code/backend/app/blocklist.py) is the manual override an
 operator reaches for, blocking a peer hub or a single entity in both directions, with a reason that has to be readable
-six months later. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
+six months later. [peers.py](../code/backend/app/peers.py) holds the list of neighbours itself, so an operator adds or drops one while the hub runs and the next search obeys; `HIVE_PEER_URLS` is only what a fresh hub starts from. [removals.py](../code/backend/app/removals.py) is the other override, and it is deliberately not the same one: it takes an entity off *this* hub — out of discovery, not bookable — while keeping every signed version, so a receipt can still prove what the card promised. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
 weeks, for a person to score how the real meeting went; an introduction nobody scores goes stale rather than staying
-open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the number a person choosing a hub
-reads: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told the truth
-about its members, never on how good they were. That number orders the directory, the standing table and the
-neighbours view; the rank factor in the search below is `reputation.py`'s, not this one
-([LIMITS.md](LIMITS.md#trust)).
+open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the only number that
+matters about a peer: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told
+the truth about its members, never on how good they were.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
@@ -481,6 +502,60 @@ A peer that has genuinely never been asked carries `last_asked: null`, and the r
 pretending. One that answered and has since gone quiet keeps the name and count it gave, marked stale, because an
 answer from two minutes ago is more use than no answer at all — as long as the row admits how old it is.
 
+## 7. Two folders link, and only then is anything booked
+
+The index is public and says the *shape* of a business: paths, sizes, digests, never a byte of the contents. So
+between "found you" and "booked you" there is a step of its own, and it is the one the whole product rests on.
+[folders.py](../code/backend/app/folders.py) owns it, in two layers that are deliberately not one layer:
+
+- **The link** is handle to handle, and carries no content at all. What it unlocks is the *manifest*: a linked
+  peer gets to see that the `shared` files exist, which the Card never said. `private` and `hidden` paths are
+  counted and never named — listing a file in order to say it is secret leaks its existence, so a refused grant
+  says the same words for a hidden file as for a file that was never there.
+- **A grant** is per path, and is the only thing that makes bytes readable. It is the owner's to give. `public`
+  is the one case needing no grant: it is already published, and a grant for it would be theatre.
+
+That is the shape [ClaudeConnect](https://github.com/bstadt/cc_daemon) already has — `add_friend` and
+`accept_friend_request` for the link, `add_recipient_to_file` for the grant, both over plain identity strings —
+which is why `LocalFolderLink` (in this process, over the folders in `testdata/vaults/`) and `CcFolderLink` (the
+real library) sit behind one protocol, chosen by `FOLDER_LINK`. The local one is the default and needs no key, no
+network and no new dependency; `/api/health` says which one is in use and, if the real one was asked for and
+could not be had, why the hub is running on the other.
+
+A connection is refused outright when there is no link, because a booking made without one is a booking made on
+what the index said rather than on what the two agents actually agreed.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+  autonumber
+  participant AG as Traveller's agent
+  participant HUB as hub.py
+  participant FLD as folders.py
+  participant CNX as connections.py
+  participant OWN as The owner
+
+  AG->>HUB: hub_connect(requester, entity_id)
+  HUB->>FLD: request_link(requester, entity)
+  Note over FLD: a published, freely connectable Card<br/>is a standing yes; a `confirm` Card is not
+  FLD-->>HUB: link established, or requested
+  HUB->>CNX: request(..., folder_link=link)
+  CNX->>FLD: is this pair actually linked?
+  CNX-->>HUB: open (link established) · requested (link waiting)
+  OWN->>CNX: confirm
+  CNX->>FLD: accept_link — the owner's yes is the owner's yes
+  CNX-->>OWN: open, and the link now holds
+  AG->>FLD: manifest(entity, requester)
+  FLD-->>AG: public · public-summary · shared, and a count of what was withheld
+  OWN->>FLD: grant("entity/rates/2027-spring.md", requester)
+  AG->>FLD: read that one path
+  Note over AG,FLD: no link, or no grant → refused, in the same words either way
+```
+
+A connection row made before any of this existed carries no link, and nothing in the hub asks it for one: an old
+row can still be confirmed, scored and counted. The precondition is on making a new booking, not on reading the
+log of the bookings already made.
+
 ## Who works where
 
 The pictures double as a map of the lanes in [CONTRIBUTING.md](../CONTRIBUTING.md). Pick a box, open its file,
@@ -498,5 +573,6 @@ find its test.
 | Pick a Hive, run a hub | `guard.py`, `admin.py`, `InstanceFinder.tsx`, `AdminPanel.tsx` | `test_admin_login.py`, `InstanceFinder.test.tsx`, `AdminPanel.test.tsx`, `calibration.test.ts` |
 | Where a result came from | `federation.py`, `TraceParts.tsx`, `provenance.ts` | `test_federation.py`, `TraceParts.test.tsx`, `provenance.test.ts` |
 | The network, live | `admin.py`, `calibration.py`, `NetworkPanel.tsx`, `network.ts` | `test_hub_api.py`, `NetworkPanel.test.tsx`, `network.test.ts` |
+| Folders linked, then booked | `folders.py`, `connections.py` | `test_folders.py`, `test_hub_trust.py` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |

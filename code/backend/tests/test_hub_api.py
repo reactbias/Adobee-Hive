@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from mcp import Client
 
-from app import blocklist, config, connections, db, hive, registration, sharing
+from app import blocklist, config, connections, db, folders, hive, registration, sharing
 from app.mcp_server import server
 
 
@@ -19,6 +19,9 @@ def clean_slate(client):
     with db.write() as cur:
         cur.execute("DELETE FROM hub_connections")
         cur.execute("DELETE FROM hub_blocklist")
+        cur.execute("DELETE FROM folder_links")
+        cur.execute("DELETE FROM folder_grants")
+    folders.reset()
     yield
 
 
@@ -32,6 +35,16 @@ def _mcp(tool: str, args: dict) -> dict:
 
 def _an_entity() -> str:
     return hive.list_cards()[0]["id"]
+
+
+def _introduced(requester: str, target: str, **kw) -> dict:
+    """A booking, with the folder link it now stands on made first (folders.py, connections.link_for).
+
+    The tests below are about scoring, standing and the admin counts. That they all have to link
+    two folders first is the precondition working.
+    """
+    folders.open_link(requester, target, auto_accept=True)
+    return connections.request(requester, target, **kw)
 
 
 # ---------------------------------------------------------------- connect
@@ -68,12 +81,38 @@ def test_an_unknown_entity_is_refused_rather_than_logged(client):
     assert connections.awaiting_rating() == [], "a refused request leaves no row behind"
 
 
+def test_connecting_links_the_two_folders_first_and_says_what_that_opened(client):
+    """The middle of the story, now real: the folders link, and the answer carries the manifest.
+
+    A `public` Card is a standing yes to being contacted — publishing it is the yes — so the link is
+    established in the same step and the connection opens. The manifest is what the link bought:
+    what this requester may see of that folder, and a count of what was withheld without naming it.
+    """
+    entity = _an_entity()
+    out = _mcp("hub_connect", {"requester": "mara@example.com", "entity_id": entity})
+
+    assert out["folder_link"].startswith("fl-")
+    assert folders.linked("mara@example.com", entity)
+    assert out["folder"]["owner"] == entity and out["folder"]["linked"] is True
+    assert "withheld" in out["folder"], "what is not shown is counted, never named"
+
+
+def test_a_booking_at_the_rest_door_without_a_folder_link_is_refused_readably(client):
+    """connections.request is the door this invariant sits on, so the refusal has to read as English."""
+    res = client.post("/api/hub/connections/cx-nope/confirm")
+    assert res.status_code == 400
+
+    with pytest.raises(connections.ConnectionError_) as refused:
+        connections.request("mara@example.com", _an_entity(), needs_confirmation=False)
+    assert "connect their folders before a booking is made" in str(refused.value)
+
+
 # ---------------------------------------------------------------- score
 
 
 def test_scoring_an_introduction_reports_the_gap_against_what_was_promised(client):
     """The moment the trust layer learns something: promised against found."""
-    row = connections.request(
+    row = _introduced(
         "mara@example.com",
         "hotel-far",
         target_hub="zurich",
@@ -92,25 +131,25 @@ def test_scoring_an_introduction_reports_the_gap_against_what_was_promised(clien
 
 
 def test_a_score_outside_the_scale_is_refused_at_the_rest_door(client):
-    row = connections.request("m@example.com", "x", published_rating=40, needs_confirmation=False)
+    row = _introduced("m@example.com", "x", published_rating=40, needs_confirmation=False)
     assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 51}).status_code == 422
     assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": -1}).status_code == 422
 
 
 def test_scoring_twice_is_refused(client):
-    row = connections.request("m@example.com", "x", published_rating=40, needs_confirmation=False)
+    row = _introduced("m@example.com", "x", published_rating=40, needs_confirmation=False)
     assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 40}).status_code == 200
     assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 10}).status_code == 400
 
 
 def test_the_owner_can_decline_and_it_never_becomes_a_rating(client):
-    row = connections.request("m@example.com", "lena", needs_confirmation=True)
+    row = _introduced("m@example.com", "lena", needs_confirmation=True)
     assert client.post(f"/api/hub/connections/{row['id']}/decline").status_code == 200
     assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 50}).status_code == 400
 
 
 def test_an_agent_can_list_what_is_still_waiting_on_a_human(client):
-    row = connections.request("mara@example.com", "x", published_rating=40, needs_confirmation=False)
+    row = _introduced("mara@example.com", "x", published_rating=40, needs_confirmation=False)
     out = _mcp("hub_connections", {"requester": "mara@example.com"})
     assert [c["id"] for c in out["awaiting_rating"]] == [row["id"]]
 
@@ -120,12 +159,10 @@ def test_an_agent_can_list_what_is_still_waiting_on_a_human(client):
 
 def test_hub_standing_reports_lower_is_better_and_says_so(client):
     for _ in range(3):
-        row = connections.request(
-            "m@example.com", "x", via_hub="boastful", published_rating=50, needs_confirmation=False
-        )
+        row = _introduced("m@example.com", "x", via_hub="boastful", published_rating=50, needs_confirmation=False)
         connections.rate(row["id"], 25)
     for _ in range(3):
-        row = connections.request("m@example.com", "y", via_hub="modest", published_rating=25, needs_confirmation=False)
+        row = _introduced("m@example.com", "y", via_hub="modest", published_rating=25, needs_confirmation=False)
         connections.rate(row["id"], 50)
 
     peers = {p["hub"]: p for p in _mcp("hub_standing", {})["peers"]}
@@ -140,7 +177,7 @@ def test_hub_standing_reports_lower_is_better_and_says_so(client):
 def test_the_admin_overview_counts_the_three_stores(client):
     blocklist.block(blocklist.HUB, "spam.example", "forgery")
     blocklist.block(blocklist.ENTITY, "hotel-dodgy", "fake")
-    connections.request("m@example.com", "x", published_rating=40, needs_confirmation=False)
+    _introduced("m@example.com", "x", published_rating=40, needs_confirmation=False)
 
     out = client.get("/api/admin/overview").json()
     assert out["index"]["entities"] > 0

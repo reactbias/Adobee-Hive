@@ -23,6 +23,7 @@ Six questions a reviewer asks, one hop each.
 | Question | Page |
 | --- | --- |
 | What is this, and why is it plausible in five years? | [VISION.md](documentation/VISION.md) |
+| What is in the JSON every team reads? | [The Card](#the-card-the-json-every-team-reads-and-writes) |
 | How does a search reach another Hive? | [FEDERATION.md](documentation/FEDERATION.md#how-far-to-look-the-radius) |
 | How is a Hive measured, and how is a business? | [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
 | How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
@@ -32,6 +33,130 @@ Six questions a reviewer asks, one hop each.
 
 And the one a jury asks last: **what does it not do?**
 [LIMITS.md](documentation/LIMITS.md) — every gap we know of, checked against the code.
+
+## The Card: the JSON every team reads and writes
+
+One entity — a hotel, a freelancer, an electrician — is one **Card**. It is the only thing that
+crosses a hub boundary, so it is the contract between the backend, the traveller UI, the onboarding
+flow and anyone building a search over us. Everything below is read off a live hub, not from a
+design note; `GET /api/hive/cards/{id}` on any running Hive serves the real thing.
+
+**The rule that matters most:** `offers` and `needs` are the index. `kind` is only a filter. A hub
+carries a tavern, a frontend developer and an electrician side by side, so nothing downstream may
+assume a narrow domain — group by what someone offers or needs, never by what they are.
+
+### Required, and that is all
+
+The shape check (`registration._check_shape`) enforces exactly three fields. Everything else is
+optional and routinely absent, so **guard every other read**.
+
+| Field | Rule |
+| --- | --- |
+| `id` | `^[a-z0-9][a-z0-9-]{1,62}$` — 2–63 chars, lower-case, digits, hyphens. Unique per hub |
+| `name` | non-empty. What a person sees in a result |
+| `kind` | non-empty, free text. `hotel`, `person`, `service`, `cafe` … — a filter, not a taxonomy |
+
+### The rest of the Card
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `description` | string | Up to 2000 characters. **Write it for discovery** — in a web where the visitor is an agent, this is the pitch to that agent |
+| `tagline` | string | Short form. Often the first line of `description` |
+| `offers` | list of `{title, summary, price_chf?}` | **Primary index.** What this entity can do for you |
+| `needs` | list of same | **Primary index.** What it is looking for. Frequently empty |
+| `features` | list of strings | Flat tags |
+| `units` | list of `{id, name, max_guests, price_chf, quantity}` | Bookable things, where the kind has any |
+| `contact` | object | Channel → value. Only the channels the owner gave; a channel may be present but empty |
+| `contact_sharing` | object | Channel → one of the four flags below. A channel absent here is `public` |
+| `structure` | list of `{path, bytes, visibility, digest}` | The folder's **shape, never its contents**. Every file is listed; only markdown is ever read |
+| `sharing` | string | The entity-wide default flag |
+| `custody` | `"owner"` or `"hub"` | Who was *recorded* as holding the key — see the warning below |
+| `owner_public_key` | base64 | Recorded at registration. **Not what signatures are checked against** |
+| `trust` | object | `{signature_valid, claimed, provenance, signature, public_key, algorithm}` |
+| `version`, `published_at`, `valid_until` | int, ISO 8601, ISO 8601 | `valid_until` is 90 days out |
+| `registered_via` | string | The application id that admitted it |
+| `slug` | string | Usually equal to `id` |
+
+### Two sharing vocabularies — do not mix them up
+
+This has already cost one team an afternoon. They are different scales on different fields.
+
+**Item flags** (`sharing`, `contact_sharing`) — from `app/sharing.py`:
+
+| Flag | In a search | A connection request |
+| --- | --- | --- |
+| `public` | yes | granted at once |
+| `confirm` | yes | waits for the owner's yes |
+| `push` | **no** | cannot be requested — the owner pushes it to someone they chose |
+| `never` | no | never |
+
+The stricter of the entity default and the item's own flag always wins, so loosening an account
+default can never quietly open an item that was closed.
+
+**File visibility** (`structure[].visibility`) — a five-value scale: `public`, `public-summary`,
+`private`, `shared`, `hidden`. `private` collapses to a folder and a file **count** — no names, no
+digest. `shared` and `hidden` are **absent from the Card entirely**, because listing a file in order
+to say it is secret leaks its existence.
+
+### ⚠️ Two keys, and the one you want is not the obvious one
+
+A Card carries `owner_public_key`, and `/api/hub/registration` says *"bring a public key and you
+keep the private half"*. **Verify against `trust.public_key` instead.** `hive.publish` mints and
+keeps a per-card signing key whichever custody was recorded, and that key — not
+`owner_public_key` — is the one published in `/.well-known/hive.json` and used by every check. On a
+live hub the two fields hold different values on the same Card. Owner-held keys are recorded today,
+not yet honoured; `custody` is an intention, not a guarantee. Tracked in
+[LIMITS.md](documentation/LIMITS.md).
+
+### Always say which hub a result came from
+
+A search result adds `provenance` alongside the Card. Read the chain **origin first**:
+
+```json
+"provenance": { "path": ["bern", "basel"], "hops": 1, "origin": "bern" }
+```
+
+That card is carried by Basel and originally from Bern. A result relayed twice shows every hop, and
+`also_reached_by` lists other routes the same card arrived by. **Showing the carrying hub is a
+product requirement, not a nicety** — a user must never be unable to tell whose directory answered.
+
+### A real Card, trimmed
+
+```json
+{
+  "id": "hotel-krafft", "kind": "hotel", "name": "Hotel Krafft Basel",
+  "description": "26 rooms on the Rhine, since 1872. The quiet side of the old town …",
+  "offers": [{ "title": "Courtyard single", "summary": "1 guest, CHF 128", "price_chf": 128 }],
+  "needs": [],
+  "contact": { "email": "hallo@hotelkrafft.example", "phone": "+41 61 690 91 30", "mobile": "" },
+  "contact_sharing": { "mobile": "confirm" },
+  "structure": [{ "path": "about.md", "bytes": 258, "visibility": "public-summary",
+                  "digest": "sha256:3039dc6315ac" }],
+  "custody": "owner",
+  "owner_public_key": "X7YBkN0iVSnj61GSO333iypZ…",
+  "trust": { "signature_valid": true, "public_key": "hB4uD9KaaA1I0VGWGfWNJJ…",
+             "algorithm": "Ed25519 over canonical JSON (sorted keys, no spaces)" },
+  "version": 1, "published_at": "2026-10-31T19:28:58+00:00",
+  "valid_until": "2027-01-29T19:28:58+00:00"
+}
+```
+
+### Gotchas worth knowing before you debug
+
+- **`matches` is the whole hub, ranked** — every entity that failed no hard constraint, including
+  `score: 0`. Threshold it yourself.
+- **An unknown card id returns 400, not 404.** Every `HiveError` maps to 400.
+- **`rating` and `rating_count` are on search results, not on a Card.** They are derived from
+  `trust.verified_reviews`; a Card from `/api/hive/cards/{id}` has no top-level `rating`.
+- **A `person` Card can carry contact details.** Older prose said otherwise. What is real is that
+  some kinds default to `confirm` rather than `public`.
+- **Field sizes are enforced per field**, and `GET /api/hub/registration` publishes the table, so
+  read the ceilings from the hub rather than hard-coding them.
+
+Deeper, per endpoint: the hub publishes its own field ceilings at `GET /api/hub/registration`, and
+every search endpoint is live at `/docs` on any running Hive. A full written spec — real requests
+and responses, the scoring breakdown, and a fixture that serves three vault folders to an agent
+that crawls unstructured files — lands with `documentation/SEARCH_API.md`.
 
 ## The next guest is an agent
 

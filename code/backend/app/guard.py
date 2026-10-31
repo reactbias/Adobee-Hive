@@ -59,6 +59,17 @@ def require_admin(token: str | None, expected: str, password: str = "") -> None:
     raise HTTPException(403, "Missing, wrong or expired X-Admin-Token.")
 
 
+def credential_kind(token: str | None, static_token: str) -> str:
+    """Which credential an accepted admin request used, for the ledger. Never the credential itself.
+
+    Called only after `require_admin` has already accepted the request, so anything that is not the
+    static token is a session token it minted. Compared in constant time like every other use.
+    """
+    if static_token and hmac.compare_digest(token or "", static_token):
+        return "static token"
+    return "session"
+
+
 def check_admin_password(given: str, expected: str) -> bool:
     """Compare a typed password with the configured one in constant time. Never `==`, never logged."""
     if not expected:

@@ -18,11 +18,13 @@ from . import (
     activity,
     admin,
     agent,
+    audit,
     blocklist,
     config,
     connections,
     db,
     federation,
+    folders,
     guard,
     hive,
     hive_seed,
@@ -30,10 +32,13 @@ from . import (
     limits,
     mcp_server,
     owner,
+    peers,
     registration,
+    removals,
     replies,
     rulesets,
     semantic,
+    services,
     simulate,
     waiting,
 )
@@ -52,8 +57,13 @@ async def lifespan(_: FastAPI):
     waiting.init()
     activity.init()
     blocklist.init()
+    folders.init()
     connections.init()
     registration.init()
+    audit.init()
+    removals.init()
+    peers.init()
+    services.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     # A hub with peers configured asks them who they are straight away and then on a timer, so the directory
@@ -99,8 +109,12 @@ def _hive_call(fn, *args, **kwargs):
         hive.HiveError,
         hub.HubError,
         connections.ConnectionError_,
+        folders.FolderError,
         blocklist.BlockError,
         registration.RegistrationError,
+        removals.RemovalError,
+        peers.PeerError,
+        services.ServiceError,
     ) as err:
         raise HTTPException(400, str(err)) from err
 
@@ -113,13 +127,15 @@ def health() -> dict[str, Any]:
     """Report whether the backend is up, which model vendor the agents use and which similarity provider ranks.
 
     The page shows "AI live" or "Offline mode" from this, so it has to be true: `semantic` names the provider
-    discovery is actually ranking with, which is the offline one unless a key is configured. Never anything
-    about a credential — this endpoint is public.
+    discovery is actually ranking with, which is the offline one unless a key is configured. The vendor is read
+    from `services` rather than from the environment, because an operator can set a key while the hub runs and
+    the environment would then be stale. Never anything about a credential - this endpoint is public.
     """
-    claude = config.LLM_PROVIDER == "claude"
+    claude = services.provider() == "claude"
     return {
         "status": "ok",
-        "llm": config.LLM_PROVIDER if config.LLM_ENABLED else "mock",
+        # The vendor in use, never a key and never a fingerprint: /api/health is public.
+        "llm": services.provider() if services.enabled() else "mock",
         "semantic": semantic.status()["provider"],
         "model": config.CLAUDE_MODEL if claude else config.OPENAI_MODEL,
         "fast_model": config.CLAUDE_FAST_MODEL if claude else config.OPENAI_MODEL,
@@ -345,7 +361,7 @@ def demo_reset(request: Request) -> dict[str, Any]:
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
-    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
+    if services.enabled() and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
         locale = replies.locale_from(request.headers.get("accept-language", ""))
@@ -537,9 +553,16 @@ AdminToken = Annotated[
 ]
 
 
-def admin_only(x_admin_token: AdminToken = None) -> None:
-    """Dependency for every admin write: fails closed, and accepts either credential."""
+def admin_only(x_admin_token: AdminToken = None) -> str:
+    """Dependency for every admin write: fails closed, accepts either credential, and names which.
+
+    Returns the *kind* of credential, never the credential: `"static token"` for the ADMIN_TOKEN
+    that curl and CI use, `"session"` for one minted from the password in a browser. That is the
+    most the ledger can honestly record about who acted — the hub has one shared password, so there
+    is no person to name (see `audit.py`).
+    """
     guard.require_admin(x_admin_token, config.ADMIN_TOKEN, config.ADMIN_PASSWORD)
+    return guard.credential_kind(x_admin_token, config.ADMIN_TOKEN)
 
 
 class LoginBody(BaseModel):
@@ -611,22 +634,137 @@ def admin_blocklist(kind: str | None = None) -> dict[str, Any]:
 
 
 @app.post("/api/admin/blocklist")
-def admin_block(body: BlockBody, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_block(body: BlockBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Block a peer hub or an entity, in both directions."""
     return _hive_call(blocklist.block, body.kind, body.subject, body.reason)
 
 
 @app.delete("/api/admin/blocklist/{kind}/{subject}")
-def admin_unblock(kind: str, subject: str, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_unblock(kind: str, subject: str, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Lift a block."""
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
+
+
+# ---------------------------------------------------------------- optional services and their keys
+
+
+class ServiceKeyBody(BaseModel):
+    """A key an operator is storing. Write-only: no endpoint ever gives it back."""
+
+    secret: str = Field(..., min_length=1, max_length=500, description="The key. Never returned, never logged")
+
+
+@app.get("/api/admin/services")
+def admin_services(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """Every optional integration: what it is for, whether a key is set and where from, how it tested.
+
+    Never a key. The only things about a stored key that leave this hub are its fingerprint and its
+    last four characters, which is enough to tell two keys apart and no use to anyone else.
+    """
+    return services.listing()
+
+
+@app.post("/api/admin/services/{name}")
+def admin_set_service_key(name: str, body: ServiceKeyBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Store a key for one optional service. The next call that needs it uses it: no restart.
+
+    The answer is the service's status, so the key cannot come back even by accident.
+    """
+    return _hive_call(services.set_key, name, body.secret, stored_by=credential)
+
+
+@app.delete("/api/admin/services/{name}")
+def admin_clear_service_key(name: str, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Forget the stored key. The hub falls back to the environment, or to working without one."""
+    return _hive_call(services.clear_key, name, cleared_by=credential)
+
+
+@app.post("/api/admin/services/{name}/check")
+def admin_check_service(name: str, _: str = Depends(admin_only)) -> dict[str, Any]:
+    """Make one cheap authenticated call with the key in use and say whether it worked.
+
+    So an operator finds out before a demo rather than during it. A key that does not work is a
+    200 with `working: false` — an answer, not a server error — and the message is scrubbed of the
+    key first, because vendors do echo a bad key back.
+    """
+    return _hive_call(services.check, name)
+
+
+# ---------------------------------------------------------------- the connected hubs
+
+
+class PeerBody(BaseModel):
+    """A peer hub an operator is adding or editing. The reason goes in the ledger, not in the row."""
+
+    url: str = Field(..., min_length=1, max_length=300, description="The peer's base URL, http(s)")
+    reason: str = Field(..., min_length=1, max_length=500, description="Why, readable six months from now")
+    hub_id: str = Field("", max_length=200, description="Its id, if you know it before asking")
+    name: str = Field("", max_length=200, description="What to call it here; a probe fills this in if empty")
+    note: str = Field("", max_length=500)
+
+
+class PeerRemovalBody(BaseModel):
+    """A peer an operator is dropping. Not a block: see `peers.py` and the blocklist."""
+
+    url: str = Field(..., min_length=1, max_length=300)
+    reason: str = Field(..., min_length=1, max_length=500, description="Readable six months from now")
+
+
+@app.get("/api/admin/peers")
+def admin_peers(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """The peers this hub asks: URL, hub id, name, whether it answers, its calibration, its state.
+
+    A database read. Reachability is the stored result of the last `POST /api/admin/peers/check`,
+    never a fetch made while rendering, so an unreachable peer cannot make this page slow or blank.
+    """
+    return admin.peer_table()
+
+
+@app.post("/api/admin/peers")
+def admin_add_peer(body: PeerBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Add a peer hub. The next federated search asks it: no restart, no redeploy."""
+    return _hive_call(
+        peers.add, body.url, body.reason, hub_id=body.hub_id, name=body.name, note=body.note, added_by=credential
+    )
+
+
+@app.put("/api/admin/peers")
+def admin_edit_peer(body: PeerBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Change what this hub records about a peer: its id, the name shown here, a note."""
+    return _hive_call(
+        peers.edit,
+        body.url,
+        body.reason,
+        hub_id=body.hub_id or None,
+        name=body.name or None,
+        note=body.note or None,
+        changed_by=credential,
+    )
+
+
+@app.post("/api/admin/peers/remove")
+def admin_remove_peer(body: PeerRemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Stop asking a peer. Not a block: use the blocklist to refuse it in both directions."""
+    return _hive_call(peers.remove, body.url, body.reason, removed_by=credential)
+
+
+@app.post("/api/admin/peers/check")
+async def admin_check_peers(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """Ask every peer who it is, now rather than at the next background round, and return the table.
+
+    The same `federation.ask_peers` the hub runs on a timer: all peers at once, each capped at
+    `PEER_ASK_TIMEOUT_S`, nothing raised. This is the button for an operator who has just added a
+    neighbour and does not want to wait `PEER_ASK_SECONDS` to see whether it answers.
+    """
+    await federation.ask_peers()
+    return admin.peer_table()
 
 
 # ---------------------------------------------------------------- what this hub carries
 
 
 @app.get("/api/admin/entities")
-def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_entities(_: str = Depends(admin_only)) -> dict[str, Any]:
     """Every entity this hub carries: id, name, kind, claimed, rating and count, when it was published.
 
     Behind the admin token although every field is also on the public card, because the list itself
@@ -636,10 +774,46 @@ def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
 
 
 @app.get("/api/admin/entities/{entity_id}")
-def admin_entity(entity_id: str, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_entity(entity_id: str, _: str = Depends(admin_only)) -> dict[str, Any]:
     """One entity in full: the signed card, its offers and needs, contact with the sharing flags,
     its trust block and its signature state, and whether this hub has blocked it."""
     return _hive_call(admin.entity, entity_id)
+
+
+class RemovalBody(BaseModel):
+    """An operator taking an entity off this hub, or putting it back. The reason is not optional."""
+
+    reason: str = Field(..., min_length=1, max_length=500, description="Readable six months from now")
+
+
+@app.post("/api/admin/entities/{entity_id}/remove")
+def admin_remove_entity(entity_id: str, body: RemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Stop carrying an entity: out of discovery, not bookable, signed history kept.
+
+    A withdrawal rather than a delete, because `hive_card_history` is what lets a receipt prove
+    what a card said on the day it was booked (see `removals.py` and `SECURITY.md`). Removing is
+    not blocking: use the blocklist to refuse an entity wherever it comes from.
+    """
+    return _hive_call(removals.withdraw, entity_id, body.reason, removed_by=credential)
+
+
+@app.post("/api/admin/entities/{entity_id}/restore")
+def admin_restore_entity(entity_id: str, body: RemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Carry an entity again. The withdrawal goes; the ledger keeps both decisions."""
+    return _hive_call(removals.restore, entity_id, body.reason, restored_by=credential)
+
+
+@app.get("/api/admin/audit")
+def admin_audit(subject: str = "", action: str = "", limit: int = 200, _: str = Depends(admin_only)) -> dict[str, Any]:
+    """The admin ledger: what was changed, when, why, and with which credential.
+
+    `who_limit` comes back with it, because this hub has one shared password and a ledger that
+    implied otherwise would be worse than none.
+    """
+    return {
+        "entries": audit.entries(subject=subject, action_prefix=action, limit=limit),
+        "who_limit": audit.WHO_LIMIT,
+    }
 
 
 # ---------------------------------------------------------------- joining this hub
@@ -702,6 +876,6 @@ def admin_applications(state: str = "") -> dict[str, Any]:
 
 
 @app.post("/api/admin/applications/{application_id}")
-def admin_decide(application_id: str, body: DecisionBody, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_decide(application_id: str, body: DecisionBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)

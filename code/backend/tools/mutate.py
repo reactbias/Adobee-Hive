@@ -40,10 +40,14 @@ SUITE = [
     "tests/test_hive.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
+    "tests/test_folders.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
-    "tests/test_limits.py",
+    "tests/test_admin_manage.py",
+    "tests/test_admin_peers.py",
+    "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
+    "tests/test_limits.py",
 ]
 
 
@@ -188,6 +192,66 @@ CURATED: list[Mutant] = [
         "bag += []",
     ),
     Mutant(
+        "hive.py",
+        "a withdrawn entity is discoverable again, so kicking one off the hub does nothing",
+        "    if not include_withdrawn:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "a withdrawn entity can still be booked, so the hub sells what it no longer carries",
+        '    carried(card["id"])\n    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+        '    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+    ),
+    Mutant(
+        "peers.py",
+        "a peer an operator removed is asked again, so dropping a neighbour does nothing",
+        "    return [url for url, state in rows if state == ACTIVE]",
+        "    return [url for url, state in rows]",
+    ),
+    Mutant(
+        "peers.py",
+        "the environment wins over the stored list, so nothing an operator adds is ever asked",
+        "    if not rows:",
+        "    if True:",
+    ),
+    Mutant(
+        "peers.py",
+        "a peer change is accepted with no reason, so nobody can tell later why a hub was dropped",
+        '        raise PeerError("a peer change needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
+    ),
+    Mutant(
+        "services.py",
+        "a stored key comes back in the status call, so the panel shows the key it promised never to",
+        '        "fingerprint": str(row["fingerprint"]) if stored else "",',
+        '        "fingerprint": str(row["secret"]) if stored else "",',
+    ),
+    Mutant(
+        "services.py",
+        "a vendor's error keeps the key it echoed back, so a bad key is written into the database",
+        '    text = message.replace(secret, "[key]") if secret else message',
+        "    text = message",
+    ),
+    Mutant(
+        "services.py",
+        "an empty key is stored, so a service reads as configured and every call fails",
+        '    if not secret:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
+        '    if False:\n        raise ServiceError("a key cannot be empty; clear the service instead")',
+    ),
+    Mutant(
+        "removals.py",
+        "a removal is accepted with no reason, so nobody can tell later why an entity is missing",
+        '        raise RemovalError("a removal needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
+    ),
+    Mutant(
+        "audit.py",
+        "the reason is dropped on the way into the ledger, so it records only that something happened",
+        '        "reason": (reason or "")[:MAX_REASON],',
+        '        "reason": "",',
+    ),
+    Mutant(
         "calibration.py",
         "the error loses its sign, so a modest hub is punished like a boastful one",
         "return int(published) - int(realised)",
@@ -216,6 +280,36 @@ CURATED: list[Mutant] = [
         "a connection can be scored twice, so a rating becomes negotiable",
         'if row["state"] == RATED:',
         "if False:",
+    ),
+    Mutant(
+        "connections.py",
+        "a booking can be made with no folder link at all, so the whole handshake is decorative",
+        "link = link_for(requester, target, folder_link, opening=not needs_confirmation)",
+        'link = {"id": ""}',
+    ),
+    Mutant(
+        "connections.py",
+        "a booking opens on a folder link the other side never accepted",
+        'if opening and link["state"] != folders.ESTABLISHED:',
+        "if False:",
+    ),
+    Mutant(
+        "folders.py",
+        "a hidden or private file becomes readable, which is the one thing the folder link must never do",
+        'if entry["visibility"] not in ADMITTED:',
+        "if False:",
+    ),
+    Mutant(
+        "folders.py",
+        "a grant needs only a link that was asked for, which makes the other side's yes decorative",
+        'if link is None or link["state"] != ESTABLISHED:',
+        "if link is None:",
+    ),
+    Mutant(
+        "folders.py",
+        "an unmarked file is published, so a folder opens itself by saying nothing",
+        "DEFAULT_VISIBILITY = PUBLIC_SUMMARY",
+        "DEFAULT_VISIBILITY = PUBLIC",
     ),
     Mutant(
         "sharing.py",
@@ -365,12 +459,16 @@ SWAPS = [
 ]
 TARGETS = [
     "federation.py",
+    "folders.py",
     "reputation.py",
     "calibration.py",
     "connections.py",
     "sharing.py",
     "registration.py",
     "semantic.py",
+    "removals.py",
+    "audit.py",
+    "peers.py",
     "limits.py",
 ]
 
@@ -415,8 +513,13 @@ def live_mutants() -> list[Mutant]:
     return found
 
 
-def run_suite(timeout: int = 120) -> bool:
-    """True when the suite is green. A timeout counts as caught: the mutant hung it."""
+def run_suite(timeout: int = 120, keep: list[str] | None = None) -> bool:
+    """True when the suite is green. A timeout counts as caught: the mutant hung it.
+
+    `keep` collects pytest's own output for the one caller that needs it — the pre-flight, which
+    reports "the suite is already red" and must be able to say which test. Without that, a red
+    pre-flight in CI is a dead end: the harness swallows the only copy of the failure.
+    """
     try:
         done = subprocess.run(
             [sys.executable, "-m", "pytest", "-x", "-q", "--no-header", "-p", "no:cacheprovider", *SUITE],
@@ -426,7 +529,11 @@ def run_suite(timeout: int = 120) -> bool:
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
+        if keep is not None:
+            keep.append(f"pytest did not finish within {timeout}s")
         return False
+    if keep is not None:
+        keep.append((done.stdout or "") + (done.stderr or ""))
     return done.returncode == 0
 
 
@@ -529,8 +636,10 @@ def main() -> int:
         return len(stray)
 
     print("Checking the suite is green before we start...")
-    if not run_suite():
+    output: list[str] = []
+    if not run_suite(keep=output):
         print("The suite is already red. Fix that first; mutation results would be meaningless.")
+        print("\n".join("    " + line for line in "\n".join(output).strip().splitlines()[-30:]))
         return 1
     print("Green.\n")
 

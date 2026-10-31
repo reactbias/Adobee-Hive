@@ -191,6 +191,8 @@ export interface Trust {
   freshness_days: number | null;
   /** False for a card compiled from public sources: signed by the Hive as compiler, not by the business. */
   claimed: boolean;
+  /** False when this hub withdrew the entity. The card and its signed history are untouched either way. */
+  carried?: boolean;
   provenance?: Provenance | null;
 }
 export interface Provenance {
@@ -743,10 +745,22 @@ export interface AdminEntity {
   version: number | null;
   signature_valid: boolean;
   bookable: boolean;
+  /** False when this hub withdrew it: out of search, not bookable, signed history kept. */
+  carried: boolean;
+  removal: AdminRemoval | null;
+}
+/** One withdrawal: this hub stopped carrying an entity, and said why. */
+export interface AdminRemoval {
+  entity_id: string;
+  reason: string;
+  removed_at: string | null;
+  removed_by: string;
 }
 export interface AdminEntities {
   entities: AdminEntity[];
+  /** What the hub carries, so a withdrawn entity is listed but not counted. */
   count: number;
+  withdrawn: number;
 }
 /** One side of the market an entity is indexed by: what it offers, or what it needs. */
 export interface AdminSide {
@@ -785,6 +799,97 @@ export interface AdminEntityDetail {
   /** Blocked is not the same as removed: blocking refuses it wherever it comes from. */
   blocked: boolean;
   block: BlockEntry | null;
+  /** Carried is this hub's side of it: a withdrawn entity is out of search here and nowhere else. */
+  carried: boolean;
+  removal: AdminRemoval | null;
+}
+/** One row of the admin ledger. `actor` is always "admin": one shared password, so no person to name. */
+export interface AuditEntry {
+  id: string;
+  at: string | null;
+  action: string;
+  subject: string;
+  reason: string;
+  actor: string;
+  credential: string;
+  detail: string;
+}
+export interface AdminAudit {
+  entries: AuditEntry[];
+  who_limit: string;
+}
+/** One peer hub as an operator acts on it: where it is, what it is called, whether it answers, how it rates. */
+export interface AdminPeer {
+  url: string;
+  /** The id to use: what the peer told us, or its host until anyone has asked. */
+  hub: string;
+  hub_id: string;
+  name: string;
+  note: string | null;
+  /** "active" or "removed". A removed row stays, so the environment seed cannot put the peer back. */
+  state: string;
+  added_at: string | null;
+  added_by: string | null;
+  changed_at: string | null;
+  removed_at: string | null;
+  removed_reason: string | null;
+  /** What the peer says about itself, from federation's background asking. False until it answers once. */
+  known: boolean;
+  description: string;
+  verification: string;
+  admission: string;
+  /** None rather than 0 for a hub that has not published a count: unknown is never drawn as zero. */
+  entities: number | null;
+  /** When we last tried, and whether that try worked. Null means genuinely never asked, not refused. */
+  last_asked: string | null;
+  last_asked_ok: boolean | null;
+  last_answered: string | null;
+  /** The last ask failed, so the name and count on screen are an older answer rather than the current one. */
+  stale: boolean;
+  /** Blocked is not removed: a block refuses the hub in both directions. */
+  blocked: boolean;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+export interface AdminPeers {
+  peers: AdminPeer[];
+  live: string[];
+  seed: string[];
+  /** True while nothing has been stored: HIVE_PEER_URLS is still the live list. */
+  from_environment: boolean;
+  blocked_hubs: string[];
+}
+/** One optional integration. A key is never part of this: only presence, a fingerprint and four characters. */
+export interface AdminService {
+  name: string;
+  label: string;
+  purpose: string;
+  /** What the hub does without it. Empty means nothing stops working. */
+  without: string;
+  /** The environment variable that seeds it, so an operator can set it there instead. */
+  env: string;
+  configured: boolean;
+  /** "stored" (set here), "environment" (the deployment's own) or "none". */
+  source: string;
+  stored: boolean;
+  fingerprint: string;
+  last_four: string;
+  stored_at: string | null;
+  /** Null until someone tests it: untested is not a failure. */
+  working: boolean | null;
+  checked_at: string | null;
+  last_error: string;
+  testable: boolean;
+  storage_warning: string;
+}
+export interface AdminServices {
+  services: AdminService[];
+  provider: string;
+  enabled: boolean;
+  storage_warning: string;
 }
 export interface AdminNeighbours {
   peers: Peer[];
@@ -888,6 +993,53 @@ export const api = {
   /** One entity in full: the signed card, its offers and needs, contact flags, trust and signature. */
   adminEntity: (id: string) =>
     call<AdminEntityDetail>(`/api/admin/entities/${encodeURIComponent(id)}`, { headers: adminHeaders() }),
+  /** Stop carrying an entity: out of search, not bookable, signed history kept. The reason is required. */
+  adminRemoveEntity: (id: string, reason: string) =>
+    post<{ entity_id: string; carried: boolean; history_kept: boolean }>(
+      `/api/admin/entities/${encodeURIComponent(id)}/remove`,
+      { reason },
+      adminHeaders(),
+    ),
+  adminRestoreEntity: (id: string, reason: string) =>
+    post<{ entity_id: string; carried: boolean }>(
+      `/api/admin/entities/${encodeURIComponent(id)}/restore`,
+      { reason },
+      adminHeaders(),
+    ),
+  /** The admin ledger, newest first; pass a subject for one entity's or one peer's history. */
+  adminAudit: (subject = "") =>
+    call<AdminAudit>(`/api/admin/audit${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`, {
+      headers: adminHeaders(),
+    }),
+  /** The peers this hub asks. A database read: it never fetches from a peer, so a dead one costs nothing. */
+  adminPeers: () => call<AdminPeers>("/api/admin/peers", { headers: adminHeaders() }),
+  /** Add a peer. The next federated search asks it: no restart, no redeploy. */
+  adminAddPeer: (url: string, reason: string, name = "") =>
+    post<AdminPeer>("/api/admin/peers", { url, reason, name }, adminHeaders()),
+  adminEditPeer: (url: string, reason: string, name = "", hub_id = "") =>
+    call<AdminPeer>("/api/admin/peers", {
+      method: "PUT",
+      body: JSON.stringify({ url, reason, name, hub_id }),
+      headers: adminHeaders(),
+    }),
+  /** Stop asking a peer. Not a block: a block refuses it in both directions (adminBlock). */
+  adminRemovePeer: (url: string, reason: string) =>
+    post<AdminPeer>("/api/admin/peers/remove", { url, reason }, adminHeaders()),
+  /** Ask every peer whether it answers, in parallel under one deadline, and store the result. */
+  adminCheckPeers: () => post<{ peers: AdminPeer[] }>("/api/admin/peers/check", {}, adminHeaders()),
+  /** The optional integrations and whether a key is set. Never returns a key. */
+  adminServices: () => call<AdminServices>("/api/admin/services", { headers: adminHeaders() }),
+  /** Store a key. Write-only: the answer is the service's status, so the key cannot come back. */
+  adminSetServiceKey: (name: string, secret: string) =>
+    post<AdminService>(`/api/admin/services/${encodeURIComponent(name)}`, { secret }, adminHeaders()),
+  adminClearServiceKey: (name: string) =>
+    call<AdminService>(`/api/admin/services/${encodeURIComponent(name)}`, {
+      method: "DELETE",
+      headers: adminHeaders(),
+    }),
+  /** One cheap authenticated call with the key in use. A key that does not work is a 200, not an error. */
+  adminCheckService: (name: string) =>
+    post<AdminService>(`/api/admin/services/${encodeURIComponent(name)}/check`, {}, adminHeaders()),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

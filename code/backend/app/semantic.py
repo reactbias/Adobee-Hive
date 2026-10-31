@@ -470,7 +470,9 @@ def _wanted() -> str:
     pinned = (getattr(config, "SEMANTIC_PROVIDER", "") or "").strip().lower()
     if pinned:
         return pinned
-    return EMBEDDINGS if getattr(config, "OPENAI_API_KEY", "") else OFFLINE
+    from . import services  # local: a key stored in the admin panel counts, not only the environment
+
+    return EMBEDDINGS if services.key_for("openai") else OFFLINE
 
 
 def _build(name: str) -> Provider:
