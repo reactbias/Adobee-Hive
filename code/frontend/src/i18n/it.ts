@@ -231,6 +231,21 @@ const it: Record<Key, string> = {
   "ask.ex1": "Che novità ci sono da BaselHack questo mese?",
   "ask.ex2": "Pianifichi per me un'avventura sotto 500 CHF",
   "ask.empty": "Nessuna carta risponde ancora. Viene registrato come domanda mancata, senza la Sua domanda.",
+  "scout.call": "Nessuna carta nell'Hive risponde ancora. Cerco oltre l'Hive, sul web pubblico.",
+  "scout.found": "Trovate sul web e verificate sul loro sito: {n}. Aggiunte all'Hive come carte non rivendicate.",
+  "scout.verified":
+    "Ho aperto ogni sito io stesso: risponde, il nome c'è, non è chiuso. Sulle carte c'è solo ciò che la pagina dice.",
+  "scout.rejected": "Scartate",
+  "scout.why.public_url": "non è un sito pubblico",
+  "scout.why.reachable": "il sito non risponde",
+  "scout.why.name_on_site": "il nome non è sul sito",
+  "scout.why.not_closed": "il sito dice chiuso o in vendita",
+  "scout.why.hive_full": "l'Hive demo è pieno",
+  "scout.none":
+    "Niente sul web pubblico ha superato i controlli, quindi non è stato aggiunto nulla. La Sua richiesta conta come domanda mancata.",
+  "scout.unavailable": "La ricerca web non è raggiungibile ora. La Sua richiesta conta come domanda mancata.",
+  "scout.unclaimed":
+    "Queste carte non sono rivendicate: compilate ora dal web pubblico, non verificate dall'azienda. La prossima richiesta simile le trova nell'Hive.",
   "ask.source": "Compilato da {url} il {date}. Non verificato dall'azienda.",
   "ask.free": "Gratuito",
   "ask.per": "{price} a {per}",
