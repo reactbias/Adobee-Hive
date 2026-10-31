@@ -3,9 +3,24 @@ import type { Key } from "./en";
 // Deutsch, Schweizer Schreibweise: ss statt ß.
 const de: Record<Key, string> = {
   "nav.language": "Sprache",
-  "nav.live": "KI live",
-  "nav.offline": "Offline-Modus",
+  "nav.live": "Live-Modell konfiguriert",
+  "nav.offline": "Offline-Planer",
   "nav.down": "Backend nicht erreichbar",
+  "status.title": "Verbindungsstatus",
+  "status.checking": "Backend wird geprüft…",
+  "status.reachable": "Backend erreichbar",
+  "status.modelUnknown": "Modellstatus unbekannt",
+  "status.modelConfigured":
+    "Konfigurierter Anbieter: {provider} · {model}. Die Modellverfügbarkeit wird nicht geprüft.",
+  "status.hub": "Gewählter Hive: {hub}",
+  "status.defaultHub": "Build-Standard",
+  "status.lastChecked": "Zuletzt geprüft:",
+  "status.lastSuccess": "Zuletzt erfolgreich:",
+  "status.retry": "Jetzt erneut prüfen",
+  "status.httpError": "Der Health-Endpunkt hat HTTP {status} zurückgegeben.",
+  "status.timeoutError": "Das Backend hat innerhalb von 5 Sekunden nicht geantwortet.",
+  "status.networkError": "Netzwerk- oder Browserrichtlinienfehler. Prüfen Sie die Verbindung und die Browserkonsole.",
+  "status.responseError": "Das Backend hat eine unlesbare Health-Antwort zurückgegeben.",
   "footer.line": "Adobee Hive · BaselHack 2026 · Team B6",
   "footer.wake": "Die B6-Biene wecken",
 
