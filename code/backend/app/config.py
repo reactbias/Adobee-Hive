@@ -24,13 +24,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 # and falls back to local with a reason, reported in /api/health, when it is not.
 FOLDER_LINK = os.getenv("FOLDER_LINK", "local")
 FOLDER_ROOT = Path(os.getenv("FOLDER_ROOT", str(BASE_DIR.parent.parent / "testdata" / "vaults")))
-# Where the real ClaudeConnect lives, when FOLDER_LINK=claudeconnect. Empty uses the library's own default
-# (https://claudeconnect.io); a local instance of its sync server is a URL here. CC_HANDLE is the handle this hub
-# claims for itself, and CC_TOKEN the bot token it was issued (see documentation/ARCHITECTURE.md).
-CC_SERVER = os.getenv("CLAUDECONNECT_SERVER", "")
-CC_HANDLE = os.getenv("CC_HANDLE", "")
-CC_TOKEN = os.getenv("CC_TOKEN", "")
-CC_TIMEOUT_S = float(os.getenv("CC_TIMEOUT_S", "2"))  # what one unreachable claudeconnect.io costs us
 # Where the ClaudeConnect adapter keeps its identities: one directory per handle, holding the `authz` file and the
 # `files/` tree its own server expects (see app/cc_folders.py). Not under testdata/, because these are keys.
 CC_ROOT = Path(os.getenv("CC_ROOT", str(BASE_DIR / "data" / "cc")))
