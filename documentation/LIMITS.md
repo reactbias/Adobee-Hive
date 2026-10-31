@@ -9,9 +9,26 @@ better than it does.
 
 ## Discovery
 
-**Similarity is bounded, not general language understanding.** Discovery combines literal matching with the
-offline similarity provider (stems, a four-language concept table and character trigrams). The concept vocabulary
-is hand-built; unseen language and inference can still miss. The optional embedding provider is not implemented.
+**Matching gets you two out of five, not five out of five.** `app/semantic.py` is a score component in
+`hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer key in
+[`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target — that is
+**19/41 first and 30/41 in the top three**, against `0/41` for the substring matching it replaced. Twenty-two
+of the forty-one are still not first. The provider is hand-built (accent-folded stems, a four-language concept
+table, German compound splitting, character trigrams, cosine above a named floor), so a trade nobody has
+written a card for yet matches only by stem or trigram.
+
+**There is no embedding provider.** `semantic._embedding_provider()` returns `None` on purpose rather than half
+an implementation, so a hub with an API key searches exactly as well as one without, and `GET /api/health`
+reports `semantic: offline` either way. What is built is the seam: a `Provider` subclass with a name, an
+`available()` that reads its key through `config`, and an `encode()` that caches per card version.
+
+**The literal half of the scoring only knows German umlauts.** `hive.discover` tokenises a query with
+`[a-zäöü]+` and keeps terms longer than three characters, so `café` and `crème` tokenise to nothing and a
+French or Italian query scores zero on both `text_relevance` and `offers_needs`. Semantic search answers it
+anyway, because it accent-folds — but the literal components are blind to two of the four languages the corpus
+is written in. `hive.STOPWORDS` is 21 words to `semantic.STOPWORDS`' several hundred, for the same reason:
+filler words like *where* and *someone* are scoring query terms and earn offer points off any card whose prose
+happens to contain them.
 
 **Room intent is conservative.** The REST discovery door recognises explicit hotel/room language and reuses
 the stay parser for stated constraints, excluding a declared guest name from ranking. Explicit parameters win;
@@ -74,6 +91,17 @@ which does the handshake itself and returns the manifest it opened; a grant can 
 endpoints a panel would need are proposed in issue #116.
 
 ## Running a hub
+
+**A federated search in the first half minute of a fresh `lan.sh up` comes back local-only, and the peers do not
+recover.** Each hub asks its peers who they are at startup, before the corpus is seeded, and caches a profile
+whose `owner_keys` is empty. `federation._profile` reuses that cache until the background refresh replaces it
+(`PEER_ASK_SECONDS`, 30 s), so until then every relayed card fails `hive.verify_pinned` — and `_verified` charges
+each failure to the carrier through `reputation.record_invalid`. Because reputation is a module-level dict, that
+verdict lasts for the life of the process: a peer reads `trust 0.05` with "41 of 82 relayed cards failed
+verification here", and the same match's `federated_score` drops from 4.39 to 0.36. Poll
+`GET /api/hub/directory` until a peer's `entities` is non-zero before the first federated search, or restart the
+hubs if it has already happened. Reproduced twice; see
+[SEARCH_API.md](SEARCH_API.md#where-the-docs-and-the-code-disagree).
 
 **One shared password, no audit trail.** `ADMIN_PASSWORD` is a single secret for the whole hub, like the owner
 token. There are no operator accounts, so an admitted or refused application records `decided_by: "admin"` and

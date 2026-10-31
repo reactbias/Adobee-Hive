@@ -108,7 +108,7 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `PEER_ASK_SECONDS`, `PEER_ASK_TIMEOUT_S`, `PEER_STALE_AFTER_S` | `30`, `2`, `120` | How often peers are asked who they are, how long one may take, and when a cached answer is shown as stale. `0` turns the asking off |
 | `ADMISSION_POLICY` | `vetted` | Who may join: `open`, `vetted`, `invite` or `closed`. With `invite`, `INVITE_TOKENS` holds the accepted tokens ([REGISTRATION.md](REGISTRATION.md)) |
 | `ADMIN_TOKEN`, `ADMIN_PASSWORD` | empty | Running the hub. The static token is for curl and CI, the password is what a person types in the admin panel. Both unset means every admin write is refused, never open |
-| `SEMANTIC_PROVIDER` | empty | `offline` or `embeddings`. The module is not wired into discovery yet; see [LIMITS.md](LIMITS.md#discovery) |
+| `SEMANTIC_PROVIDER` | empty | `offline` or `embeddings`. Discovery ranks with it; `embeddings` is a seam with nothing in it yet and falls back to `offline`, which `GET /api/health` reports. See [LIMITS.md](LIMITS.md#discovery) |
 
 **Without a key nothing breaks.** A scripted planner walks the same MCP tools in English, German, French and Italian,
 owner edits understand simple phrases ("add sauna", "remove parking", room prices), a rule check gives the second
