@@ -20,6 +20,19 @@ def require_secret(request: Request, header: str, expected: str) -> None:
         raise HTTPException(403, f"Missing or wrong {header}.")
 
 
+def require_admin(request: Request, expected: str) -> None:
+    """Admin writes fail closed: no configured token means refused, not open.
+
+    `require_secret` treats an empty secret as "the check is off", which is right for an owner
+    editing their own card and wrong for the blocklist. A hub whose blocklist anyone can edit has
+    no blocklist, so an unset ADMIN_TOKEN locks the door instead of removing it.
+    """
+    if not expected:
+        raise HTTPException(503, "This hub has no ADMIN_TOKEN set, so administration is disabled.")
+    if not hmac.compare_digest(request.headers.get("X-Admin-Token", ""), expected):
+        raise HTTPException(403, "Missing or wrong X-Admin-Token.")
+
+
 class RateLimiter:
     """Sliding-window limit per client plus one global cap, kept in memory (one backend instance)."""
 

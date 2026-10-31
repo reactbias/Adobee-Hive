@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from . import (
     activity,
+    admin,
     agent,
     blocklist,
     config,
@@ -25,6 +26,7 @@ from . import (
     guard,
     hive,
     hive_seed,
+    hub,
     mcp_server,
     owner,
     replies,
@@ -69,7 +71,7 @@ app.mount("/mcp", mcp_app)
 def _hive_call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except hive.HiveError as err:
+    except (hive.HiveError, hub.HubError, connections.ConnectionError_, blocklist.BlockError) as err:
         raise HTTPException(400, str(err)) from err
 
 
@@ -401,3 +403,116 @@ def owner_publish(card_id: str, body: OwnerApply, request: Request) -> dict[str,
     """Sign and publish the card the owner approved."""
     guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
     return _hive_call(owner.apply, card_id, body.proposed)
+
+
+# ---------------------------------------------------------------- the hub itself
+
+
+class ConnectBody(BaseModel):
+    """An agent asking to be introduced to something it found."""
+
+    requester: str = Field(..., min_length=1, max_length=200, description="Who is asking, as their hub knows them")
+    entity_id: str = Field(..., min_length=1, max_length=200, description="What they want to be connected to")
+    target_hub: str = Field("", max_length=200)
+    via_hub: str = Field("", max_length=200)
+
+
+class ScoreBody(BaseModel):
+    """A person scoring a real meeting, afterwards."""
+
+    rating: int = Field(
+        ...,
+        ge=connections.MIN_STARS,
+        le=connections.MAX_STARS,
+        description="Tenths of a star: 43 is 4.3 stars out of 5",
+    )
+    note: str = Field("", max_length=500)
+
+
+class BlockBody(BaseModel):
+    """An operator shutting out a peer hub or a single entity."""
+
+    kind: str = Field(..., pattern="^(hub|entity)$")
+    subject: str = Field(..., min_length=1, max_length=200)
+    reason: str = Field(..., min_length=1, max_length=500, description="Readable six months from now")
+
+
+@app.post("/api/hub/connect")
+def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
+    """Ask to be introduced, and log it. A public item opens at once; one marked `confirm` waits."""
+    guard.federated.check(request)
+    return _hive_call(hub.connect, body.requester, body.entity_id, target_hub=body.target_hub, via_hub=body.via_hub)
+
+
+@app.post("/api/hub/connections/{connection_id}/score")
+def hub_score(connection_id: str, body: ScoreBody) -> dict[str, Any]:
+    """Score an introduction after the real meeting. Once, and only while it is still open."""
+    return _hive_call(hub.score, connection_id, body.rating, body.note)
+
+
+@app.post("/api/hub/connections/{connection_id}/confirm")
+def hub_confirm(connection_id: str) -> dict[str, Any]:
+    """The owner says yes to an introduction."""
+    return _hive_call(connections.confirm, connection_id)
+
+
+@app.post("/api/hub/connections/{connection_id}/decline")
+def hub_decline(connection_id: str) -> dict[str, Any]:
+    """The owner says no. It never becomes a rating."""
+    return _hive_call(connections.decline, connection_id)
+
+
+@app.get("/api/hub/connections")
+def hub_connections(requester: str = "", target: str = "") -> dict[str, Any]:
+    """Introductions still waiting on somebody: on the owner's yes, or on a human's score."""
+    return {
+        "awaiting_rating": connections.awaiting_rating(requester),
+        "awaiting_confirmation": connections.pending_confirmation(target),
+    }
+
+
+@app.get("/api/hub/standing")
+def hub_standing() -> dict[str, Any]:
+    """What this hub makes of its neighbours, best calibrated first. Lower error is better."""
+    return hub.standing()
+
+
+# ---------------------------------------------------------------- administration (GUI-ready)
+
+
+@app.get("/api/admin/overview")
+def admin_overview() -> dict[str, Any]:
+    """The three stores, counted, plus peer standing. What an admin front page renders."""
+    return admin.overview()
+
+
+@app.get("/api/admin/settings")
+def admin_settings() -> dict[str, Any]:
+    """Hub settings as fields a form can render: value, help text, and options where closed."""
+    return admin.settings()
+
+
+@app.get("/api/admin/neighbours")
+def admin_neighbours() -> dict[str, Any]:
+    """The peer list with each one's calibration, for the neighbours table."""
+    return admin.neighbours()
+
+
+@app.get("/api/admin/blocklist")
+def admin_blocklist(kind: str | None = None) -> dict[str, Any]:
+    """Everything this hub has shut out, newest first. Readable without a token, on purpose."""
+    return {"entries": _hive_call(blocklist.entries, kind), "kinds": list(blocklist.KINDS)}
+
+
+@app.post("/api/admin/blocklist")
+def admin_block(body: BlockBody, request: Request) -> dict[str, Any]:
+    """Block a peer hub or an entity, in both directions."""
+    guard.require_admin(request, config.ADMIN_TOKEN)
+    return _hive_call(blocklist.block, body.kind, body.subject, body.reason)
+
+
+@app.delete("/api/admin/blocklist/{kind}/{subject}")
+def admin_unblock(kind: str, subject: str, request: Request) -> dict[str, Any]:
+    """Lift a block."""
+    guard.require_admin(request, config.ADMIN_TOKEN)
+    return {"lifted": _hive_call(blocklist.unblock, kind, subject)}

@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import domains, hive, rulesets, waiting
+from . import connections, domains, hive, hub, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -19,7 +19,10 @@ server = MCPServer(
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
         "Only state facts that come from cards. Tell the user why you picked a business (score_breakdown, why) "
         "and keep the booking receipt: it is needed to cancel or to leave a verified review. "
-        "If nothing fits and the user wants to be told, hive_wait leaves an anonymous standing request."
+        "If nothing fits and the user wants to be told, hive_wait leaves an anonymous standing request. "
+        "To reach a person rather than book a room, use hub_connect: some entries open at once and some wait "
+        "for their owner's yes. After the real meeting has happened, hub_score records how it actually went, "
+        "which is the only thing that teaches this Hive which other Hives to believe."
     ),
 )
 
@@ -154,3 +157,43 @@ def http_app():
         json_response=True,
         transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
+
+
+@server.tool()
+def hub_connect(requester: str, entity_id: str, target_hub: str = "", via_hub: str = "") -> dict[str, Any]:
+    """Ask to be introduced to a business or person found in a search, and log the introduction.
+
+    An entry marked public opens at once; one marked `needs_confirmation` waits for its owner's yes; one its
+    owner shares only on their own initiative cannot be asked for at all. Returns the connection and its state.
+    Keep the connection id: it is what hub_score needs later."""
+    return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub)
+
+
+@server.tool()
+def hub_score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
+    """Record how an introduction actually went, after the real meeting, from the person who asked for it.
+
+    `rating` is tenths of a star out of five: 43 means 4.3 stars. Scoring is once and final, and only while the
+    connection is still open — an introduction nobody scored within a month closes unscored. This is the only
+    input to how much this Hive trusts the Hive the entry came from, so ask the person, never guess."""
+    return _safe(hub.score, connection_id, rating, note)
+
+
+@server.tool()
+def hub_connections(requester: str = "") -> dict[str, Any]:
+    """List introductions still waiting on somebody: on an owner's yes, or on the person's score.
+
+    Use it to ask "how did it go with X?" before the connection goes stale and can no longer be scored."""
+    return {
+        "awaiting_rating": connections.awaiting_rating(requester),
+        "awaiting_confirmation": connections.pending_confirmation(),
+    }
+
+
+@server.tool()
+def hub_standing() -> dict[str, Any]:
+    """What this Hive makes of its neighbours, from how their ratings held up against real meetings.
+
+    `error` is published minus realised, in tenths of a star: lower is better, negative means the Hive
+    undersold what it offered. A Hive with too little evidence is reported as unproven rather than guessed at."""
+    return hub.standing()

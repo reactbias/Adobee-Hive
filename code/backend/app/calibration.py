@@ -142,12 +142,11 @@ def trust(hub_id: str, rows: list[dict[str, Any]] | None = None) -> dict[str, An
     is 0.0. An unproven hub gets UNPROVEN_TRUST, not the benefit of the doubt.
     """
     s = score(hub_id, rows)
-    if s["error"] is None:
-        factor = UNPROVEN_TRUST
-    else:
-        # Only over-promising costs ranking weight; being modest is already its own reward.
-        factor = 1.0 - max(0.0, float(s["error"])) / TRUST_FLOOR_DELTA
-        factor = max(0.0, min(1.0, factor))
+    # Only over-promising costs ranking weight; being modest is already its own reward. The inner
+    # max() is why there is no upper clamp: a negative error contributes nothing, so the factor
+    # cannot rise above 1.0 and a second clamp would be unreachable code.
+    error = s["error"]
+    factor = UNPROVEN_TRUST if error is None else max(0.0, 1.0 - max(0.0, float(error)) / TRUST_FLOOR_DELTA)
     return {**s, "factor": round(factor, 4)}
 
 

@@ -105,6 +105,8 @@ flowchart TB
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
+  HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
+  ADM[admin.py<br/>settings, neighbours, blocklist, GUI-ready]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
 
@@ -115,6 +117,12 @@ flowchart TB
   FED --> BLK
   CNX --> CAL
   CAL --> REP
+  REST --> HUB
+  MCP --> HUB
+  HUB --> CNX
+  HUB --> SHR
+  REST --> ADM
+  ADM --> BLK
   A -->|MCP client| INJ --> MCP
   MIR -.->|stress test| INJ
   A --> V
@@ -292,6 +300,24 @@ flowchart LR
     M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
     M3[hive_wait · hive_check_waiting]:::door
     M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
+    M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
+  end
+
+  AGT --> HUBD
+  subgraph HUBD["Reaching a person, and saying how it went"]
+    direction TB
+    H1["POST /api/hub/connect"]:::door
+    H2["POST /api/hub/connections/{connection_id}/confirm · POST /api/hub/connections/{connection_id}/decline"]:::held
+    H3["POST /api/hub/connections/{connection_id}/score"]:::held
+    H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
+  end
+
+  ADMN([Hub operator]) --> ADMD
+  subgraph ADMD["Administration · GUI-ready, no interface yet"]
+    direction TB
+    D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
+    D2["GET /api/admin/blocklist"]:::door
+    D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
   end
 
   APP([React app]) --> AGR & ASK & CRD & OWN & OPS

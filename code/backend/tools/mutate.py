@@ -28,7 +28,16 @@ ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "app"
 
 # The test files that should notice. Keeping the subset small keeps a run under a minute.
-SUITE = ["tests/test_federation.py", "tests/test_reputation.py", "tests/test_hive.py", "tests/test_docs.py"]
+# Every file that should notice a change to a TARGET module. A mutant can only be "killed" by a
+# test that actually runs, so forgetting a file here produces a false all-clear — the one failure
+# mode this tool must not have. test_suite_covers_every_target in tests/test_mutation.py pins it.
+SUITE = [
+    "tests/test_federation.py",
+    "tests/test_reputation.py",
+    "tests/test_hive.py",
+    "tests/test_hub_trust.py",
+    "tests/test_hub_api.py",
+]
 
 
 @dataclass
@@ -100,6 +109,54 @@ CURATED: list[Mutant] = [
         '"rating": 0,',
     ),
     Mutant(
+        "calibration.py",
+        "the error loses its sign, so a modest hub is punished like a boastful one",
+        "return int(published) - int(realised)",
+        "return abs(int(published) - int(realised))",
+    ),
+    Mutant(
+        "calibration.py",
+        "a hub is scored on one introduction, so a single bad day condemns it",
+        "MIN_EVIDENCE = 3",
+        "MIN_EVIDENCE = 1",
+    ),
+    Mutant(
+        "calibration.py",
+        "over-promising stops costing ranking weight at all",
+        'factor = max(0.0, 1.0 - max(0.0, float(s["error"])) / TRUST_FLOOR_DELTA)',
+        "factor = 1.0",
+    ),
+    Mutant(
+        "connections.py",
+        "a stale introduction can be scored after all, inviting score-settling",
+        'if row["state"] == STALE:',
+        "if False:",
+    ),
+    Mutant(
+        "connections.py",
+        "a connection can be scored twice, so a rating becomes negotiable",
+        'if row["state"] == RATED:',
+        "if False:",
+    ),
+    Mutant(
+        "sharing.py",
+        "the looser of the two flags wins, so opening a default unseals closed items",
+        "return max(flags, key=strictness)",
+        "return min(flags, key=strictness)",
+    ),
+    Mutant(
+        "sharing.py",
+        "a push item becomes searchable, so what the owner meant to send is handed out",
+        "SEARCHABLE = frozenset({PUBLIC, CONFIRM})",
+        "SEARCHABLE = frozenset({PUBLIC, CONFIRM, PUSH})",
+    ),
+    Mutant(
+        "sharing.py",
+        "an unflagged item defaults to public instead of needing a yes",
+        "DEFAULT = CONFIRM",
+        "DEFAULT = PUBLIC",
+    ),
+    Mutant(
         "reputation.py",
         "distance stops discounting, so a far result outranks an identical near one",
         "HOP_DECAY = 0.85",
@@ -143,7 +200,7 @@ SWAPS = [
     (r"- 1\b", "- 0"),
     (r"\bTrue\b", "False"),
 ]
-TARGETS = ["federation.py", "reputation.py"]
+TARGETS = ["federation.py", "reputation.py", "calibration.py", "connections.py", "sharing.py"]
 
 
 def run_suite(timeout: int = 120) -> bool:
