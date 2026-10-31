@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type DemandMap as Demand } from "../api";
+import Display from "../components/Display";
 import { useI18n } from "../i18n";
 
 // The twist: agents' unmet requests tell a city's small businesses what to become.
@@ -25,7 +26,9 @@ export default function DemandMap() {
     <div className="stack loose">
       <header className="page-head">
         <span className="eyebrow">{t("demand.eyebrow")}</span>
-        <h1>{t("demand.title")}</h1>
+        <h1>
+          <Display text={t("demand.title")} />
+        </h1>
         <p className="lead">{t("demand.lead")}</p>
         <div className="row">
           <button onClick={simulate} disabled={busy}>

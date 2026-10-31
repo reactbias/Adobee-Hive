@@ -19,16 +19,20 @@ const de: Record<Key, string> = {
   "trust.noReviews": "Noch keine belegten Aufenthalte",
 
   "home.eyebrow": "Die Eingangstür, signiert.",
-  "home.title": "Der nächste Gast ist ein Agent.",
+  "home.title": "Der nächste Gast ist *ein Agent.*",
   "home.lead":
     "Adobee Hive gibt jedem lokalen Betrieb eine signierte Karte. Agenten finden sie, prüfen sie und buchen darüber. Der Inhaber schreibt sie in eigenen Worten, und gebucht wird erst, wenn ein Mensch zustimmt.",
+  "home.fact.cards": "Signierte Karten im Basler Hive",
+  "home.fact.signature": "Signatur des Inhabers",
+  "home.fact.protocol": "Offenes Protokoll",
+  "home.fact.placement": "Bezahlte Platzierungen",
   "home.cta.agent": "Einen Agenten buchen sehen",
   "home.cta.owner": "Für Gastgeber",
   "home.from": "ab {price} pro Nacht",
   "home.specimen":
     "Eine Hive-Karte, live aus dem Basler Hive. Ändert jemand eine Angabe ohne den Schlüssel des Inhabers, weist jeder Agent sie zurück.",
   "home.principles.eyebrow": "Grundsätze",
-  "home.principles.title": "Vertrauen, das sich prüfen lässt.",
+  "home.principles.title": "Vertrauen, das sich *prüfen* lässt.",
   "home.p1.title": "Signierte Fakten",
   "home.p1.body":
     "Jede Karte trägt die Signatur des Inhabers. Agenten prüfen sie selbst und weisen jede veränderte Kopie ab.",
@@ -40,16 +44,16 @@ const de: Record<Key, string> = {
   "home.p4.title": "Ihr Ja",
   "home.p4.body": "Agenten verhandeln. Menschen entscheiden. Nichts wird ohne Ihre Zustimmung gebucht.",
   "home.twist.eyebrow": "Verpasste Nachfrage",
-  "home.twist.title": "Agenten schreiben den Businessplan.",
+  "home.twist.title": "Agenten schreiben den *Businessplan.*",
   "home.twist.body":
     "Jede Anfrage, die kein Betrieb erfüllen konnte, wird festgehalten. Ein Café erfährt, dass Agenten nach veganem Frühstück fragten. Eine Stadt erfährt, was noch niemand anbietet.",
   "home.twist.cta": "Zur Nachfragekarte",
   "home.hive.eyebrow": "Im Hive",
-  "home.hive.title": "Sechs Betriebe. Eine offene Tür.",
+  "home.hive.title": "Sechs Betriebe. *Eine offene Tür.*",
   "home.hive.body":
     "Fiktive Basler Betriebe, jeder mit signierter Karte. Jeder MCP-Client, auch Claude, verbindet sich unter",
   "home.no.eyebrow": "Zurückhaltung",
-  "home.no.title": "Was der Hive nicht tut.",
+  "home.no.title": "Was der Hive *nicht* tut.",
   "home.no1.title": "Platzierungen verkaufen",
   "home.no1.body": "Das Ranking erklärt sich selbst, auch wer ausschied und warum.",
   "home.no2.title": "Reisende ausleuchten",
@@ -60,7 +64,7 @@ const de: Record<Key, string> = {
     "Auf GitHub finden Sie Projekte, an denen Sie arbeiten. Auf Adobee Hive finden Agenten Betriebe und Menschen, mit denen Sie arbeiten.",
 
   "owner.eyebrow": "Studio für Gastgeber",
-  "owner.title": "Sagen Sie, was sich geändert hat.",
+  "owner.title": "Sagen Sie, was sich *geändert* hat.",
   "owner.lead":
     "Keine Website zu pflegen. Schreiben Sie die Änderung in eigenen Worten, prüfen Sie sie, signieren Sie. Jeder Agent liest die neue Karte, sobald Sie veröffentlichen.",
   "owner.business": "Betrieb",
@@ -120,7 +124,7 @@ const de: Record<Key, string> = {
     "Kartenversion {version}, veröffentlicht am {date}. Agenten lesen dieselben Daten am MCP-Endpunkt des Hive.",
 
   "demand.eyebrow": "Nachfragekarte",
-  "demand.title": "Wonach Basels Agenten fragten.",
+  "demand.title": "Wonach Basels Agenten *fragten.*",
   "demand.lead":
     "Jede Suche hinterlässt eine Spur. Kann kein Betrieb sie erfüllen, ist das keine verlorene Buchung. Es ist ein Businessplan, geschrieben von Agenten, gelesen von lokalen Gastgebern.",
   "demand.simulate": "40 Reisende-Suchen simulieren",
@@ -136,7 +140,7 @@ const de: Record<Key, string> = {
   "demand.ofAsked": "{unserved} von {asked} unerfüllt",
 
   "agent.eyebrow": "Reise-Agent",
-  "agent.title": "Ein Satz. Ein Ja.",
+  "agent.title": "Ein Satz. *Ein Ja.*",
   "agent.lead":
     "Sagen Sie Ihrem Agenten, was Sie brauchen. Er spricht über MCP mit Basler Betrieben, prüft jede Signatur selbst und vergleicht die Angebote. Gebucht wird erst, wenn Sie zustimmen.",
   "agent.you": "Sie",
@@ -197,6 +201,36 @@ const de: Record<Key, string> = {
   "agent.review.sample": "Ruhiges Zimmer, der Hund liebte den Spaziergang am Rhein.",
   "agent.review.send": "Belegte Bewertung abgeben",
   "agent.review.stored": "Bewertung {id} als belegter Aufenthalt gespeichert.",
+
+  // Group chat on the traveller page
+  "chat.you": "Sie",
+  "chat.name.agent": "Ihr Agent",
+  "chat.name.hive": "Hive",
+  "chat.name.sceptic": "Der Skeptiker",
+  "chat.name.mirror": "Der Spiegel",
+  "chat.role.guest": "Gast",
+  "chat.role.agent": "Agent · handelt für Sie",
+  "chat.role.hive": "Verzeichnis · offenes Ranking",
+  "chat.role.business": "Agent · spricht für das Hotel",
+  "chat.role.sceptic": "Agent · Zweitmeinung, {by}",
+  "chat.role.mirror": "Ungeprüfte Kopie · abgewiesen",
+  "chat.agent.ack": "Mache ich. Ich frage den Hive und prüfe jede Antwort selbst.",
+  "chat.guest.yes": "Ja, buchen.",
+  "chat.typing": "schreibt",
+  "chat.replay": "Wiederholen",
+  "chat.skip": "Überspringen",
+  "chat.thinking": "denkt nach",
+  "next.intro": "Erledigt. Drei Dinge kann ich dir noch abnehmen, je ein Tipp.",
+  "next.calendar.title": "In den Kalender",
+  "next.calendar.body": "{dates}, mit der signierten Quittung in der Notiz.",
+  "next.calendar.cta": ".ics herunterladen",
+  "next.coffee.because": "Weil du {feature} wolltest",
+  "next.coffee.nearby": "In der Nähe, aus dem Hive",
+  "next.coffee.cta": "Signierte Karte öffnen",
+  "next.route.title": "Mit dem Zug?",
+  "next.route.body": "Basel SBB bis {name}, {distance} zu Fuss.",
+  "next.route.cta": "Weg zeigen",
+  "next.fine": "Hier wird nichts gebucht oder bezahlt. Jeder Tipp tut genau eine sichtbare Sache.",
 
   "trace.you": "Ihr Agent",
   "trace.hive": "Basler Hive",

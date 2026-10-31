@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { api, type Health } from "./api";
 import { I18nProvider, LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import Home from "./pages/Home";
@@ -20,6 +20,8 @@ function Nav() {
       .then(setHealth)
       .catch(() => setHealth(null));
   }, []);
+  // The landing page opens on a dark hero; the bar joins it there.
+  const onDark = useLocation().pathname === "/";
   const link = ({ isActive }: { isActive: boolean }) => `link${isActive ? " active" : ""}`;
   const mode =
     health === undefined ? null : health === null ? (
@@ -33,7 +35,7 @@ function Nav() {
       </span>
     );
   return (
-    <nav className="nav">
+    <nav className={`nav${onDark ? " on-dark" : ""}`}>
       <div className="nav-inner">
         <NavLink to="/" className="brand">
           <img src="/brand/logo.svg" alt="" width={30} height={30} />

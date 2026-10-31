@@ -1,0 +1,296 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { Booking, SecondOpinion, Step } from "../api";
+import { useI18n } from "../i18n";
+import { delayFor, type Beat } from "../lib/pace";
+import { Ask, Reply, namesFrom } from "./TraceParts";
+
+// The traveller page as a group chat: people and agents in one conversation. Every message comes from real data,
+// the guest's words, an MCP call or its answer. Playback paces the messages so a room can follow who is talking.
+
+export type Who = "guest" | "agent" | "hive" | "business" | "sceptic" | "mirror";
+
+/** What happened, in order. The chat turns each segment into one or more messages. */
+export type Segment =
+  | { kind: "guest"; text: string }
+  | { kind: "ack" }
+  | { kind: "steps"; steps: Step[] }
+  | { kind: "opinion"; opinion: SecondOpinion }
+  | { kind: "agent"; text: string }
+  | { kind: "consent" }
+  | { kind: "receipt"; booking: Booking }
+  | { kind: "next" };
+
+interface Msg {
+  who: Who;
+  name: string;
+  role: string;
+  to?: string;
+  tool?: string;
+  ms?: number;
+  badge?: ReactNode;
+  body: ReactNode;
+  consent?: boolean;
+  beat: Beat;
+  chars?: number;
+}
+
+const AVATAR: Record<Who, string> = {
+  guest: "/personas/guest.svg",
+  agent: "/personas/agent.svg",
+  hive: "/personas/hive.svg",
+  business: "/personas/business.svg",
+  sceptic: "/personas/sceptic.svg",
+  mirror: "/personas/mirror.svg",
+};
+
+type Rec = Record<string, unknown>;
+
+export function Avatar({ who, size = 40, live = false }: { who: Who; size?: number; live?: boolean }) {
+  return (
+    <span className={`avatar avatar-${who}${live ? " live" : ""}`} style={{ width: size, height: size }}>
+      <img src={AVATAR[who]} alt="" width={size} height={size} />
+    </span>
+  );
+}
+
+export default function GroupChat({
+  segments,
+  guestName,
+  pending,
+  pinned,
+  receipt,
+  followUp,
+  meta,
+}: {
+  segments: Segment[];
+  guestName: string;
+  /** The request is still with the agent: show it typing. */
+  pending: boolean;
+  /** Shown under the conversation once playback has caught up: the approval question. */
+  pinned?: ReactNode;
+  /** The signed receipt card, attached to the business's confirmation. */
+  receipt?: ReactNode;
+  /** What the agent offers once the stay is booked. */
+  followUp?: ReactNode;
+  meta: ReactNode;
+}) {
+  const { t } = useI18n();
+  const scroller = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(0);
+
+  const messages = useMemo(() => {
+    const all = segments.flatMap((s) => (s.kind === "steps" ? s.steps : []));
+    const names = namesFrom(all);
+    const hive = t("chat.name.hive");
+    const guest = { who: "guest" as const, name: guestName, role: t("chat.role.guest") };
+    const agent = { who: "agent" as const, name: t("chat.name.agent"), role: t("chat.role.agent") };
+    const out: Msg[] = [];
+    for (const seg of segments) {
+      switch (seg.kind) {
+        case "guest":
+          out.push({ ...guest, beat: "first", body: <p>{seg.text}</p> });
+          break;
+        case "ack":
+          out.push({ ...agent, beat: "say", chars: t("chat.agent.ack").length, body: <p>{t("chat.agent.ack")}</p> });
+          break;
+        case "agent":
+          out.push({ ...agent, beat: "say", chars: seg.text.length, body: <p>{seg.text}</p> });
+          break;
+        case "consent":
+          out.push({ ...guest, consent: true, beat: "instant", body: <p>{t("chat.guest.yes")}</p> });
+          break;
+        case "opinion": {
+          const o = seg.opinion;
+          out.push({
+            who: "sceptic",
+            name: t("chat.name.sceptic"),
+            role: t("chat.role.sceptic", { by: o.by }) + (o.fallback ? ` (${o.fallback})` : ""),
+            ms: o.ms,
+            beat: "think",
+            body: (
+              <p>
+                <span className={`status ${o.verdict === "agree" ? "ok" : "no"}`}>
+                  {t(o.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
+                </span>{" "}
+                {o.note}
+              </p>
+            ),
+          });
+          break;
+        }
+        case "receipt":
+          out.push({
+            who: "business",
+            name: seg.booking.business,
+            role: t("chat.role.business"),
+            beat: "reply",
+            body: receipt,
+          });
+          break;
+        case "next":
+          if (followUp) out.push({ ...agent, beat: "say", chars: 60, body: followUp });
+          break;
+        case "steps":
+          for (const step of seg.steps) {
+            const id = String((step.input as Rec).card_id ?? "");
+            const business = names[id] ?? String(step.output.business ?? step.output.name ?? hive);
+            const sig =
+              step.tool === "hive_get_card" ? Boolean((step.output.trust as Rec | undefined)?.signature_valid) : null;
+            const speaker =
+              step.tool === "hive_discover"
+                ? { who: "hive" as const, name: hive, role: t("chat.role.hive") }
+                : sig === false
+                  ? { who: "mirror" as const, name: t("chat.name.mirror"), role: t("chat.role.mirror") }
+                  : { who: "business" as const, name: business, role: t("chat.role.business") };
+            out.push({
+              ...agent,
+              to: speaker.name,
+              tool: step.tool,
+              beat: "think",
+              body: <Ask step={step} names={names} />,
+            });
+            out.push({
+              ...speaker,
+              ms: step.ms,
+              beat: "reply",
+              badge:
+                sig === null ? undefined : (
+                  <span className={`seal-badge ${sig ? "ok" : "no"}`}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden>
+                      <path d="M12 2.8 19.8 7.3v9.4L12 21.2 4.2 16.7V7.3Z" />
+                      {sig ? <path className="tick" d="M8.6 12.2l2.3 2.3 4.6-4.8" /> : <path d="M9 9l6 6M15 9l-6 6" />}
+                    </svg>
+                    {sig ? t("trace.sig.ok") : t("trace.sig.bad")}
+                  </span>
+                ),
+              body: (
+                <>
+                  <Reply step={step} />
+                  <details>
+                    <summary>{t("trace.raw")}</summary>
+                    <pre>{JSON.stringify({ input: step.input, output: step.output }, null, 2)}</pre>
+                  </details>
+                </>
+              ),
+            });
+          }
+          break;
+      }
+    }
+    return out;
+  }, [segments, guestName, receipt, followUp, t]);
+
+  // New messages after an approval continue from where the chat was; a new trip starts over.
+  useEffect(() => {
+    if (shown > messages.length) setShown(messages.length);
+  }, [shown, messages.length]);
+  useEffect(() => {
+    if (shown >= messages.length) return;
+    const timer = setTimeout(() => setShown((n) => n + 1), delayFor(messages[shown].beat, messages[shown].chars));
+    return () => clearTimeout(timer);
+  }, [shown, messages.length]);
+
+  const caughtUp = shown >= messages.length;
+  const next = caughtUp ? (pending ? "agent" : null) : messages[shown].who;
+  const nextName = caughtUp ? t("chat.name.agent") : messages[shown]?.name;
+  // Before a call or a judgement an agent thinks; before a line of text anyone types.
+  const presence = t(caughtUp || messages[shown].beat === "think" ? "chat.thinking" : "chat.typing");
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [shown, next, caughtUp, pinned]);
+
+  const present = new Map<Who, { name: string; role: string }>();
+  for (const m of messages.slice(0, shown)) if (!m.consent) present.set(m.who, { name: m.name, role: m.role });
+
+  return (
+    <section className="chat-stage" aria-label={t("agent.stage")}>
+      <header className="roster">
+        <ul>
+          {[...present].map(([who, p]) => (
+            <li key={who} className={next === who ? "typing" : ""}>
+              <Avatar who={who} size={28} live={next === who} />
+              <span>
+                <b>{p.name}</b>
+                <i>{next === who ? presence : p.role}</i>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="roster-meta">
+          {meta}
+          {messages.length > 0 && (
+            <span className="controls">
+              <button className="quiet" onClick={() => setShown(0)}>
+                {t("chat.replay")}
+              </button>
+              {!caughtUp && (
+                <button className="quiet" onClick={() => setShown(messages.length)}>
+                  {t("chat.skip")}
+                </button>
+              )}
+            </span>
+          )}
+        </div>
+      </header>
+
+      <div className="chat-scroll" ref={scroller} aria-live="polite">
+        {messages.length === 0 && !pending && (
+          <div className="stage-empty">
+            <p>{t("agent.empty.title")}</p>
+            <p className="dim">{t("agent.empty.body")}</p>
+          </div>
+        )}
+        <ol className="chat">
+          {messages.slice(0, shown).map((m, i) => {
+            const prev = messages[i - 1];
+            const grouped = prev && prev.who === m.who && prev.name === m.name && !m.consent && !prev.consent;
+            return (
+              <li key={i} className={`msg msg-${m.who}${grouped ? " grouped" : ""}${m.consent ? " consent-msg" : ""}`}>
+                {m.consent && <div className="consent">{t("trace.approved")}</div>}
+                <div className="msg-avatar">{!grouped && <Avatar who={m.who} />}</div>
+                <div className="msg-main">
+                  {!grouped && (
+                    <div className="msg-head">
+                      <b>{m.name}</b>
+                      <span className="role">{m.role}</span>
+                      {m.ms !== undefined && <span className="ms num">{m.ms} ms</span>}
+                    </div>
+                  )}
+                  {m.tool && (
+                    <div className="msg-call">
+                      <code>{m.tool}</code>
+                      {m.to && <span>→ {m.to}</span>}
+                    </div>
+                  )}
+                  {m.badge}
+                  <div className="msg-body">{m.body}</div>
+                </div>
+              </li>
+            );
+          })}
+          {next && (
+            <li className={`msg typing-row msg-${next}`} key={`typing-${shown}`}>
+              <div className="msg-avatar">
+                <Avatar who={next} live />
+              </div>
+              <div className="msg-main">
+                <div className="msg-head">
+                  <b>{nextName}</b>
+                  <span className="role">{presence}</span>
+                </div>
+                <span className="dots" aria-hidden>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+              </div>
+            </li>
+          )}
+        </ol>
+        {caughtUp && !pending && pinned && <div className="pinned">{pinned}</div>}
+      </div>
+    </section>
+  );
+}
