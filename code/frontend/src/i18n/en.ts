@@ -11,6 +11,88 @@ const en = {
   "footer.line": "Adobee Hive · BaselHack 2026 · Team B",
   "footer.wake": "Wake the B6 bee",
 
+  // Trust lines
+  "trust.signed": "Signed by the owner",
+  "trust.invalid": "Signature invalid",
+  "trust.attested": "{claim}, attested",
+  "trust.reviews": "{avg} from {n} verified stays",
+  "trust.noReviews": "No verified stays yet",
+
+  // Landing page
+  "home.eyebrow": "Adobee Hive · Basel",
+  "home.title": "The next guest is an agent.",
+  "home.lead":
+    "Adobee Hive gives every local business one signed card. Agents find it, verify it and book through it. The owner writes it in plain words, and nothing is booked until a person says yes.",
+  "home.cta.agent": "Watch an agent book",
+  "home.cta.owner": "For business owners",
+  "home.from": "from {price} a night",
+  "home.specimen":
+    "A Hive card, live from the Basel Hive. Change one fact without the owner's key and every agent rejects it.",
+  "home.principles.eyebrow": "Principles",
+  "home.principles.title": "Trust you can check.",
+  "home.p1.title": "Signed facts",
+  "home.p1.body":
+    "Every card carries the owner's signature. Agents verify it themselves and turn away any copy that was altered.",
+  "home.p2.title": "Open ranking",
+  "home.p2.body": "Every result says why it won and why the others were left out. Placement cannot be bought.",
+  "home.p3.title": "Proof of stay",
+  "home.p3.body": "Only a signed booking receipt can leave a review. No stay, no review.",
+  "home.p4.title": "Your yes",
+  "home.p4.body": "Agents negotiate. People decide. Nothing is booked without your approval.",
+  "home.twist.eyebrow": "Missed demand",
+  "home.twist.title": "Agents write the business plan.",
+  "home.twist.body":
+    "Every request no business could serve is recorded. A café learns that agents asked for vegan breakfast. A city learns what nobody offers yet.",
+  "home.twist.cta": "Open the demand map",
+  "home.hive.eyebrow": "In the Hive",
+  "home.hive.title": "Six businesses. One open door.",
+  "home.hive.body": "Fictional Basel businesses, each with a signed card. Any MCP client, Claude included, connects at",
+  "home.no.eyebrow": "Restraint",
+  "home.no.title": "What the Hive will not do.",
+  "home.no1.title": "Sell placement",
+  "home.no1.body": "Ranking explains itself, including who was left out and why.",
+  "home.no2.title": "Profile travellers",
+  "home.no2.body": "The Hive learns what was asked, never who asked.",
+  "home.no3.title": "Take orders from a listing",
+  "home.no3.body": "Card text reaches agents as data, never as instructions. Every call is shown to the person.",
+  "home.closing":
+    "On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.",
+
+  // Owner studio
+  "owner.eyebrow": "Owner studio",
+  "owner.title": "Say what changed.",
+  "owner.lead":
+    "No website to maintain. Write the change in plain words, review it, sign it. Every agent reads the new card the moment you publish.",
+  "owner.business": "Business",
+  "owner.sample": "Add sauna. The courtyard double is 165 francs from today.",
+  "owner.tokenNeeded": "This Hive lets only the owner edit cards. Enter your owner token.",
+  "owner.token": "Owner token",
+  "owner.useToken": "Use token",
+  "owner.week.shown": "times shown to agents",
+  "owner.week.missed": "requests you missed",
+  "owner.week.booked": "bookings",
+  "owner.week.cancelled": "cancellations",
+  "owner.edit.title": "Tell the Hive what changed",
+  "owner.edit.body":
+    "Prices, rooms, opening hours, a new terrace. Your words become a precise change you can check line by line.",
+  "owner.preview": "Preview change",
+  "owner.noChange": "No change detected.",
+  "owner.publish": "Sign and publish",
+  "owner.discard": "Discard",
+  "owner.publishNote":
+    "Publishing signs a new card version with your key. Agents reject any copy that differs from it.",
+  "owner.published": "Signed and published. Agents see the new version now.",
+  "owner.times": "{n}×",
+  "owner.missed.eyebrow": "Missed demand · last 7 days",
+  "owner.missed.title": "What agents asked for that you don't offer",
+  "owner.missed.empty": "Nothing missed yet. Run a few searches with the traveller agent.",
+  "owner.agents.title": "How agents see you",
+  "owner.agents.human": "How people see you",
+  "owner.bookings.title": "Bookings",
+  "owner.bookings.guest": "Guest",
+  "owner.bookings.dates": "Dates",
+  "owner.bookings.empty": "No bookings yet.",
+
   // Traveller agent
   "agent.eyebrow": "Traveller agent",
   "agent.title": "One sentence. One yes.",
