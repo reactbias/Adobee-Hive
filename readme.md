@@ -11,6 +11,7 @@ stay found, trusted and bookable when its first visitor is an AI agent, not a pe
 | --- | --- |
 | Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · one page, two chapters: [agent network](https://reactbias.github.io/Adobee-Hive/#travel) · [business](https://reactbias.github.io/Adobee-Hive/#business) |
 | Live backend | [adobee-hive.onrender.com](https://adobee-hive.onrender.com/api/health) ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)): [`/api/health`](https://adobee-hive.onrender.com/api/health), [`/docs`](https://adobee-hive.onrender.com/docs), MCP for agents [`/mcp/`](https://adobee-hive.onrender.com/mcp/) · [Render dashboard](https://dashboard.render.com) (access: ask the repository owner) |
+| Presenter view (stage) | [`?demo`](https://reactbias.github.io/Adobee-Hive/?demo) adds the stress test, Simulate 40, the tamper test and the raw MCP exchange · [live activity feed](https://reactbias.github.io/Adobee-Hive/?demo#activity) |
 | Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
 | Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
 | Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
@@ -58,6 +59,9 @@ over MCP. Try it with any MCP client, Claude included.
 | Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `panels/OwnerPanel.tsx` |
 | Three agents agree before you are asked: your agent proposes, a critic always argues for the strongest alternative from the open ranking, and a verifier checks the held booking against the request and the signed card. If they don't all agree, the chat says so and you still decide | `code/backend/app/critic.py`, `second_opinion.py` |
 | Any business, in the same chat (chapter 1): questions about six real businesses (adventures, AI workflows, process instrumentation, creative software, life insurance, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `components/AskParts.tsx`, `lib/route.ts` |
+| Web scout: when no card fits ("book me a taxi"), the agent first asks what is missing (route and time), then looks on the public web, a verifier checks each business's own site, and the find joins the Hive as an unclaimed card. Unclaimed cards say *Unclaimed · hand-off only*: the agent never books them, it takes you to the business's site after your yes. Jobs questions list the employers' careers pages | `code/backend/app/domains/scout.py`, `explore.py` |
+| Live activity feed (`?demo#activity`): one line per agent step, partner or web, never a person | `code/backend/app/activity.py`, `panels/ActivityPanel.tsx` |
+| Persistence: the Hive lives in DuckDB and is snapshotted to Postgres when `DATABASE_URL` is set, so a redeploy keeps cards, bookings and demand; without it the backend seeds a fresh Basel | `code/backend/app/storage.py` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
@@ -122,7 +126,7 @@ Taking over the code? The [diagrams](documentation/DIAGRAMS.md) show how the par
 
 | Folder | Contents |
 | --- | --- |
-| [`code/`](code) | `backend/` FastAPI + DuckDB + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
+| [`code/`](code) | `backend/` FastAPI + DuckDB (Postgres snapshot) + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
 | [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 

@@ -49,13 +49,18 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
    and books Rheinblick as before. Then tick *Rules off* and send again: an unguarded agent would book the suite for
    CHF 780 without asking. Nothing is sent; the run is scripted and offline, so it costs no tokens. Click **Run again
    with rules on**. "Same request, same web. The difference is the rules."
-6. **Bonus: from Claude itself.** Add the Hive's MCP URL (`<backend>/mcp/`) as a custom connector in Claude and ask
+6. **Optional: any business, 30 s** (chapter 1). Ask *"Which companies here are hiring?"*: Endress+Hauser, Adobe
+   and Pax answer from their unclaimed cards, tagged *Unclaimed · hand-off only*. Name one and the agent asks before
+   it takes you to their careers page; it never books an unclaimed card. *"Book me a taxi"* gets a question back
+   first: "From where to where, and when?"
+7. **Bonus: from Claude itself.** Add the Hive's MCP URL (`<backend>/mcp/`) as a custom connector in Claude and ask
    for a dog-friendly hotel near Basel SBB. Claude books through the same tools.
 
 ## Before going on stage
 
 - Open the app with `?demo` (https://reactbias.github.io/Adobee-Hive/?demo). Visitors never see the presenter tools;
-  `?demo` adds **Stress test**, **Simulate 40 traveller searches**, the tamper test and the raw MCP exchange.
+  `?demo` adds **Stress test**, **Simulate 40 traveller searches**, the tamper test, the raw MCP exchange and the
+  **Live activity** feed (`?demo#activity`), worth a second screen while the agent works.
 - `curl <backend>/api/health` says `"llm": "openai"` if the key is set.
 - On the deployed demo, open the owner studio in chapter 2 once and enter the owner token, so the edit at beat 4 doesn't stop for it.
 - Reset to a clean Basel after the warm-up run (Gare Central back to not dog-friendly, no bookings, no demand):
