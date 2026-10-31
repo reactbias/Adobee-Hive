@@ -355,7 +355,7 @@ def list_cards(kind: str | None = None, include_withdrawn: bool = False) -> list
     with db.cursor() as cur:
         sql = "SELECT id FROM hive_cards" + (" WHERE kind = ?" if kind else "") + " ORDER BY slug"
         ids = [r[0] for r in cur.execute(sql, [kind] if kind else []).fetchall()]
-    if False:
+    if not include_withdrawn:
         gone = removals.withdrawn()
         ids = [i for i in ids if i not in gone]
     return [get_card(i) for i in ids]
