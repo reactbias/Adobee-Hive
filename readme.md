@@ -23,7 +23,7 @@ Six questions a reviewer asks, one hop each.
 | Question | Page |
 | --- | --- |
 | What is this, and why is it plausible in five years? | [VISION.md](documentation/VISION.md) |
-| What is in the JSON every team reads? | [The Card](#the-card-the-json-every-team-reads-and-writes) · [SEARCH_API.md](documentation/SEARCH_API.md) |
+| What is in the JSON every team reads? | [The Card](#the-card-the-json-every-team-reads-and-writes) |
 | How does a search reach another Hive? | [FEDERATION.md](documentation/FEDERATION.md#how-far-to-look-the-radius) |
 | How is a Hive measured, and how is a business? | [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
 | How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
@@ -152,9 +152,10 @@ product requirement, not a nicety** — a user must never be unable to tell whos
 - **Field sizes are enforced per field**, and `GET /api/hub/registration` publishes the table, so
   read the ceilings from the hub rather than hard-coding them.
 
-Deeper: **[SEARCH_API.md](documentation/SEARCH_API.md)** — every endpoint with real requests and
-responses, the scoring breakdown, federation and the three-folder fixture for agents that crawl
-unstructured folders.
+Deeper, per endpoint: the hub publishes its own field ceilings at `GET /api/hub/registration`, and
+every search endpoint is live at `/docs` on any running Hive. A full written spec — real requests
+and responses, the scoring breakdown, and a fixture that serves three vault folders to an agent
+that crawls unstructured files — lands with `documentation/SEARCH_API.md`.
 
 ## The next guest is an agent
 
