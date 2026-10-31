@@ -34,6 +34,49 @@ would be the most damaging bug in the product. `rating_count: 0` always accompan
 A rating only exists after a **signed booking receipt** or a **scored introduction** — a real thing
 that actually happened. There is nothing to buy and nothing to fake.
 
+## `contact` — always there, keys guaranteed, values may be empty
+
+How you actually reach an entity. **`contact` is always present, and `email` and `phone` are always
+present inside it**, even when empty. That is the point: a frontend should never have to guard
+`contact?.email?` — the key is there, and an empty string means "not published", which is a thing
+you can render.
+
+```jsonc
+"contact": {
+  "email":   "hallo@hotelkrafft.example",
+  "phone":   "+41 61 690 91 30",
+  "mobile":  "",                              // exists, but gated — see contact_sharing
+  "address": "Rheingasse 12, 4058 Basel, CH",
+  "mcp":     "https://hotelkrafft.example/mcp"
+},
+"contact_sharing": { "mobile": "confirm" }    // only where it differs from the entity default
+```
+
+It stays an **open map**: `email` and `phone` are guaranteed, and any other channel may be added —
+`mobile`, `address`, `mcp`, `whatsapp`, whatever the entity actually uses. Render the ones you know
+and list the rest rather than dropping them.
+
+### An empty value does not always mean the same thing
+
+| What you see | What it means | What to render |
+| --- | --- | --- |
+| `"email": "hallo@…"` | published | the address |
+| `"phone": ""` and no `contact_sharing` entry | not published, nothing to ask for | "not provided" |
+| `"phone": ""` with `contact_sharing.phone = "confirm"` | **they have one; ask for it** | "available on request" and a way to ask |
+| key absent entirely | `push` or `never` — not your business | nothing. Do not hint at it |
+
+That last row is the same rule as `structure`: a channel the owner marked `never` is **absent**, not
+listed as withheld, because listing it in order to say it is private announces that it exists.
+
+`contact_sharing` only carries keys that differ from the entity's default, so an absent entry means
+"inherits", not "public".
+
+### After a handshake
+
+`manifest-after-handshake.json` shows the other half: a connected peer sees `contact_released`, where
+`mobile` now has the value the public Card showed as empty. Same entity, more trust, more contact —
+which is the whole shape of the product in one field.
+
 ## The rest of a Card
 
 | Field | What it is |
@@ -44,6 +87,7 @@ that actually happened. There is nothing to buy and nothing to fake.
 | `links` | Each carries a `proof`: `dns-txt`, `rel-me`, or `none`. **`none` is a claim, not a verification** — show it differently |
 | `offers` / `needs` | Both sides of the market in one file. A hotel's `offers` make it bookable; its `needs` make it an employer |
 | `structure` | The *shape* of the owner's folder: paths, counts, digests, visibility. Never the contents |
+| `contact` | Always present; `email` and `phone` always present inside it, possibly empty. See above |
 | `policy` | `handshake` and `human_in_loop` — the threshold above which a person must say yes |
 | `attestations` | Counter-signed statements. Portable: they move with the entity between hubs |
 | `sig` | Ed25519 over the canonical JSON of everything else |
@@ -69,7 +113,8 @@ withheld without naming them. Diff the two files and the privacy model is right 
 
 The live backend serves a simpler card (`code/backend/app/hive.py`) and is converging on this. Already
 landed: `name`, `description`, `rating`, `rating_count`, per-item sharing flags, and the two-key
-split. Still design: `seq`, `structure`, `offers`/`needs` as modelled here, and portable
+split. `contact` is served today as an open map — this page adds the guarantee that `email` and
+`phone` are always present, and `contact_sharing` alongside it. Still design: `seq`, `structure`, `offers`/`needs` as modelled here, and portable
 `attestations`.
 
 So: **build against the three entity fields now** — they are served today. Treat the rest as the

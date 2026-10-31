@@ -14,6 +14,16 @@
     "unit": "tenths of a star",
     "shown_as": "4.3 / 5"
   },
+  "contact": {
+    "email": "hallo@hotelkrafft.example",
+    "phone": "+41 61 690 91 30",
+    "mobile": "",
+    "address": "Rheingasse 12, 4058 Basel, CH",
+    "mcp": "https://hotelkrafft.example/mcp"
+  },
+  "contact_sharing": {
+    "mobile": "confirm"
+  },
   "identity": {
     "name": "Hotel Krafft Basel",
     "tagline": "26 rooms on the Rhine, since 1872",
