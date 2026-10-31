@@ -185,3 +185,10 @@ def test_an_hr_refusal_reaches_the_agent_as_an_error_over_mcp(client):
             return json.loads(res.content[0].text)
 
     assert "not a person card" in asyncio.run(ask())["error"]
+
+
+def test_a_booking_is_cancelled_once(client):
+    booking = _book("hotel-dreirosen", "dorm", "2027-02-09", "2027-02-10")
+    hive.cancel(booking["booking_id"], booking["receipt"])
+    with pytest.raises(hive.HiveError, match="already cancelled"):
+        hive.cancel(booking["booking_id"], booking["receipt"])
