@@ -362,6 +362,13 @@ const en = {
     "A Hive carries the signed cards of its members. Pick the one you want to search, or the one you want to join.",
   "finder.draft": "First pass. This list is not designed yet: plain rows, so what is still missing stays visible.",
   "finder.notDeployed": "This hub does not serve the directory yet, so only the hub you are on is listed.",
+  "finder.failed.read": "The hub directory could not be read, so only the hub you are on is listed.",
+  "finder.failed.status": "This hub refused to list the directory ({status}), so only the hub you are on is listed.",
+  "finder.failed.shape":
+    "This hub answered the directory with something this app cannot read, so only the hub you are on is listed.",
+  "finder.failed.render": "This list could not be drawn. The hub you are on is still listed below.",
+  "finder.slow": "The directory is taking a while. The hub you are on is listed as soon as it answers, or try again.",
+  "finder.retry": "Try again",
   "finder.loading": "Reading the directory",
   "finder.use": "Use this Hive",
   "finder.change": "Change Hive",

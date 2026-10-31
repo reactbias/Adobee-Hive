@@ -365,6 +365,13 @@ const fr: Record<Key, string> = {
   "finder.draft":
     "Première version. Cette liste n'est pas encore mise en forme : des lignes simples, pour que ce qui manque reste visible.",
   "finder.notDeployed": "Ce hub ne publie pas encore l'annuaire ; seul le hub sur lequel vous êtes est listé.",
+  "finder.failed.read": "L'annuaire des hubs n'a pas pu être lu ; seul le hub sur lequel vous êtes est affiché.",
+  "finder.failed.status": "Ce hub a refusé l'annuaire ({status}) ; seul le hub sur lequel vous êtes est affiché.",
+  "finder.failed.shape":
+    "Ce hub a répondu à l'annuaire par quelque chose que cette application ne sait pas lire ; seul le hub sur lequel vous êtes est affiché.",
+  "finder.failed.render": "Cette liste n'a pas pu être dessinée. Le hub sur lequel vous êtes reste affiché ci-dessous.",
+  "finder.slow": "L'annuaire prend du temps. Le hub sur lequel vous êtes apparaît dès qu'il répond, ou réessayez.",
+  "finder.retry": "Réessayer",
   "finder.loading": "Lecture de l'annuaire",
   "finder.use": "Utiliser ce Hive",
   "finder.change": "Changer de Hive",

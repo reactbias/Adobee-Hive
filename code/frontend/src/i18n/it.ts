@@ -366,6 +366,15 @@ const it: Record<Key, string> = {
   "finder.draft":
     "Prima versione. Questo elenco non è ancora impaginato: righe semplici, così resta visibile quello che manca.",
   "finder.notDeployed": "Questo hub non pubblica ancora l'elenco, quindi è indicato solo l'hub su cui si trova.",
+  "finder.failed.read":
+    "Non è stato possibile leggere l'elenco degli hub, quindi è elencato solo l'hub su cui si trova.",
+  "finder.failed.status": "Questo hub ha rifiutato l'elenco ({status}), quindi è elencato solo l'hub su cui si trova.",
+  "finder.failed.shape":
+    "Questo hub ha risposto all'elenco con qualcosa che questa applicazione non sa leggere, quindi è elencato solo l'hub su cui si trova.",
+  "finder.failed.render":
+    "Non è stato possibile disegnare questo elenco. L'hub su cui si trova resta elencato qui sotto.",
+  "finder.slow": "L'elenco richiede tempo. L'hub su cui si trova appare appena risponde, oppure riprovi.",
+  "finder.retry": "Riprova",
   "finder.loading": "Lettura dell'elenco",
   "finder.use": "Usa questo Hive",
   "finder.change": "Cambia Hive",

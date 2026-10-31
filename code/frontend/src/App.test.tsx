@@ -134,6 +134,37 @@ describe("the first screen", () => {
     vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
   });
 
+  // A reload is the test a person actually performs when a screen looks wrong, so it must not be the thing that
+  // takes the screen away. Reloading is a fresh mount reading the same sessionStorage and the same address.
+  it("stays on the finder across a reload, however many times", async () => {
+    for (let n = 0; n < 3; n++) {
+      const { unmount } = render(
+        <I18nProvider>
+          <App />
+        </I18nProvider>,
+      );
+      expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+      expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+      unmount();
+    }
+    expect(sessionStorage.getItem("adobee-hub")).toBeNull();
+  });
+
+  it("stays on the finder across a reload when the directory is broken", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: undefined } as never);
+    for (let n = 0; n < 2; n++) {
+      const { unmount } = render(
+        <I18nProvider>
+          <App />
+        </I18nProvider>,
+      );
+      // The page it must never be: blank. The heading and this hub are both still there.
+      expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+      expect(screen.getByText(en["finder.thisHub"])).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("is the instance finder when no hub has been chosen", async () => {
     render(
       <I18nProvider>

@@ -365,6 +365,17 @@ const de: Record<Key, string> = {
     "Erster Entwurf. Diese Liste ist noch nicht gestaltet: einfache Zeilen, damit sichtbar bleibt, was noch fehlt.",
   "finder.notDeployed":
     "Dieser Hub liefert das Verzeichnis noch nicht, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.read":
+    "Das Hub-Verzeichnis konnte nicht gelesen werden, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.status":
+    "Dieser Hub hat das Verzeichnis verweigert ({status}), daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.shape":
+    "Dieser Hub hat auf das Verzeichnis mit etwas geantwortet, das diese App nicht lesen kann, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.render":
+    "Diese Liste konnte nicht gezeichnet werden. Der Hub, auf dem Sie sind, steht weiterhin unten.",
+  "finder.slow":
+    "Das Verzeichnis braucht etwas. Der Hub, auf dem Sie sind, erscheint, sobald er antwortet, oder versuchen Sie es erneut.",
+  "finder.retry": "Erneut versuchen",
   "finder.loading": "Verzeichnis wird gelesen",
   "finder.use": "Diesen Hive nutzen",
   "finder.change": "Hive wechseln",

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { api, apiOrigin, setChosenHub, type DirectoryHub } from "../api";
+import { Component, useEffect, useState, type ReactNode } from "react";
+import { ApiError, api, apiOrigin, setChosenHub, type Directory, type DirectoryHub } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
@@ -119,70 +119,158 @@ function Row({ hub, onPick, needed }: { hub: DirectoryHub; onPick: (hub: string)
 }
 
 /**
+ * A list that cannot take the page down with it.
+ *
+ * The finder used to disappear completely: `GET /api/hub/directory` answering 200 with a body that was not
+ * `{hubs: [...]}` set `hubs` to `undefined`, which is not `null`, so the loading branch was skipped and
+ * `hubs.map` threw during render. React has no error boundary above this, so it unmounted the whole root and
+ * the page went blank — header, finder and all. Verified in a browser: `root.innerHTML` was the empty string.
+ *
+ * The shape is checked before it is rendered, so that cannot happen again. This boundary is the second line:
+ * whatever one bad row does, the heading, the explanation and the way out stay on screen.
+ */
+class Rows extends Component<{ children: ReactNode; onBroken: (reason: string) => void }, { broken: boolean }> {
+  state = { broken: false };
+
+  /** Render nothing in place of the list; the section around it reports the failure and offers a retry. */
+  static getDerivedStateFromError() {
+    return { broken: true };
+  }
+
+  /** Tell the section what went wrong, so it says something rather than showing a gap. */
+  componentDidCatch(error: Error) {
+    this.props.onBroken(error.message || "render");
+  }
+
+  render() {
+    return this.state.broken ? null : this.props.children;
+  }
+}
+
+/** This hub, as the one row that needs nobody's permission. Shown whenever the directory cannot be read. */
+function thisHub(t: (key: Key) => string): DirectoryHub {
+  return {
+    hub: "local",
+    url: "",
+    home: true,
+    blocked: false,
+    name: t("finder.thisHub"),
+    description: t("finder.thisHubDescription"),
+    accepting: true,
+    entities: null,
+    error: null,
+    error_stars: null,
+    evidence: 0,
+    verdict: "unproven",
+    why: "",
+  };
+}
+
+/**
+ * The rows of a directory answer, taking nothing on trust.
+ *
+ * A hub is only a hub if it has an id to pick it by. Anything else in the list is dropped rather than rendered,
+ * and an answer that is not a list at all is a failed read with a reason — never a crash mid-render.
+ */
+export function hubsIn(answer: unknown): DirectoryHub[] {
+  const rows = (answer as Directory | null)?.hubs;
+  if (!Array.isArray(rows)) throw new Error("shape");
+  return rows.filter((row): row is DirectoryHub => !!row && typeof row === "object" && typeof row.hub === "string");
+}
+
+/** Which sentence to show for a failed read. A 404 is a hub without the endpoint yet, not a broken one. */
+function whyFailed(err: unknown): Key {
+  if (err instanceof Error && err.message === "shape") return "finder.failed.shape";
+  if (err instanceof ApiError && err.status === 404) return "finder.notDeployed";
+  if (err instanceof ApiError) return "finder.failed.status";
+  return "finder.failed.read";
+}
+
+// A directory read that takes longer than this stops being something to wait for and becomes something to say.
+// The request is not abandoned: a slow hub that answers later still fills the list in.
+const SLOW_MS = 15_000;
+
+/**
  * The first screen: which Hive do you want to use. Picking one remembers it for this tab and hands over to
  * the app. `?hub=<id>` in the address skips this screen entirely, which is what the pitch runbook uses.
+ *
+ * It always renders something. Loading says it is loading, a failure says what failed and offers a retry, and
+ * either way this hub is listed so a person is never stuck on a screen with nothing to choose.
  */
 export default function InstanceFinder({ onPick }: { onPick: (hub: string) => void }) {
   const { t } = useI18n();
   const [hubs, setHubs] = useState<DirectoryHub[] | null>(null);
-  const [fallback, setFallback] = useState(false);
+  const [failed, setFailed] = useState<string>("");
+  const [status, setStatus] = useState(0);
+  const [slow, setSlow] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   // How many scored introductions a verdict needs, from the hub itself, so "unproven" can say how far off it is.
   const [needed, setNeeded] = useState(MIN_EVIDENCE);
 
   useEffect(() => {
     let live = true;
+    setSlow(false);
+    // Nothing is cleared on a retry: the list that is already on screen stays until a better one arrives.
+    const timer = setTimeout(() => live && setSlow(true), SLOW_MS);
     api
       .directory()
-      .then((d) => {
+      .then((answer) => {
         if (!live) return;
-        setHubs(d.hubs);
-        setNeeded(d.min_evidence ?? MIN_EVIDENCE);
+        setHubs(hubsIn(answer));
+        setNeeded((answer as Directory)?.min_evidence ?? MIN_EVIDENCE);
+        setFailed("");
+        setSlow(false);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!live) return;
-        setFallback(true);
-        setHubs([
-          {
-            hub: "local",
-            url: "",
-            home: true,
-            blocked: false,
-            name: t("finder.thisHub"),
-            description: t("finder.thisHubDescription"),
-            accepting: true,
-            error: null,
-            error_stars: null,
-            evidence: 0,
-            verdict: "unproven",
-            why: "",
-          },
-        ]);
-      });
+        // Whatever went wrong, this hub is still here and still pickable.
+        setHubs((known) => (known?.length ? known : [thisHub(t)]));
+        setStatus(err instanceof ApiError ? err.status : 0);
+        setFailed(whyFailed(err));
+        setSlow(false);
+      })
+      .finally(() => clearTimeout(timer));
     return () => {
       live = false;
+      clearTimeout(timer);
     };
-    // The fallback row's text is in the page's language at the moment it is built; a switch re-renders the rest.
-  }, [t]);
+    // `attempt` is the retry button; `t` rebuilds the fallback row in the page's language after a switch.
+  }, [t, attempt]);
 
   const choose = (hub: string) => {
     setChosenHub(hub);
     onPick(hub);
   };
 
+  const listed = hubs ?? [];
   return (
     <section className="finder" id="finder">
       <h1>{t("finder.title")}</h1>
       <p>{t("finder.lead")}</p>
       <p className="finder-draft">{t("finder.draft")}</p>
-      {fallback && <p className="finder-draft">{t("finder.notDeployed")}</p>}
+      {(failed || slow) && (
+        <p className="finder-draft" role="status">
+          {failed ? t(failed as Key, { status }) : t("finder.slow")}{" "}
+          <button className="quiet" onClick={() => setAttempt((n) => n + 1)}>
+            {t("finder.retry")}
+          </button>
+        </p>
+      )}
       <p className="finder-draft">{t("finder.pinned", { backend: apiOrigin() })}</p>
       {hubs === null ? (
         <p className="muted">{t("finder.loading")}</p>
       ) : (
+        <Rows onBroken={() => setFailed("finder.failed.render")}>
+          <ul className="finder-list">
+            {listed.map((h) => (
+              <Row key={h.hub} hub={h} onPick={choose} needed={needed} />
+            ))}
+          </ul>
+        </Rows>
+      )}
+      {hubs !== null && listed.length === 0 && (
         <ul className="finder-list">
-          {hubs.map((h) => (
-            <Row key={h.hub} hub={h} onPick={choose} needed={needed} />
-          ))}
+          <Row hub={thisHub(t)} onPick={choose} needed={needed} />
         </ul>
       )}
       <p className="muted small">{t("finder.cal.explain")}</p>
