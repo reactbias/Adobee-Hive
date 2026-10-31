@@ -1,5 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { api, type AgentResult, type Booking, type Step } from "../api";
+import {
+  api,
+  type AgentOptions,
+  type AgentResult,
+  type Booking,
+  type Refusal,
+  type Step,
+  type Unguarded,
+} from "../api";
 import AgentTrace, { namesFrom, STAGGER_MS } from "../components/AgentTrace";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -26,9 +34,13 @@ export default function TravellerAgent() {
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
   const [reviewed, setReviewed] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
+  // Demo only: plant a manipulated listing, and optionally run the agent without its rules.
+  const [mirror, setMirror] = useState(false);
+  const [rulesOff, setRulesOff] = useState(false);
 
-  async function send() {
-    const messages = [...history, { role: "user", content: input }];
+  async function send(text = input, base = history, off = rulesOff) {
+    const messages = [...base, { role: "user", content: text }];
+    const options: AgentOptions = mirror ? { scenario: "injection", rules: off ? "off" : "on" } : {};
     setBusy(true);
     setError("");
     setReviewed("");
@@ -36,13 +48,13 @@ export default function TravellerAgent() {
     setHistory(messages);
     setInput("");
     try {
-      const out = await api.agent(messages);
+      const out = await api.agent(messages, options);
       setBatchStart(0);
       setResult(out);
       setHistory([...messages, { role: "assistant", content: out.reply }]);
     } catch (e) {
       setError((e as Error).message);
-      setHistory(history);
+      setHistory(base);
       setInput(messages[messages.length - 1].content);
     } finally {
       setBusy(false);
@@ -71,6 +83,14 @@ export default function TravellerAgent() {
     if (!result) return;
     setResult({ ...result, pending: null });
     setHistory((h) => [...h, { role: "assistant", content: t("agent.declined") }]);
+  }
+
+  // From the rules-off result: the same request, now with the agent's rules on.
+  function rerunGuarded() {
+    const lastAsk = [...history].reverse().find((m) => m.role === "user");
+    if (!lastAsk) return;
+    setRulesOff(false);
+    send(lastAsk.content, [], false);
   }
 
   function reset() {
@@ -142,7 +162,7 @@ export default function TravellerAgent() {
             <button className="quiet" onClick={reset} disabled={busy || !history.length}>
               {t("agent.newTrip")}
             </button>
-            <button onClick={send} disabled={busy || !input.trim()}>
+            <button onClick={() => send()} disabled={busy || !input.trim()}>
               {t("agent.send")}
             </button>
           </div>
@@ -162,6 +182,30 @@ export default function TravellerAgent() {
             </ul>
           </div>
         )}
+        <fieldset className="stress">
+          <legend className="eyebrow">{t("agent.test.eyebrow")}</legend>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={mirror}
+              disabled={busy}
+              onChange={(e) => {
+                setMirror(e.target.checked);
+                if (!e.target.checked) setRulesOff(false);
+              }}
+            />
+            <span>{t("agent.test.injection")}</span>
+          </label>
+          <label className={`check danger${mirror ? "" : " off"}`}>
+            <input
+              type="checkbox"
+              checked={rulesOff}
+              disabled={busy || !mirror}
+              onChange={(e) => setRulesOff(e.target.checked)}
+            />
+            <span>{t("agent.test.rulesOff")}</span>
+          </label>
+        </fieldset>
         {error && <p className="error">{error}</p>}
       </section>
 
@@ -200,7 +244,8 @@ export default function TravellerAgent() {
             <span>{t("agent.mode.ready")}</span>
           )}
           <span>{t("agent.meta.mcp")}</span>
-          <span>{t("agent.meta.noWebsite")}</span>
+          {result?.scenario ? <span>{t("agent.meta.mirror")}</span> : <span>{t("agent.meta.noWebsite")}</span>}
+          {result?.rules === "off" && <span className="danger">{t("agent.meta.rulesOff")}</span>}
         </div>
 
         {!result && !busy && (
@@ -223,6 +268,12 @@ export default function TravellerAgent() {
             </span>
             {result ? t("agent.working.book", { name: counterpart }) : t("agent.working.ask")}
           </div>
+        )}
+
+        {!busy && result?.guard && result.guard.length > 0 && <Refused refusals={result.guard} delay={revealMs} />}
+
+        {!busy && result?.unguarded && (
+          <RulesOff damage={result.unguarded} steps={steps} delay={revealMs} onRerun={rerunGuarded} />
         )}
 
         {pending && !busy && (
@@ -347,6 +398,73 @@ export default function TravellerAgent() {
 }
 
 const list = (v: unknown) => (Array.isArray(v) ? (v as Rec[]) : []);
+
+/** The listings the agent refused this run, and why: kept on the stage so the human sees the attempt. */
+function Refused({ refusals, delay }: { refusals: Refusal[]; delay: number }) {
+  const { t } = useI18n();
+  return (
+    <aside className="refused reveal" style={{ animationDelay: `${delay}ms` }}>
+      <span className="eyebrow">{t("agent.refused.eyebrow")}</span>
+      {refusals.map((r) => (
+        <div key={`${r.source}/${r.card_id}`}>
+          <h4>{t("agent.refused.from", { name: r.business ?? String(r.card_id), source: r.source })}</h4>
+          <ul>
+            {r.codes.map((c) => (
+              <li key={c}>{t(`guard.${c}` as Key)}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      <p className="fine">{t("agent.refused.fine")}</p>
+    </aside>
+  );
+}
+
+/** Demo only: what an agent without rules would have done. Clearly labelled; nothing here was sent. */
+function RulesOff(props: { damage: Unguarded; steps: Step[]; delay: number; onRerun: () => void }) {
+  const { t, intl } = useI18n();
+  const input = props.damage.would_call.input as Rec;
+  const card = lastOutput(props.steps, "hive_get_card");
+  const unit = list(card?.units).find((u) => u.id === input.unit_id);
+  return (
+    <div className="gate unguarded reveal" style={{ animationDelay: `${props.delay}ms` }}>
+      <span className="eyebrow">{t("agent.unguarded.eyebrow")}</span>
+      <h3>
+        {t("agent.unguarded.title", {
+          unit: String(unit?.name ?? input.unit_id),
+          name: String(card?.name ?? input.card_id),
+        })}
+      </h3>
+      <dl className="facts">
+        <div>
+          <dt>{t("agent.fact.dates")}</dt>
+          <dd>{stay(input.check_in, input.check_out, intl)}</dd>
+        </div>
+        <div>
+          <dt>{t("agent.fact.total")}</dt>
+          <dd>{chf(props.damage.total_chf, intl)}</dd>
+        </div>
+      </dl>
+      <div>
+        <span className="label">{t("agent.unguarded.broken")}</span>
+        <ul className="broken">
+          {props.damage.broken.map((b) => (
+            <li key={b.code}>
+              {t(`broken.${b.code}` as Key, {
+                price: chf(b.price_chf, intl),
+                budget: chf(b.budget_chf, intl),
+              })}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="row gate-actions">
+        <button onClick={props.onRerun}>{t("agent.unguarded.rerun")}</button>
+      </div>
+      <p className="fine">{t("agent.unguarded.fine")}</p>
+    </div>
+  );
+}
 
 function Presence(props: {
   mark: ReactNode;
