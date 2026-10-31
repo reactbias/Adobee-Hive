@@ -19,16 +19,21 @@ const fr: Record<Key, string> = {
   "trust.noReviews": "Pas encore de séjour vérifié",
 
   "home.eyebrow": "La porte d'entrée, signée.",
-  "home.title": "Le prochain client est un agent.",
+  "home.title": "Le prochain client est *un agent.*",
   "home.lead":
     "Adobee Hive donne à chaque commerce local une carte signée. Les agents la trouvent, la vérifient et réservent à travers elle. Le propriétaire la rédige avec ses propres mots, et rien n'est réservé sans l'accord d'une personne.",
+  "home.fact.cards": "Cartes signées dans le Hive de Bâle",
+  "home.fact.signature": "Signature du propriétaire",
+  "home.fact.signatureValue": "Ed25519",
+  "home.fact.protocol": "Protocole ouvert",
+  "home.fact.placement": "Places payées",
   "home.cta.agent": "Voir un agent réserver",
   "home.cta.owner": "Pour les hôtes",
   "home.from": "dès {price} la nuit",
   "home.specimen":
     "Une carte Hive, en direct du Hive de Bâle. Modifiez un seul fait sans la clé du propriétaire, et chaque agent la refuse.",
   "home.principles.eyebrow": "Principes",
-  "home.principles.title": "Une confiance vérifiable.",
+  "home.principles.title": "Une confiance *vérifiable.*",
   "home.p1.title": "Des faits signés",
   "home.p1.body":
     "Chaque carte porte la signature du propriétaire. Les agents la vérifient eux-mêmes et écartent toute copie altérée.",
@@ -40,16 +45,16 @@ const fr: Record<Key, string> = {
   "home.p4.title": "Votre oui",
   "home.p4.body": "Les agents négocient. Les personnes décident. Rien n'est réservé sans votre accord.",
   "home.twist.eyebrow": "Demande manquée",
-  "home.twist.title": "Les agents écrivent le business plan.",
+  "home.twist.title": "Les agents écrivent le *business plan.*",
   "home.twist.body":
     "Chaque demande qu'aucun commerce n'a pu satisfaire est consignée. Un café apprend que des agents cherchaient un petit-déjeuner végane. Une ville découvre ce que personne n'offre encore.",
   "home.twist.cta": "Ouvrir la carte de la demande",
   "home.hive.eyebrow": "Dans le Hive",
-  "home.hive.title": "Six commerces. Une porte ouverte.",
+  "home.hive.title": "Six commerces. *Une porte ouverte.*",
   "home.hive.body":
     "Des commerces bâlois fictifs, chacun avec sa carte signée. Tout client MCP, Claude compris, se connecte à",
   "home.no.eyebrow": "Retenue",
-  "home.no.title": "Ce que le Hive ne fera pas.",
+  "home.no.title": "Ce que le Hive ne fera *pas.*",
   "home.no1.title": "Vendre des places",
   "home.no1.body": "Le classement s'explique, y compris qui a été écarté et pourquoi.",
   "home.no2.title": "Profiler les voyageurs",
@@ -61,7 +66,7 @@ const fr: Record<Key, string> = {
     "Sur GitHub, vous trouvez des projets sur lesquels travailler. Sur Adobee Hive, les agents trouvent les commerces et les personnes avec qui travailler.",
 
   "owner.eyebrow": "Studio des hôtes",
-  "owner.title": "Dites ce qui a changé.",
+  "owner.title": "Dites ce qui a *changé.*",
   "owner.lead":
     "Aucun site à entretenir. Écrivez le changement avec vos mots, vérifiez-le, signez-le. Chaque agent lit la nouvelle carte dès sa publication.",
   "owner.business": "Commerce",
@@ -137,7 +142,7 @@ const fr: Record<Key, string> = {
     "Carte version {version}, publiée le {date}. Les agents lisent les mêmes données sur le point d'accès MCP du Hive.",
 
   "demand.eyebrow": "Carte de la demande",
-  "demand.title": "Ce que les agents de Bâle ont demandé.",
+  "demand.title": "Ce que les agents de Bâle ont *demandé.*",
   "demand.lead":
     "Chaque recherche laisse une trace. Quand aucun commerce ne peut y répondre, ce n'est pas une réservation perdue. C'est un business plan, écrit par les agents et lu par les commerçants.",
   "demand.simulate": "Simuler 40 recherches de voyageurs",
@@ -153,7 +158,7 @@ const fr: Record<Key, string> = {
   "demand.ofAsked": "{unserved} sur {asked} sans réponse",
 
   "agent.eyebrow": "Agent de voyage",
-  "agent.title": "Une phrase. Un oui.",
+  "agent.title": "Une phrase. *Un oui.*",
   "agent.lead":
     "Dites à votre agent ce dont vous avez besoin. Il parle aux commerces bâlois via MCP, vérifie lui-même chaque signature et compare les offres. Rien n'est réservé sans votre accord.",
   "agent.you": "Vous",
@@ -214,6 +219,36 @@ const fr: Record<Key, string> = {
   "agent.review.sample": "Chambre calme, le chien a adoré la promenade au bord du Rhin.",
   "agent.review.send": "Laisser un avis vérifié",
   "agent.review.stored": "Avis {id} enregistré comme séjour vérifié.",
+
+  // Group chat on the traveller page
+  "chat.you": "Vous",
+  "chat.name.agent": "Votre agent",
+  "chat.name.hive": "Hive",
+  "chat.name.sceptic": "Le sceptique",
+  "chat.name.mirror": "Le miroir",
+  "chat.role.guest": "Client",
+  "chat.role.agent": "Agent · agit pour vous",
+  "chat.role.hive": "Annuaire · classement ouvert",
+  "chat.role.business": "Agent · parle pour l'hôtel",
+  "chat.role.sceptic": "Agent · second avis, {by}",
+  "chat.role.mirror": "Agent · copie non vérifiée",
+  "chat.agent.ack": "C'est parti. J'interroge le Hive et je vérifie moi-même chaque réponse.",
+  "chat.guest.yes": "Oui, réservez.",
+  "chat.typing": "écrit",
+  "chat.replay": "Revoir",
+  "chat.skip": "Passer",
+  "chat.thinking": "réfléchit",
+  "next.intro": "C'est fait. Trois choses dont je peux encore m'occuper, en un geste chacune.",
+  "next.calendar.title": "Ajouter à votre agenda",
+  "next.calendar.body": "{dates}, avec le reçu signé en note.",
+  "next.calendar.cta": "Télécharger le .ics",
+  "next.coffee.because": "Parce que vous vouliez {feature}",
+  "next.coffee.nearby": "Tout près, depuis le Hive",
+  "next.coffee.cta": "Ouvrir la carte signée",
+  "next.route.title": "Vous arrivez en train ?",
+  "next.route.body": "De Basel SBB à {name}, {distance} à pied.",
+  "next.route.cta": "Voir le trajet",
+  "next.fine": "Rien ici ne réserve ni ne paie. Chaque geste fait une seule chose visible.",
 
   "trace.you": "Votre agent",
   "trace.hive": "Hive de Bâle",

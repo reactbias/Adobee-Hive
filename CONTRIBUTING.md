@@ -12,7 +12,7 @@ to touch another lane's file, say so in the PR description and ping that lane.
 | Hive core | `code/backend/app/hive.py`, `hive_seed.py`, `mcp_server.py`, `db.py`, `storage.py` |
 | Agents | `code/backend/app/agent.py`, `second_opinion.py`, `llm.py`, `simulate.py` |
 | Owner studio | `code/backend/app/owner.py`, `code/frontend/src/pages/OwnerStudio.tsx`, `CardPage.tsx` |
-| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/AgentTrace.tsx`, `components/B6Bee.tsx`, `styles.css`, `src/i18n/`, `public/brand/` |
+| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/GroupChat.tsx`, `components/TraceParts.tsx`, `components/NextSteps.tsx`, `components/B6Bee.tsx`, `styles.css`, `src/i18n/`, `public/brand/` |
 | HR workflows | `code/backend/app/domains/hr.py` and any new HR page or component |
 | Vision | `documentation/`, `assets/` |
 | Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, `guard.py`, `SECURITY.md`, CI and deploy files |

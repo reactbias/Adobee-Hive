@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <polygon points="32,3 58,18 58,46 32,61 6,46 6,18" fill="#b85c34" stroke="#7a3a1f" stroke-width="3" stroke-linejoin="round"/>
-  <polygon points="32,14 48,23.5 48,42.5 32,52 16,42.5 16,23.5" fill="#e3a679"/>
-  <ellipse cx="26" cy="27" rx="6" ry="4" fill="#f6e7d3" stroke="#5a2e1a" stroke-width="1.5" transform="rotate(-25 26 27)"/>
-  <ellipse cx="38" cy="27" rx="6" ry="4" fill="#f6e7d3" stroke="#5a2e1a" stroke-width="1.5" transform="rotate(25 38 27)"/>
-  <ellipse cx="32" cy="36" rx="8" ry="9.5" fill="#e9a52f" stroke="#5a2e1a" stroke-width="2"/>
-  <path d="M25 33H39M24.5 38.5H39.5" stroke="#5a2e1a" stroke-width="2.5" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#a24f2c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Adobee Hive">
+  <!-- Favicon: the mark itself; it is simple enough for tab size. -->
+  <path d="M36.0 7.3L51.4 16.2M55.4 23.1L55.4 40.9M51.4 47.8L36.0 56.7M28.0 56.7L12.6 47.8M8.6 40.9L8.6 23.1M12.6 16.2L28.0 7.3"/>
+  <ellipse cx="24.5" cy="25.5" rx="6.5" ry="4" transform="rotate(-28 24.5 25.5)"/>
+  <ellipse cx="39.5" cy="25.5" rx="6.5" ry="4" transform="rotate(28 39.5 25.5)"/>
+  <rect x="26" y="27" width="12" height="20" rx="6"/>
+  <path d="M26.5 34h11M26.5 40h11"/>
 </svg>

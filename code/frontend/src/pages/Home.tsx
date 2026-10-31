@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, mcpUrl, type Card } from "../api";
+import Display from "../components/Display";
+import Icon, { type IconName } from "../components/Icon";
 import TrustBadge from "../components/TrustBadge";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { capitalise, chf } from "../lib/format";
 
-const PRINCIPLES: [Key, Key][] = [
-  ["home.p1.title", "home.p1.body"],
-  ["home.p2.title", "home.p2.body"],
-  ["home.p3.title", "home.p3.body"],
-  ["home.p4.title", "home.p4.body"],
+const PRINCIPLES: [IconName, Key, Key][] = [
+  ["seal", "home.p1.title", "home.p1.body"],
+  ["rank", "home.p2.title", "home.p2.body"],
+  ["receipt", "home.p3.title", "home.p3.body"],
+  ["yes", "home.p4.title", "home.p4.body"],
 ];
-const REFUSALS: [Key, Key][] = [
-  ["home.no1.title", "home.no1.body"],
-  ["home.no2.title", "home.no2.body"],
-  ["home.no3.title", "home.no3.body"],
+const REFUSALS: [IconName, Key, Key][] = [
+  ["coin", "home.no1.title", "home.no1.body"],
+  ["eyeOff", "home.no2.title", "home.no2.body"],
+  ["quote", "home.no3.title", "home.no3.body"],
 ];
 
 const fromPrice = (c: Card) => (c.units.length ? Math.min(...c.units.map((u) => u.price_chf)) : null);
@@ -59,31 +61,58 @@ export default function Home() {
   return (
     <>
       <section className="hero">
-        <div className="hero-copy">
-          <span className="eyebrow">{t("home.eyebrow")}</span>
-          <h1>{t("home.title")}</h1>
-          <p className="lead">{t("home.lead")}</p>
-          <div className="row hero-actions">
-            <Link className="btn" to="/agent">
-              {t("home.cta.agent")}
-            </Link>
-            <Link className="btn quiet arrow" to="/owner">
-              {t("home.cta.owner")}
-            </Link>
+        <div className="hero-inner">
+          <div className="hero-copy">
+            <span className="eyebrow">{t("home.eyebrow")}</span>
+            <h1>
+              <Display text={t("home.title")} />
+            </h1>
+            <p className="lead">{t("home.lead")}</p>
+            <div className="row hero-actions">
+              <Link className="btn light" to="/agent">
+                {t("home.cta.agent")}
+              </Link>
+              <Link className="btn quiet arrow" to="/owner">
+                {t("home.cta.owner")}
+              </Link>
+            </div>
           </div>
+          {featured && <Specimen card={featured} />}
         </div>
-        {featured && <Specimen card={featured} />}
+        <dl className="hero-facts">
+          <div>
+            <dt>{t("home.fact.cards")}</dt>
+            <dd className="num">{cards.length || "–"}</dd>
+          </div>
+          <div>
+            <dt>{t("home.fact.signature")}</dt>
+            <dd>{t("home.fact.signatureValue")}</dd>
+          </div>
+          <div>
+            <dt>{t("home.fact.protocol")}</dt>
+            <dd>MCP</dd>
+          </div>
+          <div>
+            <dt>{t("home.fact.placement")}</dt>
+            <dd className="num">0</dd>
+          </div>
+        </dl>
       </section>
 
       <section className="section">
         <div className="section-head">
           <span className="eyebrow">{t("home.principles.eyebrow")}</span>
-          <h2>{t("home.principles.title")}</h2>
+          <h2>
+            <Display text={t("home.principles.title")} />
+          </h2>
         </div>
         <ol className="principles">
-          {PRINCIPLES.map(([title, body], n) => (
+          {PRINCIPLES.map(([icon, title, body], n) => (
             <li key={title}>
-              <span className="num principle-n">{String(n + 1).padStart(2, "0")}</span>
+              <div className="principle-head">
+                <Icon name={icon} size={28} />
+                <span className="num principle-n">{String(n + 1).padStart(2, "0")}</span>
+              </div>
               <h3>{t(title)}</h3>
               <p>{t(body)}</p>
             </li>
@@ -93,7 +122,9 @@ export default function Home() {
 
       <section className="section band">
         <span className="eyebrow">{t("home.twist.eyebrow")}</span>
-        <h2>{t("home.twist.title")}</h2>
+        <h2>
+          <Display text={t("home.twist.title")} />
+        </h2>
         <p className="lead">{t("home.twist.body")}</p>
         <Link className="btn quiet arrow" to="/demand">
           {t("home.twist.cta")}
@@ -103,7 +134,9 @@ export default function Home() {
       <section className="section">
         <div className="section-head">
           <span className="eyebrow">{t("home.hive.eyebrow")}</span>
-          <h2>{t("home.hive.title")}</h2>
+          <h2>
+            <Display text={t("home.hive.title")} />
+          </h2>
           <p className="lead">
             {t("home.hive.body")} <code className="inline-code">{mcpUrl()}</code>
           </p>
@@ -125,11 +158,14 @@ export default function Home() {
       <section className="section">
         <div className="section-head">
           <span className="eyebrow">{t("home.no.eyebrow")}</span>
-          <h2>{t("home.no.title")}</h2>
+          <h2>
+            <Display text={t("home.no.title")} />
+          </h2>
         </div>
         <ul className="refusals">
-          {REFUSALS.map(([title, body]) => (
+          {REFUSALS.map(([icon, title, body]) => (
             <li key={title}>
+              <Icon name={icon} size={28} />
               <h3>{t(title)}</h3>
               <p>{t(body)}</p>
             </li>

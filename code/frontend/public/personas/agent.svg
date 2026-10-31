@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Your agent">
+  <defs>
+    <clipPath id="c"><path d="M32 2 58 17v30L32 62 6 47V17Z"/></clipPath>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#2e2620"/><stop offset="1" stop-color="#14110d"/></radialGradient>
+    
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="64" height="64" fill="url(#bg)"/>
+    <path d="M32 14 47.6 23v18L32 50 16.4 41V23Z" fill="none" stroke="#d98b5f" stroke-opacity=".35" stroke-width="1.4"/><path d="M32 21 41.5 26.5v11L32 43l-9.5-5.5v-11Z" fill="none" stroke="#d98b5f" stroke-opacity=".7" stroke-width="1.4"/><circle cx="32" cy="32" r="4.2" fill="#d98b5f"/>
+  </g>
+</svg>

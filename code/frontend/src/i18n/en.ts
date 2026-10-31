@@ -20,16 +20,21 @@ const en = {
 
   // Landing page
   "home.eyebrow": "The front door, signed.",
-  "home.title": "The next guest is an agent.",
+  "home.title": "The next guest is *an agent.*",
   "home.lead":
     "Adobee Hive gives every local business one signed card. Agents find it, verify it and book through it. The owner writes it in plain words, and nothing is booked until a person says yes.",
+  "home.fact.cards": "Signed cards in the Basel Hive",
+  "home.fact.signature": "Owner signature",
+  "home.fact.signatureValue": "Ed25519",
+  "home.fact.protocol": "Open protocol",
+  "home.fact.placement": "Paid placements",
   "home.cta.agent": "Watch an agent book",
   "home.cta.owner": "For business owners",
   "home.from": "from {price} a night",
   "home.specimen":
     "A Hive card, live from the Basel Hive. Change one fact without the owner's key and every agent rejects it.",
   "home.principles.eyebrow": "Principles",
-  "home.principles.title": "Trust you can check.",
+  "home.principles.title": "Trust you can *check.*",
   "home.p1.title": "Signed facts",
   "home.p1.body":
     "Every card carries the owner's signature. Agents verify it themselves and turn away any copy that was altered.",
@@ -40,15 +45,15 @@ const en = {
   "home.p4.title": "Your yes",
   "home.p4.body": "Agents negotiate. People decide. Nothing is booked without your approval.",
   "home.twist.eyebrow": "Missed demand",
-  "home.twist.title": "Agents write the business plan.",
+  "home.twist.title": "Agents write the *business plan.*",
   "home.twist.body":
     "Every request no business could serve is recorded. A café learns that agents asked for vegan breakfast. A city learns what nobody offers yet.",
   "home.twist.cta": "Open the demand map",
   "home.hive.eyebrow": "In the Hive",
-  "home.hive.title": "Six businesses. One open door.",
+  "home.hive.title": "Six businesses. *One open door.*",
   "home.hive.body": "Fictional Basel businesses, each with a signed card. Any MCP client, Claude included, connects at",
   "home.no.eyebrow": "Restraint",
-  "home.no.title": "What the Hive will not do.",
+  "home.no.title": "What the Hive will *not* do.",
   "home.no1.title": "Sell placement",
   "home.no1.body": "Ranking explains itself, including who was left out and why.",
   "home.no2.title": "Profile travellers",
@@ -60,7 +65,7 @@ const en = {
 
   // Owner studio
   "owner.eyebrow": "Owner studio",
-  "owner.title": "Say what changed.",
+  "owner.title": "Say what *changed.*",
   "owner.lead":
     "No website to maintain. Write the change in plain words, review it, sign it. Every agent reads the new card the moment you publish.",
   "owner.business": "Business",
@@ -137,7 +142,7 @@ const en = {
 
   // Demand map
   "demand.eyebrow": "Demand map",
-  "demand.title": "What Basel's agents asked for.",
+  "demand.title": "What Basel's agents *asked for.*",
   "demand.lead":
     "Every search leaves a trace. When no business can serve it, that is not a lost booking. It is a business plan, written by agents and read by local owners.",
   "demand.simulate": "Simulate 40 traveller searches",
@@ -153,7 +158,7 @@ const en = {
 
   // Traveller agent
   "agent.eyebrow": "Traveller agent",
-  "agent.title": "One sentence. One yes.",
+  "agent.title": "One sentence. *One yes.*",
   "agent.lead":
     "Tell your agent what you need. It talks to Basel's businesses over MCP, checks every signature itself and compares the offers. Nothing is booked until you approve.",
   "agent.you": "You",
@@ -214,6 +219,36 @@ const en = {
   "agent.review.sample": "Quiet room, the dog loved the river walk.",
   "agent.review.send": "Leave a verified review",
   "agent.review.stored": "Review {id} stored as a verified stay.",
+
+  // Group chat on the traveller page
+  "chat.you": "You",
+  "chat.name.agent": "Your agent",
+  "chat.name.hive": "Hive",
+  "chat.name.sceptic": "The sceptic",
+  "chat.name.mirror": "The mirror",
+  "chat.role.guest": "Guest",
+  "chat.role.agent": "Agent · acts for you",
+  "chat.role.hive": "Directory · open ranking",
+  "chat.role.business": "Agent · speaks for the hotel",
+  "chat.role.sceptic": "Agent · second opinion, {by}",
+  "chat.role.mirror": "Agent · unverified copy",
+  "chat.agent.ack": "On it. I'll ask the Hive and check every answer myself.",
+  "chat.guest.yes": "Yes, book it.",
+  "chat.typing": "is typing",
+  "chat.replay": "Replay",
+  "chat.skip": "Skip",
+  "chat.thinking": "is thinking",
+  "next.intro": "Done. Three things I can take off your plate, one tap each.",
+  "next.calendar.title": "Put it in your calendar",
+  "next.calendar.body": "{dates}, with the signed receipt in the note.",
+  "next.calendar.cta": "Download .ics",
+  "next.coffee.because": "Because you asked for {feature}",
+  "next.coffee.nearby": "Nearby, from the Hive",
+  "next.coffee.cta": "Open the signed card",
+  "next.route.title": "Arriving by train?",
+  "next.route.body": "Basel SBB to {name}, {distance} on foot.",
+  "next.route.cta": "Show the walk",
+  "next.fine": "Nothing here books or pays. Each tap does one thing you can see.",
 
   // Agent-to-agent trace
   "trace.you": "Your agent",

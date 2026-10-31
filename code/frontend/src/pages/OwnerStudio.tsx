@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
 import TrustBadge from "../components/TrustBadge";
+import Display from "../components/Display";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, stay } from "../lib/format";
@@ -106,7 +107,9 @@ export default function OwnerStudio() {
       <header className="page-head studio-head">
         <div className="stack">
           <span className="eyebrow">{t("owner.eyebrow")}</span>
-          <h1>{t("owner.title")}</h1>
+          <h1>
+            <Display text={t("owner.title")} />
+          </h1>
           <p className="lead">{t("owner.lead")}</p>
         </div>
         <div className="picker">

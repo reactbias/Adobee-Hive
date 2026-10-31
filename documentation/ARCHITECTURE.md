@@ -58,7 +58,11 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | File | Responsibility |
 | --- | --- |
 | `api.ts` | Typed client for the REST API |
-| `pages/TravellerAgent.tsx`, `components/AgentTrace.tsx` | The traveller's brief, the agent-to-agent stage, the approval step and the signed receipt |
+| `pages/TravellerAgent.tsx` | The traveller's brief, the approval step, the signed receipt and the next steps |
+| `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
+| `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
+| `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB. None of them books or pays |
+| `components/Icon.tsx`, `components/Display.tsx` | Our icon set; headlines with one italic phrase |
 | `pages/OwnerStudio.tsx` | Plain-language edits, diff, sign and publish, missed demand |
 | `pages/CardPage.tsx` | The human view of a card, direct booking and the tamper test |
 | `pages/DemandMap.tsx` | What Basel asked for that nobody offers |
@@ -66,6 +70,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
+| `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
 ## Pages

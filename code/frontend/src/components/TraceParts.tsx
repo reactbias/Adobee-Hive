@@ -3,12 +3,11 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, metres, stay } from "../lib/format";
 
-// The agent-to-agent conversation: what the traveller's agent asked over MCP, and what the Hive answered.
-// Every line comes from a real tool call; the raw JSON is one click away.
+// What the traveller's agent asked over MCP and what the other side answered, as message bodies for the group chat.
+// Every line comes from a real tool call.
 
 type Rec = Record<string, unknown>;
 const list = (v: unknown) => (Array.isArray(v) ? (v as Rec[]) : []);
-export const STAGGER_MS = 520;
 
 /** Business names as the agent learns them, so later turns can say "Hotel Rheinblick" instead of an id. */
 export function namesFrom(steps: Step[]): Record<string, string> {
@@ -20,7 +19,7 @@ export function namesFrom(steps: Step[]): Record<string, string> {
   return names;
 }
 
-function Ask({ step, names }: { step: Step; names: Record<string, string> }) {
+export function Ask({ step, names }: { step: Step; names: Record<string, string> }) {
   const { t, intl } = useI18n();
   const i = step.input as Rec;
   const name = names[String(i.card_id)] ?? String(i.card_id ?? "");
@@ -136,7 +135,7 @@ function Availability({ o, chosen }: { o: Rec; chosen?: string }) {
 }
 
 /** What the agent's guard withheld from this answer, shown to the human word for word. */
-function Withheld({ findings }: { findings: GuardFinding[] }) {
+export function Withheld({ findings }: { findings: GuardFinding[] }) {
   const { t } = useI18n();
   const codes = [...new Set(findings.flatMap((f) => f.codes))];
   return (
@@ -160,7 +159,7 @@ export function genuine(step: Step): boolean | null {
   return Boolean((step.output.trust as Rec | undefined)?.signature_valid);
 }
 
-function Reply({ step, chosen }: { step: Step; chosen?: string }) {
+export function Reply({ step, chosen }: { step: Step; chosen?: string }) {
   const { t } = useI18n();
   const o = step.output as Rec;
   if ("error" in o) return <p>{String(o.error)}</p>;
@@ -176,64 +175,4 @@ function Reply({ step, chosen }: { step: Step; chosen?: string }) {
     default:
       return <p>{t("trace.reply.done")}</p>;
   }
-}
-
-function speaker(step: Step, names: Record<string, string>, hive: string): string {
-  if (step.tool === "hive_discover") return hive;
-  const id = String((step.input as Rec).card_id ?? "");
-  return names[id] ?? String(step.output.business ?? step.output.name ?? hive);
-}
-
-export default function AgentTrace({
-  steps,
-  chosen,
-  batchStart = 0,
-}: {
-  steps: Step[];
-  /** The unit the agent wants to book, highlighted in the availability answer. */
-  chosen?: string;
-  /** Index of the first step of the latest batch; only those animate in. */
-  batchStart?: number;
-}) {
-  const { t } = useI18n();
-  const names = namesFrom(steps);
-  return (
-    <ol className="turns">
-      {steps.map((s, n) => {
-        const failed = "error" in s.output;
-        const sig = genuine(s);
-        const via = s.source && s.tool !== "hive_discover" ? s.source : "";
-        return (
-          <li key={n} className="turn" style={{ animationDelay: `${Math.max(0, n - batchStart) * STAGGER_MS}ms` }}>
-            {s.tool === "hive_book" && <div className="consent">{t("trace.approved")}</div>}
-            <span className="turn-idx num">{String(n + 1).padStart(2, "0")}</span>
-            <div className="utter mine">
-              <div className="utter-head">
-                <span>{t("trace.you")}</span>
-                <code>{s.tool}</code>
-              </div>
-              <Ask step={s} names={names} />
-            </div>
-            <div className={`utter theirs${failed || sig === false || s.guard?.length ? " failed" : ""}`}>
-              <div className="utter-head">
-                <span>{speaker(s, names, t("trace.hive"))}</span>
-                {via && <span className="via">{t("trace.via", { source: via })}</span>}
-                {s.signature === "unchecked" && <span className="status warm">{t("trace.sig.unchecked")}</span>}
-                {sig !== null && (
-                  <span className={`status ${sig ? "ok" : "no"}`}>{sig ? t("trace.sig.ok") : t("trace.sig.bad")}</span>
-                )}
-                {s.ms !== undefined && <span className="num ms">{s.ms} ms</span>}
-              </div>
-              <Reply step={s} chosen={chosen} />
-              {s.guard && s.guard.length > 0 && <Withheld findings={s.guard} />}
-              <details>
-                <summary>{t("trace.raw")}</summary>
-                <pre>{JSON.stringify({ input: s.input, output: s.output }, null, 2)}</pre>
-              </details>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
