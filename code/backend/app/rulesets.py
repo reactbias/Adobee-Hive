@@ -95,7 +95,8 @@ def apply(result: dict[str, Any], ruleset_id: str) -> dict[str, Any]:
     rules, label = doc["rules"], f"{doc['name']} ({doc['author']})"
     kept, left_out = [], []
     for match in result["matches"]:
-        card = hive.get_card(match["id"])
+        # A match from a peer Hive carries the signed card it was verified against; a local one is read here.
+        card = match.get("card") or hive.get_card(match["id"])
         feats = {f.lower() for f in card.get("features", [])}
         vouched = {a["claim"].lower() for a in card["trust"]["attestations"]}
         why_not = [f"no {f}" for f in rules.get("require_features", []) if f not in feats]

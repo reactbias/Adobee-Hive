@@ -19,6 +19,7 @@ from . import (
     agent,
     config,
     db,
+    federation,
     guard,
     hive,
     hive_seed,
@@ -89,12 +90,22 @@ def well_known(request: Request) -> dict[str, Any]:
     """Discovery document so agents can find this Hive's MCP endpoint and policies."""
     base = str(request.base_url).rstrip("/")
     return {
-        "name": "Adobee Hive (Basel)",
+        "name": config.HIVE_NAME,
+        "description": config.HIVE_DESCRIPTION,
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
         "owner_keys": hive.owner_keys(),
         "ruleset_keys": rulesets.keys(),
         "ranking_policy": hive.RANKING_POLICY,
+        # What peer Hives judge this hub by when a query reaches them over it (see reputation.py).
+        "federation": {
+            "hub_id": config.HIVE_HUB_ID,
+            "name": config.HIVE_NAME,
+            "description": config.HIVE_DESCRIPTION,
+            "verification": config.HIVE_VERIFICATION,
+            "paid_placement": False,
+            "max_radius": federation.MAX_RADIUS,
+        },
     }
 
 
@@ -159,6 +170,50 @@ class OwnerApply(BaseModel):
 def hive_cards(kind: str | None = None) -> list[dict[str, Any]]:
     """List all cards, optionally one kind."""
     return hive.list_cards(kind)
+
+
+# A repeated query parameter needs Query(); module-level, so it is not a call in a default (ruff B008).
+FEATURES_QUERY = Query(None, description="Exact tags, repeated: features=quiet&features=dog-friendly")
+SEEN_QUERY = Query(None, description="Hub ids this query already visited, so a hop never doubles back")
+
+
+@app.get("/api/hive/discover")
+async def hive_discover(
+    request: Request,
+    query: str = "",
+    kind: str | None = None,
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    features: list[str] | None = FEATURES_QUERY,
+    check_in: str | None = None,
+    check_out: str | None = None,
+    guests: int = Query(1, ge=1, le=hive.MAX_GUESTS),
+    radius: int = Query(0, ge=0, le=federation.MAX_RADIUS),
+    budget_ms: float = Query(federation.DEFAULT_BUDGET_MS, ge=0, le=20_000),
+    seen: list[str] | None = SEEN_QUERY,
+) -> dict[str, Any]:
+    """Search the Hive, and with radius above 0 its peer Hives too; radius 0 is this Hive only, as before.
+
+    This is also how one Hive forwards a query to another: a hop passes the radius it has left, the time budget
+    left and the hubs the query has already visited (seen), which is how loops in the peer graph are cut.
+    """
+    if radius:
+        guard.federated.check(request)  # a far search costs this hub outbound calls to its peers
+    return await asyncio.to_thread(
+        _hive_call,
+        hive.discover,
+        query,
+        kind,
+        near,
+        max_price_chf,
+        features,
+        check_in,
+        check_out,
+        guests,
+        radius,
+        budget_ms,
+        seen,
+    )
 
 
 @app.get("/api/hive/cards/{card_id}")

@@ -347,8 +347,97 @@ export interface Handoff {
   sent_to_business: boolean;
 }
 
+// ---------- Discovery, near and far (radius) ----------
+
+/** The route a result travelled: every hub in order, ending at the Hive that answered. `hops` is its length - 1. */
+export interface Route {
+  path: string[];
+  hops: number;
+  origin: string;
+  origin_url: string | null;
+  /** The same card also arrived by these longer or less trusted routes. */
+  also_reached_by: { path: string[]; hops: number; hub_path_trust: number }[];
+}
+/** One hub's trust as *this* Hive judges it: a factor in 0..1, with every factor and reason spelled out. */
+export interface HubTrust {
+  hub: string;
+  trust: number;
+  factors: Record<string, number>;
+  why: string[];
+}
+export interface HiveMatch {
+  id: string;
+  slug: string;
+  /** Every entity in the protocol carries a name, a description and a rating. */
+  name: string;
+  description: string;
+  /** The verified-review average, null until a signed receipt earns one: no stay, no rating. */
+  rating: number | null;
+  rating_count: number;
+  kind: string;
+  tagline?: string | null;
+  from_price_chf: number | null;
+  distance_m: number | null;
+  score: number;
+  score_breakdown: Record<string, number>;
+  why: string[];
+  signature_valid: boolean;
+  /** Only above radius 0: how far the result travelled and by which hubs. */
+  hops?: number;
+  provenance?: Route;
+  /** local_relevance x hub_path_trust x hop_decay, the three factors in `score_breakdown`. */
+  federated_score?: number;
+  /** The signed card this Hive verified the result against, for a result from a peer. */
+  card?: Card;
+}
+/** What a peer Hive did with a forwarded query: who was asked, dropped, and whose card was refused here. */
+export interface FederationReport {
+  hub: string;
+  radius: number;
+  seen: string[];
+  budget_ms: number;
+  elapsed_ms: number;
+  /** A hub is an entity too: it declares a name and a description; the rating is this Hive's own. */
+  asked: { hub: string; name: string; description: string; rating: number; url: string; trust: number }[];
+  dropped: { hub: string; reason: string }[];
+  rejected: { hub: string; card_id: string; origin: string; reason: string }[];
+  hub_trust: Record<string, HubTrust>;
+}
+export interface Discovery {
+  matches: HiveMatch[];
+  excluded: (HiveMatch & { why_not: string[] })[];
+  ranking_policy: string;
+  /** Only above radius 0. */
+  federated_ranking_policy?: string;
+  federation?: FederationReport;
+}
+export interface DiscoverQuery {
+  query?: string;
+  kind?: string;
+  near?: string;
+  max_price_chf?: number;
+  features?: string[];
+  check_in?: string;
+  check_out?: string;
+  guests?: number;
+  /** Hop limit over peer Hives. 0, the default, is this Hive only; 3 is the cap. */
+  radius?: number;
+  budget_ms?: number;
+}
+
+function discoverPath({ features = [], ...rest }: DiscoverQuery): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(rest))
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  for (const feature of features) params.append("features", feature);
+  const query = params.toString();
+  return `/api/hive/discover${query ? `?${query}` : ""}`;
+}
+
 export const api = {
   health: () => call<Health>("/api/health"),
+  /** Search the Hive. Without a radius the answer is this Hive's own cards, exactly as before. */
+  discover: (query: DiscoverQuery = {}) => call<Discovery>(discoverPath(query)),
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),
   card: (id: string) => call<Card>(`/api/hive/cards/${id}`),
   review: (receipt: string, rating: number, text: string) =>

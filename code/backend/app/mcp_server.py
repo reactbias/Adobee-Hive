@@ -46,6 +46,7 @@ def hive_discover(
     check_out: str | None = None,
     guests: int = 1,
     ruleset: str | None = None,
+    radius: int = 0,
 ) -> dict[str, Any]:
     """Find local businesses in the Hive.
 
@@ -54,8 +55,11 @@ def hive_discover(
     Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
     businesses with why_not, so you can explain the choice to the user.
     ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
+    radius: how far to look. 0 (the default) is this Hive only. 1 also asks its peer Hives, 2 their peers, up to 3.
+    Above 0 each match says in provenance which hubs it travelled and how many hops, and its score_breakdown adds
+    local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive.
     """
-    found = _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests)
+    found = _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests, radius)
     return found if "error" in found or not ruleset else _safe(rulesets.apply, found, ruleset)
 
 

@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db
+from . import db, reputation
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -301,7 +301,7 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
             "count": stats[0],
             "average": round(stats[1], 2) if stats[1] else None,
             "recent": recent,
-            "rule": "only guests with a signed booking receipt can review",
+            "rule": reputation.BOOKING_RECEIPT_RULE,
         },
         "freshness_days": age_days,
         "fresh": is_fresh(rec["data"]),
@@ -471,8 +471,30 @@ def discover(
     check_in: str | None = None,
     check_out: str | None = None,
     guests: int = 1,
+    radius: int = 0,
+    budget_ms: float | None = None,
+    seen: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Find businesses for an agent. Returns matches with score breakdown and the near-misses."""
+    """Find businesses for an agent. Returns matches with score breakdown and the near-misses.
+
+    radius is the hop limit across peer Hives: 0, the default, is this Hive only; 1 adds its direct peers, 2
+    theirs, up to federation.MAX_RADIUS. budget_ms is the whole query's time budget and seen lists the hubs it
+    has already visited (loop prevention); both only matter above radius 0. See federation.py.
+    """
+    if int(radius or 0) > 0:
+        from . import federation  # imported here: federation builds on discover, so it imports this module
+
+        ask = {
+            "query": query,
+            "kind": kind,
+            "near": near,
+            "max_price_chf": max_price_chf,
+            "features": features,
+            "check_in": check_in,
+            "check_out": check_out,
+            "guests": guests,
+        }
+        return federation.run(ask, int(radius), budget_ms, seen)
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
     # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
@@ -506,9 +528,8 @@ def discover(
             "constraints": 0 if misses else 50,
             "text_relevance": min(20, 5 * len(hits)),
             "proximity": 0 if dist is None else max(0, 15 - dist // 150),
-            "verified_reviews": round((trust["verified_reviews"]["average"] or 0) * 2, 1),
-            "attestations": min(5, len(trust["attestations"])),
-            "signature": 0 if trust["signature_valid"] else -100,
+            # What this one business earned: verified reviews, attestations, a valid signature (reputation.py).
+            **reputation.business_points(trust),
         }
         summary = {
             "id": card["id"],
@@ -516,6 +537,11 @@ def discover(
             "name": card["name"],
             "kind": card["kind"],
             "tagline": card.get("tagline"),
+            # The three fields every entity in the protocol carries, hub or business. The rating is the
+            # verified-review average and stays None until a signed receipt produces one: no stay, no rating.
+            "description": card.get("description") or "",
+            "rating": trust["verified_reviews"]["average"],
+            "rating_count": trust["verified_reviews"]["count"],
             "from_price_chf": price,
             "distance_m": dist,
             "score": round(sum(score.values()), 1),
