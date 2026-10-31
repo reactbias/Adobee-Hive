@@ -1,11 +1,15 @@
 # Diagrams
 
-Four pictures of what runs on `main`, for anyone joining the work: where each part is hosted, how a request
-becomes a signed booking, how a question about any business finds an answer, and where the data lives. They are
-Mermaid, so GitHub draws them and anyone can edit them as text. Change a picture in the same PR as the code it
-shows; `tests/test_docs.py` fails when one names a file, MCP tool or endpoint that does not exist.
+Pictures of what runs on `main`, for anyone joining the work: where each part is hosted, how a request
+becomes a signed booking, how a question about any business finds an answer, where the data lives, and every
+door into the Hive. They are Mermaid, so GitHub draws them and anyone can edit them as text.
 
-Clay marks the one step only a person can take: **Approve**. Every table of modules, tools and endpoints is in
+**Keep them true.** A PR that adds, removes or renames a backend module, MCP tool, endpoint, agent, hosting piece
+or data path updates this page in the same PR, whoever writes it, person or agent. `tests/test_docs.py` enforces it
+both ways: CI fails when a module under `code/backend/app`, an MCP tool or an endpoint is missing here, and when a
+picture names a file, tool or endpoint that does not exist.
+
+Clay marks the steps only a person can take, such as **Approve**. Every table of modules, tools and endpoints is in
 [ARCHITECTURE.md](ARCHITECTURE.md); how to start and test each part is in the [developer guide](DEVELOPER.md).
 
 ## 1. The system
@@ -69,7 +73,14 @@ flowchart TB
   classDef guard fill:#f6f3ed,stroke:#a24f2c,color:#5a2e1a
 
   REST[REST · main.py]:::mod
-  MCP[MCP server · mcp_server.py<br/>+ domains: explore.py · scout.py · hr.py]:::mod
+  MCP[MCP server · mcp_server.py]:::mod
+
+  subgraph DOMAINS["Use cases · domains/ · base.py"]
+    EXP[explore.py<br/>any business, relevance]:::mod
+    SCT[scout.py<br/>public web to unclaimed cards]:::mod
+    HR[hr.py<br/>person cards]:::mod
+    EXM[examples.py<br/>real businesses, unclaimed]:::mod
+  end
 
   subgraph AGENTS["Three agents, one group chat"]
     A[Your agent · agent.py<br/>OpenAI tool loop or scripted planner]:::mod
@@ -78,19 +89,37 @@ flowchart TB
   end
 
   INJ[injection.py<br/>withholds text aimed at agents]:::guard
+  MIR[mirror.py<br/>demo only: a manipulated copy]:::guard
   GRD[guard.py<br/>tokens and rate limits]:::guard
+  LLM[llm.py · config.py<br/>provider, model, timeouts]:::mod
+  RPL[replies.py<br/>backend text in EN DE FR IT]:::mod
   OWN[owner.py<br/>plain words to a signed version]:::mod
+  WAIT[waiting.py<br/>standing requests, signed offers]:::mod
+  RUL[rulesets.py<br/>signed rules a person picks]:::mod
+  SIM[simulate.py<br/>busy week for the demand map]:::mod
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
+  SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
 
   REST --> GRD
   REST --> A
   A -->|MCP client| INJ --> MCP
+  MIR -.->|stress test| INJ
   A --> V
   A --> C
+  A --> LLM
+  V --> LLM
+  A --> RPL
   REST --> OWN --> HIVE
+  OWN --> WAIT
+  REST --> SIM --> HIVE
+  MCP --> DOMAINS
+  MCP --> RUL
+  MCP --> WAIT
   MCP --> HIVE
+  DOMAINS --> HIVE
   REST --> HIVE
+  SEED --> HIVE
   HIVE --> DB
 ```
 
@@ -228,6 +257,65 @@ flowchart TB
 Held bookings and held hand-offs stay in memory for 30 minutes; a restart only means asking the agent again. Every
 card change goes through `hive.publish`, which signs the new version and keeps the old ones, so a receipt can always
 show what was promised. `POST /api/demo/reset` goes back to the seed cards.
+
+## 5. Every door into the Hive
+
+Every MCP tool and every REST endpoint, by who uses it. A new tool or endpoint goes here in the same PR, or CI
+fails. What each one does: [ARCHITECTURE.md](ARCHITECTURE.md#mcp-tools-mcp-streamable-http).
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+flowchart LR
+  classDef door fill:#fffefb,stroke:#857c6f,color:#17140f
+  classDef held fill:#a24f2c,stroke:#5a2e1a,color:#fffefb
+
+  AGT([Any agent]) --> WK["GET /.well-known/hive.json"]:::door --> MCPT
+  subgraph MCPT["MCP /mcp/"]
+    direction TB
+    M1[hive_discover · hive_rulesets · hive_get_card · hive_check_availability]:::door
+    M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
+    M3[hive_wait · hive_check_waiting]:::door
+    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
+  end
+
+  APP([React app]) --> AGR & ASK & CRD & OWN & OPS
+  subgraph AGR["Chapter 1 · a room"]
+    direction TB
+    R1["POST /api/agent"]:::door
+    R2["POST /api/agent/approve"]:::held
+  end
+  subgraph ASK["Chapter 1 · any business"]
+    direction TB
+    R3["POST /api/ask"]:::door
+    R4["POST /api/ask/scout"]:::door
+    R5["POST /api/ask/approve"]:::held
+  end
+  subgraph CRD["Cards and trust"]
+    direction TB
+    R6["GET /api/hive/cards"]:::door
+    R7["GET /api/hive/cards/{card_id}"]:::door
+    R8["GET /api/hive/cards/{card_id}/availability"]:::door
+    R9["POST /api/hive/cards/{card_id}/book"]:::door
+    R10["POST /api/hive/reviews"]:::door
+    R11["POST /api/hive/verify"]:::door
+  end
+  subgraph OWN["Chapter 2 · business"]
+    direction TB
+    R12["GET /api/owner/{card_id}"]:::door
+    R13["POST /api/owner/{card_id}/propose"]:::door
+    R14["POST /api/owner/{card_id}/publish"]:::held
+    R15["GET /api/hive/demand"]:::door
+  end
+  subgraph OPS["Health and ?demo"]
+    direction TB
+    R16["GET /api/health"]:::door
+    R17["POST /api/hive/demo/forge/{card_id}"]:::door
+    R18["POST /api/demo/simulate"]:::door
+    R19["POST /api/demo/reset"]:::door
+  end
+```
+
+Clay marks the calls that act on a person's yes: Approve, or the owner's Publish.
 
 ## Who works where
 
