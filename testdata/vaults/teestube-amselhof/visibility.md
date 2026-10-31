@@ -1,0 +1,3 @@
+# Visibility
+
+- teekarte.pdf: public

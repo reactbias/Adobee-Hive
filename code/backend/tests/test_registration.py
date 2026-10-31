@@ -66,6 +66,7 @@ def test_an_applicant_who_brings_a_key_and_signs_is_admitted_and_findable(client
     assert out["verification"] == "signed"
     assert [c["check"] for c in out["checks"] if c["ok"]] == [
         "shape",
+        "size",
         "signature",
         "blocklist",
         "availability",

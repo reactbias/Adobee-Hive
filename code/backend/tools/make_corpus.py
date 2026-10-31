@@ -25,7 +25,13 @@ generator refuses to touch them.
 from __future__ import annotations
 
 import argparse
+import csv
+import io
+import re
+import struct
 import sys
+import zlib
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -901,6 +907,399 @@ BERN: tuple[Entity, ...] = (
 
 ENTITIES: tuple[Entity, ...] = BASEL + ZURICH + BERN
 
+# --------------------------------------------------------------------------- the other files
+# A vault is not three tidy markdown files. It is a CV, a price list, a scan of a certificate, and
+# photos nobody has sorted. The seeder lists every one of them in `structure` — path, size, media
+# type, digest — and reads none of them, which is the claim the pitch makes and this is where it
+# becomes checkable.
+#
+# Every file written here is a real file of the type its name claims: a PDF `pdfinfo` opens, a PNG
+# with a correct IHDR checksum, a CSV the csv module parses. An empty file with an extension would
+# make the size and the digest a lie. Written with the standard library only, so no dependency and
+# nothing to install: that rules out .xlsx (a zip of XML nobody should hand-roll) and .jpg (Huffman
+# tables), so a spreadsheet is a .csv and a photograph is a .png.
+
+#: What each folder keeps besides its markdown. Varied on purpose: some entities have six files,
+#: some have one, and a few have none, which is also what a real directory looks like.
+ASSETS: dict[str, tuple[str, ...]] = {
+    # basel — stays
+    "wirtshaus-anker": (
+        "fotos/kammer-unter-dem-dach.png",
+        "fotos/gaststube.png",
+        "hausordnung.pdf",
+        "preise-2026.csv",
+        "gaeste/anreisen-2026.csv",
+        "gaeste/anreisen-2025.csv",
+        "buchhaltung/mwst-q3.csv",
+    ),
+    "gaestehaus-sonnenrain": (
+        "fotos/gartenzimmer.png",
+        "fotos/garten.png",
+        "fruehstueckskarte.pdf",
+        "zimmerplan.pdf",
+        "gaeste/stammgaeste.csv",
+        "gaeste/anreisen-2026.csv",
+    ),
+    "zimmer-ob-der-baeckerei": ("fotos/zimmer-ost.png", "hausordnung.pdf"),
+    "herberge-dreiland": (
+        "fotos/mehrbettzimmer-a.png",
+        "hausordnung.pdf",
+        "gruppenpreise.csv",
+        "fluchtwegplan.pdf",
+    ),
+    "logis-vieux-moulin": ("photos/chambre-du-meunier.png", "table-d-hote.pdf", "tarifs-2026.csv"),
+    "kanalhaus-lofts": (
+        "fotos/loft-gross.png",
+        "fotos/kueche.png",
+        "mietvertrag-vorlage.pdf",
+        "nebenkosten.csv",
+        "mieter/2026.csv",
+        "mieter/2025.csv",
+    ),
+    "villa-hirzbrunnen": ("fotos/turmzimmer.png",),
+    "schiffsquartier-mathilde": ("fotos/kabine-vorn.png", "fotos/deck.png", "sicherheitsblatt.pdf"),
+    # basel — places to eat
+    "beizli-sternen": ("tagesteller-woche.pdf", "fotos/gaststube.png", "lieferanten.csv"),
+    "roesterei-vogelsang": (
+        "sortenliste.pdf",
+        "fotos/roester.png",
+        "ernte-2026.csv",
+        "entwuerfe/neue-karte.md",
+    ),
+    "teestube-amselhof": ("teekarte.pdf", "fotos/saal.png"),
+    "imbiss-rheinbord": ("karte.pdf",),
+    "trattoria-barcarola": ("carta.pdf", "foto/sala.png", "fornitori.csv", "bozze/carta-estate.md"),
+    "suppenkueche-dreirosen": ("wochenplan.pdf", "spenden-2026.csv"),
+    # basel — services and the one off-domain freelancer
+    "textilpflege-gundeli": ("preisliste.pdf", "tourenplan.csv", "fotos/waescherei.png"),
+    "kuechenkollektiv-klybeck": (
+        "menuvorschlaege.pdf",
+        "fotos/apero.png",
+        "fotos/kueche.png",
+        "allergene.csv",
+        "kunden/2026.csv",
+        "kunden/2025.csv",
+    ),
+    "schluesseldienst-spalen": ("preisliste.pdf", "zertifikat-sicherheitstechnik.pdf"),
+    "mira-luetolf": ("cv.pdf", "honorar-2026.csv", "referenzen.md", "portraet.png"),
+    # zurich — people
+    "jonas-brun": (
+        "cv.pdf",
+        "portfolio.pdf",
+        "honorar-2026.csv",
+        "portraet.png",
+        "projekte/nda-kunden.csv",
+        "projekte/offerten.csv",
+    ),
+    "ilaria-conti": ("cv.pdf", "ritratto.png", "tariffe-2026.csv"),
+    "tobias-wenger": ("cv.pdf", "referenzen.md", "zertifikat-iec-62366.pdf", "projekte/zulassungen.csv"),
+    "svenja-aebi": ("cv.pdf", "honorar-2026.csv", "vortrag-rust.pdf"),
+    "renzo-balmer": ("cv.pdf", "portraet.png"),
+    "fabienne-roulet": (
+        "cv.pdf",
+        "portfolio.pdf",
+        "maquettes/parcours-mobile.png",
+        "maquettes/tableau-de-bord.png",
+        "tarifs-2026.csv",
+    ),
+    "kuno-steinmann": ("cv.pdf", "beispielbericht.pdf", "honorar-2026.csv"),
+    "mirjam-oswald": ("cv.pdf", "beispielbefund.pdf", "referenzen.md"),
+    "anouk-pfister": ("cv.pdf", "arbeitsproben.pdf", "honorar-2026.csv", "portraet.png"),
+    "leonie-frei": ("cv.pdf", "testbericht-muster.pdf"),
+    "basil-zuercher": ("cv.pdf", "portfolio.pdf", "screenshots/app-liste.png", "honorar-2026.csv"),
+    "kaspar-lienhard": ("cv.pdf", "beispielprognose.csv", "portraet.png", "kunden/nda.csv"),
+    # zurich — small outfits
+    "quellcode-genossenschaft": ("statuten.pdf", "referenzen.md", "stundensaetze.csv", "team/loehne.csv"),
+    "datenhaus-oerlikon": (
+        "preisliste.pdf",
+        "fotos/serverraum.png",
+        "sla.pdf",
+        "kunden/vertraege.csv",
+        "kunden/kuendigungen.csv",
+    ),
+    "bildwerk-retusche": (
+        "preisliste.pdf",
+        "vorher-nachher/vorher.png",
+        "vorher-nachher/nachher.png",
+        "entwuerfe/neue-preise.md",
+    ),
+    "kurierdienst-sihlquai": ("tarife.csv", "fotos/anhaenger.png"),
+    "gasthof-sihlwald": (
+        "fotos/zimmer-tanne.png",
+        "abendkarte.pdf",
+        "preise-2026.csv",
+        "gaeste/anreisen.csv",
+        "gaeste/stammgaeste.csv",
+    ),
+    # bern — trades
+    "coiffure-bluemlisalp": (
+        "preisliste.pdf",
+        "fotos/salon.png",
+        "fotos/flechtfrisur.png",
+        "kunden/termine.csv",
+        "kunden/karteikarten.csv",
+    ),
+    "elektro-mattenhof": (
+        "preisliste.pdf",
+        "zertifikat-nin.pdf",
+        "fotos/sicherungskasten.png",
+        "auftraege/2026.csv",
+        "auftraege/2025.csv",
+    ),
+    "naehatelier-sulgenau": ("preisliste.pdf", "fotos/atelier.png", "stoffmuster.csv"),
+    "stimmwerk-aare": ("preisliste.pdf", "fotos/fluegel.png", "stimmprotokoll-muster.pdf"),
+    "sanitaer-hofstetter": (
+        "preisliste.pdf",
+        "notfallnummern.txt",
+        "auftraege/2026.csv",
+        "auftraege/pikett.csv",
+        "buchhaltung/offen.csv",
+    ),
+    "dachdecker-laengmoos": ("preisliste.pdf", "fotos/ziegel.png", "fotos/dachrinne.png", "referenzen.md"),
+    "schreinerei-ostermundigen": (
+        "preisliste.pdf",
+        "fotos/regal.png",
+        "fotos/werkstatt.png",
+        "holzliste.csv",
+        "entwuerfe/kueche-esche.md",
+    ),
+    "gartenbau-weissenstein": ("preisliste.pdf", "fotos/hecke.png", "saisonplan.csv"),
+    "treuhand-kehrli": (
+        "tarife.pdf",
+        "mandanten/2026.csv",
+        "mandanten/2025.csv",
+        "mandanten/archiv-2024.csv",
+        "buchhaltung/eigene-zahlen.csv",
+    ),
+    "reinigung-sternenfeld": ("preisliste.pdf", "abnahmeprotokoll.pdf", "touren.csv", "personal/loehne.csv"),
+    "hundesalon-wankdorf": ("preisliste.pdf", "fotos/salon.png"),
+    "uhrmacher-bubenberg": ("preisliste.pdf", "fotos/werkbank.png", "ersatzteile.csv"),
+    "bildrahmen-kramgasse": ("preisliste.pdf", "leistenmuster.csv", "fotos/leisten.png"),
+    "fahrschule-breitenrain": ("preisliste.pdf", "pruefungsstatistik.csv"),
+    # bern — off the hub's domain
+    "sami-kaufmann": ("cv.pdf", "referenzen.md", "honorar-2026.csv", "kunden/nda.csv"),
+    "kaffee-marzili": ("karte.pdf", "fotos/terrasse.png", "lieferanten.csv"),
+}
+
+#: How much of each path the Card admits to. Folder rules end in "/" and cover everything inside.
+#: Anything unlisted is `public-summary`, which is what every vault had when they were all markdown.
+#: Only here does the five-value vocabulary become legible: a public menu, a summary of the room
+#: photos, a *count* of the guest records, and no sign at all that the financials exist.
+VISIBILITY: dict[str, dict[str, str]] = {
+    "wirtshaus-anker": {"hausordnung.pdf": "public", "gaeste/": "private", "buchhaltung/": "hidden"},
+    "gaestehaus-sonnenrain": {"fruehstueckskarte.pdf": "public", "gaeste/": "private"},
+    "herberge-dreiland": {"hausordnung.pdf": "public", "gruppenpreise.csv": "public"},
+    "logis-vieux-moulin": {"table-d-hote.pdf": "public"},
+    "kanalhaus-lofts": {"nebenkosten.csv": "public", "mieter/": "private"},
+    "beizli-sternen": {"tagesteller-woche.pdf": "public"},
+    "roesterei-vogelsang": {"sortenliste.pdf": "public", "entwuerfe/": "shared"},
+    "teestube-amselhof": {"teekarte.pdf": "public"},
+    "imbiss-rheinbord": {"karte.pdf": "public"},
+    "trattoria-barcarola": {"carta.pdf": "public", "bozze/": "shared"},
+    "suppenkueche-dreirosen": {"wochenplan.pdf": "public", "spenden-2026.csv": "private"},
+    "textilpflege-gundeli": {"preisliste.pdf": "public"},
+    "kuechenkollektiv-klybeck": {"menuvorschlaege.pdf": "public", "allergene.csv": "public", "kunden/": "private"},
+    "schluesseldienst-spalen": {"preisliste.pdf": "public"},
+    "mira-luetolf": {"cv.pdf": "public-summary", "honorar-2026.csv": "private"},
+    "jonas-brun": {"portfolio.pdf": "public", "projekte/": "private"},
+    "tobias-wenger": {"zertifikat-iec-62366.pdf": "public", "projekte/": "private"},
+    "svenja-aebi": {"vortrag-rust.pdf": "public", "honorar-2026.csv": "private"},
+    "fabienne-roulet": {"portfolio.pdf": "public", "maquettes/": "public-summary"},
+    "kuno-steinmann": {"beispielbericht.pdf": "public"},
+    "mirjam-oswald": {"beispielbefund.pdf": "public"},
+    "anouk-pfister": {"arbeitsproben.pdf": "public"},
+    "leonie-frei": {"testbericht-muster.pdf": "public"},
+    "basil-zuercher": {"portfolio.pdf": "public", "screenshots/": "public-summary"},
+    "kaspar-lienhard": {"kunden/": "hidden"},
+    "quellcode-genossenschaft": {"statuten.pdf": "public", "stundensaetze.csv": "public", "team/": "hidden"},
+    "datenhaus-oerlikon": {"preisliste.pdf": "public", "sla.pdf": "public", "kunden/": "private"},
+    "bildwerk-retusche": {"preisliste.pdf": "public", "vorher-nachher/": "public-summary", "entwuerfe/": "shared"},
+    "kurierdienst-sihlquai": {"tarife.csv": "public"},
+    "gasthof-sihlwald": {"abendkarte.pdf": "public", "gaeste/": "private"},
+    "coiffure-bluemlisalp": {"preisliste.pdf": "public", "kunden/": "private"},
+    "elektro-mattenhof": {"preisliste.pdf": "public", "zertifikat-nin.pdf": "public", "auftraege/": "private"},
+    "naehatelier-sulgenau": {"preisliste.pdf": "public"},
+    "stimmwerk-aare": {"preisliste.pdf": "public"},
+    "sanitaer-hofstetter": {"preisliste.pdf": "public", "auftraege/": "private", "buchhaltung/": "hidden"},
+    "dachdecker-laengmoos": {"preisliste.pdf": "public"},
+    "schreinerei-ostermundigen": {"preisliste.pdf": "public", "entwuerfe/": "shared"},
+    "gartenbau-weissenstein": {"preisliste.pdf": "public"},
+    "treuhand-kehrli": {"tarife.pdf": "public", "mandanten/": "private", "buchhaltung/": "hidden"},
+    "reinigung-sternenfeld": {"preisliste.pdf": "public", "personal/": "hidden"},
+    "hundesalon-wankdorf": {"preisliste.pdf": "public"},
+    "uhrmacher-bubenberg": {"preisliste.pdf": "public"},
+    "bildrahmen-kramgasse": {"preisliste.pdf": "public"},
+    "fahrschule-breitenrain": {"preisliste.pdf": "public", "pruefungsstatistik.csv": "private"},
+    "sami-kaufmann": {"honorar-2026.csv": "private", "kunden/": "hidden"},
+    "kaffee-marzili": {"karte.pdf": "public"},
+}
+
+
+# --------------------------------------------------------------------------- real files, by hand
+
+
+def pdf_bytes(title: str, lines: Sequence[str]) -> bytes:
+    """A valid one-page PDF with the given heading and lines, built from the standard library.
+
+    Nothing in the repo can open a PDF and nothing needs to: what matters is that `pdfinfo` and any
+    other reader can, because a .pdf that is not a PDF makes its size and its digest a lie. Offsets
+    are measured rather than guessed, and there is no creation date, so the bytes are the same on
+    every run and git sees no churn.
+    """
+
+    def escape(text: str) -> bytes:
+        clean = text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+        return clean.encode("cp1252", "replace")  # what /WinAnsiEncoding means
+
+    content = [b"BT /F1 16 Tf 56 772 Td (" + escape(title) + b") Tj ET"]
+    for row, line in enumerate(lines):
+        content.append(b"BT /F1 11 Tf 56 " + f"{740 - row * 18}".encode() + b" Td (" + escape(line) + b") Tj ET")
+    stream = b"\n".join(content)
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]"
+        b" /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n".encode() + b"0000000000 65535 f \n"
+    out += b"".join(f"{offset:010d} 00000 n \n".encode() for offset in offsets)
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode()
+    return bytes(out)
+
+
+def png_bytes(path: str, width: int = 72, height: int = 48) -> bytes:
+    """A small, valid PNG whose colours come from the file's own name, so no two photos are alike.
+
+    Hand-rolled with zlib and struct because Pillow is not a dependency and should not become one
+    for test data. Deterministic: the seed is a checksum of the path, not a random number.
+    """
+    seed = zlib.crc32(path.encode())
+    base = ((seed >> 16) & 0x7F) + 60, ((seed >> 8) & 0x7F) + 60, (seed & 0x7F) + 60
+    raw = bytearray()
+    for y in range(height):
+        raw.append(0)  # filter: none
+        for x in range(width):
+            shade = (x + y * 2) % 48
+            band = 40 if (y // 8) % 3 == 0 else 0
+            raw += bytes(min(255, channel + shade + band) for channel in base)
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
+
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)  # 8-bit truecolour
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+def csv_bytes(entity: Entity, path: str) -> bytes:
+    """A spreadsheet, as a .csv: a real one opens, and an .xlsx is a zip of XML nobody should hand-roll."""
+    stem = Path(path).stem.lower()
+    rows: list[tuple[str, ...]]
+    if any(word in stem for word in ("preis", "tarif", "honorar", "stundensa", "gruppenpreise", "nebenkosten")):
+        rows = [("leistung", "chf")] + [(_title(line), _price(line)) for line in entity.offers or entity.rooms]
+    elif any(word in stem for word in ("gaeste", "anreisen", "mieter", "kunden", "mandanten", "termine", "auftraege")):
+        rows = [("nr", "monat", "tage"), ("1", "2026-03", "4"), ("2", "2026-04", "2"), ("3", "2026-06", "11")]
+    elif any(word in stem for word in ("buchhaltung", "mwst", "offen", "loehne", "eigene-zahlen", "spenden")):
+        rows = [("monat", "chf"), ("2026-01", "4820"), ("2026-02", "5110"), ("2026-03", "6240")]
+    elif any(word in stem for word in ("touren", "tourenplan", "saisonplan", "wochen")):
+        rows = [("tag", "von", "bis"), ("Montag", "06:00", "10:00"), ("Mittwoch", "06:00", "10:00")]
+    elif "statistik" in stem:
+        rows = [("jahr", "angetreten", "bestanden"), ("2024", "41", "33"), ("2025", "38", "32")]
+    elif "prognose" in stem:
+        rows = [("monat", "ist", "prognose"), ("2026-01", "118", "121"), ("2026-02", "104", "109")]
+    else:
+        rows = [("posten", "menge"), ("eins", "12"), ("zwei", "4"), ("drei", "27")]
+    out = io.StringIO()
+    csv.writer(out, lineterminator="\n").writerows(rows)
+    return out.getvalue().encode("utf-8")
+
+
+def _title(line: str) -> str:
+    """The part of an offer line before the dash: what a price list would put in its first column."""
+    return re.split(r"\s+[—–-]\s+", line, maxsplit=1)[0].rstrip(".,")
+
+
+def _price(line: str) -> str:
+    """The CHF figure in an offer line, or an empty cell when the owner published none."""
+    found = re.search(r"CHF\s*([\d'.]+)", line)
+    return found.group(1).replace("'", "") if found else ""
+
+
+#: Words in a file name that say what a PDF is for. A price list holds the prices the markdown
+#: already states, a CV holds the description — so the files agree with the card instead of
+#: inventing a second version of the business.
+def pdf_for(entity: Entity, path: str) -> bytes:
+    """The PDF a folder like this one would really hold, built from what the entity already says."""
+    stem = Path(path).stem.lower()
+    if stem in ("cv", "lebenslauf"):
+        lines = [entity.about, "", "Was ich mache / What I do:", *[f"- {line}" for line in entity.offers]]
+    elif any(word in stem for word in ("preis", "tarif", "karte", "menu", "menü", "sorten", "teekarte", "carta")):
+        lines = [f"- {line}" for line in entity.offers or entity.rooms]
+    elif "hausordnung" in stem:
+        lines = [
+            "- Ruhe ab 22 Uhr.",
+            "- Abreise bis 11 Uhr.",
+            "- Rauchen nur draussen.",
+            "- Haustiere nach Absprache.",
+        ]
+    elif any(word in stem for word in ("portfolio", "arbeitsproben", "beispiel", "muster", "vortrag", "bericht")):
+        lines = ["Auszug aus früheren Arbeiten / selected work:", *[f"- {_title(line)}" for line in entity.offers]]
+    elif any(word in stem for word in ("zertifikat", "statuten", "sla", "sicherheitsblatt", "protokoll")):
+        lines = [
+            "Dieses Dokument ist Testdaten und bescheinigt nichts.",
+            "This document is test data and certifies nothing.",
+            f"Ausgestellt auf: {entity.name}",
+        ]
+    elif any(word in stem for word in ("plan", "fluchtweg", "zimmerplan")):
+        lines = [f"- {line}" for line in entity.rooms] or ["Kein Plan hinterlegt."]
+    else:
+        lines = [entity.about]
+    return pdf_bytes(f"{entity.name} — {Path(path).stem}", [line[:110] for line in lines if line is not None][:30])
+
+
+def asset_bytes(entity: Entity, path: str) -> bytes:
+    """One non-markdown file, as the real bytes of the type its name claims."""
+    suffix = Path(path).suffix
+    if suffix == ".pdf":
+        return pdf_for(entity, path)
+    if suffix == ".png":
+        return png_bytes(f"{entity.slug}/{path}")
+    if suffix == ".csv":
+        return csv_bytes(entity, path)
+    if suffix == ".txt":
+        # Its own content, not a copy of the card's: a note that repeats the published email would
+        # make the "no card quotes a file" test fail for a reason that is not the seeder's fault.
+        return (
+            b"Pikett / on call\n\n"
+            b"- Montag bis Mittwoch: Beat\n"
+            b"- Donnerstag bis Sonntag: Noemi\n"
+            b"- Zentrale ab sieben Uhr: +41 31 000 99 01\n"
+            b"- Code fuer den Schluesselkasten steht im Safe\n"
+        )
+    if suffix == ".md":
+        return f"# {Path(path).stem.replace('-', ' ').title()}\n\n{entity.about}\n".encode()
+    raise SystemExit(f"{path}: nothing here can write a real {suffix} file")
+
+
+def visibility_md(entity: Entity) -> str:
+    """visibility.md: how much of each path the Card may admit to. Unlisted paths stay public-summary."""
+    rules = VISIBILITY.get(entity.slug, {})
+    body = [f"- {target}: {value}" for target, value in rules.items()]
+    return "\n".join(["# Visibility", "", *body]) + "\n"
+
 
 # --------------------------------------------------------------------------- writing it out
 
@@ -945,16 +1344,24 @@ def reviews_md(entity: Entity) -> str:
     return "\n".join(["# What people said", "", *(f"- {line}" for line in entity.reviews)]) + "\n"
 
 
-def files_for(entity: Entity) -> dict[str, str]:
-    """Every file this entity's folder holds, as path inside the folder to contents."""
-    files = {"about.md": about_md(entity), "contact.md": contact_md(entity)}
+def files_for(entity: Entity) -> dict[str, bytes]:
+    """Every file this entity's folder holds, as path inside the folder to exact bytes.
+
+    Bytes rather than text because half of these are a PDF, a PNG or a CSV: a vault is what its
+    owner keeps, and the seeder has to list a CV it cannot read.
+    """
+    files = {"about.md": about_md(entity).encode("utf-8"), "contact.md": contact_md(entity).encode("utf-8")}
     if entity.rooms:
-        files["rooms.md"] = rooms_md(entity)
+        files["rooms.md"] = rooms_md(entity).encode("utf-8")
     if entity.offers:
-        files[entity.offer_file] = offers_md(entity)
+        files[entity.offer_file] = offers_md(entity).encode("utf-8")
     if entity.reviews:
-        files["reviews.md"] = reviews_md(entity)
-    files.update(entity.extra)
+        files["reviews.md"] = reviews_md(entity).encode("utf-8")
+    if VISIBILITY.get(entity.slug):
+        files["visibility.md"] = visibility_md(entity).encode("utf-8")
+    for path in ASSETS.get(entity.slug, ()):
+        files[path] = asset_bytes(entity, path)
+    files.update({name: body.encode("utf-8") for name, body in entity.extra.items()})
     return files
 
 
@@ -963,23 +1370,24 @@ def write_entity(entity: Entity, root: Path = VAULTS) -> list[Path]:
     if entity.slug in PRE_EXISTING:
         raise SystemExit(f"{entity.slug} is hand-written; the generator does not own it")
     folder = root / entity.slug
-    folder.mkdir(parents=True, exist_ok=True)
     written = []
     for name, body in files_for(entity).items():
-        (folder / name).write_text(body, encoding="utf-8")
-        written.append(folder / name)
+        path = folder / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
+        written.append(path)
     return written
 
 
 def drifted(entity: Entity, root: Path = VAULTS) -> list[str]:
-    """File names where the folder on disk no longer says what the table says."""
+    """File names where the folder on disk no longer holds what the table says, in either direction."""
     folder = root / entity.slug
-    out = []
-    for name, body in files_for(entity).items():
-        path = folder / name
-        if not path.exists() or path.read_text(encoding="utf-8") != body:
-            out.append(name)
-    return out
+    wanted = files_for(entity)
+    out = [
+        name for name, body in wanted.items() if not (folder / name).exists() or (folder / name).read_bytes() != body
+    ]
+    on_disk = {f.relative_to(folder).as_posix() for f in folder.rglob("*") if f.is_file()} if folder.exists() else set()
+    return sorted(out + [f"{name} (not in the table)" for name in on_disk - set(wanted)])
 
 
 def maps_source(entities: tuple[Entity, ...] = ENTITIES) -> str:

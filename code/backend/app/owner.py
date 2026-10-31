@@ -9,7 +9,7 @@ import logging
 import re
 from typing import Any
 
-from . import config, hive, llm, waiting
+from . import config, hive, limits, llm, waiting
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,9 @@ Apply the owner's instruction to the card and return the complete updated card.
 - Keep related fields consistent: a dog-friendly card must not keep a "No pets" policy."""
 
 LOCKED = ("id", "slug", "kind", "version", "published_at", "valid_until")
-MAX_CARD_BYTES = 64_000
+#: One source for the whole-card ceiling: `limits.py` publishes it and `hive.publish` enforces
+#: it too. Kept here so an owner edit is refused before a model run, not after one.
+MAX_CARD_BYTES = limits.MAX_CARD_BYTES
 
 
 def _strip(card: dict[str, Any]) -> dict[str, Any]:
