@@ -14,7 +14,7 @@ from app.mcp_server import server
 
 REQUEST = (
     "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
-    "2026-11-13 to 2026-11-15, my name is Tobi Muster"
+    "2026-11-13 to 2026-11-15, my name is Mara Keller"
 )
 
 
@@ -221,11 +221,11 @@ def test_second_opinion_falls_back_when_openai_fails(client, monkeypatch):
     "text",
     [
         "Buche mir ein ruhiges, hundefreundliches Hotel nahe Basel SBB unter CHF 200 mit später Anreise, "
-        "13.11.2026 bis 15.11.2026. Mein Name ist Tobi Muster.",
+        "13.11.2026 bis 15.11.2026. Mein Name ist Mara Keller.",
         "Réserve-moi un hôtel calme, accueillant les chiens, près de Basel SBB, à moins de CHF 200, arrivée tardive, "
-        "du 13.11.2026 au 15.11.2026. Je m'appelle Tobi Muster.",
+        "du 13.11.2026 au 15.11.2026. Je m'appelle Mara Keller.",
         "Prenotami un hotel tranquillo, che accetti cani, vicino a Basel SBB, sotto CHF 200, con arrivo tardivo, "
-        "dal 13.11.2026 al 15.11.2026. Mi chiamo Tobi Muster.",
+        "dal 13.11.2026 al 15.11.2026. Mi chiamo Mara Keller.",
     ],
 )
 def test_offline_planner_reads_localized_requests(text):
@@ -233,7 +233,7 @@ def test_offline_planner_reads_localized_requests(text):
     assert req["features"] == ["dog-friendly", "late check-in", "quiet"]
     assert (req["check_in"], req["check_out"]) == ("2026-11-13", "2026-11-15")
     assert req["max_price_chf"] == 200 and req["near"] == "basel sbb"
-    assert req["guest_name"] == "Tobi Muster" and req["wants_booking"]
+    assert req["guest_name"] == "Mara Keller" and req["wants_booking"]
 
 
 @pytest.mark.parametrize(
@@ -286,7 +286,7 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
         [
             [call("hive_discover", {"kind": "hotel", "features": ["dog-friendly"], "near": "basel sbb"} | dates)],
             [call("hive_get_card", {"card_id": "hotel-rheinblick"})],
-            [call("hive_book", {"card_id": "hotel-rheinblick", "unit_id": "double", "guest_name": "Tobi"} | dates)],
+            [call("hive_book", {"card_id": "hotel-rheinblick", "unit_id": "double", "guest_name": "Mara"} | dates)],
             [NS(type="message")],
         ]
     )
@@ -320,8 +320,8 @@ def test_owner_overview_masks_guest_names_without_the_token(client, monkeypatch)
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     client.post("/api/agent/approve", json={"pending": out["pending"]})
     url = "/api/owner/hotel-rheinblick"
-    assert client.get(url).json()["bookings"][0]["guest_name"] == "T. M."
-    assert client.get(url, headers={"X-Owner-Token": "s3cret"}).json()["bookings"][0]["guest_name"] == "Tobi Muster"
+    assert client.get(url).json()["bookings"][0]["guest_name"] == "M. K."
+    assert client.get(url, headers={"X-Owner-Token": "s3cret"}).json()["bookings"][0]["guest_name"] == "Mara Keller"
 
 
 def test_a_held_booking_is_approved_once_and_as_held(client):

@@ -6,7 +6,7 @@ from app import agent, hive, injection, mirror
 
 REQUEST = (
     "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
-    "2026-11-13 to 2026-11-15, my name is Tobi Muster"
+    "2026-11-13 to 2026-11-15, my name is Mara Keller"
 )
 
 
