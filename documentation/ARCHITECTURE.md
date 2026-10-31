@@ -82,8 +82,8 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `DemandPanel.tsx` | 2, business | Sees what Basel asked for that nobody offers; simulates a busy week |
-| `OwnerPanel.tsx` | 2, business | Is the owner of the hotel just booked: sees the booking arrive, edits the card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand; runs the tamper test |
+| `DemandPanel.tsx` | 2, business | The Demand map tab: what Basel asked for that nobody offers; simulates a busy week with `?demo` |
+| `OwnerPanel.tsx` | 2, business | The whole business chapter: the change box in the brief; in the panel, the owner studio (the booking just made, what agents asked for, the diff, sign and publish, the new version live) and the demand map as a tab; the tamper test with `?demo` |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
