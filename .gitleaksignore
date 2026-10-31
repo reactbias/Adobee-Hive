@@ -1,0 +1,15 @@
+# Fingerprints gitleaks should not report again, as `<commit>:<file>:<rule>:<line>`.
+#
+# This is not an allowlist of paths. Each line names one finding in one commit that has already
+# happened, so nothing a future commit adds can hide behind it — which is the only kind of gitleaks
+# exception worth having. A path-shaped or rule-shaped entry would keep its exemption long after the
+# line that earned it was gone, and the next real leak would land inside it quietly.
+#
+# Both entries below are the same false positive: a test placeholder for the 64 hex characters that
+# ClaudeConnect's authz header expects where a public key goes. It is the published value the
+# library's own authz tests use, it was never a credential, and it is no longer spelled in a way
+# that reads as one — see PUBLIC_HEX in code/backend/tests/test_cc_folders.py, which also carries an
+# inline `gitleaks:allow` so the live line cannot fire again. gitleaks scans a pull request's
+# commits, not just its final tree, so fixing the line could not retire these two.
+0b7adc39f76b19db667a0cfbf0ec947724c03948:code/backend/tests/test_cc_folders.py:generic-api-key:23
+c23d76f069ba26ba52e4a43c8868598efaf352d0:code/backend/tests/test_cc_folders.py:generic-api-key:26
