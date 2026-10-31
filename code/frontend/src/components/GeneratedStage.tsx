@@ -182,6 +182,16 @@ function CardHit({
   const why = hit.found?.why ?? [];
   const hops = hit.found?.hops ?? 0;
   const status = deal?.bookedFor === card.id ? "booked" : deal?.heldFor === card.id && !deal.bookedFor ? "held" : null;
+  // What a person scans first: what kind of place, where, and from how much. Only what the card actually says.
+  const cheapest = hit.offers
+    .map((o) => o.price)
+    .filter((p): p is Price => !!p && (p.from ?? p.amount) !== undefined)
+    .sort((a, b) => (a.from ?? a.amount ?? 0) - (b.from ?? b.amount ?? 0))[0];
+  const glance = [
+    kindLabel(card.kind, t),
+    card.place,
+    cheapest ? t("card.from", { price: money(cheapest.from ?? cheapest.amount ?? 0, cheapest.currency, intl) }) : "",
+  ].filter(Boolean);
   return (
     <article className={opened ? "card-hit open" : "card-hit"}>
       <div className="card-row">
@@ -196,6 +206,11 @@ function CardHit({
             <span className={`status ${status === "booked" ? "ok" : "warm"}`}>{t(`card.status.${status}`)}</span>
           )}
           {score === null ? t("card.rating.none") : <b>{t("card.rating.score", { score })}</b>}
+        </p>
+        <p className="card-glance">
+          {glance.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
         </p>
         {hops > 0 && origin && (
           <p className="card-from">
@@ -222,9 +237,9 @@ function CardHit({
                 ))}
               </ul>
             )}
-            {(card.place || path.length > 1 || score !== null) && (
+            {/* The place is already on the glance line above; here only what the row did not say. */}
+            {(path.length > 1 || score !== null) && (
               <p className="card-meta">
-                {card.place && <span>{card.place}</span>}
                 {path.length > 1 && <span>{t("card.through", { path: path.join(" → ") })}</span>}
                 {score !== null && <span>{t("card.rating.count", { n: card.rating_count })}</span>}
               </p>
@@ -488,6 +503,14 @@ function AgentStand({
       <p className="fine">{t("card.fine")}</p>
     </div>
   );
+}
+
+/** The kind of place in the page's language, when the app has a word for it; else the card's own word. */
+function kindLabel(kind: string, t: (key: Key) => string): string {
+  const id = `onboard.kind.${kind}`;
+  const label = t(id as Key);
+  if (label !== id) return label;
+  return kind === "business" ? t("card.kind.business") : kind;
 }
 
 function fieldLabel(key: string, t: (key: Key) => string): string {
