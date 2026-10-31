@@ -20,7 +20,8 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | Demo data | Wiping or flooding it | Reset needs `X-Demo-Token` when `DEMO_RESET_TOKEN` is set; simulated traffic is rate-limited | `main.py` |
 | The server | Oversized or malformed input | Request models bound every string and count; dates, stay length (30 nights), guests (20) and text sizes are checked in the Hive core, so MCP calls get the same checks as REST | `main.py`, `hive.py` |
 | The database | SQL injection, file access | Parameterised queries only; DuckDB runs with `enable_external_access=false` | `db.py` |
-| Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and AWS Secrets Manager in the cloud; `.env` is git-ignored; no secrets in the repo or its history | `.gitignore`, `scripts/aws/bootstrap.sh` |
+| Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and AWS Secrets Manager in the cloud; `.env` is git-ignored; no secrets in the repo or its history, and CI scans every push with gitleaks | `.gitignore`, `scripts/aws/bootstrap.sh`, `ci.yml` |
+| Personal data | The public repo exposing people | Team members appear by name only; no emails, phone numbers, account ids, device names, local paths or photo EXIF; whiteboard photos are downscaled, EXIF-stripped, with the Wi-Fi password pixelated | `CONTRIBUTING.md`, `assets/` |
 | Errors | Leaking internals | Agent failures are logged server-side; the client gets a plain message | `main.run_agent` |
 | Travellers' privacy | Profiling | Searches are logged without identity; bookings store only the guest name, dates and price. The second opinion sends OpenAI the request text and the public card with `store=false` | `hive.py`, `second_opinion.py` |
 

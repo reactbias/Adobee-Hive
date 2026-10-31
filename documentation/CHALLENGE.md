@@ -2,7 +2,7 @@
 
 **The Post-Website Business**, by Adobe at BaselHack 2026 (prize CHF 1,500).
 Source: [baselhack.ch/challenges/the-post-website-business](https://www.baselhack.ch/challenges/the-post-website-business).
-Contact: Damian Zehnder, Adobe ([zehnder@adobe.com](mailto:zehnder@adobe.com)).
+Contact: Damian Zehnder, Adobe (contact details in the BaselHack brief).
 
 ## Problem statement
 
