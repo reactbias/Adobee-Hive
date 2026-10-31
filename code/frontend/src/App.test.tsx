@@ -40,8 +40,7 @@ describe("the app", () => {
 
     const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
     expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
-    expect(screen.getByRole("heading", { name: en["owner.title"].replace(/\*/g, "") })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: en["demand.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeInTheDocument();
   });
 
   it("gives every chapter the same layout: a brief beside one fixed-height panel", () => {
@@ -58,14 +57,14 @@ describe("the app", () => {
     }
   });
 
-  it("lets the business chapter jump between the demand map and the owner studio", () => {
+  it("opens the business chapter on the owner studio, with the demand map one tab away", () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    expect(screen.getByRole("button", { name: en["business.jump.demand"] })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: en["business.jump.owner"] })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: en["business.tab.owner"] })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: en["business.tab.demand"] })).toHaveAttribute("aria-selected", "false");
   });
 
   it("scrolls back to the top when the logo is clicked", async () => {
@@ -99,6 +98,7 @@ describe("the app", () => {
       </I18nProvider>,
     );
     expect(screen.getByText(en["agent.test.eyebrow"])).toBeInTheDocument();
+    screen.getByRole("tab", { name: en["business.tab.demand"] }).click();
     expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
     window.history.replaceState(null, "", "/");
   });

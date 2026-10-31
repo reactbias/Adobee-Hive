@@ -95,4 +95,8 @@ describe("the chat's name", () => {
     expect(fr["agent.mode.ready"]).toBe("Réseau d'agents");
     expect(it_["agent.mode.ready"]).toBe("Rete di agenti");
   });
+
+  it("names the team as Team B6 in every language", () => {
+    for (const dict of [en, de, fr, it_]) expect(dict["footer.line"]).toMatch(/Team B6$/);
+  });
 });

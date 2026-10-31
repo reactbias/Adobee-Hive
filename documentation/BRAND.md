@@ -29,7 +29,7 @@ because it is the honeycomb cell.
 Traced from the team's whiteboard drawing: striped, hatched body, two loop wings, curly antenna
 (`code/frontend/public/brand/mascot.svg`). We are team **B6**: the bee is the B, and it carries the 6.
 
-The easter egg is deliberately quiet. The bee sleeps in the footer next to "Team B". Click it, or leave the app idle
+The easter egg is deliberately quiet. The bee sleeps in the footer next to "Team B6". Click it, or leave the app idle
 for a minute, and it flies across the bottom of the page, dropping six little 6s. It never flies with
 `prefers-reduced-motion`. The rest of the app stays serious.
 

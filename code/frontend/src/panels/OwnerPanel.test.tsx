@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type Card, type OwnerOverview, type Proposal } from "../api";
@@ -8,8 +8,8 @@ import en from "../i18n/en";
 import it_ from "../i18n/it";
 import OwnerPanel from "./OwnerPanel";
 
-// The owner studio speaks the page's language even offline: the Use button writes a command in that language and the
-// offline summary is worded from items, not from the backend's English sentence. api.ts is mocked.
+// The business chapter is the owner's dashboard: the change box in the brief, like the chat's input; the bookings,
+// what agents asked for and the signed card in the panel; the city's demand map one tab away. api.ts is mocked.
 
 const TRUST = { signature_valid: true, attestations: [], verified_reviews: { count: 0, average: null } };
 const CARD = {
@@ -24,9 +24,20 @@ const CARD = {
 
 const OVERVIEW: OwnerOverview = {
   card: CARD,
-  bookings: [],
-  missed_demand: [],
-  last_7_days: {},
+  bookings: [
+    {
+      id: "b1",
+      unit_id: "u1",
+      guest_name: "Mara Keller",
+      check_in: "2026-11-13",
+      check_out: "2026-11-15",
+      total_chf: 256,
+      status: "confirmed",
+      agent: "a",
+    },
+  ],
+  missed_demand: [{ detail: "missing sauna (asked: sauna, quiet)", times: 3 }],
+  last_7_days: { shown: 4, booked: 1 },
   waiting: {
     agents: 2,
     budget_chf: 1750,
@@ -51,6 +62,12 @@ function setup(locale: string) {
   localStorage.setItem("adobee-locale", locale);
   vi.spyOn(api, "cards").mockResolvedValue([CARD]);
   vi.spyOn(api, "owner").mockResolvedValue(OVERVIEW);
+  vi.spyOn(api, "demand").mockResolvedValue({
+    days: 7,
+    searches: 46,
+    unserved_searches: 26,
+    features: [{ feature: "vegan breakfast", asked: 8, unserved: 8, unserved_share: 1 }],
+  });
   render(
     <I18nProvider>
       <OwnerPanel />
@@ -59,24 +76,71 @@ function setup(locale: string) {
   return userEvent.setup();
 }
 
-describe("owner studio in every language", () => {
+describe("the business chapter", () => {
   beforeEach(() => vi.restoreAllMocks());
+
+  it("opens on the owner's dashboard, with the booking that arrived", async () => {
+    setup("en");
+    expect(screen.getByRole("tab", { name: en["business.tab.owner"] })).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByText("Mara Keller")).toBeInTheDocument();
+    expect(screen.getByText(en["chapter.business.lead"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
+  });
+
+  it("puts what agents asked for in one list, waiting first, with a Use for each", async () => {
+    setup("en");
+    const list = await screen.findByRole("list", { name: en["owner.asked.title"] });
+    expect(within(list).getByText("vegan breakfast")).toBeInTheDocument();
+    expect(within(list).getByText("sauna")).toBeInTheDocument();
+    expect(within(list).getAllByRole("button", { name: en["owner.waiting.use"] })).toHaveLength(2);
+  });
+
+  it("turns a plain sentence into a diff, then signs and shows the new version", async () => {
+    const propose = vi.spyOn(api, "propose").mockResolvedValue(PROPOSAL);
+    const publish = vi.spyOn(api, "publish").mockResolvedValue({ ...CARD, version: 2 });
+    const user = setup("en");
+    await screen.findByText("Mara Keller");
+
+    const box = screen.getByRole("textbox", { name: en["owner.change"] });
+    await user.clear(box);
+    await user.type(box, "add vegan breakfast{Enter}");
+    expect(propose).toHaveBeenCalledWith("hotel-rheinblick", "add vegan breakfast");
+    expect(await screen.findByText("vegan breakfast", { selector: ".diff-after" })).toBeInTheDocument();
+
+    vi.mocked(api.owner).mockResolvedValue({
+      ...OVERVIEW,
+      card: { ...CARD, version: 2 },
+      waiting: { ...OVERVIEW.waiting, offers_sent: 2 },
+    });
+    await user.click(screen.getByRole("button", { name: en["owner.publish"] }));
+    expect(publish).toHaveBeenCalled();
+    expect(
+      await screen.findByText(en["owner.publishedOffers"].replace("{version}", "2").replace("{n}", "2")),
+    ).toBeInTheDocument();
+    expect(screen.getByText("v2")).toBeInTheDocument();
+  });
 
   it("Use writes the command in the page's language", async () => {
     const user = setup("de");
-    await user.click(await screen.findByRole("button", { name: de["owner.waiting.use"] }));
-    expect(screen.getByRole("textbox")).toHaveValue("vegan breakfast hinzufügen");
+    await user.click((await screen.findAllByRole("button", { name: de["owner.waiting.use"] }))[0]);
+    expect(screen.getByRole("textbox", { name: de["owner.change"] })).toHaveValue("vegan breakfast hinzufügen");
   });
 
   it("words the offline summary in the page's language", async () => {
     const propose = vi.spyOn(api, "propose").mockResolvedValue(PROPOSAL);
     const user = setup("it");
-    await user.click(await screen.findByRole("button", { name: it_["owner.waiting.use"] }));
-    expect(screen.getByRole("textbox")).toHaveValue("aggiungi vegan breakfast");
+    await user.click((await screen.findAllByRole("button", { name: it_["owner.waiting.use"] }))[0]);
     await user.click(screen.getByRole("button", { name: it_["owner.preview"] }));
     expect(propose).toHaveBeenCalledWith("hotel-rheinblick", "aggiungi vegan breakfast");
     expect(await screen.findByText(/Aggiunto: vegan breakfast/)).toBeInTheDocument();
     expect(screen.queryByText(/Mock mode/)).not.toBeInTheDocument();
+  });
+
+  it("shows the city's demand map one tab away, without presenter tools", async () => {
+    const user = setup("en");
+    await user.click(screen.getByRole("tab", { name: en["business.tab.demand"] }));
+    expect(await screen.findByText("46")).toBeInTheDocument();
+    expect(screen.queryByText("most unserved request")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["demand.simulate"] })).not.toBeInTheDocument();
   });
 
   it("shows the owner that a forged copy of the card is rejected (presenters, ?demo)", async () => {
@@ -92,10 +156,5 @@ describe("owner studio in every language", () => {
 
     expect(await screen.findByText(en["card.tamper.valid"])).toBeInTheDocument();
     expect(screen.getAllByText(en["card.tamper.rejected"])).toHaveLength(2);
-  });
-
-  it("says plainly whose side this is", async () => {
-    setup("en");
-    expect(await screen.findByText(en["owner.role"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
   });
 });

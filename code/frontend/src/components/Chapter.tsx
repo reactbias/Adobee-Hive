@@ -75,7 +75,7 @@ export function Frame({
 }) {
   return (
     <section className="frame" aria-label={label}>
-      {head && <header className="frame-head">{head}</header>}
+      {head && <div className="frame-head">{head}</div>}
       <div className="frame-body" ref={bodyRef}>
         {children}
       </div>

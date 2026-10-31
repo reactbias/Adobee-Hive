@@ -1,4 +1,4 @@
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState } from "react";
 import {
   api,
   type AgentOptions,
@@ -10,12 +10,11 @@ import {
   type Step,
   type Unguarded,
 } from "../api";
-import Chapter, { Frame } from "../components/Chapter";
+import Chapter from "../components/Chapter";
 import Composer from "../components/Composer";
 import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
-import DemandPanel from "../panels/DemandPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -57,15 +56,6 @@ export default function TravellerAgent() {
   // The last chapter is the business's side of the same booking; Next steps can turn the page to it.
   const businessRef = useRef<HTMLElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
-  // The business chapter's panel holds the demand map and the owner studio; the brief jumps between them.
-  const businessBody = useRef<HTMLDivElement>(null);
-  const demandRef = useRef<HTMLDivElement>(null);
-  const ownerRef = useRef<HTMLDivElement>(null);
-  const jump = (to: RefObject<HTMLDivElement>) => {
-    businessRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    const body = businessBody.current;
-    if (body && to.current) body.scrollTo?.({ top: to.current.offsetTop - body.offsetTop, behavior: "smooth" });
-  };
   const openBusiness = () => businessRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
@@ -501,31 +491,11 @@ export default function TravellerAgent() {
           }
         />
       </Chapter>
-      <Chapter
-        id="business"
-        heading="chapter.business.title"
-        lead={t("chapter.business.lead", { name: owner?.name ?? "Hotel Rheinblick" })}
+      <OwnerPanel
+        key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`}
+        initial={owner?.id}
         sectionRef={businessRef}
-        side={
-          <nav className="jumps" aria-label={t("chapter.business")}>
-            <button className="ghost" onClick={() => jump(demandRef)}>
-              {t("business.jump.demand")}
-            </button>
-            <button className="ghost" onClick={() => jump(ownerRef)}>
-              {t("business.jump.owner")}
-            </button>
-          </nav>
-        }
-      >
-        <Frame label={t("chapter.business")} bodyRef={businessBody}>
-          <div ref={demandRef} className="frame-part">
-            <DemandPanel key={booking?.booking_id ?? ""} />
-          </div>
-          <div ref={ownerRef} className="frame-part">
-            <OwnerPanel key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`} initial={owner?.id} />
-          </div>
-        </Frame>
-      </Chapter>
+      />
     </>
   );
 }

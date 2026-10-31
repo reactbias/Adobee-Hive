@@ -30,6 +30,7 @@
 :root {
   --paper: #f6f3ed;
   --surface: #fffefb;
+  --paper-2: #ece6db;
   --sunk: #efebe3;
   --ink: #17140f;
   --ink-2: #4b443a;
@@ -838,10 +839,70 @@ th.end {
   padding-top: var(--s7);
   border-top: 1px solid var(--line);
 }
-.jumps {
+.tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
+  gap: var(--s5);
+}
+button.tab {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: var(--s1) 0;
+  color: var(--ink-2);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+}
+button.tab:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
+}
+button.tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--clay);
+}
+/* The owner's change, as agents will read it: what the sentence meant, the diff, then sign. */
+.change {
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.change-summary {
+  margin: 0;
+  font-weight: 500;
+}
+.published {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  border-left: 3px solid var(--clay);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 500;
+}
+.version.fresh {
+  color: var(--clay);
+  font-weight: 600;
+}
+.small {
+  font-size: var(--t-xs);
+}
+/* Presenter tools (?demo): there for the pitch, quiet enough not to read as the product. */
+.presenter {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px dashed var(--line);
+  font-size: var(--t-xs);
+  color: var(--ink-3, var(--ink-2));
+}
+.presenter summary {
+  cursor: pointer;
+}
+button.quiet.small {
+  font-size: var(--t-xs);
+  padding: var(--s1) var(--s2);
+}
+.brief .picker {
+  width: 100%;
 }
 @media (max-width: 1000px) {
   .frame {
@@ -882,6 +943,10 @@ th.end {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+}
+.brief .example:hover,
+.brief .example:focus-visible {
+  -webkit-line-clamp: unset;
 }
 @media (max-width: 1000px) {
   .brief {
@@ -1008,15 +1073,22 @@ button.mic.blocked {
 }
 .example {
   all: unset;
+  box-sizing: border-box;
   display: block;
-  width: 100%;
+  width: calc(100% + 2 * var(--s2));
+  margin: 0 calc(-1 * var(--s2));
+  padding: var(--s1) var(--s2);
+  border-radius: 6px;
   cursor: pointer;
   font-size: var(--t-sm);
   color: var(--ink-2);
   line-height: 1.5;
-  transition: color 0.2s var(--ease);
+  transition:
+    color 0.2s var(--ease),
+    background 0.2s var(--ease);
 }
-.example:hover {
+.example:hover:not(:disabled) {
+  background: var(--paper-2);
   color: var(--ink);
 }
 .example:focus-visible {
