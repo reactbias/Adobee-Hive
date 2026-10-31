@@ -555,6 +555,35 @@ const en = {
   "finder.pinned":
     "This build talks to {backend} whatever you pick here: the backend address is fixed when the site is built. Picking a hub records your choice; it does not yet move the app to another hub.",
   "network.hubs": "Hubs on this network",
+
+  // Introductions: connect to someone found, then score how it actually went
+  "connect.now": "Connect",
+  "connect.ask": "Ask to connect",
+  "connect.askNote": "{name} decides: this waits for their yes.",
+  "connect.opened": "Connected. You can say how it went until {date}.",
+  "connect.waiting": "Waiting for their yes",
+  "connect.declined": "They declined",
+  "contact.title": "Contact",
+  "contact.none": "Not provided",
+  "contact.onRequest": "Available on request",
+  "score.eyebrow": "Introductions",
+  "score.title": "How did it go?",
+  "score.ask": "How did it go with {name}?",
+  "score.deadline": "You can score this until {date}",
+  "score.stale": "Too long ago to score",
+  "score.label": "Your score, in tenths of a star",
+  "score.send": "Send score",
+  "score.done": "Thank you. {hub} promised {promised} and you found {found}.",
+  "score.exact": "Thank you. {hub} had it exactly right.",
+  "score.thanks": "Thank you. Your score is recorded.",
+  "score.standing": "Where that leaves {hub}:",
+  "requests.title": "Waiting for your yes",
+  "requests.empty": "Nobody is waiting for an introduction.",
+  "requests.from": "{who} asked to be introduced",
+  "requests.accept": "Accept",
+  "requests.decline": "Decline",
+  "requests.accepted": "Accepted. They can now score how it goes.",
+  "requests.refused": "Declined. It will never become a rating.",
 } as const;
 
 export type Key = keyof typeof en;

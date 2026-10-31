@@ -3,6 +3,8 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { metres, money } from "../lib/format";
 import { ratingScore, type Federation, type Field, type Hit, type Price, type Scene } from "../lib/cardView";
+import { connectMode, contactRows } from "../lib/connect";
+import Connect from "./Connect";
 import { Frame } from "./Chapter";
 
 // A search draws one row per Card. A tap opens a Card one part at a time: who it is, then each
@@ -36,11 +38,14 @@ export default function GeneratedStage({
   onDetails,
   detailsOpen = false,
   deal,
+  onConnected,
 }: {
   scene: Scene;
   onDetails: () => void;
   detailsOpen?: boolean;
   deal?: Deal;
+  /** A connection was asked for from a row, so the introductions waiting on a score can be read again. */
+  onConnected?: () => void;
 }) {
   const { t } = useI18n();
   const count = scene.hits.length;
@@ -85,6 +90,7 @@ export default function GeneratedStage({
           origin={hubName(scene.federation, hit.found?.origin ?? "")}
           onFollowing={onFollowing}
           onDetails={onDetails}
+          onConnected={onConnected}
         />
       ))}
     </Frame>
@@ -143,6 +149,7 @@ function CardHit({
   deal,
   onFollowing,
   onDetails,
+  onConnected,
 }: {
   hit: Hit;
   /** The name of the hub the result came from, for a result that travelled. */
@@ -150,6 +157,7 @@ function CardHit({
   deal?: Deal;
   onFollowing: (id: string, pending: boolean) => void;
   onDetails: () => void;
+  onConnected?: () => void;
 }) {
   const { t, intl } = useI18n();
   const bodyId = useId();
@@ -219,7 +227,17 @@ function CardHit({
                 {score !== null && <span>{t("card.rating.count", { n: card.rating_count })}</span>}
               </p>
             )}
+            <ContactList contact={card.contact} sharing={card.contactSharing} />
           </div>
+          {hit.found && (
+            <Connect
+              entityId={card.id}
+              name={card.name}
+              mode={connectMode(hit.sharing, card.kind)}
+              targetHub={hit.found.origin}
+              onConnected={onConnected}
+            />
+          )}
           {showOffers && (
             <Listing
               title={t("card.offers")}
@@ -267,7 +285,33 @@ function CardHit({
   );
 }
 
-/** The rest of the card, folded: contact, distances, policies, whatever the hub added. */
+/** Contact as its owner shared it: a published channel, one released on request, or not provided. */
+function ContactList({ contact, sharing }: { contact: Record<string, string>; sharing: Record<string, string> }) {
+  const { t } = useI18n();
+  const rows = contactRows(contact, sharing);
+  if (!rows.length) return null;
+  return (
+    <dl className="offer-fields contact">
+      <dt>{t("contact.title")}</dt>
+      <dd>
+        <ul className="pairs">
+          {rows.map((row) => (
+            <li key={row.channel}>
+              <span>{fieldLabel(row.channel, t)}</span>
+              <span className={row.state === "shown" ? "" : "muted"}>
+                {row.state === "shown"
+                  ? row.value
+                  : t(row.state === "onRequest" ? "contact.onRequest" : "contact.none")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </dd>
+    </dl>
+  );
+}
+
+/** The rest of the card, folded: distances, policies, whatever the hub added. */
 function MoreAbout({ name, facts }: { name: string; facts: Field[] }) {
   const { t, intl } = useI18n();
   if (!facts.length) return null;

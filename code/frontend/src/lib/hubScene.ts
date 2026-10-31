@@ -26,6 +26,8 @@ export async function hubScene(query: string, radius = 0): Promise<Scene | null>
         description: body.description ?? match.description,
         rating: body.rating ?? match.rating,
         rating_count: body.rating_count ?? match.rating_count,
+        contact: body.contact ?? match.contact,
+        contact_sharing: body.contact_sharing ?? match.contact_sharing,
       };
     }),
   );

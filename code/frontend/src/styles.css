@@ -3451,6 +3451,56 @@ button.self-start {
 /* A honeycomb, because the logo is a bee in an open hexagon and the cell is the shape the brand is built on.
    Paper and ink, clay for what matters: the hub you are talking to, and a peer that held its own claim.
    Nothing here animates, so there is nothing for prefers-reduced-motion to switch off. */
+/* Introductions waiting on a score: a quiet band under the search, never a modal. */
+.introductions {
+  border-top: 1px solid var(--line);
+  padding: var(--s8) var(--s4);
+}
+.introductions-inner {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+.introductions h3 {
+  margin: 0;
+  font-size: var(--t-lg);
+}
+.score-row {
+  padding: var(--s4) 0;
+}
+.tenths label {
+  display: block;
+  margin-bottom: var(--s2);
+  color: var(--ink-2);
+}
+.tenths-input {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+}
+.tenths-input input[type="range"] {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--clay);
+}
+/* Stars are the one filled shape: clay up to the score, the line colour after it. */
+.star-bar {
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg, var(--clay) var(--filled, 0%), var(--line-strong) var(--filled, 0%));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tenths-input output {
+  min-width: 4.5em;
+  text-align: end;
+}
+.connect .fine {
+  margin-top: var(--s2);
+}
+
 .network {
   border-top: 1px solid var(--line);
   background: var(--paper);

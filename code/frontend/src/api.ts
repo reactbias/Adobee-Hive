@@ -459,6 +459,76 @@ export interface HiveMatch {
   federated_score?: number;
   /** The signed card this Hive verified the result against, for a result from a peer. */
   card?: Card;
+  /** What connecting will take: `public` opens at once, `confirm` waits for the owner's yes. */
+  sharing?: Sharing;
+  needs_confirmation?: boolean;
+  connectable?: boolean;
+  /** `email` and `phone` are always present, possibly empty; an empty one may be gated in `contact_sharing`. */
+  contact?: Record<string, string>;
+  contact_sharing?: Record<string, string>;
+}
+
+// ---------- Introductions: connect, then score how it went ----------
+
+/** Who moves first, per item. `push` and `never` never appear in a search, so there is nothing to ask for. */
+export type Sharing = "public" | "confirm" | "push" | "never";
+
+/**
+ * One introduction. `requested` waits on the owner's yes, `open` waits on a person's score until `stale_at`,
+ * `rated` is final, and `stale` and `declined` can never become a rating. Ratings are tenths of a star, 0–50.
+ */
+export interface Connection {
+  id: string;
+  created_at: string;
+  state: "requested" | "open" | "rated" | "stale" | "declined";
+  requester: string;
+  requester_hub: string | null;
+  target: string;
+  target_hub: string | null;
+  via_hub: string | null;
+  sharing: string | null;
+  /** What the carrying hub said the entity was worth at the introduction, frozen. */
+  published_rating: number | null;
+  opened_at: string | null;
+  stale_at: string | null;
+  rated_at: string | null;
+  rating: number | null;
+  note: string | null;
+  rating_stars: number | null;
+  published_rating_stars: number | null;
+}
+export interface Connections {
+  /** Open and unscored, the one about to go stale first. */
+  awaiting_rating: Connection[];
+  awaiting_confirmation: Connection[];
+}
+export interface ConnectRequest {
+  requester: string;
+  entity_id: string;
+  target_hub?: string;
+  via_hub?: string;
+}
+/** A hub's calibration as the score left it. Lower `error` is better; negative means it undersold. */
+export interface HubStanding {
+  hub: string;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+/** What a score did: the gap against what was promised, and where that leaves the hub that carried it. */
+export interface ScoreOutcome {
+  connection: Connection;
+  hub: string;
+  gap?: number;
+  gap_stars?: number;
+  says?: string;
+  hub_standing?: HubStanding;
+}
+export interface Standing {
+  hub: string;
+  peers: HubStanding[];
 }
 /** What a peer Hive did with a forwarded query: who was asked, dropped, and whose card was refused here. */
 export interface FederationReport {
@@ -709,6 +779,22 @@ export const api = {
 
   /** The Hives to choose between. Not on `main` yet (PR #71): the finder falls back to this hub on a 404. */
   directory: () => call<Directory>("/api/hub/directory"),
+
+  /** Ask to be introduced. A public entry comes back `open`; a `confirm` one comes back `requested`. */
+  connect: (request: ConnectRequest) => post<Connection>("/api/hub/connect", request),
+  /** Score an open introduction once, in tenths of a star (43 is 4.3). */
+  score: (id: string, rating: number, note = "") =>
+    post<ScoreOutcome>(`/api/hub/connections/${encodeURIComponent(id)}/score`, { rating, note }),
+  confirmConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}),
+  declineConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}),
+  connections: ({ requester = "", target = "" }: { requester?: string; target?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (requester) params.set("requester", requester);
+    if (target) params.set("target", target);
+    const query = params.toString();
+    return call<Connections>(`/api/hub/connections${query ? `?${query}` : ""}`);
+  },
+  standing: () => call<Standing>("/api/hub/standing"),
 
   /** Trade the hub's password for a session token. A 429 carries the seconds to wait in `retryAfter`. */
   adminLogin: (password: string) => post<AdminSession>("/api/admin/login", { password }),

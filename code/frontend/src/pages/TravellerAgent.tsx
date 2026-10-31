@@ -19,6 +19,7 @@ import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
 import ActivityPanel from "../panels/ActivityPanel";
+import Introductions from "../panels/Introductions";
 import NetworkPanel from "../panels/NetworkPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
@@ -64,6 +65,8 @@ export default function TravellerAgent() {
   const [searching, setSearching] = useState(false);
   // How far the hubs are asked: this one only until the person chooses further.
   const [radius, setRadius] = useState(0);
+  // Counts introductions asked for from a result, so the "How did it go?" panel reads them again.
+  const [introduced, setIntroduced] = useState(0);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
@@ -573,7 +576,14 @@ export default function TravellerAgent() {
         )}
         <div className={scene && details ? "journey split" : "journey"}>
           {scene && (
-            <GeneratedStage key={scene.query} scene={scene} onDetails={openDetails} detailsOpen={details} deal={deal} />
+            <GeneratedStage
+              key={scene.query}
+              scene={scene}
+              onDetails={openDetails}
+              detailsOpen={details}
+              deal={deal}
+              onConnected={() => setIntroduced((n) => n + 1)}
+            />
           )}
           {(details || (!scene && history.length > 0)) && (
             <div className="journey-side" ref={sideRef}>
@@ -643,6 +653,7 @@ export default function TravellerAgent() {
           )}
         </div>
       </Chapter>
+      <Introductions refresh={introduced} />
       <OwnerPanel
         key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`}
         initial={owner?.id}

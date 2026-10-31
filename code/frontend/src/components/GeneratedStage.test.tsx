@@ -290,6 +290,55 @@ describe("results from other hubs", () => {
     expect(screen.getByText("A copy from Hive Zürich did not match what the owner signed")).toBeInTheDocument();
   });
 
+  it("offers to connect to a live result the way its owner allowed, and shows contact as the owner shared it", () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
+    const person = {
+      id: "lena-hofmann",
+      kind: "person",
+      name: "Lena Hofmann",
+      description: "Interface design for data-heavy products.",
+      contact: { email: "lena@lena.example", phone: "", mobile: "" },
+      contact_sharing: { phone: "confirm", address: "never" },
+    };
+    const scene = sceneFromDiscovery(
+      "designer",
+      [
+        { id: "lena-hofmann", sharing: "confirm" },
+        { id: "hotel-rheinblick", sharing: "public" },
+      ],
+      { "lena-hofmann": person, "hotel-rheinblick": hubCard("hotel-rheinblick", "Hotel Rheinblick", "Quiet") },
+    );
+    render(
+      <I18nProvider>
+        <GeneratedStage scene={scene!} onDetails={() => {}} />
+      </I18nProvider>,
+    );
+
+    open("Lena Hofmann");
+    expect(screen.getByRole("button", { name: en["connect.ask"] })).toBeInTheDocument();
+    expect(screen.getByText(en["connect.askNote"].replace("{name}", "Lena Hofmann"))).toBeInTheDocument();
+    expect(screen.getByText("lena@lena.example")).toBeInTheDocument();
+    expect(screen.getByText(en["contact.onRequest"])).toBeInTheDocument();
+    expect(screen.getByText(en["contact.none"])).toBeInTheDocument();
+    expect(screen.queryByText("address")).not.toBeInTheDocument();
+
+    open("Hotel Rheinblick");
+    expect(screen.getByRole("button", { name: en["connect.now"] })).toBeInTheDocument();
+  });
+
+  it("offers no connection on a card drawn from the folders, which no hub answered for", () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
+    const scene = sceneFor(en["card.try.person"]);
+    render(
+      <I18nProvider>
+        <GeneratedStage scene={scene!} onDetails={() => {}} />
+      </I18nProvider>,
+    );
+    open("Lena Hofmann");
+    expect(screen.queryByRole("button", { name: en["connect.ask"] })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["connect.now"] })).not.toBeInTheDocument();
+  });
+
   it("says nothing about other hubs when the person searched this one only", () => {
     stage(undefined, 0);
     expect(screen.queryByText(en["reach.none"])).not.toBeInTheDocument();
