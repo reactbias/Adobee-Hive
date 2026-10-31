@@ -41,9 +41,9 @@ interpret.
 
 from __future__ import annotations
 
-import fnmatch
 import hashlib
 import logging
+import mimetypes
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -89,10 +89,20 @@ VISIBILITIES: tuple[str, ...] = (PUBLIC, PUBLIC_SUMMARY, SHARED, PRIVATE, HIDDEN
 ADMITTED: frozenset[str] = frozenset({PUBLIC, PUBLIC_SUMMARY, SHARED})
 #: What the published Card lists. `shared` and `hidden` are omitted from it entirely.
 IN_CARD: frozenset[str] = frozenset({PUBLIC, PUBLIC_SUMMARY, PRIVATE})
-#: An unmarked file is as open as the seeded Cards say it is, and no more (tools/seed_vaults.py).
+#: A path `visibility.md` says nothing about. Unchanged from when every vault was markdown, so a
+#: folder that never thought about visibility keeps the Card it had (tools/seed_vaults.py agrees).
 DEFAULT_VISIBILITY = PUBLIC_SUMMARY
-#: The owner's visibility markers, one `glob = value` per line. Never itself admitted.
-MARKER = ".visibility"
+#: Where the owner writes it, in the corpus's own format (testdata/README.md):
+#:
+#:     # Visibility
+#:
+#:     - hausordnung.pdf: public
+#:     - gaeste/: private
+#:     - buchhaltung/: hidden
+#:
+#: The file is itself an ordinary listed file, because the Card lists it: a folder that says what it
+#: shows is not hiding the saying of it.
+MARKER = "visibility.md"
 
 REQUESTED = "requested"
 ESTABLISHED = "established"
@@ -189,57 +199,68 @@ def split_path(path: str) -> tuple[str, str]:
     return check_handle(handle), rel
 
 
+def media_type(file: Path) -> str:
+    """What a reader would need to open the file, guessed from its name, never from its contents.
+
+    The same answer `tools/seed_vaults.py::media_type` gives, markdown included, because a Card row
+    and a manifest row describe one file and should not disagree about what it is.
+    """
+    if file.suffix == ".md":
+        return "text/markdown"
+    guessed, _ = mimetypes.guess_type(file.name)
+    return guessed or "application/octet-stream"
+
+
 def digest(body: bytes) -> str:
     """A file's digest, in the form the Card publishes (tools/seed_vaults.py writes the same)."""
     return "sha256:" + hashlib.sha256(body).hexdigest()[:12]
 
 
-def read_markers(root: Path) -> list[tuple[str, str]]:
-    """The owner's visibility markers, most specific last.
+def read_markers(root: Path) -> dict[str, str]:
+    """The owner's `visibility.md`, parsed: one path or folder per line, `- gaeste/: private`.
 
-    One `glob = value` per line, `#` comments, missing file means nothing is marked:
+    The same rules `tools/seed_vaults.py::read_visibility` applies when it builds a Card, because
+    the folder and the Card have to be talking about the same file. `tests/test_folders.py` pins
+    that agreement over the whole corpus rather than trusting this comment.
 
-        rooms/*.md         = public
-        rates/2027-*.md    = public-summary
-        claudeconnect/**   = shared
-        notes/takings.md   = hidden
-
-    An unreadable or malformed marker file leaves every file at `DEFAULT_VISIBILITY`, which is the
-    safe direction: a typo cannot open a file, only fail to close it further than the default.
+    An unreadable or malformed line leaves a path at `DEFAULT_VISIBILITY`, which is the safe
+    direction: a typo cannot open a file, only fail to close it further than the default.
     """
     marker = root / MARKER
     if not marker.is_file():
-        return []
-    out: list[tuple[str, str]] = []
+        return {}
     try:
         lines = marker.read_text(encoding="utf-8").splitlines()
     except OSError as err:  # pragma: no cover - unreadable marker, same answer as a missing one
         log.warning("folders: cannot read %s (%s); every file keeps its default visibility", marker, err)
-        return []
-    for line in lines:
-        text = line.split("#", 1)[0].strip()
-        if not text or "=" not in text:
+        return {}
+    rules: dict[str, str] = {}
+    for raw in lines:
+        line = raw.strip().lstrip("-").strip()
+        if ":" not in line or line.startswith("#"):
             continue
-        pattern, _, value = text.partition("=")
-        pattern, value = pattern.strip(), value.strip().lower()
-        if pattern and value in VISIBILITIES:
-            out.append((pattern, value))
-    return out
+        target, _, value = line.partition(":")
+        value = value.strip().lower()
+        if value in VISIBILITIES:
+            rules[target.strip().lstrip("/")] = value
+    return rules
 
 
-def visibility_of(rel: str, markers: list[tuple[str, str]]) -> str:
-    """What the owner says about this one path. The last matching marker wins.
+def visibility_of(rel: str, markers: dict[str, str]) -> str:
+    """What the owner says about this one path. The longest rule wins.
 
-    The marker file itself and anything dotted is `hidden`: a folder's own bookkeeping is not part
-    of what it offers, and it is never named to a peer.
+    Longest, not last, so a folder can be `private` with one file inside it published — which is
+    the rule `tools/seed_vaults.py` uses, and the same idea as ClaudeConnect's most-specific-section
+    rule. Anything dotted is `hidden` without being written down: a folder's own bookkeeping is not
+    part of what it offers, and `.git` is nobody's business.
     """
-    parts = rel.split("/")
-    if any(part.startswith(".") for part in parts):
+    if any(part.startswith(".") for part in rel.split("/")):
         return HIDDEN
-    found = DEFAULT_VISIBILITY
-    for pattern, value in markers:
-        if fnmatch.fnmatch(rel, pattern) or fnmatch.fnmatch(rel, pattern.rstrip("/") + "/*"):
-            found = value
+    best, found = "", DEFAULT_VISIBILITY
+    for target, value in markers.items():
+        covers = rel == target or (target.endswith("/") and rel.startswith(target))
+        if covers and len(target) >= len(best):
+            best, found = target, value
     return found
 
 
@@ -454,6 +475,7 @@ class LocalFolderLink:
                 {
                     "path": rel,
                     "bytes": len(body),
+                    "media_type": media_type(file),
                     "digest": digest(body),
                     "visibility": visibility_of(rel, markers),
                 }

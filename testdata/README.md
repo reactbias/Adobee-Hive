@@ -17,13 +17,111 @@ Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule i
 
 ## What is in it
 
-61 entities: 20 on `basel`, 21 on `zurich`, 20 on `bern`. 11 of them take bookings (the stays, parsed
-out of `rooms.md`), 43 carry a real `## What I need`, and between them they publish 178 offers and 47
-needs. Contact sharing is mixed on purpose: 20 folders gate a channel behind `ask first` and 13 keep
-one off the card entirely. Prose is in English, German, French and Italian.
+61 entities and 416 files: 20 on `basel`, 21 on `zurich`, 20 on `bern`. 11 of them take bookings (the
+stays, parsed out of `rooms.md`), 43 carry a real `## What I need`, and between them they publish 178
+offers and 47 needs. Contact sharing is mixed on purpose: 20 folders gate a channel behind
+`ask first` and 13 keep one off the card entirely. Prose is in English, German, French and Italian.
 
 41 query-to-entity pairs in the answer key below, plus four near-misses and twelve cross-hub
 need-to-offer matches.
+
+## What is in a folder
+
+A vault is not three tidy markdown files. 51 of them hold what the owner would really keep — and
+every file is a real file of the type its name claims, because a `.pdf` that is not a PDF makes its
+size and its digest a lie:
+
+| | |
+| --- | --- |
+| people | `cv.pdf`, `portfolio.pdf`, `honorar-2026.csv`, `portraet.png`, `referenzen.md` |
+| stays | room photos, `hausordnung.pdf`, `zimmerplan.pdf`, `preise-2026.csv`, `gaeste/anreisen-2026.csv` |
+| services | `preisliste.pdf`, a certificate that certifies nothing, before-and-after photos, `touren.csv` |
+
+Varied per entity: six files for some, one for others, none at all for a couple. 416 files in all —
+241 markdown, 65 PDF, 62 CSV, 47 PNG, one `.txt` — **119 KB on disk**, largest file 1.2 KB, and a
+test fails if the corpus grows past 400 KB. The ten hand-written folders stay pure markdown on purpose: they
+are the parser's reference, and they double as the control that shows the change is backwards
+compatible.
+
+Everything is written by `tools/make_corpus.py` with the standard library only — no new dependency,
+which rules out `.xlsx` (a zip of XML nobody should hand-roll) and `.jpg` (Huffman tables), so a
+spreadsheet is a `.csv` and a photograph is a `.png`. Deterministic: PNG colours come from a
+checksum of the path, the PDFs carry no creation date, so re-running changes nothing.
+
+## Shape, never contents
+
+**`structure` lists every file in the vault — path, size, media type, digest — and the seeder reads
+the contents of the markdown only.** That one sentence is the product claim, and it is the line that
+was not implemented: `structure` used to be built from `rglob("*.md")`, so a vault with a CV in it
+produced a Card that never mentioned the CV existed. The contents were safe because the file was
+invisible, which is not the same promise.
+
+`visibility.md` in each folder says how much of each path the Card may admit to, using the five
+values from [documentation/cards/README.md](../documentation/cards/README.md):
+
+| Value | What the Card shows |
+| --- | --- |
+| `public` | path, size, media type, digest |
+| `public-summary` | the same, and the default for anything unlisted |
+| `private` | the folder and a file **count**. No digest, no names |
+| `shared` | nothing. The row is absent |
+| `hidden` | nothing. The row is absent |
+
+`shared` and `hidden` are absent rather than flagged, because listing a folder in order to say it is
+secret still leaks that it exists.
+
+### Worked example: diff a folder against the Card it produces
+
+`testdata/vaults/treuhand-kehrli/`, nine files on disk:
+
+```
+about.md                         177 B
+contact.md                        78 B
+work.md                          256 B
+tarife.pdf                       876 B
+visibility.md                     80 B
+mandanten/2026.csv                36 B
+mandanten/2025.csv                36 B
+mandanten/archiv-2024.csv         36 B
+buchhaltung/eigene-zahlen.csv     49 B
+```
+
+`visibility.md`, written by the owner:
+
+```markdown
+# Visibility
+
+- tarife.pdf: public
+- mandanten/: private
+- buchhaltung/: hidden
+```
+
+The `structure` the hub serves, in full:
+
+```json
+[
+  {"path": "about.md",      "bytes": 177, "media_type": "text/markdown",   "visibility": "public-summary", "digest": "sha256:3c923797dc75"},
+  {"path": "contact.md",    "bytes":  78, "media_type": "text/markdown",   "visibility": "public-summary", "digest": "sha256:ac4a851a5789"},
+  {"path": "tarife.pdf",    "bytes": 876, "media_type": "application/pdf", "visibility": "public",         "digest": "sha256:89294369bacf"},
+  {"path": "visibility.md", "bytes":  80, "media_type": "text/markdown",   "visibility": "public-summary", "digest": "sha256:295466039e47"},
+  {"path": "work.md",       "bytes": 256, "media_type": "text/markdown",   "visibility": "public-summary", "digest": "sha256:a4810e11d4ea"},
+  {"path": "mandanten/",    "files":   3,                                  "visibility": "private"}
+]
+```
+
+Diff the two and the model is right there, in four readings:
+
+1. **`tarife.pdf` is in the Card and its contents are not.** 876 bytes and a digest, so an agent can
+   say the price list exists, cite its hash, and ask the owner for the file. Nothing in the Card
+   quotes it — `offers` comes from `work.md` and names only the three services the markdown states.
+2. **`mandanten/` is admitted to and not named.** Three client files, no digest, no filenames. A
+   count is "how much", never "what": the Card cannot leak a client by naming a file after them.
+3. **`buchhaltung/` is not there at all.** It exists on disk and appears in no row, under no flag. A
+   row saying "secret" is still a row.
+4. **Only markdown was opened.** The PDF and the four CSVs were hashed and measured, never parsed.
+   `tests/test_seed_vaults.py` takes every line of every non-markdown file in all 61 folders and
+   asserts it appears nowhere in the Card that folder produces — 165 files, not one vault built
+   inside a test — and that a draft in a `shared` folder cannot reach `offers` either.
 
 ## Why this corpus exists
 
@@ -155,8 +253,9 @@ Varied on purpose, because a real directory is mostly unrated:
   booking (`hive.review`), so seeding cannot manufacture one, and it should not be able to.
   `reviews.md` in a few folders is owner-written prose; the parser walks past it and it never becomes
   a rating.
-- **Unclaimed:** `villa-hirzbrunnen`, `imbiss-rheinbord`, `hundesalon-wankdorf`. Compiled from public information, so the
-  hub reports them as leads and no agent may treat them as a business that agreed to anything.
+- **Unclaimed:** `villa-hirzbrunnen`, `imbiss-rheinbord`, `hundesalon-wankdorf`. Compiled from
+  public information, so the hub reports them as leads and no agent may treat them as a business
+  that agreed to anything.
 - **Contact sharing:** published, `ask first` and `never` all appear, so consent is exercised rather
   than assumed.
 
@@ -174,6 +273,7 @@ into `seed_vaults.py`. A test fails until the two agree, so the paste cannot be 
 
 ## Seeding time
 
-All 61, signed and posted one at a time through the real `POST /api/hub/register` on three hubs:
-**1.4 seconds** cold, three interpreter starts included (0.37 s basel, 0.45 s zurich, 0.48 s bern).
-A restart is not a reason to shrink the corpus.
+All 61 entities and all 416 files, signed and posted one at a time through the real
+`POST /api/hub/register` on three hubs: **1.3 seconds** cold, three interpreter starts included
+(measured again after the PDFs, photos and spreadsheets landed — digesting 119 KB costs nothing you
+can see). A restart is not a reason to shrink the corpus.
