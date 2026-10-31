@@ -17,18 +17,11 @@
   "identity": {
     "name": "Hotel Krafft Basel",
     "tagline": "26 rooms on the Rhine, since 1872",
-    "locales": [
-      "de-CH",
-      "en",
-      "fr"
-    ],
+    "locales": ["de-CH", "en", "fr"],
     "place": {
       "locality": "Basel",
       "country": "CH",
-      "geo": [
-        47.5596,
-        7.5886
-      ]
+      "geo": [47.5596, 7.5886]
     },
     "timezone": "Europe/Zurich"
   },
@@ -108,10 +101,7 @@
       "id": "frontdesk-spring",
       "title": "Seasonal front-desk staff",
       "window": "2027-03-01/2027-05-31",
-      "requires": [
-        "de",
-        "en"
-      ],
+      "requires": ["de", "en"],
       "modality": "on-site",
       "budget": {
         "amount": 4800,
