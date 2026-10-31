@@ -213,10 +213,21 @@ def test_the_owner_sees_their_whole_folder_with_what_they_said_about_each_file(t
 
 
 def test_an_unmarked_file_is_no_more_open_than_the_seeded_cards_say(tmp_path):
-    """tools/seed_vaults.py writes `public-summary` for every file; an unmarked folder has to agree."""
+    """tools/seed_vaults.py writes `public-summary` for every file; an unmarked folder has to agree.
+
+    The literal is written out rather than compared against the constant. Comparing a value with the
+    constant it came from passes whatever the constant says, which a mutation run proved: flipping
+    the default to `public` — a folder opening itself by saying nothing — survived that assertion.
+    """
     (tmp_path / "plain").mkdir()
     (tmp_path / "plain" / "about.md").write_text("# Plain\n", encoding="utf-8")
-    assert folders.LocalFolderLink(tmp_path).files("plain")[0]["visibility"] == folders.DEFAULT_VISIBILITY
+    link = folders.LocalFolderLink(tmp_path)
+    assert link.files("plain")[0]["visibility"] == "public-summary"
+    assert folders.DEFAULT_VISIBILITY == "public-summary"
+
+    # And the consequence, which is the part that matters: saying nothing does not publish a file.
+    link.accept_link(link.request_link("a-stranger", "plain")["id"])
+    assert not link.can_read("plain/about.md", "a-stranger"), "an unmarked file still needs a grant"
 
 
 def test_a_broken_marker_line_cannot_open_a_file(tmp_path):
@@ -224,7 +235,7 @@ def test_a_broken_marker_line_cannot_open_a_file(tmp_path):
     (tmp_path / "plain").mkdir()
     (tmp_path / "plain" / "about.md").write_text("# Plain\n", encoding="utf-8")
     (tmp_path / "plain" / folders.MARKER).write_text("about.md = publick\nnonsense\n= public\n", encoding="utf-8")
-    assert folders.LocalFolderLink(tmp_path).files("plain")[0]["visibility"] == folders.DEFAULT_VISIBILITY
+    assert folders.LocalFolderLink(tmp_path).files("plain")[0]["visibility"] == "public-summary"
 
 
 def test_the_digest_is_the_one_the_card_published(two):
