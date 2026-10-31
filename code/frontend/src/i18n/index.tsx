@@ -28,6 +28,9 @@ function initialLocale(): Locale {
   return "en";
 }
 
+/** Every translation of a key, to recognise untouched sample text when the language changes. */
+export const allLocales = (key: Key): string[] => LOCALES.map((l) => DICTS[l][key]);
+
 export type Vars = Record<string, string | number>;
 
 interface I18n {
@@ -66,6 +69,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, [locale, setLocale]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/**
+ * State seeded with sample text that follows the language switch until the user edits it.
+ * `keys` lists the samples it may hold; the first one is the initial value.
+ */
+export function useSample(keys: Key[]): [string, (v: string) => void] {
+  const { t } = useI18n();
+  const [value, setValue] = useState(() => t(keys[0]));
+  useEffect(() => {
+    setValue((cur) => {
+      const hit = keys.find((k) => allLocales(k).includes(cur));
+      return hit ? t(hit) : cur;
+    });
+    // Re-run only on a language change; keys is a constant list per call site.
+  }, [t]);
+  return [value, setValue];
 }
 
 export function useI18n(): I18n {

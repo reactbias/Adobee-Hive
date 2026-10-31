@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { api, type AgentResult, type Booking, type Step } from "../api";
 import AgentTrace, { namesFrom, STAGGER_MS } from "../components/AgentTrace";
-import { useI18n } from "../i18n";
+import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
 
@@ -16,14 +16,14 @@ function lastOutput(steps: Step[], tool: string): Rec | undefined {
 
 export default function TravellerAgent() {
   const { t, intl } = useI18n();
-  const [input, setInput] = useState(() => t(EXAMPLES[0]));
+  const [input, setInput] = useSample(EXAMPLES);
   const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
   const [result, setResult] = useState<AgentResult | null>(null);
   const [batchStart, setBatchStart] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
-  const [reviewText, setReviewText] = useState(() => t("agent.review.sample"));
+  const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
   const [reviewed, setReviewed] = useState("");
   const [booking, setBooking] = useState<Booking | null>(null);
 

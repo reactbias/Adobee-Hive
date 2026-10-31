@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal } from "../api";
 import TrustBadge from "../components/TrustBadge";
-import { useI18n } from "../i18n";
+import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { stay } from "../lib/format";
 
@@ -24,7 +24,7 @@ export default function OwnerStudio() {
   const [cards, setCards] = useState<Card[]>([]);
   const [cardId, setCardId] = useState("hotel-rheinblick");
   const [overview, setOverview] = useState<OwnerOverview | null>(null);
-  const [instruction, setInstruction] = useState(() => t("owner.sample"));
+  const [instruction, setInstruction] = useSample(["owner.sample"]);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
