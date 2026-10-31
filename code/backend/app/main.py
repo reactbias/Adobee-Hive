@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate, waiting
+from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, rulesets, simulate, waiting
 from .domains import explore
 
 logging.basicConfig(level=logging.INFO)
@@ -78,6 +78,7 @@ def well_known(request: Request) -> dict[str, Any]:
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
         "owner_keys": hive.owner_keys(),
+        "ruleset_keys": rulesets.keys(),
         "ranking_policy": hive.RANKING_POLICY,
     }
 
