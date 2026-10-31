@@ -180,11 +180,16 @@ export interface Change {
   before: unknown;
   after: unknown;
 }
+export type SummaryItem =
+  | { code: "added" | "removed"; tag: string }
+  | { code: "price"; unit: string; price_chf: number };
 export interface Proposal {
   card_id: string;
   proposed: Card;
   changes: Change[];
   summary: string;
+  // Offline edits only: what changed, as items the studio words in the page's language.
+  summary_items?: SummaryItem[] | null;
   mode: string;
 }
 export interface OwnerOverview {

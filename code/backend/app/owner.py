@@ -19,7 +19,10 @@ EDIT_SCHEMA = {
     "required": ["card_json", "summary"],
     "properties": {
         "card_json": {"type": "string", "description": "The complete updated card as a JSON object string"},
-        "summary": {"type": "string", "description": "One sentence on what changed, for the owner"},
+        "summary": {
+            "type": "string",
+            "description": "One sentence on what changed, for the owner, in the language of the instruction",
+        },
     },
 }
 
@@ -61,7 +64,7 @@ def _owned(card_id: str) -> dict[str, Any]:
 def propose(card_id: str, instruction: str) -> dict[str, Any]:
     """Turn the owner's plain-language change into a proposed card, a diff and a summary. Publishes nothing."""
     current = _strip(_owned(card_id))
-    proposed = None
+    proposed, summary_items = None, None
     if config.LLM_ENABLED:
         try:
             out = llm.structured(
@@ -74,7 +77,8 @@ def propose(card_id: str, instruction: str) -> dict[str, Any]:
         except llm.FAILURES:  # outage or unusable answer: the rule-based edit still works
             log.exception("Model edit failed, using the rule-based edit")
     if not isinstance(proposed, dict):
-        proposed, summary = mock_edit(current, instruction)
+        proposed, offline = mock_edit(current, instruction)
+        summary, summary_items = offline["text"], offline["items"]
         mode = "mock"
     for key in LOCKED:
         proposed[key] = current.get(key)
@@ -83,39 +87,162 @@ def propose(card_id: str, instruction: str) -> dict[str, Any]:
         "proposed": proposed,
         "changes": diff(current, proposed),
         "summary": summary,
+        "summary_items": summary_items,  # offline only: what changed, for the studio to word in the page's language
         "mode": mode,
     }
 
 
-def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], str]:
-    """Understands 'add <tag>', 'remove <tag>', '<unit name> to <price>' so the flow works offline."""
+# Offline edits understand the owner studio's four languages. Verbs come before the tag, except German "X hinzufügen"
+# and "füge X hinzu". Tags are stored in English, so common tags are mapped from their translations.
+ADD, REMOVE = "add", "remove"
+VERBS_BEFORE = {
+    ADD: ("add", "ajouter", "ajoute", "ajoutez", "aggiungi", "aggiungere", "aggiungete", "füge", "ergänze"),
+    REMOVE: (
+        "remove",
+        "entferne",
+        "streiche",
+        "retirer",
+        "retire",
+        "retirez",
+        "supprimer",
+        "supprime",
+        "supprimez",
+        "enlever",
+        "enlève",
+        "rimuovi",
+        "rimuovere",
+        "togli",
+        "togliere",
+        "elimina",
+    ),
+}
+VERBS_AFTER = {ADD: ("hinzufügen", "ergänzen", "hinzu"), REMOVE: ("entfernen", "streichen")}
+ARTICLES = {
+    "a",
+    "an",
+    "the",
+    "un",
+    "une",
+    "le",
+    "la",
+    "les",
+    "l'",
+    "des",
+    "du",
+    "der",
+    "die",
+    "das",
+    "den",
+    "ein",
+    "eine",
+    "einen",
+    "il",
+    "lo",
+    "gli",
+    "i",
+    "uno",
+    "una",
+    "feature",
+}
+TAGS = {
+    "dog-friendly": (
+        "hundefreundlich",
+        "hunde willkommen",
+        "chiens acceptés",
+        "chiens bienvenus",
+        "animaux acceptés",
+        "cani ammessi",
+        "cani benvenuti",
+    ),
+    "quiet": ("ruhig", "calme", "tranquille", "tranquillo"),
+    "breakfast": ("frühstück", "petit-déjeuner", "colazione"),
+    "vegan breakfast": ("veganes frühstück", "petit-déjeuner végan", "petit-déjeuner vegan", "colazione vegana"),
+    "parking": ("parkplatz", "parkplätze", "parcheggio"),
+    "late check-in": ("später check-in", "check-in tardif", "check-in tardivo"),
+    "accessible": ("barrierefrei", "rollstuhlgerecht", "accessibile"),
+    "family rooms": ("familienzimmer", "chambres familiales", "camere familiari"),
+    "pool": ("schwimmbad", "piscine", "piscina"),
+    "bike rental": ("veloverleih", "velovermietung", "fahrradverleih", "location de vélos", "noleggio bici"),
+}
+CANON = {alias: tag for tag, aliases in TAGS.items() for alias in aliases}
+# Words in unit names, so "Doppelzimmer", "double côté cour" and "doppia sul cortile" find "Courtyard double".
+UNIT_WORDS = {
+    "courtyard": ("courtyard", "hof", "cour", "cortile"),
+    "double": ("double", "doppel", "doppia"),
+    "single": ("single", "einzel", "simple", "singola"),
+    "river": ("river", "fluss", "rhein", "fleuve", "rhin", "fiume", "reno"),
+    "view": ("view", "blick", "vue", "vista"),
+}
+
+
+def _tag(words: str) -> str:
+    parts = [w for w in words.strip().split() if w not in ARTICLES]
+    tag = " ".join(parts).strip(" -")
+    return CANON.get(tag, tag)
+
+
+def _verb_and_tag(clause: str) -> tuple[str, str] | None:
+    words = clause.split()
+    if len(words) < 2:
+        return None
+    for verb, forms in VERBS_BEFORE.items():
+        if words[0] in forms:
+            rest = words[1:-1] if words[-1] in VERBS_AFTER[verb] else words[1:]  # "füge X hinzu"
+            return verb, _tag(" ".join(rest))
+    for verb, forms in VERBS_AFTER.items():
+        if words[-1] in forms:
+            return verb, _tag(" ".join(words[:-1]))
+    return None
+
+
+def _unit_in(clause: str, units: list[dict[str, Any]]) -> dict[str, Any] | None:
+    best, best_words = None, 0
+    for unit in units:
+        words = unit["name"].lower().replace("-", " ").split()
+        if all(any(alias in clause for alias in UNIT_WORDS.get(w, (w,))) for w in words) and len(words) > best_words:
+            best, best_words = unit, len(words)
+    return best
+
+
+def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Understand add, remove and '<unit> <price>' in EN, DE, FR and IT, so the flow works offline.
+
+    Returns the edited card and a summary: English text plus items the owner studio renders in the page's language.
+    """
     card = json.loads(json.dumps(card))
-    low = instruction.lower()
-    done = []
-    for verb, tag in re.findall(r"\b(add|remove)\s+(?:feature\s+)?([a-z][a-z \-]+?)(?:[,.;]|$)", low):
-        tag = tag.strip()
-        feats = card.setdefault("features", [])
-        if verb == "add" and tag not in feats:
-            feats.append(tag)
-            done.append(f"added {tag}")
-        if verb == "remove" and tag in feats:
-            feats.remove(tag)
-            done.append(f"removed {tag}")
-        policies = card.get("policies")
-        if tag == "dog-friendly" and isinstance(policies, dict):  # keep the pets policy in line with the tag
-            pets = str(policies.get("pets", ""))
-            if verb == "add" and (not pets or pets.lower().startswith("no")):
-                policies["pets"] = "Dogs welcome"
-            if verb == "remove" and not pets.lower().startswith("no"):
-                policies["pets"] = "No pets"
-    for unit in card.get("units", []):
-        m = re.search(rf"{re.escape(unit['name'].lower())}\D+(\d+)", low)
-        if m:
-            unit["price_chf"] = int(m.group(1))
-            done.append(f"{unit['name']} now CHF {m.group(1)}")
-    return card, (
-        "Mock mode: " + ", ".join(done)
-    ) if done else "Mock mode understood nothing; try 'add sauna' or set an API key."
+    items: list[dict[str, Any]] = []
+    for clause in re.split(r"[,.;\n]+", instruction.lower()):
+        clause = " ".join(clause.replace("-", " - ").split()).replace(" - ", "-")
+        found = _verb_and_tag(clause)
+        if found and found[1]:
+            verb, tag = found
+            feats = card.setdefault("features", [])
+            if verb == ADD and tag not in feats:
+                feats.append(tag)
+                items.append({"code": "added", "tag": tag})
+            if verb == REMOVE and tag in feats:
+                feats.remove(tag)
+                items.append({"code": "removed", "tag": tag})
+            policies = card.get("policies")
+            if tag == "dog-friendly" and isinstance(policies, dict):  # keep the pets policy in line with the tag
+                pets = str(policies.get("pets", ""))
+                if verb == ADD and (not pets or pets.lower().startswith("no")):
+                    policies["pets"] = "Dogs welcome"
+                if verb == REMOVE and not pets.lower().startswith("no"):
+                    policies["pets"] = "No pets"
+            continue
+        price = re.search(r"\d+", clause)
+        unit = _unit_in(clause.replace("-", " "), card.get("units", [])) if price else None
+        if unit:
+            unit["price_chf"] = int(price.group())
+            items.append({"code": "price", "unit": unit["name"], "price_chf": unit["price_chf"]})
+    words = {"added": "added {tag}", "removed": "removed {tag}", "price": "{unit} now CHF {price_chf}"}
+    text = (
+        "Mock mode: " + ", ".join(words[i["code"]].format(**i) for i in items)
+        if items
+        else "Mock mode understood nothing; try 'add sauna' or set an API key."
+    )
+    return card, {"text": text, "items": items}
 
 
 def apply(card_id: str, proposed: dict[str, Any]) -> dict[str, Any]:
