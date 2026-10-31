@@ -205,10 +205,11 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
    MCP calls run; the chat follows the newest message, waits if you scroll up to reread, and offers *New messages*
    to jump back. The booking waits for **Approve**. After it: the signed receipt and next steps, including *Show the
    hotel's side*.
-2. **The business (`#business`).** The demand map shows what Basel asked for that nobody offers (*Simulate 40 traveller
-   searches* fills it). Below it you are the owner of the hotel just booked: the booking arrives, you type a change in
-   plain words ("add sauna"), review the diff, then **sign and publish**. Waiting agents whose request now fits get a
-   signed offer. The tamper test shows a forged card failing.
+2. **The business (`#business`).** You are the owner of the hotel just booked. The panel opens on the owner studio:
+   the booking that arrived, what agents asked you for (each with **Use**), and your card as agents see it. Type a
+   change in plain words in the box ("add sauna"), press Enter to see the diff, then **Sign and publish**: the panel
+   says which version is live, and waiting agents whose request now fits get a signed offer. The **Demand map** tab
+   shows what Basel asked for that nobody offers.
 
 Presenter tools stay off the public page: open it with `?demo` (for example
 `http://localhost:5173/?demo`) for the stress test (a manipulated mirror listing, rules off), *Simulate 40 traveller
