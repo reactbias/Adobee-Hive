@@ -22,6 +22,7 @@ import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
 import { pickNearby } from "../lib/next";
 import { routeFor } from "../lib/route";
+import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
 // The Try list: stays first, then any business; the same chat answers both.
@@ -61,6 +62,7 @@ export default function TravellerAgent() {
   const demandRef = useRef<HTMLDivElement>(null);
   const ownerRef = useRef<HTMLDivElement>(null);
   const jump = (to: RefObject<HTMLDivElement>) => {
+    businessRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
     const body = businessBody.current;
     if (body && to.current) body.scrollTo?.({ top: to.current.offsetTop - body.offsetTop, behavior: "smooth" });
   };
@@ -289,32 +291,34 @@ export default function TravellerAgent() {
               }
             />
             {/* The manipulation demo stays one tap away, folded so the brief fits the screen. */}
-            <details className="stress">
-              <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
-              <fieldset>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={mirror}
-                    disabled={busy}
-                    onChange={(e) => {
-                      setMirror(e.target.checked);
-                      if (!e.target.checked) setRulesOff(false);
-                    }}
-                  />
-                  <span>{t("agent.test.injection")}</span>
-                </label>
-                <label className={`check danger${mirror ? "" : " off"}`}>
-                  <input
-                    type="checkbox"
-                    checked={rulesOff}
-                    disabled={busy || !mirror}
-                    onChange={(e) => setRulesOff(e.target.checked)}
-                  />
-                  <span>{t("agent.test.rulesOff")}</span>
-                </label>
-              </fieldset>
-            </details>
+            {demoMode() && (
+              <details className="stress">
+                <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
+                <fieldset>
+                  <label className="check">
+                    <input
+                      type="checkbox"
+                      checked={mirror}
+                      disabled={busy}
+                      onChange={(e) => {
+                        setMirror(e.target.checked);
+                        if (!e.target.checked) setRulesOff(false);
+                      }}
+                    />
+                    <span>{t("agent.test.injection")}</span>
+                  </label>
+                  <label className={`check danger${mirror ? "" : " off"}`}>
+                    <input
+                      type="checkbox"
+                      checked={rulesOff}
+                      disabled={busy || !mirror}
+                      onChange={(e) => setRulesOff(e.target.checked)}
+                    />
+                    <span>{t("agent.test.rulesOff")}</span>
+                  </label>
+                </fieldset>
+              </details>
+            )}
             {error && <p className="error">{error}</p>}
           </>
         }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type DemandMap } from "../api";
 import Display from "../components/Display";
 import { useI18n } from "../i18n";
+import { demoMode } from "../lib/demo";
 
 // The twist: agents' unmet requests tell a city's small businesses what to become.
 export default function DemandPanel() {
@@ -32,12 +33,14 @@ export default function DemandPanel() {
           <Display text={t("demand.title")} />
         </h3>
         <p className="lead">{t("demand.lead")}</p>
-        <div className="row">
-          <button onClick={simulate} disabled={busy}>
-            {t("demand.simulate")}
-          </button>
-          {simulated > 0 && <span className="muted">{t("demand.simulated", { n: simulated })}</span>}
-        </div>
+        {demoMode() && (
+          <div className="row">
+            <button onClick={simulate} disabled={busy}>
+              {t("demand.simulate")}
+            </button>
+            {simulated > 0 && <span className="muted">{t("demand.simulated", { n: simulated })}</span>}
+          </div>
+        )}
       </div>
 
       {demand && (

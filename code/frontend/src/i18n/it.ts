@@ -16,7 +16,7 @@ const it: Record<Key, string> = {
   "trust.noReviews": "Nessun soggiorno verificato",
 
   "owner.title": "Dica che cosa è *cambiato.*",
-  "owner.lead": "Scriva la modifica, la verifichi, la firmi.",
+  "owner.lead": "Scriva una modifica con parole sue, controlli che cosa cambia, poi firmi e pubblichi.",
   "owner.business": "Attività",
   "owner.sample": "Aggiungi la sauna. La doppia sul cortile costa 165 franchi da oggi.",
   "owner.tokenNeeded": "In questo Hive solo il titolare può modificare le schede. Inserisca il token del titolare.",
@@ -50,11 +50,11 @@ const it: Record<Key, string> = {
   "owner.summary.added": "Aggiunto: {tag}",
   "owner.summary.removed": "Rimosso: {tag}",
   "owner.summary.price": "{unit} ora {price}",
-  "owner.summary.none": "Offline non ho capito nulla. Provi «aggiungi sauna» o colleghi l'IA.",
+  "owner.summary.none": "Non ho capito. Provi «aggiungi sauna».",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Domanda mancata · ultimi 7 giorni",
   "owner.missed.title": "Ciò che gli agenti hanno chiesto e Lei non offre",
-  "owner.missed.empty": "Ancora nulla di mancato. Avvii qualche ricerca con l'agente di viaggio.",
+  "owner.missed.empty": "Ancora niente di mancato.",
   "owner.agents.title": "Come La vedono gli agenti",
   "owner.agents.mcp": "Qualsiasi client MCP, Claude compreso, legge questa scheda a",
   "owner.bookings.title": "Prenotazioni",
@@ -76,7 +76,8 @@ const it: Record<Key, string> = {
   "card.tamper.rejected": "Rifiutata",
 
   "demand.title": "Che cosa hanno *chiesto* gli agenti di Basilea.",
-  "demand.lead": "Le ricerche senza risposta sono un business plan.",
+  "demand.lead":
+    "Che cosa hanno cercato gli agenti a Basilea questa settimana, e che cosa nessuna attività offre ancora.",
   "demand.simulate": "Simula 40 ricerche di viaggiatori",
   "demand.simulated": "{n} ricerche simulate aggiunte. Passano dalla vera ricerca; solo i viaggiatori sono inventati.",
   "demand.kpi.searches": "ricerche di agenti, ultimi {days} giorni",
@@ -85,7 +86,7 @@ const it: Record<Key, string> = {
   "demand.chart.title": "Richiesto, e chi poteva soddisfarlo",
   "demand.legend.asked": "richiesto",
   "demand.legend.unserved": "nessuno poteva soddisfarlo",
-  "demand.empty": "Ancora nessuna ricerca. Avvii l'agente di viaggio o simuli del traffico.",
+  "demand.empty": "Ancora nessuna ricerca. Chieda una camera al Suo agente qui sopra.",
   "demand.ofAsked": "{unserved} su {asked} insoddisfatte",
 
   "agent.eyebrow": "La porta d'ingresso, firmata.",

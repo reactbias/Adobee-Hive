@@ -16,7 +16,7 @@ const fr: Record<Key, string> = {
   "trust.noReviews": "Pas encore de séjour vérifié",
 
   "owner.title": "Dites ce qui a *changé.*",
-  "owner.lead": "Écrivez le changement, vérifiez-le, signez-le.",
+  "owner.lead": "Écrivez un changement avec vos mots, vérifiez ce qu'il modifie, puis signez et publiez.",
   "owner.business": "Commerce",
   "owner.sample": "Ajouter un sauna. La double côté cour coûte 165 francs dès aujourd'hui.",
   "owner.tokenNeeded": "Dans ce Hive, seul le propriétaire peut modifier une carte. Saisissez votre jeton.",
@@ -50,11 +50,11 @@ const fr: Record<Key, string> = {
   "owner.summary.added": "Ajouté : {tag}",
   "owner.summary.removed": "Retiré : {tag}",
   "owner.summary.price": "{unit} désormais {price}",
-  "owner.summary.none": "Rien compris hors ligne. Essayez « ajouter sauna » ou connectez l'IA.",
+  "owner.summary.none": "Rien compris. Essayez « ajouter sauna ».",
   "owner.times": "{n}×",
   "owner.missed.eyebrow": "Demande manquée · 7 derniers jours",
   "owner.missed.title": "Ce que les agents ont demandé et que vous n'offrez pas",
-  "owner.missed.empty": "Rien de manqué pour l'instant. Lancez quelques recherches avec l'agent de voyage.",
+  "owner.missed.empty": "Rien de manqué pour l'instant.",
   "owner.agents.title": "Comme les agents vous voient",
   "owner.agents.mcp": "Tout client MCP, Claude compris, lit cette carte à l'adresse",
   "owner.bookings.title": "Réservations",
@@ -76,7 +76,7 @@ const fr: Record<Key, string> = {
   "card.tamper.rejected": "Refusée",
 
   "demand.title": "Ce que les agents de Bâle ont *demandé.*",
-  "demand.lead": "Les recherches sans réponse sont un plan d'affaires.",
+  "demand.lead": "Ce que les agents ont cherché à Bâle cette semaine, et ce qu'aucun commerce n'offre encore.",
   "demand.simulate": "Simuler 40 recherches de voyageurs",
   "demand.simulated":
     "{n} recherches simulées ajoutées. Elles passent par la vraie recherche ; seuls les voyageurs sont inventés.",
@@ -86,7 +86,7 @@ const fr: Record<Key, string> = {
   "demand.chart.title": "Demandé, et qui pouvait y répondre",
   "demand.legend.asked": "demandé",
   "demand.legend.unserved": "personne n'a pu répondre",
-  "demand.empty": "Pas encore de recherche. Lancez l'agent de voyage ou simulez du trafic.",
+  "demand.empty": "Aucune recherche pour l'instant. Demandez une chambre à votre agent ci-dessus.",
   "demand.ofAsked": "{unserved} sur {asked} sans réponse",
 
   "agent.eyebrow": "La porte d'entrée, signée.",

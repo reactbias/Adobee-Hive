@@ -54,6 +54,8 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
 
 ## Before going on stage
 
+- Open the app with `?demo` (https://reactbias.github.io/Adobee-Hive/?demo). Visitors never see the presenter tools;
+  `?demo` adds **Stress test**, **Simulate 40 traveller searches**, the tamper test and the raw MCP exchange.
 - `curl <backend>/api/health` says `"llm": "openai"` if the key is set.
 - On the deployed demo, open the owner studio in chapter 2 once and enter the owner token, so the edit at beat 4 doesn't stop for it.
 - Reset to a clean Basel after the warm-up run (Gare Central back to not dog-friendly, no bookings, no demand):
