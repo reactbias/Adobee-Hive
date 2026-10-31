@@ -3,7 +3,7 @@
 Short version for the stage: [PITCH.md](PITCH.md).
 
 Everything below runs live. Without an API key the agent switches to a scripted planner that walks the same MCP
-tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **offline mode**.
+tools, so the demo cannot die on stage. The header shows **Claude live** or **Offline mode**, and the agent stage names the planner for every run.
 
 ## Pitch beats
 
@@ -23,7 +23,7 @@ tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **o
    My name is Tobi Muster."*
    The right side shows the two agents talking: your agent asks, the Hive and Hotel Rheinblick answer
    (`hive_discover`, `hive_get_card`, `hive_check_availability`), with the signature check and round-trip times.
-   Your agent stops and asks **book this?** Click **Approve booking**: only now does it send `hive_book`, and the
+   Your agent stops and asks, on a paper card, whether to book the room it chose. Click **Approve booking**: only now does it send `hive_book`, and the
    hotel answers with a signed receipt. "The human states the intent and says yes. The agents do the rest."
 2. **Human card page** (`/card/rheinblick`). Same card, rendered for people, with direct booking.
    Click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*.
@@ -43,4 +43,6 @@ tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **o
   `curl -X POST -H "X-Demo-Token: $DEMO_RESET_TOKEN" <backend>/api/demo/reset`. Locally no token is needed.
 - Then click **Simulate 40 traveller searches** once on `/demand` so the map and Gare Central's missed demand have
   data to show.
-- Keep the browser zoom at 125 % so the jury can read the timeline.
+- Keep the browser zoom at 125 % so the jury can read the agent stage.
+- Set the language switch in the header to **EN**: the offline planner understands English requests only. With
+  Claude live, German, French and Italian requests work too.
