@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, setChosenHub, type DirectoryHub } from "../api";
+import { api, apiOrigin, setChosenHub, type DirectoryHub } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
@@ -109,6 +109,7 @@ export default function InstanceFinder({ onPick }: { onPick: (hub: string) => vo
       <p>{t("finder.lead")}</p>
       <p className="finder-draft">{t("finder.draft")}</p>
       {fallback && <p className="finder-draft">{t("finder.notDeployed")}</p>}
+      <p className="finder-draft">{t("finder.pinned", { backend: apiOrigin() })}</p>
       {hubs === null ? (
         <p className="muted">{t("finder.loading")}</p>
       ) : (

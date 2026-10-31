@@ -433,6 +433,30 @@ const en = {
   "result.alsoReachedBy": "also reached by {n} other routes",
   "result.route": "Route",
   "admin.settingsEnglish": "This hub describes its own settings in English, whatever language you read the app in.",
+
+  // The live node view of the hub network
+  "network.eyebrow": "Live",
+  "network.title": "The hub network",
+  "network.lead": "This hub and the hubs it is connected to, read from the running backend.",
+  "network.unreachable": "The hub could not be reached, so these numbers are not live.",
+  "network.count.entities": "Entities carried",
+  "network.count.peers": "Peer hubs",
+  "network.count.live": "Open introductions",
+  "network.count.blocked": "Shut out",
+  "network.diagram": "The hub network as a honeycomb: this hub in the centre, its peer hubs around it.",
+  "network.entitiesShort": "{n} entities",
+  "network.unknownShort": "not asked",
+  "network.entities": "{n} entities",
+  "network.entitiesUnknown": "entity count unknown",
+  "network.admissionUnknown": "admission unknown",
+  "network.thisHub": "This hub, the one answering you",
+  "network.blockedHub": "Shut out: nothing passes in either direction",
+  "network.alone": "No peer hubs are configured yet, so this hub answers every search on its own.",
+  "network.legend":
+    "The line to a peer carries its calibration: clay means the hub held or beat its own claim, red means it published more than people found, grey means too little evidence to say.",
+  "finder.pinned":
+    "This build talks to {backend} whatever you pick here: the backend address is fixed when the site is built. Picking a hub records your choice; it does not yet move the app to another hub.",
+  "network.hubs": "Hubs on this network",
 } as const;
 
 export type Key = keyof typeof en;

@@ -438,5 +438,29 @@ const de: Record<Key, string> = {
   "result.route": "Weg",
   "admin.settingsEnglish":
     "Dieser Hub beschreibt seine eigenen Einstellungen auf Englisch, unabhängig von Ihrer Sprache.",
+
+  // The live node view of the hub network
+  "network.eyebrow": "Live",
+  "network.title": "Das Hub-Netz",
+  "network.lead": "Dieser Hub und die Hubs, mit denen er verbunden ist, direkt vom laufenden Backend gelesen.",
+  "network.unreachable": "Der Hub war nicht erreichbar, diese Zahlen sind daher nicht aktuell.",
+  "network.count.entities": "Geführte Einträge",
+  "network.count.peers": "Benachbarte Hubs",
+  "network.count.live": "Offene Vermittlungen",
+  "network.count.blocked": "Ausgeschlossen",
+  "network.diagram": "Das Hub-Netz als Bienenwabe: dieser Hub in der Mitte, die benachbarten Hubs darum herum.",
+  "network.entitiesShort": "{n} Einträge",
+  "network.unknownShort": "nicht gefragt",
+  "network.entities": "{n} Einträge",
+  "network.entitiesUnknown": "Anzahl Einträge unbekannt",
+  "network.admissionUnknown": "Aufnahme unbekannt",
+  "network.thisHub": "Dieser Hub, der Ihnen antwortet",
+  "network.blockedHub": "Ausgeschlossen: In keiner Richtung geht etwas durch",
+  "network.alone": "Es sind noch keine benachbarten Hubs konfiguriert, dieser Hub beantwortet jede Suche allein.",
+  "network.legend":
+    "Die Linie zu einem Nachbarn zeigt seine Kalibrierung: Lehm heisst, der Hub hat seine eigene Angabe gehalten oder übertroffen, Rot heisst, er hat mehr veröffentlicht als die Menschen fanden, Grau heisst, die Belege reichen nicht.",
+  "finder.pinned":
+    "Dieser Build spricht mit {backend}, unabhängig von Ihrer Wahl hier: Die Adresse des Backends wird beim Bauen der Seite festgelegt. Eine Wahl wird gemerkt, verschiebt die App aber noch nicht auf einen anderen Hub.",
+  "network.hubs": "Hubs in diesem Netz",
 };
 export default de;

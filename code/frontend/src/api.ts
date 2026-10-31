@@ -122,6 +122,12 @@ export function chosenHub(): string {
   }
 }
 
+/**
+ * The backend this build talks to. VITE_API_URL is baked in at build time, so a deployed build can only reach
+ * the hub it was built against: the instance finder says so rather than pretending a pick moves the app.
+ */
+export const apiOrigin = () => BASE || window.location.origin;
+
 export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
 
 // ---------- Hive ----------

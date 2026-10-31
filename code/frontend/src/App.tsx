@@ -17,6 +17,19 @@ const adminMode = () => search().has("admin");
  */
 const hubFromUrl = () => (search().has("hub") ? search().get("hub") || "local" : "");
 
+/**
+ * Forget the hub and go back to the finder with nothing selected. `?hub=` has to come out of the address too:
+ * left in, a reload would re-apply it and bounce straight past the finder, which is exactly what it looked like
+ * when Change Hive seemed to do nothing.
+ */
+function forgetHub() {
+  setChosenHub("");
+  const params = search();
+  params.delete("hub");
+  const query = params.toString();
+  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+}
+
 // One page in three chapters. The header names them, says whether the AI is live, and switches the language.
 function Header({ onChangeHub }: { onChangeHub?: () => void }) {
   const { t, locale, setLocale } = useI18n();
@@ -118,12 +131,13 @@ export default function App() {
     <>
       <Header
         onChangeHub={() => {
-          setChosenHub("");
+          forgetHub();
           setHub("");
         }}
       />
       <main>
-        <TravellerAgent />
+        {/* Keyed by the hub, so picking a different one starts the page over instead of layering on the last. */}
+        <TravellerAgent key={hub} />
       </main>
       <B6Bee />
     </>

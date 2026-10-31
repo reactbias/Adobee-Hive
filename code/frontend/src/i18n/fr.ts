@@ -437,5 +437,29 @@ const fr: Record<Key, string> = {
   "result.alsoReachedBy": "également atteint par {n} autres routes",
   "result.route": "Trajet",
   "admin.settingsEnglish": "Ce hub décrit ses propres réglages en anglais, quelle que soit la langue de l'application.",
+
+  // The live node view of the hub network
+  "network.eyebrow": "En direct",
+  "network.title": "Le réseau de hubs",
+  "network.lead": "Ce hub et les hubs auxquels il est relié, lus directement sur le backend en service.",
+  "network.unreachable": "Le hub est injoignable, ces chiffres ne sont donc pas à jour.",
+  "network.count.entities": "Entités portées",
+  "network.count.peers": "Hubs voisins",
+  "network.count.live": "Mises en relation ouvertes",
+  "network.count.blocked": "Exclus",
+  "network.diagram": "Le réseau de hubs en nid d'abeille : ce hub au centre, ses hubs voisins autour.",
+  "network.entitiesShort": "{n} entités",
+  "network.unknownShort": "pas demandé",
+  "network.entities": "{n} entités",
+  "network.entitiesUnknown": "nombre d'entités inconnu",
+  "network.admissionUnknown": "admission inconnue",
+  "network.thisHub": "Ce hub, celui qui vous répond",
+  "network.blockedHub": "Exclu : rien ne passe, dans aucun sens",
+  "network.alone": "Aucun hub voisin n'est encore configuré, ce hub répond donc seul à chaque recherche.",
+  "network.legend":
+    "La ligne vers un voisin porte son calibrage : l'argile signifie que le hub a tenu ou dépassé sa propre annonce, le rouge qu'il a publié plus que ce que les gens ont trouvé, le gris que les preuves manquent.",
+  "finder.pinned":
+    "Cette version communique avec {backend} quel que soit votre choix ici : l'adresse du backend est fixée à la compilation du site. Choisir un hub enregistre votre choix, mais ne déplace pas encore l'application.",
+  "network.hubs": "Hubs de ce réseau",
 };
 export default fr;

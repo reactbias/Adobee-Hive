@@ -438,5 +438,29 @@ const it: Record<Key, string> = {
   "result.route": "Percorso",
   "admin.settingsEnglish":
     "Questo hub descrive le proprie impostazioni in inglese, qualunque sia la lingua dell'applicazione.",
+
+  // The live node view of the hub network
+  "network.eyebrow": "Dal vivo",
+  "network.title": "La rete di hub",
+  "network.lead": "Questo hub e gli hub a cui è collegato, letti dal backend in funzione.",
+  "network.unreachable": "L'hub non è raggiungibile, quindi questi numeri non sono aggiornati.",
+  "network.count.entities": "Voci custodite",
+  "network.count.peers": "Hub vicini",
+  "network.count.live": "Presentazioni aperte",
+  "network.count.blocked": "Esclusi",
+  "network.diagram": "La rete di hub come un favo: questo hub al centro, gli hub vicini attorno.",
+  "network.entitiesShort": "{n} voci",
+  "network.unknownShort": "non chiesto",
+  "network.entities": "{n} voci",
+  "network.entitiesUnknown": "numero di voci sconosciuto",
+  "network.admissionUnknown": "ammissione sconosciuta",
+  "network.thisHub": "Questo hub, quello che le risponde",
+  "network.blockedHub": "Escluso: non passa nulla in nessuna direzione",
+  "network.alone": "Non è ancora configurato alcun hub vicino, quindi questo hub risponde da solo a ogni ricerca.",
+  "network.legend":
+    "La linea verso un vicino porta la sua calibrazione: argilla significa che l'hub ha mantenuto o superato la propria dichiarazione, rosso che ha pubblicato più di quanto le persone hanno trovato, grigio che le prove non bastano.",
+  "finder.pinned":
+    "Questa build comunica con {backend} qualunque sia la sua scelta qui: l'indirizzo del backend è fissato alla compilazione del sito. Scegliere un hub registra la scelta, ma non sposta ancora l'applicazione.",
+  "network.hubs": "Hub di questa rete",
 };
 export default it;

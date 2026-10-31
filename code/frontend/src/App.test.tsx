@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import App from "./App";
@@ -21,6 +22,9 @@ describe("the app", () => {
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockRejectedValue(new Error("offline"));
   });
 
   it("opens on the traveller agent and links to no other page", async () => {
@@ -177,5 +181,108 @@ describe("the first screen", () => {
     expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
     expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
     window.history.replaceState(null, "", "/");
+  });
+});
+
+// "Clicking change-hive brings you back to a page that is not the correct hive log." It did: ?hub= stayed in the
+// address, so the finder re-applied it on the next read and bounced straight past itself.
+describe("changing hive", () => {
+  const offline = () => {
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminOverview").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [
+        {
+          hub: "a",
+          url: "",
+          home: true,
+          blocked: false,
+          name: "Hive A",
+          description: "",
+          accepting: true,
+          error: null,
+          error_stars: null,
+          evidence: 0,
+          verdict: "unproven",
+          why: "",
+        },
+        {
+          hub: "b",
+          url: "",
+          home: false,
+          blocked: false,
+          name: "Hive B",
+          description: "",
+          accepting: true,
+          error: null,
+          error_stars: null,
+          evidence: 0,
+          verdict: "unproven",
+          why: "",
+        },
+      ],
+    });
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    offline();
+  });
+
+  it("goes back to the finder with nothing selected, and a reload stays there", async () => {
+    sessionStorage.setItem("adobee-hub", "a");
+    window.history.replaceState(null, "", "/?hub=a");
+    const { unmount } = render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(sessionStorage.getItem("adobee-hub")).toBeNull();
+    expect(window.location.search).not.toContain("hub");
+
+    // A reload at that point must not auto-select the hub that was just dropped.
+    unmount();
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+  });
+
+  it("lets the next pick be a different hub, and remembers that one", async () => {
+    sessionStorage.setItem("adobee-hub", "a");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+    const rows = await screen.findAllByRole("listitem");
+    await userEvent.click(within(rows[1]).getByRole("button", { name: en["finder.use"] }));
+
+    expect(sessionStorage.getItem("adobee-hub")).toBe("b");
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+  });
+
+  it("says plainly which backend the build is pinned to, rather than looking like it switched", async () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText(/This build talks to/)).toBeInTheDocument();
   });
 });
