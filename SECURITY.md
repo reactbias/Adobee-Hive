@@ -11,7 +11,7 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 
 | Asset | Threat | Protection | Where |
 | --- | --- | --- | --- |
-| Business facts | Scraped or forged copies, tampered prices | Every card version is signed (Ed25519 over canonical JSON); agents verify themselves; the tamper test shows a forged card failing | `hive.py`, `agent.verify_card` |
+| Business facts | Scraped or forged copies, tampered prices, a copy re-signed with someone else's key | Every card version is signed (Ed25519 over canonical JSON). Each business's public key is pinned in the Hive's registry (`owner_keys` in `/.well-known/hive.json`); agents accept a card only if the pinned key signed it, and overwrite the server's own `signature_valid` with their check. The tamper test shows a changed copy and a stranger-signed copy both failing | `hive.verify_pinned`, `agent.verify_card` |
 | Reviews | Fake or bulk reviews | A review needs the signed receipt of a real booking, once | `hive.review` |
 | A business's card | Someone else editing it | Owner edits need `X-Owner-Token` when `OWNER_EDIT_TOKEN` is set (the AWS bootstrap generates one); identity fields stay locked; cards are capped at 64 kB | `guard.py`, `owner.apply` |
 | The traveller's money | An agent booking on its own | The agent holds `hive_book` until the traveller approves | `agent.approve` |
@@ -30,6 +30,8 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
 
 - **Key custody.** The server holds each owner's signing key, so a server compromise could sign cards. The real
   design moves keys to the owner (a wallet or their Adobe account).
+- **Trust in the registry.** Agents trust the keys a Hive publishes for its own cards. A forger who controls the Hive
+  itself is not caught by this; the real design anchors owner keys outside it (a city or association registry).
 - **Owner identity.** One shared owner token protects all cards in the demo; production needs per-owner accounts.
 - **Rate limits** are kept in memory, which is fine because the backend runs as one instance (DuckDB on local disk).
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
