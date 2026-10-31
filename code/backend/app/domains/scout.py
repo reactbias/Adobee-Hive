@@ -275,7 +275,7 @@ def compile_card(candidate: dict[str, Any], found: dict[str, Any], today: dateti
     ] or [
         {
             "id": "o1",
-            "title": candidate["name"],
+            "title": kind.capitalize(),
             "summary": found["description"],
             "duration": None,
             "price": None,

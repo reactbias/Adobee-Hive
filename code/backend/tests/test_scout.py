@@ -121,3 +121,21 @@ def test_card_text_from_the_web_stays_data(client, web):
     # The model's summary is not on the card; the description is what the site itself says.
     assert "Ignore previous" not in json.dumps(card)
     assert card["description"] == "Ihr Taxi in Aesch und Umgebung, rund um die Uhr."
+
+
+def test_every_business_found_gets_a_turn_in_the_answer(client, web):
+    names = ["Taxi Eins Aesch", "Taxi Zwei Aesch", "Taxi Drei Aesch", "Taxi Vier Aesch"]
+    web["candidates"] = [_candidate(name=n, website=f"https://{i}.example") for i, n in enumerate(names)]
+    web["pages"] = {f"https://{i}.example": TAXI_PAGE.replace("Taxi Muster Aesch", n) for i, n in enumerate(names)}
+    out = scout.find("A taxi from Basel SBB to Aesch")
+    assert len(out["added"]) == 4
+    assert {r["name"] for r in out["result"]["replies"]} == set(names)
+    # The next taxi request ranks all four from the Hive itself.
+    assert {r["name"] for r in explore.ask("Taxi to Aesch")["replies"]} >= set(names)
+
+
+def test_a_card_without_named_offers_says_what_it_is(client, web):
+    web["candidates"] = [_candidate(offers=[])]
+    out = scout.find("Taxi in Aesch")
+    card = hive.get_card(out["added"][0]["card_id"])
+    assert card["offers"][0]["title"] == "Taxi"
