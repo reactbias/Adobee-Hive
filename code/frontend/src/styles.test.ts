@@ -20,4 +20,18 @@ describe("styles", () => {
   it("shows a clamped Try example in full on hover and focus", () => {
     expect(rule(".brief .example:hover,\n.brief .example:focus-visible")).toMatch(/-webkit-line-clamp:\s*unset/);
   });
+
+  // A phone in German: long labels must never make the page wider than the screen.
+  it("lets a single-column chapter shrink to the screen, whatever its content", () => {
+    expect(css).toMatch(/\.chapter-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
+  });
+
+  it("wraps the composer's buttons, and their labels, on a narrow screen", () => {
+    expect(rule(".composer-actions")).toMatch(/flex-wrap:\s*wrap/);
+    expect(rule(".composer-actions button")).toMatch(/white-space:\s*normal/);
+  });
+
+  it("keeps only the status dot in a phone's header, so four languages fit beside it", () => {
+    expect(css).toMatch(/@media \(max-width: 480px\) \{\s*\.nav-end \.status \{\s*font-size: 0;/);
+  });
 });
