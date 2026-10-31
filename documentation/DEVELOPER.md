@@ -197,15 +197,22 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
 
 ## The app, chapter by chapter
 
-1. **Traveller agent (`#travel`).** Click an example or write a request. Your agent, the critic and the verifier
-   talk in a group chat while the MCP calls run; the booking waits for **Approve**. After it: the signed receipt and
-   next steps, including *Show the hotel's side*.
-2. **General agent (`#ask`).** Ask about the five example businesses with a mood you choose. Their cards are
+1. **Traveller agent (`#travel`).** Click an example or write a request and press **Enter** (Shift+Enter for a new
+   line), or tap the microphone and speak it. Your agent, the critic and the verifier talk in a group chat while the
+   MCP calls run; the chat follows the newest message, waits if you scroll up to reread, and offers *New messages*
+   to jump back. The booking waits for **Approve**. After it: the signed receipt and next steps, including *Show the
+   hotel's side*. The stress test (a manipulated mirror listing, rules off) is folded under the examples.
+2. **General agent (`#ask`).** Ask about the five example businesses, typed or spoken. Their cards are
    unclaimed public information, so any action only hands you off to the business's own site, after a yes.
 3. **The business (`#business`).** The demand map shows what Basel asked for that nobody offers (*Simulate 40 traveller
    searches* fills it). Below it you are the owner of the hotel just booked: the booking arrives, you type a change in
    plain words ("add sauna"), review the diff, then **sign and publish**. Waiting agents whose request now fits get a
    signed offer. The tamper test shows a forged card failing.
+
+Speech input is the browser's own Web Speech API (`components/MicButton.tsx`) in the page's language: no key and
+no service of ours. Chrome and Edge send the audio to their vendor's recogniser, Safari listens on the device, and
+Firefox has none, so there the button is hidden. The ask API still takes an optional `mood`; the app no longer
+shows a picker.
 
 The click-by-click demo for the jury: [DEMO.md](DEMO.md).
 
@@ -255,5 +262,7 @@ fictional. Lanes, review and the full rules: [CONTRIBUTING.md](../CONTRIBUTING.m
 | Header says *Offline mode* although you set a key | The key line in `code/.env` is empty or `LLM_PROVIDER=offline`; restart uvicorn after editing `.env` |
 | A seed card you added doesn't show | Seeding only runs on an empty database: `POST /api/demo/reset` |
 | `Address already in use` | Another copy runs on that port; use the second-copy commands above |
+| No microphone button | The browser has no speech recognition (Firefox); type instead |
+| Microphone button crossed out | The browser blocked the microphone; allow it in the address bar and tap again |
 | PowerShell refuses `Activate.ps1` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, once |
 | The live site is slow on the first request | Render is waking up; wait about a minute |

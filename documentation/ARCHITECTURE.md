@@ -82,7 +82,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `AskPanel.tsx` | 2, general agent | Asks about the example businesses with a chosen mood; approves any hand-off |
+| `AskPanel.tsx` | 2, general agent | Asks about the example businesses; approves any hand-off |
 | `DemandPanel.tsx` | 3, business | Sees what Basel asked for that nobody offers; simulates a busy week |
 | `OwnerPanel.tsx` | 3, business | Is the owner of the hotel just booked: sees the booking arrive, edits the card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand; runs the tamper test |
 
@@ -161,8 +161,8 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 - **Unclaimed cards.** A card with `provenance.verified_by_owner: false` was compiled from a public website and is
   signed by the Hive as compiler. `trust.claimed` is false, the UI and every answer say so, owner edits refuse it,
   and an approved action only hands the person off to the business's own site.
-- **Chosen, not inferred.** The mood in chapter 2 is a preference the person sets; the answer echoes it with its
-  effects. Only the mood and the cards asked about are counted, never the question text or who asked.
+- **Chosen, not inferred.** The API takes an optional mood a person sets (the app no longer shows a picker); the
+  answer echoes it with its effects. Only the mood and the cards asked about are counted, never the question text or who asked.
 - **Abuse limits.** Owner edits can require a token, model calls are rate-limited, all input is bounded.
   Details and known limits: [SECURITY.md](../SECURITY.md).
 

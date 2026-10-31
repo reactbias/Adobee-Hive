@@ -66,6 +66,8 @@
   --s7: 48px;
   --s8: 64px;
   --s9: 96px;
+  /* The sticky header's height: each chapter fills the screen below it. */
+  --nav-h: 64px;
 
   --radius: 14px;
   --radius-sm: 10px;
@@ -147,8 +149,14 @@ pre {
   outline: 2px solid var(--clay-glow);
   outline-offset: 2px;
 }
+/* Selected text: white on clay on paper, ink on lit clay on the dark stage. Both well above AA contrast. */
 ::selection {
-  background: var(--clay-tint);
+  background: var(--clay);
+  color: #fff;
+}
+.chat-stage ::selection {
+  background: var(--clay-glow);
+  color: #13100c;
 }
 
 /* ---------- Type helpers ---------- */
@@ -515,15 +523,20 @@ label {
     color 0.2s var(--ease),
     border-color 0.2s var(--ease);
 }
-.nav a.link:hover {
+.nav a.link:hover,
+.nav a.link:focus-visible {
   color: var(--ink);
+  border-bottom-color: var(--clay);
 }
 .nav .status {
   margin-left: auto;
   font-size: var(--t-xs);
   color: var(--ink-3);
 }
-@media (max-width: 760px) {
+@media (max-width: 900px) {
+  :root {
+    --nav-h: 100px;
+  }
   .nav-inner {
     padding: 0 var(--s4);
     gap: var(--s4);
@@ -778,9 +791,31 @@ th.end {
 .brief {
   display: flex;
   flex-direction: column;
-  gap: var(--s6);
+  gap: var(--s5);
   position: sticky;
-  top: 112px;
+  top: calc(var(--nav-h) + var(--s5));
+}
+/* On a laptop the whole brief fits beside the chat: a tighter headline, a two-line preview of each example. */
+.brief .page-head {
+  gap: var(--s3);
+}
+.brief .page-head h1 {
+  font-size: clamp(2.25rem, 3.6vw, 3.25rem);
+}
+.brief .lead {
+  font-size: var(--t-base);
+}
+.brief .composer textarea {
+  min-height: 112px;
+}
+.brief .examples .rows li {
+  padding: var(--s3) 0;
+}
+.brief .example {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 @media (max-width: 1000px) {
   .brief {
@@ -832,6 +867,79 @@ th.end {
   font-size: var(--t-md);
   min-height: 132px;
   padding: var(--s4);
+}
+.composer textarea:focus {
+  border-color: var(--clay);
+  box-shadow: 0 0 0 3px rgba(162, 79, 44, 0.16);
+}
+/* Under the box: how to send on the left, the actions on the right. */
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.composer-bar .hint {
+  font-size: var(--t-xs);
+  color: var(--ink-3);
+}
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-left: auto;
+}
+button.busy:disabled {
+  opacity: 0.75;
+}
+button.busy::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--clay-glow);
+  animation: aura 1.2s ease-in-out infinite;
+}
+/* Speak instead of typing: a round clay-outlined key that glows while it listens. */
+button.mic {
+  min-width: 44px;
+  padding: 0 var(--s3);
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+button.mic svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+button.mic:hover:not(:disabled) {
+  background: var(--surface);
+  border-color: var(--clay);
+  color: var(--clay);
+}
+button.mic.listening,
+button.mic.listening:hover:not(:disabled) {
+  background: var(--clay);
+  border-color: var(--clay);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(162, 79, 44, 0.18);
+  animation: listen 1.4s ease-in-out infinite;
+}
+button.mic.blocked {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+.mic-live {
+  font-size: var(--t-xs);
+}
+@keyframes listen {
+  50% {
+    box-shadow: 0 0 0 8px rgba(162, 79, 44, 0.08);
+  }
 }
 .examples .rows {
   margin-top: var(--s3);
@@ -1019,12 +1127,19 @@ th.end {
   opacity: 0.5;
 }
 .stage-empty {
-  padding: var(--s9) var(--s4);
+  padding: 18vh var(--s4) var(--s7);
   text-align: center;
   max-width: 30em;
   margin: 0 auto;
 }
-.stage-empty p:first-child {
+.stage-cast {
+  display: flex;
+  justify-content: center;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+  opacity: 0.9;
+}
+.stage-empty > p:first-of-type {
   font-family: var(--display);
   font-size: var(--t-xl);
   margin-bottom: var(--s3);
@@ -1377,18 +1492,24 @@ th.end {
 /* ---------- Chapters: one page, three parts of one story ---------- */
 
 .chapter {
-  scroll-margin-top: 88px;
+  scroll-margin-top: var(--nav-h);
+  min-height: calc(100vh - var(--nav-h));
+  min-height: calc(100svh - var(--nav-h));
   display: flex;
   flex-direction: column;
   gap: var(--s6);
-  padding-top: var(--s9);
-  margin-top: var(--s9);
+  padding-top: var(--s8);
+  margin-top: var(--s8);
   border-top: 1px solid var(--line);
 }
 .chapter.first {
   padding-top: 0;
   margin-top: 0;
   border-top: 0;
+  min-height: 0;
+}
+main:has(> .chapter.first) {
+  padding-top: var(--s5);
 }
 .chapter > .section-head {
   margin-bottom: 0;
@@ -1632,11 +1753,14 @@ button.self-start {
   --st-3: #9d9381;
   --st-line: rgba(239, 233, 222, 0.08);
   position: sticky;
-  top: 88px;
+  top: calc(var(--nav-h) + var(--s5));
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
-  min-height: 600px;
+  /* Exactly the screen under the header, so the whole conversation and its Approve stay in view. */
+  height: calc(100vh - var(--nav-h) - 2 * var(--s5));
+  height: calc(100svh - var(--nav-h) - 2 * var(--s5));
+  min-height: 520px;
+  max-height: 960px;
   border-radius: 22px;
   color: var(--st-ink);
   background: radial-gradient(90% 40% at 100% 0%, rgba(162, 79, 44, 0.16), transparent 70%), #13100c;
@@ -1650,7 +1774,9 @@ button.self-start {
     position: relative;
     top: 0;
     height: 78vh;
-    min-height: 520px;
+    height: calc(100svh - var(--nav-h) - 2 * var(--s4));
+    min-height: 480px;
+    scroll-margin-top: calc(var(--nav-h) + var(--s4));
   }
 }
 .chat-stage .dim {
@@ -1955,6 +2081,27 @@ button.self-start {
   }
 }
 
+/* Reading back up: the chat stops following, and this brings the newest message back */
+.to-latest {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s5);
+  transform: translateX(-50%);
+  z-index: 3;
+  min-height: 40px;
+  padding: 0 var(--s4);
+  border-radius: 999px;
+  border-color: transparent;
+  background: var(--clay-glow);
+  color: #13100c;
+  font-weight: 600;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+  animation: msg-in 0.4s var(--ease) both;
+}
+.to-latest:hover:not(:disabled) {
+  background: #e7a47d;
+}
+
 /* The approval question stays pinned under the conversation */
 .pinned {
   position: sticky;
@@ -2067,6 +2214,9 @@ button.self-start {
 @media (max-width: 600px) {
   .chat-stage {
     height: 82vh;
+    height: calc(100svh - 120px);
+    min-height: 440px;
+    scroll-margin-top: 112px;
     border-radius: 18px;
   }
   .roster {
@@ -2142,19 +2292,36 @@ button.self-start {
 
 /* Manipulation demo: the stress-test switches, what the guard withheld, and the rules-off counterfactual */
 .stress {
-  border: 0;
   border-top: 1px solid var(--line);
-  margin: var(--s6) 0 0;
-  padding: var(--s4) 0 0;
+  padding: var(--s3) 0 0;
+}
+.stress summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 32px;
+}
+.stress summary::-webkit-details-marker {
+  display: none;
+}
+.stress summary::after {
+  content: "+";
+  font-size: var(--t-base);
+  font-weight: 400;
+  transition: transform 0.2s var(--ease);
+}
+.stress[open] summary::after {
+  transform: rotate(45deg);
+}
+.stress fieldset {
+  border: 0;
+  margin: var(--s2) 0 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--s3);
-}
-.stress legend {
-  padding: 0;
-  float: left;
-  width: 100%;
-  margin-bottom: var(--s2);
 }
 .check {
   display: grid;
@@ -2271,34 +2438,6 @@ button.self-start {
 
 /* ---------- Ask the Hive: the mood is a visible setting the person picks ---------- */
 
-.moods {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-.moods legend {
-  width: 100%;
-  margin-bottom: var(--s2);
-  font-size: var(--t-sm);
-  color: var(--ink-2);
-}
-.moods button {
-  min-height: 36px;
-  padding: 0 var(--s4);
-  border-radius: 999px;
-  border: 1px solid var(--line-strong);
-  background: var(--surface);
-  color: var(--ink-2);
-  font-size: var(--t-sm);
-}
-.moods button.on {
-  border-color: var(--clay);
-  background: var(--clay-tint);
-  color: var(--clay-dark);
-}
 .ask-items {
   list-style: none;
   margin: 0;

@@ -57,7 +57,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Whose rules: signed rulesets a person picks per search ("Dogs, verified" by a dog owners' club). They only narrow, and every answer names the ruleset and what it changed | `code/backend/app/rulesets.py` |
 | Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `panels/OwnerPanel.tsx` |
 | Three agents agree before you are asked: your agent proposes, a critic always argues for the strongest alternative from the open ranking, and a verifier checks the held booking against the request and the signed card. If they don't all agree, the chat says so and you still decide | `code/backend/app/critic.py`, `second_opinion.py` |
-| Ask the Hive (chapter 2, the general agent): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a mood you choose and a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `panels/AskPanel.tsx` |
+| Ask the Hive (chapter 2, the general agent): questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `panels/AskPanel.tsx` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
@@ -123,7 +123,7 @@ Taking over the code? The [developer guide](documentation/DEVELOPER.md) shows ho
 | Folder | Contents |
 | --- | --- |
 | [`code/`](code) | `backend/` FastAPI + DuckDB + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,

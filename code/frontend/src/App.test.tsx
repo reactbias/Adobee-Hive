@@ -42,6 +42,6 @@ describe("the app", () => {
     expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#ask", "#business"]);
     expect(screen.getByRole("heading", { name: en["owner.title"].replace(/\*/g, "") })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: en["demand.title"].replace(/\*/g, "") })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: en["ask.mood.stressed"] })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: en["ask.label"] })).toBeInTheDocument();
   });
 });
