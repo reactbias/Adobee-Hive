@@ -49,7 +49,10 @@ The jury reviews the commit history, so make each commit one small, working step
 - Subject in the imperative, under 72 characters. Add a body when the *why* is not obvious.
 - Work done with an AI agent keeps its `Co-Authored-By:` trailer, so the history shows humans and agents working
   together honestly.
-- Never commit secrets, `.env`, database files or `node_modules`.
+- **This repo is public.** Never commit secrets, `.env`, database files or `node_modules`, and no personal data
+  about anyone: no emails, phone numbers, account ids, device names, local paths, Wi-Fi details or photo EXIF. Team
+  members appear by name only. Seed data stays fictional. CI scans every push with gitleaks; if it flags something,
+  rotate the key first, then fix the commit.
 
 ## Pull requests
 
