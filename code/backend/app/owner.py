@@ -34,6 +34,7 @@ def _strip(card: dict[str, Any]) -> dict[str, Any]:
 
 
 def diff(old: dict[str, Any], new: dict[str, Any], prefix: str = "") -> list[dict[str, Any]]:
+    """List field-level changes between two cards, with dotted paths for nested fields."""
     changes = []
     for key in sorted(set(old) | set(new)):
         path = f"{prefix}{key}"
@@ -46,6 +47,7 @@ def diff(old: dict[str, Any], new: dict[str, Any], prefix: str = "") -> list[dic
 
 
 def propose(card_id: str, instruction: str) -> dict[str, Any]:
+    """Turn the owner's plain-language change into a proposed card, a diff and a summary. Publishes nothing."""
     current = _strip(hive.get_card(card_id))
     if config.LLM_ENABLED:
         out = llm.structured(
@@ -60,7 +62,13 @@ def propose(card_id: str, instruction: str) -> dict[str, Any]:
         mode = "mock"
     for key in LOCKED:
         proposed[key] = current.get(key)
-    return {"card_id": current["id"], "proposed": proposed, "changes": diff(current, proposed), "summary": summary, "mode": mode}
+    return {
+        "card_id": current["id"],
+        "proposed": proposed,
+        "changes": diff(current, proposed),
+        "summary": summary,
+        "mode": mode,
+    }
 
 
 def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], str]:
@@ -82,10 +90,13 @@ def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], s
         if m:
             unit["price_chf"] = int(m.group(1))
             done.append(f"{unit['name']} now CHF {m.group(1)}")
-    return card, ("Mock mode: " + ", ".join(done)) if done else "Mock mode understood nothing; try 'add sauna' or set an API key."
+    return card, (
+        "Mock mode: " + ", ".join(done)
+    ) if done else "Mock mode understood nothing; try 'add sauna' or set an API key."
 
 
 def apply(card_id: str, proposed: dict[str, Any]) -> dict[str, Any]:
+    """Sign and publish the approved card. Identity fields (LOCKED) always keep their current values."""
     current = hive.get_card(card_id)
     for key in LOCKED:
         proposed[key] = current.get(key)

@@ -18,7 +18,7 @@ import base64
 import hashlib
 import json
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
@@ -81,17 +81,20 @@ CREATE TABLE IF NOT EXISTS hive_events (
 
 
 class HiveError(ValueError):
-    pass
+    """A request the Hive refuses, such as an unknown card or a sold-out room. Maps to HTTP 400."""
 
 
 def init() -> None:
+    """Create the Hive tables if they don't exist."""
     with db.cursor() as cur:
         cur.execute(SCHEMA_SQL)
 
 
 # ---------------------------------------------------------------- signing
 
+
 def canonical(data: dict[str, Any]) -> bytes:
+    """Serialise data deterministically (sorted keys, compact), the exact bytes that get signed."""
     return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode()
 
 
@@ -139,26 +142,39 @@ def _check_receipt(card_id: str, receipt: str) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- cards
 
+
 def publish(card: dict[str, Any]) -> dict[str, Any]:
     """Sign and publish a new version of a card. `card` must carry id, slug, kind."""
     card = json.loads(json.dumps(card, default=str))
     card.pop("trust", None)
     existing = get_record(card["id"])
     card["version"] = (existing["version"] + 1) if existing else 1
-    card["published_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    card["published_at"] = datetime.now(UTC).isoformat(timespec="seconds")
     key = _key_for(card["id"])
     signature = base64.b64encode(key.sign(canonical(card))).decode()
     with db.write() as cur:
         cur.execute(
             "INSERT OR REPLACE INTO hive_cards VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [card["id"], card["slug"], card["kind"], card["version"], json.dumps(card), signature, _public_b64(key), db.now()],
+            [
+                card["id"],
+                card["slug"],
+                card["kind"],
+                card["version"],
+                json.dumps(card),
+                signature,
+                _public_b64(key),
+                db.now(),
+            ],
         )
     return get_card(card["id"])
 
 
 def get_record(card_id_or_slug: str) -> dict[str, Any] | None:
+    """Return the stored row for a card id or slug, or None."""
     with db.cursor() as cur:
-        found = db.rows(cur.execute("SELECT * FROM hive_cards WHERE id = ? OR slug = ?", [card_id_or_slug, card_id_or_slug]))
+        found = db.rows(
+            cur.execute("SELECT * FROM hive_cards WHERE id = ? OR slug = ?", [card_id_or_slug, card_id_or_slug])
+        )
     if not found:
         return None
     rec = found[0]
@@ -168,12 +184,18 @@ def get_record(card_id_or_slug: str) -> dict[str, Any] | None:
 
 def _trust(rec: dict[str, Any]) -> dict[str, Any]:
     with db.cursor() as cur:
-        att = db.rows(cur.execute(
-            "SELECT claim, attested_by FROM hive_attestations WHERE card_id = ? ORDER BY claim", [rec["id"]]))
-        stats = cur.execute(
-            "SELECT count(*), avg(rating) FROM hive_reviews WHERE card_id = ?", [rec["id"]]).fetchone()
-        recent = db.rows(cur.execute(
-            "SELECT rating, text, created_at FROM hive_reviews WHERE card_id = ? ORDER BY created_at DESC LIMIT 3", [rec["id"]]))
+        att = db.rows(
+            cur.execute(
+                "SELECT claim, attested_by FROM hive_attestations WHERE card_id = ? ORDER BY claim", [rec["id"]]
+            )
+        )
+        stats = cur.execute("SELECT count(*), avg(rating) FROM hive_reviews WHERE card_id = ?", [rec["id"]]).fetchone()
+        recent = db.rows(
+            cur.execute(
+                "SELECT rating, text, created_at FROM hive_reviews WHERE card_id = ? ORDER BY created_at DESC LIMIT 3",
+                [rec["id"]],
+            )
+        )
     published = rec["published_at"]
     age_days = (datetime.now() - published).days if isinstance(published, datetime) else None
     return {
@@ -182,13 +204,18 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
         "public_key": rec["public_key"],
         "algorithm": "Ed25519 over canonical JSON (sorted keys, no spaces)",
         "attestations": att,
-        "verified_reviews": {"count": stats[0], "average": round(stats[1], 2) if stats[1] else None,
-                             "recent": recent, "rule": "only guests with a signed booking receipt can review"},
+        "verified_reviews": {
+            "count": stats[0],
+            "average": round(stats[1], 2) if stats[1] else None,
+            "recent": recent,
+            "rule": "only guests with a signed booking receipt can review",
+        },
         "freshness_days": age_days,
     }
 
 
 def get_card(card_id_or_slug: str) -> dict[str, Any]:
+    """Return the latest card with its trust block (signature, public key, attestations, reviews)."""
     rec = get_record(card_id_or_slug)
     if not rec:
         raise HiveError(f"No Hive card '{card_id_or_slug}'.")
@@ -196,6 +223,7 @@ def get_card(card_id_or_slug: str) -> dict[str, Any]:
 
 
 def list_cards(kind: str | None = None) -> list[dict[str, Any]]:
+    """Return every card, optionally only one kind, ordered by slug."""
     with db.cursor() as cur:
         sql = "SELECT id FROM hive_cards" + (" WHERE kind = ?" if kind else "") + " ORDER BY slug"
         ids = [r[0] for r in cur.execute(sql, [kind] if kind else []).fetchall()]
@@ -215,6 +243,7 @@ def _log_many(events: list[tuple[str, str, str]]) -> None:
 
 # ---------------------------------------------------------------- discovery
 
+
 def _nights(check_in: str, check_out: str) -> int:
     n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
     if n <= 0:
@@ -224,12 +253,14 @@ def _nights(check_in: str, check_out: str) -> int:
 
 def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int) -> list[dict[str, Any]]:
     with db.cursor() as cur:
-        booked = dict(cur.execute(
-            """SELECT unit_id, count(*) FROM hive_bookings
+        booked = dict(
+            cur.execute(
+                """SELECT unit_id, count(*) FROM hive_bookings
                WHERE card_id = ? AND status = 'confirmed' AND check_in < ? AND check_out > ?
                GROUP BY unit_id""",
-            [card["id"], check_out, check_in],
-        ).fetchall())
+                [card["id"], check_out, check_in],
+            ).fetchall()
+        )
     nights = _nights(check_in, check_out)
     free = []
     for unit in card.get("units", []):
@@ -239,8 +270,32 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     return sorted(free, key=lambda u: u["total_chf"])
 
 
-STOPWORDS = {"book", "basel", "hotel", "near", "under", "with", "from", "that", "this", "please", "find",
-             "name", "night", "nights", "friendly", "check", "late", "room", "rooms", "want", "need"}
+RANKING_POLICY = "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement."
+
+
+STOPWORDS = {
+    "book",
+    "basel",
+    "hotel",
+    "near",
+    "under",
+    "with",
+    "from",
+    "that",
+    "this",
+    "please",
+    "find",
+    "name",
+    "night",
+    "nights",
+    "friendly",
+    "check",
+    "late",
+    "room",
+    "rooms",
+    "want",
+    "need",
+}
 
 
 def discover(
@@ -287,8 +342,14 @@ def discover(
             if dist is not None:
                 reasons.append(f"{dist} m from {near}")
 
-        text = " ".join([card.get("name", ""), card.get("tagline", ""), card.get("description", ""),
-                         " ".join(card.get("features", []))]).lower()
+        text = " ".join(
+            [
+                card.get("name", ""),
+                card.get("tagline", ""),
+                card.get("description", ""),
+                " ".join(card.get("features", [])),
+            ]
+        ).lower()
         hits = [t for t in terms if t in text]
 
         trust = card["trust"]
@@ -301,9 +362,15 @@ def discover(
             "signature": 0 if trust["signature_valid"] else -100,
         }
         summary = {
-            "id": card["id"], "slug": card["slug"], "name": card["name"], "kind": card["kind"],
-            "tagline": card.get("tagline"), "from_price_chf": price, "distance_m": dist,
-            "score": round(sum(score.values()), 1), "score_breakdown": score,
+            "id": card["id"],
+            "slug": card["slug"],
+            "name": card["name"],
+            "kind": card["kind"],
+            "tagline": card.get("tagline"),
+            "from_price_chf": price,
+            "distance_m": dist,
+            "score": round(sum(score.values()), 1),
+            "score_breakdown": score,
             "why": reasons + ([f"mentions {', '.join(hits)}"] if hits else []),
             "signature_valid": trust["signature_valid"],
         }
@@ -313,30 +380,62 @@ def discover(
         else:
             matches.append(summary)
             events.append((card["id"], "shown", query or "structured search"))
-    events.append(("*", "search", json.dumps({
-        "query": query, "features": features, "near": near, "max_price_chf": max_price_chf,
-        "guests": guests, "matched": len(matches),
-    })))
+    events.append(
+        (
+            "*",
+            "search",
+            json.dumps(
+                {
+                    "query": query,
+                    "features": features,
+                    "near": near,
+                    "max_price_chf": max_price_chf,
+                    "guests": guests,
+                    "matched": len(matches),
+                }
+            ),
+        )
+    )
     _log_many(events)
     matches.sort(key=lambda m: m["score"], reverse=True)
     return {
         "matches": matches,
         "excluded": excluded,
-        "ranking_policy": "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement.",
+        "ranking_policy": RANKING_POLICY,
     }
 
 
 def check_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
+    """Return the units free for the whole stay and their totals."""
     card = get_card(card_id)
-    return {"card_id": card["id"], "name": card["name"], "check_in": check_in, "check_out": check_out,
-            "guests": guests, "available_units": _units_free(card, check_in, check_out, guests),
-            "policies": card.get("policies", {})}
+    return {
+        "card_id": card["id"],
+        "name": card["name"],
+        "check_in": check_in,
+        "check_out": check_out,
+        "guests": guests,
+        "available_units": _units_free(card, check_in, check_out, guests),
+        "policies": card.get("policies", {}),
+    }
 
 
 # ---------------------------------------------------------------- transactions
 
-def book(card_id: str, unit_id: str, check_in: str, check_out: str, guest_name: str,
-         guests: int = 1, notes: str = "", agent: str = "unknown agent") -> dict[str, Any]:
+
+def book(
+    card_id: str,
+    unit_id: str,
+    check_in: str,
+    check_out: str,
+    guest_name: str,
+    guests: int = 1,
+    notes: str = "",
+    agent: str = "unknown agent",
+) -> dict[str, Any]:
+    """Book a unit and return the confirmation with a signed receipt.
+
+    Raises HiveError when the dates are invalid, the unit is unknown or sold out, or the guest name is missing.
+    """
     card = get_card(card_id)
     free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}
     if unit_id not in free:
@@ -345,18 +444,40 @@ def book(card_id: str, unit_id: str, check_in: str, check_out: str, guest_name: 
         raise HiveError("guest_name is required.")
     unit = free[unit_id]
     booking_id = "bk_" + db.new_id()
-    payload = {"booking_id": booking_id, "card_id": card["id"], "unit_id": unit_id, "check_in": check_in,
-               "check_out": check_out, "guests": guests, "total_chf": unit["total_chf"]}
+    payload = {
+        "booking_id": booking_id,
+        "card_id": card["id"],
+        "unit_id": unit_id,
+        "check_in": check_in,
+        "check_out": check_out,
+        "guests": guests,
+        "total_chf": unit["total_chf"],
+    }
     receipt = _sign_receipt(card["id"], payload)
     with db.write() as cur:
         cur.execute(
             "INSERT INTO hive_bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)",
-            [booking_id, card["id"], unit_id, guest_name, guests, check_in, check_out, unit["total_chf"],
-             agent, notes, receipt, db.now()],
+            [
+                booking_id,
+                card["id"],
+                unit_id,
+                guest_name,
+                guests,
+                check_in,
+                check_out,
+                unit["total_chf"],
+                agent,
+                notes,
+                receipt,
+                db.now(),
+            ],
         )
     _log(card["id"], "booked", f"{unit['name']} {check_in}..{check_out} via {agent}")
     return {
-        "status": "confirmed", **payload, "unit_name": unit["name"], "business": card["name"],
+        "status": "confirmed",
+        **payload,
+        "unit_name": unit["name"],
+        "business": card["name"],
         "receipt": receipt,
         "payment": card.get("policies", {}).get("payment", "Pay at the property"),
         "cancellation": card.get("policies", {}).get("cancellation"),
@@ -365,6 +486,7 @@ def book(card_id: str, unit_id: str, check_in: str, check_out: str, guest_name: 
 
 
 def cancel(booking_id: str, receipt: str) -> dict[str, Any]:
+    """Cancel a booking; the signed receipt proves the caller made it."""
     with db.cursor() as cur:
         found = db.rows(cur.execute("SELECT * FROM hive_bookings WHERE id = ?", [booking_id]))
     if not found:
@@ -379,6 +501,7 @@ def cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 
 
 def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
+    """Store a review for a completed booking. Each signed receipt can review once."""
     try:
         body = json.loads(base64.urlsafe_b64decode(receipt.split(".")[0]))
     except (ValueError, IndexError) as err:
@@ -395,12 +518,15 @@ def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
         raise HiveError("This stay was already reviewed.")
     rid = "rv_" + db.new_id()
     with db.write() as cur:
-        cur.execute("INSERT INTO hive_reviews VALUES (?, ?, ?, ?, ?, ?)",
-                    [rid, payload["card_id"], payload["booking_id"], rating, text[:1000], db.now()])
+        cur.execute(
+            "INSERT INTO hive_reviews VALUES (?, ?, ?, ?, ?, ?)",
+            [rid, payload["card_id"], payload["booking_id"], rating, text[:1000], db.now()],
+        )
     return {"review_id": rid, "card_id": payload["card_id"], "verified_stay": True}
 
 
 # ---------------------------------------------------------------- owner side
+
 
 def demand_map(days: int = 7) -> dict[str, Any]:
     """City-wide view of what agents asked for, and what nobody could offer.
@@ -408,9 +534,13 @@ def demand_map(days: int = 7) -> dict[str, Any]:
     The unexpected use of the Hive: agents' unmet requests tell local businesses what to become.
     """
     with db.cursor() as cur:
-        searches = [json.loads(r[0]) for r in cur.execute(
-            "SELECT detail FROM hive_events WHERE kind = 'search' AND created_at > ?",
-            [db.now() - timedelta(days=days)]).fetchall()]
+        searches = [
+            json.loads(r[0])
+            for r in cur.execute(
+                "SELECT detail FROM hive_events WHERE kind = 'search' AND created_at > ?",
+                [db.now() - timedelta(days=days)],
+            ).fetchall()
+        ]
     asked: dict[str, dict[str, int]] = {}
     for search in searches:
         for feature in search["features"] or []:
@@ -419,7 +549,8 @@ def demand_map(days: int = 7) -> dict[str, Any]:
             row["unserved"] += search["matched"] == 0
     features = sorted(
         ({"feature": f, **v, "unserved_share": round(v["unserved"] / v["asked"], 2)} for f, v in asked.items()),
-        key=lambda r: (r["unserved"], r["asked"]), reverse=True,
+        key=lambda r: (r["unserved"], r["asked"]),
+        reverse=True,
     )
     return {
         "days": days,
@@ -430,24 +561,38 @@ def demand_map(days: int = 7) -> dict[str, Any]:
 
 
 def owner_overview(card_id: str) -> dict[str, Any]:
+    """Return what the owner studio shows: the card, its bookings and the demand it missed."""
     card = get_card(card_id)
     with db.cursor() as cur:
-        bookings = db.rows(cur.execute(
-            "SELECT id, unit_id, guest_name, guests, check_in, check_out, total_chf, status, agent, created_at "
-            "FROM hive_bookings WHERE card_id = ? ORDER BY created_at DESC LIMIT 50", [card["id"]]))
-        missed = db.rows(cur.execute(
-            "SELECT detail, count(*) AS times FROM hive_events WHERE card_id = ? AND kind = 'missed_demand' "
-            "GROUP BY detail ORDER BY times DESC LIMIT 10", [card["id"]]))
-        counts = dict(cur.execute(
-            "SELECT kind, count(*) FROM hive_events WHERE card_id = ? AND created_at > ? GROUP BY kind",
-            [card["id"], db.now() - timedelta(days=7)]).fetchall())
+        bookings = db.rows(
+            cur.execute(
+                "SELECT id, unit_id, guest_name, guests, check_in, check_out, total_chf, status, agent, created_at "
+                "FROM hive_bookings WHERE card_id = ? ORDER BY created_at DESC LIMIT 50",
+                [card["id"]],
+            )
+        )
+        missed = db.rows(
+            cur.execute(
+                "SELECT detail, count(*) AS times FROM hive_events WHERE card_id = ? AND kind = 'missed_demand' "
+                "GROUP BY detail ORDER BY times DESC LIMIT 10",
+                [card["id"]],
+            )
+        )
+        counts = dict(
+            cur.execute(
+                "SELECT kind, count(*) FROM hive_events WHERE card_id = ? AND created_at > ? GROUP BY kind",
+                [card["id"], db.now() - timedelta(days=7)],
+            ).fetchall()
+        )
     return {"card": card, "bookings": bookings, "missed_demand": missed, "last_7_days": counts}
 
 
 def attest(card_id: str, claim: str, attested_by: str) -> None:
+    """Record a third party vouching for one claim on a card."""
     with db.write() as cur:
         cur.execute("INSERT INTO hive_attestations VALUES (?, ?, ?, ?)", [card_id, claim, attested_by, db.now()])
 
 
 def card_digest(card: dict[str, Any]) -> str:
+    """Return a short hash of a card's content, without its trust block."""
     return hashlib.sha256(canonical({k: v for k, v in card.items() if k != "trust"})).hexdigest()[:16]

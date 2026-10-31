@@ -7,17 +7,32 @@ from datetime import date, timedelta
 from . import hive
 
 FEATURE_POOL = [
-    ("dog-friendly", 8), ("late check-in", 7), ("quiet", 6), ("breakfast", 6), ("parking", 4),
-    ("family rooms", 4), ("ev charging", 3), ("sauna", 3), ("accessible", 3),
+    ("dog-friendly", 8),
+    ("late check-in", 7),
+    ("quiet", 6),
+    ("breakfast", 6),
+    ("parking", 4),
+    ("family rooms", 4),
+    ("ev charging", 3),
+    ("sauna", 3),
+    ("accessible", 3),
     # asked for, offered by nobody in the seed data
-    ("vegan breakfast", 5), ("bike rental", 2), ("pool", 2), ("pet sitting", 2), ("coworking", 3),
+    ("vegan breakfast", 5),
+    ("bike rental", 2),
+    ("pool", 2),
+    ("pet sitting", 2),
+    ("coworking", 3),
 ]
 NEAR = ["basel sbb", "messe basel", "marktplatz", "badischer bahnhof", None]
 
 
 def run(n: int = 40, seed: int | None = None) -> dict:
+    """Run n random traveller searches through hive.discover and return the resulting demand map.
+
+    Pass a seed for repeatable traffic (the tests do).
+    """
     rng = random.Random(seed)
-    names, weights = zip(*FEATURE_POOL)
+    names, weights = zip(*FEATURE_POOL, strict=False)
     for _ in range(n):
         start = date.today() + timedelta(days=rng.randint(3, 60))
         hive.discover(

@@ -19,10 +19,11 @@ _fallbacks_ok = config.CLAUDE_FALLBACKS != "off"
 
 
 class LLMError(RuntimeError):
-    pass
+    """Claude returned nothing usable (refusal, no text, or invalid structured output)."""
 
 
 def client() -> anthropic.Anthropic:
+    """Return the shared Anthropic client, created on first use."""
     global _client
     if _client is None:
         _client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -34,6 +35,7 @@ _FALLBACK_MODELS = ("claude-opus-5", "claude-fable-5", "claude-sonnet-5-5")
 
 
 def supports_fallbacks(model: str) -> bool:
+    """Tell whether server-side model fallbacks can be requested for this model."""
     return _fallbacks_ok and model.startswith(_FALLBACK_MODELS)
 
 
@@ -60,8 +62,15 @@ def _text(response) -> str:
     return "".join(b.text for b in response.content if b.type == "text")
 
 
-def structured(system: str, user: str | list, schema: dict[str, Any], *, effort: str = "low",
-               max_tokens: int = 8000, model: str | None = None) -> dict[str, Any]:
+def structured(
+    system: str,
+    user: str | list,
+    schema: dict[str, Any],
+    *,
+    effort: str = "low",
+    max_tokens: int = 8000,
+    model: str | None = None,
+) -> dict[str, Any]:
     """Ask Claude for JSON matching `schema` (structured outputs) and return it parsed."""
     response = _create(
         model=model or config.CLAUDE_MODEL,

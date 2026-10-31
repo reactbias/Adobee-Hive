@@ -66,8 +66,14 @@ def hive_check_availability(card_id: str, check_in: str, check_out: str, guests:
 
 @server.tool()
 def hive_book(
-    card_id: str, unit_id: str, check_in: str, check_out: str, guest_name: str,
-    guests: int = 1, notes: str = "", agent: str = "MCP agent",
+    card_id: str,
+    unit_id: str,
+    check_in: str,
+    check_out: str,
+    guest_name: str,
+    guests: int = 1,
+    notes: str = "",
+    agent: str = "MCP agent",
 ) -> dict[str, Any]:
     """Book a unit. Only call this after the user has agreed to the business, room, dates and price.
     Returns a confirmation with a signed receipt (keep it for cancel and review)."""
@@ -89,6 +95,7 @@ def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
 def http_app():
     # Behind App Runner / Amplify the Host header is the public domain, so host checks are off;
     # the MCP surface only exposes the public card data and booking actions above.
+    """Return the MCP server as an ASGI app for Streamable HTTP, mounted at /mcp."""
     return server.streamable_http_app(
         streamable_http_path="/",
         stateless_http=True,

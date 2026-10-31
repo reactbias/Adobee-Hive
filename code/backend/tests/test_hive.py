@@ -7,8 +7,10 @@ from mcp import Client
 from app import agent, hive, simulate
 from app.mcp_server import server
 
-REQUEST = ("Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
-           "2026-11-13 to 2026-11-15, my name is Tobi Muster")
+REQUEST = (
+    "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
+    "2026-11-13 to 2026-11-15, my name is Tobi Muster"
+)
 
 
 def test_agent_books_end_to_end_over_mcp(client):
@@ -51,8 +53,10 @@ def test_tampered_card_fails_verification(client):
 
 
 def test_reviews_need_a_real_receipt(client):
-    booking = client.post("/api/hive/cards/hotel-dreirosen/book", json={
-        "unit_id": "dorm", "check_in": "2026-11-20", "check_out": "2026-11-21", "guest_name": "Test Guest"}).json()
+    booking = client.post(
+        "/api/hive/cards/hotel-dreirosen/book",
+        json={"unit_id": "dorm", "check_in": "2026-11-20", "check_out": "2026-11-21", "guest_name": "Test Guest"},
+    ).json()
     receipt = booking["receipt"]
     assert client.post("/api/hive/reviews", json={"receipt": receipt, "rating": 4, "text": "ok"}).status_code == 200
     assert client.post("/api/hive/reviews", json={"receipt": receipt, "rating": 5, "text": "again"}).status_code == 400
@@ -62,11 +66,15 @@ def test_reviews_need_a_real_receipt(client):
 
 def test_sold_out_rooms_are_not_bookable(client):
     for _ in range(2):  # Muensterhof has 2 suites
-        r = client.post("/api/hive/cards/hotel-muenster/book", json={
-            "unit_id": "suite", "check_in": "2027-01-10", "check_out": "2027-01-12", "guest_name": "A"})
+        r = client.post(
+            "/api/hive/cards/hotel-muenster/book",
+            json={"unit_id": "suite", "check_in": "2027-01-10", "check_out": "2027-01-12", "guest_name": "A"},
+        )
         assert r.status_code == 200
-    r = client.post("/api/hive/cards/hotel-muenster/book", json={
-        "unit_id": "suite", "check_in": "2027-01-11", "check_out": "2027-01-13", "guest_name": "B"})
+    r = client.post(
+        "/api/hive/cards/hotel-muenster/book",
+        json={"unit_id": "suite", "check_in": "2027-01-11", "check_out": "2027-01-13", "guest_name": "B"},
+    )
     assert r.status_code == 400
 
 
@@ -104,8 +112,10 @@ def test_demand_map_counts_unserved_requests(client):
 
 
 def test_demo_reset_restores_the_seed(client):
-    client.post("/api/owner/hotel-gare/publish", json={"proposed": {
-        **client.get("/api/hive/cards/hotel-gare").json(), "features": ["dog-friendly"]}})
+    client.post(
+        "/api/owner/hotel-gare/publish",
+        json={"proposed": {**client.get("/api/hive/cards/hotel-gare").json(), "features": ["dog-friendly"]}},
+    )
     assert client.post("/api/demo/reset").json()["cards"] == 6
     card = client.get("/api/hive/cards/hotel-gare").json()
     assert "dog-friendly" not in card["features"] and card["version"] == 1

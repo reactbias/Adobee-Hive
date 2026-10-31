@@ -1,8 +1,8 @@
 """FastAPI entry point: REST for the web app, MCP for agents.
 
-  /api/...           JSON API used by the React frontend
-  /mcp/              the Hive MCP server (Streamable HTTP) for any AI agent
-  /.well-known/hive.json   discovery document pointing agents to the MCP endpoint
+/api/...           JSON API used by the React frontend
+/mcp/              the Hive MCP server (Streamable HTTP) for any AI agent
+/.well-known/hive.json   discovery document pointing agents to the MCP endpoint
 """
 
 import asyncio
@@ -23,6 +23,7 @@ mcp_app = mcp_server.http_app()
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """Open the database, seed it if empty, and run the MCP session manager for the app's lifetime."""
     db.init()
     hive.init()
     if config.SEED_ON_EMPTY:
@@ -52,8 +53,10 @@ def _hive_call(fn, *args, **kwargs):
 
 # ---------------------------------------------------------------- meta
 
+
 @app.get("/api/health")
 def health() -> dict[str, Any]:
+    """Report whether the backend is up and whether Claude is configured."""
     return {
         "status": "ok",
         "llm": "claude" if config.LLM_ENABLED else "mock",
@@ -65,26 +68,34 @@ def health() -> dict[str, Any]:
 
 @app.get("/.well-known/hive.json")
 def well_known(request: Request) -> dict[str, Any]:
+    """Discovery document so agents can find this Hive's MCP endpoint and policies."""
     base = str(request.base_url).rstrip("/")
     return {
         "name": "Adobee Hive (Basel)",
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; public key in each card's trust block",
-        "ranking_policy": "Constraints first, then relevance, proximity, verified reviews, attestations. No paid placement.",
+        "ranking_policy": hive.RANKING_POLICY,
     }
 
 
 # ---------------------------------------------------------------- Hive (businesses)
 
+
 class AgentRequest(BaseModel):
+    """A conversation with the traveller agent; the last message is the traveller's."""
+
     messages: list[dict[str, str]] = Field(min_length=1)
 
 
 class ApproveRequest(BaseModel):
+    """The held hive_book call the traveller approves."""
+
     pending: dict[str, Any]
 
 
 class BookRequest(BaseModel):
+    """A direct booking from the human card page."""
+
     unit_id: str
     check_in: str
     check_out: str
@@ -94,47 +105,68 @@ class BookRequest(BaseModel):
 
 
 class ReviewRequest(BaseModel):
+    """A review, valid only with a signed booking receipt."""
+
     receipt: str
     rating: int
     text: str = ""
 
 
 class OwnerEdit(BaseModel):
+    """The owner's change, in plain words."""
+
     instruction: str
 
 
 class OwnerApply(BaseModel):
+    """The card the owner reviewed and wants signed and published."""
+
     proposed: dict[str, Any]
 
 
 @app.get("/api/hive/cards")
 def hive_cards(kind: str | None = None) -> list[dict[str, Any]]:
+    """List all cards, optionally one kind."""
     return hive.list_cards(kind)
 
 
 @app.get("/api/hive/cards/{card_id}")
 def hive_card(card_id: str) -> dict[str, Any]:
+    """Return one card by id or slug."""
     return _hive_call(hive.get_card, card_id)
 
 
 @app.get("/api/hive/cards/{card_id}/availability")
 def hive_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
+    """Return free units for the dates."""
     return _hive_call(hive.check_availability, card_id, check_in, check_out, guests)
 
 
 @app.post("/api/hive/cards/{card_id}/book")
 def hive_book(card_id: str, body: BookRequest) -> dict[str, Any]:
     """Human fallback: the same booking a person can make from the card page."""
-    return _hive_call(hive.book, card_id, body.unit_id, body.check_in, body.check_out, body.guest_name,
-                      body.guests, body.notes, "human via card page")
+    return _hive_call(
+        hive.book,
+        card_id,
+        body.unit_id,
+        body.check_in,
+        body.check_out,
+        body.guest_name,
+        body.guests,
+        body.notes,
+        "human via card page",
+    )
 
 
 @app.post("/api/hive/reviews")
 def hive_review(body: ReviewRequest) -> dict[str, Any]:
+    """Leave a proof-of-stay review."""
     return _hive_call(hive.review, body.receipt, body.rating, body.text)
 
 
 class VerifyRequest(BaseModel):
+    """Any card, as an agent received it."""
+
     card: dict[str, Any]
 
 
@@ -148,11 +180,13 @@ def hive_verify(body: VerifyRequest) -> dict[str, Any]:
 
 @app.get("/api/hive/demand")
 def hive_demand(days: int = 7) -> dict[str, Any]:
+    """Return the city demand map: what agents asked for and how often nobody could serve it."""
     return hive.demand_map(days)
 
 
 @app.post("/api/demo/simulate")
 def demo_simulate(n: int = 40) -> dict[str, Any]:
+    """Run up to 200 simulated traveller searches to fill the demand map."""
     return simulate.run(min(n, 200))
 
 
@@ -167,6 +201,7 @@ def demo_reset(request: Request) -> dict[str, Any]:
 
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest) -> dict[str, Any]:
+    """Run the traveller agent over MCP. A booking comes back held, as pending."""
     try:
         return await agent.run(body.messages)
     except Exception as err:  # surface agent failures to the demo UI instead of a bare 500
@@ -185,14 +220,17 @@ async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
 
 @app.get("/api/owner/{card_id}")
 def owner_overview(card_id: str) -> dict[str, Any]:
+    """Return the owner studio data for one card."""
     return _hive_call(hive.owner_overview, card_id)
 
 
 @app.post("/api/owner/{card_id}/propose")
 async def owner_propose(card_id: str, body: OwnerEdit) -> dict[str, Any]:
+    """Turn the owner's words into a proposed card and a diff. Nothing is published yet."""
     return await asyncio.to_thread(_hive_call, owner.propose, card_id, body.instruction)
 
 
 @app.post("/api/owner/{card_id}/publish")
 def owner_publish(card_id: str, body: OwnerApply) -> dict[str, Any]:
+    """Sign and publish the card the owner approved."""
     return _hive_call(owner.apply, card_id, body.proposed)

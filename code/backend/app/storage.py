@@ -21,6 +21,7 @@ def _split(uri: str) -> tuple[str, str]:
 
 
 def restore(path: Path) -> None:
+    """Download the last DuckDB snapshot from S3 before the database opens; no-op without DUCKDB_S3_URI."""
     if not config.DUCKDB_S3_URI:
         return
     import boto3
