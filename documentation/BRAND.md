@@ -61,9 +61,9 @@ spelling (ss, not ß), CHF and Swiss date formats. How to add a string: [CONTRIB
 
 ## Colour and type
 
-The page is paper and ink. Clay and honey are accents, used for one thing each: clay marks what matters on paper
-(eyebrows, the chosen row, missed demand), honey marks life on the dark agent stage (live status, the wire, the
-moment you approve). Status is always a dot and a word, never a pill.
+The page is paper and ink with **one accent, clay**. On paper it is `--clay`; on the dark agent stage the same clay
+is lifted to `--clay-glow` so it reads at night. It marks what matters: eyebrows, the italic turn in a headline, the
+chosen row, a valid seal, the moment you approve. Status is always a dot and a word, never a pill.
 
 | Token | Value | Use |
 | --- | --- | --- |
@@ -72,16 +72,30 @@ moment you approve). Status is always a dot and a word, never a pill.
 | `--ink` | `#17140f` | Text, primary buttons, the agent stage |
 | `--ink-2` / `--ink-3` | `#4b443a` / `#857c6f` | Secondary and quiet text |
 | `--line` | `#e4ded3` | Hairlines |
-| `--clay` | `#a24f2c` | Accents on paper; the logo bricks stay `#b85c34` |
+| `--clay` | `#a24f2c` | The accent on paper; the logo bricks stay `#b85c34` |
+| `--clay-glow` | `#d98b5f` | The same clay on dark grounds: the stage, the hero, focus rings, review stars |
 | `--clay-dark` | `#5a2e1a` | Ink on clay |
-| `--honey` | `#d49b1c` | Accents on the dark stage, focus rings, review stars |
-| `--good` / `--bad` | `#2f6b46` / `#a3321f` | Valid and rejected |
+| `--bad` | `#a3321f` | Rejected, only ever with the word that says so |
 
-Type: headings in **Mannin** by Cristiano Sobral ([1001fonts](https://www.1001fonts.com/mannin-font.html), free for
-personal and commercial use under its UFL licence), falling back to Iowan Old Style, Palatino and Georgia. Text in
-the system sans (SF Pro, Segoe UI, Inter); code and signatures in SF Mono. Headings are set at regular weight with
-tight tracking; small uppercase eyebrows carry the section names. The font file still needs to be added: see
-`code/frontend/public/fonts/README.md`.
+Type, all bundled under the SIL Open Font License (files and licence texts in `code/frontend/public/fonts/`):
 
-Motion is purposeful only: turns on the agent stage arrive one after another, the wire pulses while agents talk, and
-nothing moves with `prefers-reduced-motion`.
+- **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in clay*
+  (write it as `*text*` in a string; `components/Display.tsx` sets it).
+- **Geist** for text and UI.
+- **Geist Mono** for tool names, signatures and the run's mode line.
+
+Mannin, from the whiteboard, is not bundled: its licence could not be verified for redistribution in a public repo.
+
+Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
+
+Imagery: the landing hero is lit clay honeycomb (`public/brand/hero-clay.jpg`, rendered from
+`assets/brand/hero-clay.svg`). No stock photos, no people.
+
+Personas on the agent stage are abstract hexagon avatars (`public/personas/`), one per voice: the guest, *Your agent*,
+the Hive, the business, *the sceptic* (second opinion), *the mirror* (an unverified copy) and the owner. They are
+fictional and drawn, never photos or generated faces.
+
+Motion is purposeful only. The agent stage plays like a group chat: whoever speaks next glows and shows *is
+thinking* (before a tool call or a judgement) or *is typing* (before a line), each message waits a beat timed to
+its length (`lib/pace.ts`), the seal's tick draws itself on a valid signature, the approval question rises and stays
+pinned, and the receipt lands like a stamp. Nothing moves with `prefers-reduced-motion`.

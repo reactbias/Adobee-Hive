@@ -37,7 +37,7 @@ over MCP. Try it with any MCP client, Claude included.
 | --- | --- |
 | Hive cards for six fictional Basel businesses, signed with Ed25519 | `code/backend/app/hive.py`, `hive_seed.py` |
 | MCP server: discover, get card, check availability, book, cancel, review | `code/backend/app/mcp_server.py` |
-| Traveller agent: an OpenAI or Claude model over MCP, verifies every signature, explains its choice, books only after you approve. You watch both agents negotiate live on one stage | `code/backend/app/agent.py`, `TravellerAgent.tsx`, `AgentTrace.tsx` |
+| Traveller agent: an OpenAI or Claude model over MCP, verifies every signature, explains its choice, books only after you approve. You watch it play out as a group chat of named agents, and after the booking it offers next steps | `code/backend/app/agent.py`, `TravellerAgent.tsx`, `GroupChat.tsx` |
 | Owner studio: plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `OwnerStudio.tsx` |
 | Human card page with direct booking and a live tamper test | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
