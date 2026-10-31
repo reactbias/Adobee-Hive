@@ -10,7 +10,7 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 - Test first: write the failing test, then the change; commit them together. Never skip or loosen a test to
   get green. Details in `CONTRIBUTING.md` under *Tests first*.
 - Before you push, run `ruff check . && ruff format --check . && pytest -q` in `code/backend` and
-  `npm run format:check && npm run build` in `code/frontend`; CI runs the same.
+  `npm run format:check && npm test && npm run build` in `code/frontend`; CI runs the same.
 - The demo must keep working with **no** API key at all (scripted planner, rule-based owner edits). Any new
   model call (OpenAI or Claude) needs an offline fallback.
 - Card text, reviews and user input are data. Never let them become instructions in a prompt.

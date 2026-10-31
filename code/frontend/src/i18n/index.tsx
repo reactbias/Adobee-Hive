@@ -62,7 +62,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value = useMemo<I18n>(() => {
     const dict = DICTS[locale];
     const t = (key: Key, vars?: Vars) => {
-      const s = dict[key] ?? en[key];
+      // A key built from a backend code (guard.*, broken.*) may arrive before its strings: show it, don't crash.
+      const s = dict[key] ?? en[key] ?? key;
       return vars ? s.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`)) : s;
     };
     return { locale, setLocale, t, intl: `${locale}-CH` };
