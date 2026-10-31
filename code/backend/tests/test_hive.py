@@ -293,3 +293,12 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
     assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
     assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
     assert all(k["store"] is False for k in seen)
+
+
+def test_a_held_booking_is_approved_once_and_as_held(client):
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    pending = out["pending"] | {"input": out["pending"]["input"] | {"unit_id": "river", "guest_name": "Mallory"}}
+    done = client.post("/api/agent/approve", json={"pending": pending}).json()
+    assert done["booking"]["unit_name"] != "River-view double"  # what the agent held, not what the client sent
+    again = client.post("/api/agent/approve", json={"pending": out["pending"]})
+    assert again.status_code == 400 and "already approved" in again.json()["detail"]

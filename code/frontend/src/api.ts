@@ -100,6 +100,7 @@ export interface Booking {
   cancellation?: string;
 }
 export interface Pending {
+  id: string; // one-time: the server books what it held under this id, once
   tool: "hive_book";
   input: Record<string, unknown>;
 }
