@@ -129,7 +129,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/agent/approve` | The traveller's yes: send the held booking, once | one-time hold |
 | `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
 | `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |
-| `GET /api/owner/{card_id}` | Owner studio data: bookings, missed demand, waiting requests; guest names as initials without the token | `X-Owner-Token` for names |
+| `GET /api/owner/{card_id}` | Owner studio data for any card, unclaimed too: bookings, missed demand, waiting requests, and what agents did with the card in the last 7 days (`shown`, `read`, `checked`, `booked`, `explore_handoff`); guest names as initials without the token | `X-Owner-Token` for names |
 | `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |
 | `POST /api/owner/{card_id}/publish` | Sign and publish the approved card as a new version; waiting agents get signed offers | `X-Owner-Token` |
 

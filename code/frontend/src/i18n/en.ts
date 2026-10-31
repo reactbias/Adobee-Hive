@@ -24,7 +24,6 @@ const en = {
   "owner.week.shown": "times shown to agents",
   "owner.week.missed": "requests you missed",
   "owner.week.booked": "bookings",
-  "owner.week.cancelled": "cancellations",
   "owner.preview": "Preview change",
   "owner.noChange": "No change detected.",
   "owner.publish": "Sign and publish",
@@ -255,6 +254,10 @@ const en = {
   "owner.checking": "Checking…",
   "owner.asked.title": "What agents asked you for",
   "owner.asked.empty": "Nothing asked yet.",
+  "owner.week.title": "Last 7 days",
+  "owner.week.read": "card reads by agents",
+  "chapter.business.leadUnclaimed": "{name} has not claimed its card. Agents built it from public information.",
+  "owner.unclaimed": "Only the business can claim this card and edit it.",
 } as const;
 
 export type Key = keyof typeof en;
