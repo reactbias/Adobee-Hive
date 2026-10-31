@@ -21,6 +21,8 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 - Don't add dependencies without a reason in the commit body; pin exact versions.
 - Seed data stays fictional; the only real businesses are the unclaimed, public-info example cards in
   `app/domains/examples.py`. No secrets, keys or real personal data in the repo.
+- A change that adds, removes or renames a backend module, MCP tool, endpoint, agent, hosting piece or data path
+  updates `documentation/DIAGRAMS.md` in the same PR; `tests/test_docs.py` fails otherwise.
 - New endpoints that call a model, edit a card or wipe data must use `guard.py`; keep `SECURITY.md` true.
 - Every public function and class gets a docstring; ruff enforces it.
 

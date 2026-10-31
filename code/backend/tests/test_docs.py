@@ -127,3 +127,24 @@ def test_the_diagrams_are_linked_and_name_only_what_exists(client):
     assert named_tools - asyncio.run(tools()) == set(), "the diagrams name MCP tools the server does not have"
     served_paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
     assert set(re.findall(r"(/api/[a-z/{}_-]*[a-z}])", diagrams)) - served_paths == set()
+
+
+def test_every_module_tool_and_endpoint_is_in_the_diagrams(client):
+    """Agents keep the pictures true: a new module, MCP tool or endpoint fails CI until DIAGRAMS.md shows it."""
+    diagrams = (ROOT / "documentation" / "DIAGRAMS.md").read_text(encoding="utf-8")
+    app_dir = ROOT / "code" / "backend" / "app"
+    modules = {p.name for p in app_dir.rglob("*.py") if p.name != "__init__.py"}
+    drawn = set(re.findall(r"(?<![\w.-])(\w+\.py)\b", diagrams))
+    assert modules - drawn == set(), "draw these modules in documentation/DIAGRAMS.md"
+
+    async def tools() -> set[str]:
+        async with Client(server) as c:
+            return {t.name for t in (await c.list_tools()).tools}
+
+    assert {
+        t for t in asyncio.run(tools()) if not re.search(rf"\b{t}\b", diagrams)
+    } == set(), "draw these MCP tools in documentation/DIAGRAMS.md"
+    paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
+    assert {
+        p for p in paths if not re.search(re.escape(p) + r"(?![\w/{}-])", diagrams)
+    } == set(), "draw these endpoints in documentation/DIAGRAMS.md"

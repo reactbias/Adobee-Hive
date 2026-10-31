@@ -255,8 +255,10 @@ the last 15 minutes before a demo. Setup, settings and costs: [DEPLOY.md](DEPLOY
 2. Write the failing test first, then the change; commit them together. Never skip or loosen a test.
 3. Small [Conventional Commits](https://www.conventionalcommits.org/) (`feat(hive): ...`). Keep the
    `Co-Authored-By:` trailer your coding agent adds, so the history shows people and agents honestly.
-4. Run the checks above, push, open a PR **against `main`** with the template filled in. Never stack PRs.
-5. CI green, then merge with a **merge commit**, never squash: the jury reads the small commits.
+4. Added, removed or renamed a module, MCP tool, endpoint, agent, hosting piece or data path? Update
+   [DIAGRAMS.md](DIAGRAMS.md) too; CI fails until the pictures show it.
+5. Run the checks above, push, open a PR **against `main`** with the template filled in. Never stack PRs.
+6. CI green, then merge with a **merge commit**, never squash: the jury reads the small commits.
 
 The repo is public: no keys, tokens, `.env`, database files, local paths or personal data, and seed data stays
 fictional. Lanes, review and the full rules: [CONTRIBUTING.md](../CONTRIBUTING.md); what is protected and why:

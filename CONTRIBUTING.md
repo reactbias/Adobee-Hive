@@ -76,6 +76,8 @@ The jury reviews the commit history, so make each commit one small, working step
   (`prettier`, `vitest`, `tsc`, `vite build`).
 - One review from another person before merging, then merge with a merge commit. Never squash: the jury reads the
   small commits.
+- New or renamed module, MCP tool, endpoint, agent, hosting piece or data path? Update the pictures in
+  [DIAGRAMS.md](documentation/DIAGRAMS.md) in the same PR; `tests/test_docs.py` fails otherwise.
 - Stack nothing: every PR targets `main`. A PR merged into another feature branch never reaches `main`.
 - `main` deploys to GitHub Pages and Render on every merge. Don't merge in the last 15 minutes before a demo.
 
