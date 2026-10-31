@@ -28,6 +28,7 @@ Six questions a reviewer asks, one hop each.
 | How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
 | How do I run it, and what does each part do? | [DEVELOPER.md](documentation/DEVELOPER.md) · [ARCHITECTURE.md](documentation/ARCHITECTURE.md) · [DIAGRAMS.md](documentation/DIAGRAMS.md) |
 | How is it tested, and what is protected? | [DEVELOPER.md](documentation/DEVELOPER.md#tests-and-checks) · [tools/README.md](code/backend/tools/README.md) · [SECURITY.md](SECURITY.md) |
+| How do I search it from my own code? | [SEARCH_API.md](documentation/SEARCH_API.md) |
 
 And the one a jury asks last: **what does it not do?**
 [LIMITS.md](documentation/LIMITS.md) — every gap we know of, checked against the code.
@@ -92,7 +93,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Three peered hubs on one machine, reachable from any phone on the wifi, seeded through the real signup endpoint ([how](documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh)) | `lan.sh`, `tools/seed_vaults.py` |
 | A test corpus whose cards never use the words a person would type, with an answer key, so search can be measured rather than demonstrated | [`testdata/`](testdata/README.md), `tools/make_corpus.py` |
 | `contact` on every entity: the key is always there, an empty value means "not published", and a channel the owner marked `never` is absent rather than listed as withheld | `hive.with_contact`, `documentation/cards/README.md` |
-| Semantic similarity with no key, no network and no new dependency: stems, a four-language concept table and character trigrams above a measured floor. **Written and tested; discovery does not call it yet**, so matching is still literal — one of the gaps in [LIMITS.md](documentation/LIMITS.md) | `code/backend/app/semantic.py` |
+| Semantic similarity with no key, no network and no new dependency: stems, German compound splitting, a four-language concept table and character trigrams above a measured floor. A score component in `hive.discover` with its own readable reason, so "haircut" finds *"Cut, wash and finish"*: **19/41 first on the answer key, against 0/41 for the substring matching it replaced** | `code/backend/app/semantic.py`, `tools/eval_answer_key.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
@@ -177,7 +178,7 @@ Taking over the code? The [diagrams](documentation/DIAGRAMS.md) show how the par
 | Folder | Contents |
 | --- | --- |
 | [`code/`](code) | `backend/` FastAPI + DuckDB (Postgres snapshot) + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Federation](documentation/FEDERATION.md) · [The Card](documentation/cards/README.md) · [Joining a hub](documentation/REGISTRATION.md) · [Known limits](documentation/LIMITS.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
+| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Federation](documentation/FEDERATION.md) · [The Card](documentation/cards/README.md) · [Joining a hub](documentation/REGISTRATION.md) · [Search API](documentation/SEARCH_API.md) · [Known limits](documentation/LIMITS.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
 | [`testdata/`](testdata/README.md) | Fictional vaults and the answer key search is measured against; `lan.sh` seeds them into three hubs through the real signup endpoint |
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 

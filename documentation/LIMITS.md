@@ -9,17 +9,26 @@ better than it does.
 
 ## Discovery
 
-**Matching is literal.** `hive.discover` scores a card by substring: a query term appears in the card's name,
-tagline, description, features, `offers` or `needs`, or it does not. So "haircut" misses *"Cut, wash and
-finish"*, and "hotel" misses *"Gästehaus"*. The corpus in [`testdata/`](../testdata/README.md) is built to show
-exactly where this gives up, with an answer key of queries that share no word with their target.
+**Matching gets you two out of five, not five out of five.** `app/semantic.py` is a score component in
+`hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer key in
+[`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target — that is
+**19/41 first and 30/41 in the top three**, against `0/41` for the substring matching it replaced. Twenty-two
+of the forty-one are still not first. The provider is hand-built (accent-folded stems, a four-language concept
+table, German compound splitting, character trigrams, cosine above a named floor), so a trade nobody has
+written a card for yet matches only by stem or trigram.
 
-**Semantic search is built and not connected.** `app/semantic.py` is a working similarity provider — accent-folded
-stems, a four-language concept table, character trigrams, cosine above a named floor, no key and no network — with
-its own tests. Nothing in `app/` imports it. It is not a score component in `hive.discover`, and `GET /api/health`
-does not report which provider is in use. Connecting it means calling `semantic.best` from `discover` and
-scoring the hit; until that lands, the sentence to say out loud is "the module is there, the search does not use
-it yet".
+**There is no embedding provider.** `semantic._embedding_provider()` returns `None` on purpose rather than half
+an implementation, so a hub with an API key searches exactly as well as one without, and `GET /api/health`
+reports `semantic: offline` either way. What is built is the seam: a `Provider` subclass with a name, an
+`available()` that reads its key through `config`, and an `encode()` that caches per card version.
+
+**The literal half of the scoring only knows German umlauts.** `hive.discover` tokenises a query with
+`[a-zäöü]+` and keeps terms longer than three characters, so `café` and `crème` tokenise to nothing and a
+French or Italian query scores zero on both `text_relevance` and `offers_needs`. Semantic search answers it
+anyway, because it accent-folds — but the literal components are blind to two of the four languages the corpus
+is written in. `hive.STOPWORDS` is 21 words to `semantic.STOPWORDS`' several hundred, for the same reason:
+filler words like *where* and *someone* are scoring query terms and earn offer points off any card whose prose
+happens to contain them.
 
 **Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
 reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on

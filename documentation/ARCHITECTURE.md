@@ -134,7 +134,8 @@ Two screens sit beside that story rather than inside it, because neither belongs
 
 Agents can find the endpoint from `/.well-known/hive.json`. How a search reaches another hub and how a hub is
 measured: [FEDERATION.md](FEDERATION.md). How an entity gets into a hub in the first place:
-[REGISTRATION.md](REGISTRATION.md). What a card carries: [cards/README.md](cards/README.md).
+[REGISTRATION.md](REGISTRATION.md). What a card carries: [cards/README.md](cards/README.md). How to search a hub
+from your own code, endpoint by endpoint with real responses: [SEARCH_API.md](SEARCH_API.md).
 
 ## REST API
 
