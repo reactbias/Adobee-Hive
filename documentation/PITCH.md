@@ -17,8 +17,8 @@ intent and approves. Everything on screen is the real prototype.
 | 3. Live: agent books a Basel hotel | 0:45–1:35 | 50 | Tobias + driver | Execution & craft, demo works live, technical depth |
 | 4. Live: tamper test | 1:35–1:50 | 15 | Tobias + driver | Trust, technical depth |
 | 5. Live: owner studio and missed demand | 1:50–2:20 | 30 | Speaker C (Ole or Lezhi, proposed) | Innovation, bonus "vision no one expected" |
-| 6. Where is the human: ethics | 2:20–2:45 | 25 | Speaker B | Believability, fair play |
-| 7. Close | 2:45–3:00 | 15 | Tobias | Pitch |
+| 6. Where is the human: ethics | 2:20–2:42 | 22 | Speaker B | Believability, fair play |
+| 7. Close: one card, many use cases | 2:42–3:00 | 18 | Tobias | Pitch |
 
 **On stage:** three voices plus one silent driver at the laptop (proposed: Felix or Andrey). More voices cost about
 3 seconds per handover. The other teammates stand behind; the close names the whole team.
@@ -52,8 +52,8 @@ human only sets intent and approves.
 | 2:02 | Speaker C | *"She types one sentence, checks the change, and signs. Only true facts, because her signature is on them."* | [Types *add dog-friendly*, **Preview change**, diff, **Sign and publish**.] |
 | 2:10 | Speaker C | *"Zoom out to the whole city: pool, vegan breakfast, coworking. Asked for, offered by nobody. Today businesses write for agents. Here, agents tell small businesses what to open."* | [`/demand`, simulated before the pitch. Unserved demand on top.] |
 | 2:20 | Speaker B | *"So where is the human? At both ends. You set the intent and you approve, as you just saw. The agents do the middle, and you see every call they made."* | Slide: A2A, A2H, H2A, H2H, the human at both ends of the chain. [S4] |
-| 2:30 | Speaker B | *"Card text is data, never instructions, so a listing can't hijack your agent. The Hive learns what was asked, not who asked. Code alone won't make agents honest, but it makes honesty checkable, which is what the EU AI Act will ask for anyway."* | Same slide, three lines: data not instructions; what, not who; checkable by default. |
-| 2:45 | Tobias | *"Any town or association can run its own Hive, so no platform owns the front door again. Next come people: on GitHub you find projects to work on. On Adobee Hive, agents find the people to work with."* | Closing slide: logo, tagline, team names, QR code to the repo. [S5] |
+| 2:30 | Speaker B | *"Card text is data, never instructions, so a listing can't hijack your agent. The Hive learns what was asked, not who asked. Code won't make agents honest, but it makes honesty checkable."* | Same slide, three lines: data not instructions; what, not who; checkable by default. |
+| 2:42 | Tobias | *"The same card works for people, not just hotels. Our HR starter already finds people by their skills, and introduces them only after they say yes. The arc runs to agents that handle whole relationships for us. That is why we built the guardrails first."* | Closing slide, one line: Stays (built) → Work (starter) → events, shops, services (next) → agents that handle whole relationships (the horizon), with "guardrails first" under it. Then logo, tagline, team names, QR code to the repo. [S5] |
 | 2:57 | Tobias | *"We are Team B6. Thank you."* | The B6 bee flies across the bottom once, dropping six little 6s. |
 
 ## Demo runbook and fallback
@@ -90,7 +90,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | S2 | Agent forum slide: traveller, hotel, reviewer, city agents talking; one diagram, max 8 words | Emily, Saad | Sat 18:00 |
 | S3 | Two futures slide from VISION.md, 4 items per side, appear on click | Emily, Saad | Sat 18:00 |
 | S4 | Where is the human: the four modes plus the three ethics lines | Emily, Saad | Sat 18:00 |
-| S5 | Closing slide: logo, tagline, 10 names, QR code to the public repo | Felix, Andrey | Sat 18:00 |
+| S5 | Closing slide: the use-case arc from VISION.md, then logo, tagline, 10 names, QR code to the public repo | Felix, Andrey | Sat 18:00 |
 | S6 | 50-second backup recording on the final build | Driver | Sun 10:00 |
 | — | Names for Speaker B, Speaker C and the driver | Tobias | Sat 12:00 |
 
@@ -105,6 +105,10 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | Prompt injection? | Card text reaches the agent as data, never instructions, and every tool call is shown to the human. |
 | Is the demo real? | Yes: the agent reaches hotels only through MCP tools, and Claude can book through the same URL as a connector. |
 | Where does Adobe fit? | Content Credentials provenance for business facts, and the owner studio as a tool for how a brand is seen by agents. |
+
+Guardrails for the widened story: HR is a starter (person cards, skills search, introductions only with consent),
+not a finished flow. We never claim AGI, only point at the horizon. If asked who owns the Hive: nobody alone; any
+town or association can run one, and an agent searches several at once.
 
 ## Rehearsal
 
