@@ -566,6 +566,26 @@ export interface AdminSettings {
   fields: SettingsField[];
   calibration: { lower_is_better: boolean; help: string; min_evidence: number; half_life_days: number };
 }
+/** One row of the hub's entity list. Every field is on the public card too; the list is the operator's view. */
+export interface AdminEntity {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  /** False for a card compiled from public information: a lead, never a business that agreed. */
+  claimed: boolean;
+  /** Null until a signed receipt earns one. Zero would read as a bad business, not a new one. */
+  rating: number | null;
+  rating_count: number;
+  published_at: string | null;
+  version: number | null;
+  signature_valid: boolean;
+  bookable: boolean;
+}
+export interface AdminEntities {
+  entities: AdminEntity[];
+  count: number;
+}
 export interface AdminNeighbours {
   peers: Peer[];
   blocked_hubs: string[];
@@ -642,6 +662,8 @@ export const api = {
   adminOverview: () => call<AdminOverview>("/api/admin/overview"),
   adminSettings: () => call<AdminSettings>("/api/admin/settings"),
   adminNeighbours: () => call<AdminNeighbours>("/api/admin/neighbours"),
+  /** What this hub carries. Behind the admin token: the whole membership in one call is an operator's view. */
+  adminEntities: () => call<AdminEntities>("/api/admin/entities", { headers: adminHeaders() }),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

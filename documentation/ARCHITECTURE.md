@@ -84,7 +84,8 @@ Two screens sit beside that story rather than inside it, because neither belongs
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
-| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the entity list (`EntitiesPanel.tsx`), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `EntitiesPanel.tsx` | `?admin` only (`#admin`, Entities tab) | What this hub carries, as a list an operator can scan: id, name, kind, claimed or unclaimed, rating and count, when it was published. Read-only in this first slice |
 | `NetworkPanel.tsx` | after 2, always (`#network`) | The live node view of the hub network: this hub in the centre of a honeycomb, each configured peer a cell around it with an edge coloured by its calibration, a blocked peer still drawn and visibly cut. Four counts above it, the same hubs as rows below, and the rows alone on a phone. Open to anyone, built from `GET /api/admin/overview` and `/api/admin/neighbours`, with names and entity counts from `/api/hub/directory` where it is deployed; a hub we have not asked reads as unknown, never as zero. Polls every 10 s, only while on screen |
 | `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use, instances.social style: what each hub carries, whether it is accepting members, its admission policy, how many entities, and how closely its published ratings matched what people found. Deliberately a plain first pass, and it says so on screen. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
@@ -146,6 +147,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
 | `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
 | `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
+| `GET /api/admin/entities` | Every entity this hub carries: id, name, kind, claimed, rating and count, published at | `X-Admin-Token`, fails closed |
 | `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |

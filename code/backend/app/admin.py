@@ -132,6 +132,44 @@ def _connection_counts() -> dict[str, int]:
     }
 
 
+def entities() -> dict[str, Any]:
+    """Everything this hub carries, as a table an operator can scan.
+
+    The overview counts the index; this is the list behind the count, and it is deliberately the
+    same call (`hive.list_cards`), so the two can never disagree about what the hub carries.
+    Nothing here is a side channel: every field is already on the public card.
+    """
+    rows = [_entity_row(card) for card in _cards()]
+    return {"entities": rows, "count": len(rows)}
+
+
+def _cards() -> list[dict[str, Any]]:
+    from . import hive
+
+    return hive.list_cards()
+
+
+def _entity_row(card: dict[str, Any]) -> dict[str, Any]:
+    """One row of the entity table: who it is, whether it claimed itself, and how it has been rated."""
+    trust = card.get("trust") or {}
+    reviews = trust.get("verified_reviews") or {}
+    return {
+        "id": card["id"],
+        "slug": card.get("slug") or card["id"],
+        "name": card.get("name") or card["id"],
+        "kind": card.get("kind") or "",
+        # An unclaimed card was compiled from public information: a lead, never a business that agreed.
+        "claimed": bool(trust.get("claimed")),
+        # None until a signed receipt earns one. Zero would read as a bad business, not a new one.
+        "rating": reviews.get("average"),
+        "rating_count": int(reviews.get("count") or 0),
+        "published_at": card.get("published_at"),
+        "version": card.get("version"),
+        "signature_valid": bool(trust.get("signature_valid")),
+        "bookable": bool(card.get("units")) and bool(trust.get("claimed")),
+    }
+
+
 def neighbours() -> dict[str, Any]:
     """The peer list as a table: configured, blocked, and how each one's ratings have held up."""
     blocked = blocklist.blocked_hubs()

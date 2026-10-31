@@ -597,6 +597,19 @@ def admin_unblock(kind: str, subject: str, _: None = Depends(admin_only)) -> dic
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
 
 
+# ---------------------------------------------------------------- what this hub carries
+
+
+@app.get("/api/admin/entities")
+def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
+    """Every entity this hub carries: id, name, kind, claimed, rating and count, when it was published.
+
+    Behind the admin token although every field is also on the public card, because the list itself
+    — the whole membership of a hub in one call — is an operator's view rather than a visitor's.
+    """
+    return admin.entities()
+
+
 # ---------------------------------------------------------------- joining this hub
 
 

@@ -35,6 +35,10 @@ export const metres = (m: unknown, intl: string) => {
   );
 };
 
+// A full ISO timestamp (a published_at, a last-checked) as a date in the reader's language. The time of day is
+// noise in these tables, so it is dropped rather than formatted.
+export const dayOf = (iso: unknown, intl: string) => day(String(iso ?? "").slice(0, 10), intl);
+
 export const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export const money = (n: unknown, currency: string, intl: string) =>
