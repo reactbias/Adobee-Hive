@@ -114,6 +114,7 @@ const fr: Record<Key, string> = {
   "card.tamper.perk": "Ajouter un faux avantage et vérifier",
   "card.tamper.original": "Original",
   "card.tamper.forged": "Copie falsifiée",
+  "card.tamper.stranger": "Re-signée par un inconnu",
   "card.tamper.valid": "Valide",
   "card.tamper.invalid": "Invalide",
   "card.tamper.rejected": "Refusée",

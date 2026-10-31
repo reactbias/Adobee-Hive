@@ -114,6 +114,7 @@ const en = {
   "card.tamper.perk": "Add a fake perk and verify",
   "card.tamper.original": "Original",
   "card.tamper.forged": "Forged copy",
+  "card.tamper.stranger": "Re-signed by a stranger",
   "card.tamper.valid": "Valid",
   "card.tamper.invalid": "Invalid",
   "card.tamper.rejected": "Rejected",
