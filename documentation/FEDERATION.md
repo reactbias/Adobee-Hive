@@ -6,10 +6,17 @@ One Hive answers for the businesses on it. This page is about what happens when 
 per association, per trade body. It is the backend half of the story in [VISION.md](VISION.md) — the half a
 traveller never sees, and the half that decides whether the index can be owned by anyone.
 
-**Status: design.** What runs on `main` today is a single Hive; `radius` is not served yet. Implementation is in
-progress on a branch. The pitch film in [`assets/hive-federation.mp4`](../assets/hive-federation.mp4) shows this
-page at work — the hives a search visits, each one's calibration, and the `provenance.path` the answer carries —
-and the stills under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
+**Status: built.** `radius` is served on `GET /api/hive/discover` and on the `hive_discover` MCP tool, and the
+modules behind it are [`federation.py`](../code/backend/app/federation.py),
+[`reputation.py`](../code/backend/app/reputation.py), [`calibration.py`](../code/backend/app/calibration.py) and
+[`connections.py`](../code/backend/app/connections.py). What is not built is the second hub: a single backend has
+no peers unless `HIVE_PEER_URLS` names some, so on the deployed demo every search is a radius-0 search and the
+hop machinery is exercised by `tests/test_federation.py` rather than by two live hubs. What each gap is, exactly:
+[LIMITS.md](LIMITS.md).
+
+The pitch film in [`assets/hive-federation.mp4`](../assets/hive-federation.mp4) shows this page at work — the
+hives a search visits, each one's calibration, and the `provenance.path` the answer carries — and the stills
+under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
 
 How someone gets into a hub in the first place is [REGISTRATION.md](REGISTRATION.md), and the two are the
 same argument seen from different ends: admission is strict because calibration measures what admission let in.
@@ -36,20 +43,21 @@ tuning constant.
 | `0` | This Hive only | one town |
 | `1` | This Hive and its direct peers | a region |
 | `2` | And their peers | a country |
-| `3` | Cap | — |
+| `3` | Cap (`federation.MAX_RADIUS`) | — |
 
 `radius=0` is the default, so every call that exists today keeps behaving exactly as it does today. Reach is opt-in.
+A query above 0 also costs this hub outbound calls to its peers, so it is rate-limited (`guard.federated`).
 
 What each hop does:
 
 - **Decrement and forward.** A hop subtracts one from the radius, appends its own Hive id to a `seen` list, and
   forwards only to peers not already in `seen`. The peer graph has cycles; without `seen` a search would circle
   forever. This is the one rule that must never be got wrong.
-- **Carry a deadline.** The query holds a millisecond budget. Each hop subtracts what it has spent and refuses to
-  forward when too little is left. A peer that misses the deadline is dropped from the answer, and the answer says
+- **Carry a deadline.** The query holds a millisecond budget (`budget_ms`, 2500 by default). Each hop subtracts
+  what it has spent and refuses to forward when fewer than 150 ms are left. A peer that misses the deadline is dropped from the answer, and the answer says
   it was dropped. A slow Hive degrades a search; it never fails one.
-- **Cap the breadth.** At most a handful of peers per hop, chosen by trust. Otherwise reach two is a broadcast
-  storm.
+- **Cap the breadth.** At most `federation.PEERS_PER_HOP` peers per hop — four — chosen by hub reputation.
+  Otherwise reach two is a broadcast storm. Peers left out are named in `federation.dropped` with the reason.
 - **Deduplicate by digest.** The same card arrives by several routes. It is one card, kept at its shortest hop
   count.
 - **Verify at the end, not along the way.** The searching agent checks the owner's signature itself. Nothing is
@@ -60,21 +68,42 @@ see that an answer came from two Hives away, and through which.
 
 ## Two levels of trust
 
-A Hive is rated. So is a business. They are different questions and they are kept apart.
+A Hive is rated. So is a business. They are different questions and they are kept apart, in two modules that
+never read each other.
 
-### The Hive
+### The Hive: reputation, and calibration
 
-How well does it vet its members, and how honestly does it rank? Signals:
+Two separate measurements, because a hub can be reliable and dishonest, or honest and slow.
 
-- the verification level it declares, against what peers actually observe,
-- its ranking policy — a Hive that sells placement is **downgraded**, not delisted, and the policy is published so
-  an agent can refuse it,
+**Reputation** ([`reputation.py`](../code/backend/app/reputation.py)) is how this hub has found a peer to behave.
+Signals:
+
+- the verification level it declares (`signed`, `attested`), against what this hub has actually observed,
+- its ranking policy — a Hive that declares paid placement is **downgraded**, not delisted, and the policy is
+  published so an agent can refuse it,
 - availability and latency,
-- how often cards it relayed failed a signature check or were disputed.
+- how many cards it relayed failed verification here (`reputation.record_invalid`).
 
-This score is **local and subjective**. Each Hive judges its peers for itself. There is no global number and no
-consensus protocol, because a global reputation score is a thing to capture. New peers start low and earn trust
-slowly.
+A new peer starts at `NEW_PEER_TRUST`, 0.35, and earns 0.03 per clean exchange up to 0.25, so trust takes many
+exchanges to build. Declaring paid placement costs 0.4 on its own. Every factor and the sentence behind it ride
+along in the answer.
+
+**Calibration** ([`calibration.py`](../code/backend/app/calibration.py)) is the sharper question: did the peer
+tell the **truth** about its members? For every scored introduction the hub keeps what the peer published at the
+moment of introduction and what our own person reported after the real meeting.
+
+```
+error  =  published − realised          (tenths of a star, so 25 is two and a half stars)
+```
+
+Lower is better and the sign carries meaning: positive is over-promising, negative is a hub that undersold what
+it offered. The mean is recency-weighted with a 90-day half-life, and a hub with fewer than three scored
+introductions is reported as **unproven** rather than guessed at — a mean over two meetings is noise wearing a
+number's clothes. A hub cannot move this by anything it publishes about itself, because every input comes from
+our own users.
+
+Both scores are **local and subjective**. Each Hive judges its peers for itself. There is no global number and no
+consensus protocol, because a global reputation score is a thing to capture.
 
 ### The business
 
@@ -84,8 +113,9 @@ What did it actually deliver? These signals already exist on `main` and keep the
 - attestations from third parties, each signed,
 - nothing purchasable.
 
-This travels **with the business**. Move to another Hive and the receipts come along, because they are signed by
-the counterparties, not by the Hive. No aggregator allows that today, and it is the reason a business can leave.
+The design intent is that this travels **with the business**: move to another Hive and the receipts come along,
+because they are signed by the counterparty rather than by the Hive. In the prototype the counterparty's signing
+key is held by the hub (see [LIMITS.md](LIMITS.md)), so portable receipts are the direction, not yet the fact.
 
 ### How they combine
 
@@ -93,28 +123,35 @@ the counterparties, not by the Hive. No aggregator allows that today, and it is 
 rank  =  what was asked for  ×  trust in the Hives it came through  ×  distance
 ```
 
-All three factors are reported separately in the score breakdown, so **open ranking** still holds: every result says
-why it won, and every excluded one says why it lost. Distance discounts confidence in a long carrier chain. It is
-not a claim that far-away businesses are worse.
+in code, `local_relevance × hub_path_trust × hop_decay`, where `hub_path_trust` multiplies the reputation of every
+hub that carried the card and `hop_decay` is 0.85 per hop. All three factors are reported separately in the score
+breakdown, so **open ranking** still holds: every result says why it won, and every excluded one says why it lost.
+Distance discounts confidence in a long carrier chain. It is not a claim that far-away businesses are worse.
+
+Calibration is **not yet a factor in that product.** It is what `GET /api/hub/standing`, the neighbours table and
+the hub directory are ordered by, and it is what a person choosing a hub reads; wiring it into the search rank is
+listed in [LIMITS.md](LIMITS.md) rather than claimed here.
 
 The incentive this sets up is the point. A Hive that carries forged or disputed cards loses its peers' trust, and
 every business on it then ranks lower everywhere. Vetting honestly is the cheapest strategy available to a Hive
 operator.
 
-## What changes in the API
+## What it added to the API
 
-Additive only. Nothing is renamed or removed, because the app depends on today's shape.
+Additive only. Nothing was renamed or removed, because the app depends on today's shape.
 
-| Change | Where | Note |
+| Addition | Where | Note |
 | --- | --- | --- |
-| `radius` parameter, default `0` | discover, over REST and MCP | absent or `0` is today's behaviour |
-| `provenance`, `hops` on each result | discover response | new fields, old ones untouched |
-| Hive trust and distance in the score breakdown | discover response | alongside the existing factors |
-| A peer list, and a key registry per peer | configuration | reuses the existing multi-Hive URL setting |
+| `radius`, `budget_ms`, `seen` | `GET /api/hive/discover`; `radius` on `hive_discover` | absent or `0` is the old behaviour, byte for byte |
+| `provenance`, `hops` on each result | the discover answer above radius 0 | the ordered chain of hubs, its origin, and the other routes the same card arrived by |
+| `local_relevance`, `hub_path_trust`, `hop_decay` | `score_breakdown` | alongside the existing factors |
+| a `federation` report | the discover answer above radius 0 | which peers were asked, which were dropped and why, which cards were rejected and by whom |
+| `federation` block in `/.well-known/hive.json` | discovery document | `hub_id`, name, description, declared `verification`, `admission`, entity count, `paid_placement`, `max_radius` |
+| `GET /api/hub/standing`, `GET /api/hub/directory`, `hub_standing`, `hub_directory` | REST and MCP | what this hub makes of its neighbours, and the list a person picks a hub from |
+| `HIVE_PEER_URLS`, `HIVE_HUB_ID`, `HIVE_VERIFICATION`, `PEER_ASK_SECONDS` | configuration | peers are configured, never taken from a request |
 
-Proposed modules, not yet on `main`: a federation module for the hop-limited query, and a reputation module for
-the two scores. Both land with their tests and a row in [DIAGRAMS.md](DIAGRAMS.md) and
-[ARCHITECTURE.md](ARCHITECTURE.md), as [CONTRIBUTING.md](../CONTRIBUTING.md) requires.
+Every row above has tests, a box in [DIAGRAMS.md](DIAGRAMS.md) and a row in [ARCHITECTURE.md](ARCHITECTURE.md),
+as [CONTRIBUTING.md](../CONTRIBUTING.md) requires. The honest gaps are in [LIMITS.md](LIMITS.md).
 
 ## For the pitch
 

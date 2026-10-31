@@ -74,9 +74,14 @@ identity**: from then on the hub can tell this applicant from anyone claiming to
 It proves nothing about who they are in the world. That is what `proofs` are for, and they are
 **recorded rather than trusted**. Nothing is checked over the network during registration — the
 demo has to run offline, and a hub that blocks on a DNS lookup is a hub that falls over when a
-registrar does. An unconfirmed proof raises nothing. A confirmed one raises the entity's
+registrar does. An unconfirmed proof raises nothing. A confirmed one would raise the entity's
 `verification`, which peers weigh against what they actually observe, so overstating it is a bad
 trade.
+
+**Today nothing confirms one.** `verification_for()` returns `signed` when a valid signature arrived
+with a key, and `none` otherwise, so the ladder's top two rungs — `domain` and `identity` — are
+unreachable. The honest reading of any entity on this hub is "holds its key, and has claimed some
+things nobody has verified". See [LIMITS.md](LIMITS.md#trust).
 
 ## Admission policy
 
@@ -99,14 +104,22 @@ An operator works the queue at `GET /api/admin/applications?state=pending` and d
 
 | | `custody: "owner"` | `custody: "hub"` |
 | --- | --- | --- |
-| How | bring a `public_key` and sign | omit the key |
-| Private half | never leaves the applicant | generated and held by the hub |
-| What a peer sees | the owner's pinned key | that the hub vouches for itself |
+| How | bring a `public_key` and sign the application | omit the key |
+| What the hub learns | the applicant holds this private half, pinned to their id from now on | nothing about who applied |
+| On the card | `custody: "owner"` and `owner_public_key` | `custody: "hub"` |
+| What a peer sees | that somebody holding a key applied for this id | that the hub vouches for itself |
 
-The hub-held path is what the demo does today, and it is recorded honestly rather than dressed up.
-A peer can tell the difference, and should: a card whose key the hub also holds is a card the hub
-could have written. The jury answer "the server, for the demo; in the real thing, the owner" is
-exactly this field, and bringing a key is how an owner takes that back.
+**What bringing a key does not yet do.** It does not move the card's signature. `hive.publish`
+generates and keeps a signing key per card in `hive_keys` either way, and it is that key — not
+`owner_public_key` — that is published in `/.well-known/hive.json` under `owner_keys` and used by
+every signature check, local or federated. So the jury answer stays **"the server, for the demo; in
+the real thing, the owner"**: registration narrows the gap by pinning *who applied* and recording
+custody honestly, and the step still missing is signing a card version with the owner's own key. It
+is written down in [LIMITS.md](LIMITS.md#trust) and [VISION.md](VISION.md#beyond-the-weekend)
+rather than claimed here.
+
+A peer can tell the two columns apart, and should: a card whose signing key the hub holds is a card
+the hub could have written.
 
 ## Leaving
 
