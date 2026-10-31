@@ -29,6 +29,15 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
+
+/** A health check failure, kept separate from general requests so troubleshooting can explain it. */
+export class HealthError extends Error {
+  constructor(readonly kind: "timeout" | "network" | "response") {
+    super(`Health check ${kind}`);
+    this.name = "HealthError";
+  }
+}
+
 // Render's free backend sleeps and takes up to a minute to wake. Past this, the chat stops "thinking" and says so.
 const TIMEOUT_MS = 90_000;
 const COLD = new Set([502, 503, 504]);
@@ -370,6 +379,39 @@ export interface Health {
   fast_model: string;
   /** Which similarity provider discovery ranks with. "offline" needs no key and is the default. */
   semantic: "offline" | "embeddings";
+}
+
+/** Check only this backend, once, with a short deadline and caller-controlled cancellation. */
+async function health({ signal }: { signal?: AbortSignal } = {}): Promise<Health> {
+  const abort = new AbortController();
+  const cancel = () => abort.abort(signal?.reason);
+  signal?.addEventListener("abort", cancel, { once: true });
+  if (signal?.aborted) cancel();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    abort.abort();
+  }, 5_000);
+  try {
+    const res = await fetch(`${apiBase()}/api/health`, {
+      signal: abort.signal,
+      headers: { "Accept-Language": document.documentElement.lang || "en" },
+    });
+    if (!res.ok) throw new ApiError(`${res.status} ${res.statusText}`, res.status);
+    try {
+      return (await res.json()) as Health;
+    } catch {
+      throw new HealthError("response");
+    }
+  } catch (error) {
+    if (signal?.aborted) throw signal.reason;
+    if (timedOut) throw new HealthError("timeout");
+    if (error instanceof ApiError || error instanceof HealthError) throw error;
+    throw new HealthError("network");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", cancel);
+  }
 }
 
 // ---------- Ask the Hive ----------
@@ -933,7 +975,7 @@ export interface AdminSession {
 }
 
 export const api = {
-  health: () => call<Health>("/api/health"),
+  health,
   /** Search the Hive. Without a radius the answer is this Hive's own cards, exactly as before. */
   discover: (query: DiscoverQuery = {}) => call<Discovery>(discoverPath(query)),
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),

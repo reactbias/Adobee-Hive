@@ -3,9 +3,24 @@ import type { Key } from "./en";
 // Italiano della Svizzera italiana, registro formale.
 const it: Record<Key, string> = {
   "nav.language": "Lingua",
-  "nav.live": "IA attiva",
-  "nav.offline": "Modalità offline",
+  "nav.live": "Modello online configurato",
+  "nav.offline": "Pianificatore offline",
   "nav.down": "Backend non raggiungibile",
+  "status.title": "Stato della connessione",
+  "status.checking": "Verifica del backend…",
+  "status.reachable": "Backend raggiungibile",
+  "status.modelUnknown": "Stato del modello sconosciuto",
+  "status.modelConfigured":
+    "Provider configurato: {provider} · {model}. La disponibilità del modello non viene verificata.",
+  "status.hub": "Hive selezionato: {hub}",
+  "status.defaultHub": "predefinito della build",
+  "status.lastChecked": "Ultima verifica:",
+  "status.lastSuccess": "Ultimo successo:",
+  "status.retry": "Riprova ora",
+  "status.httpError": "L'endpoint di stato ha restituito HTTP {status}.",
+  "status.timeoutError": "Il backend non ha risposto entro 5 secondi.",
+  "status.networkError": "Errore di rete o restrizione del browser. Verifichi la connessione e la console del browser.",
+  "status.responseError": "Il backend ha restituito una risposta di stato illeggibile.",
   "footer.line": "Adobee Hive · BaselHack 2026 · Team B6",
   "footer.wake": "Sveglia l'ape B6",
 
