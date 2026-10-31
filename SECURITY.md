@@ -26,6 +26,9 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | Secrets | Keys in git | The OpenAI and Claude keys live in `.env` locally and in the Render dashboard in the cloud; `.env` is git-ignored; no secrets in the repo or its history, and CI scans every push with gitleaks | `.gitignore`, `render.yaml`, `ci.yml` |
 | Personal data | The public repo exposing people | Team members are not named (head count only); no emails, phone numbers, account ids, device names, local paths or photo EXIF; whiteboard photos are downscaled, EXIF-stripped, with the Wi-Fi password and handwritten names pixelated | `CONTRIBUTING.md`, `assets/` |
 | Ranking | A ruleset that quietly favours a business or hides its effect | Rulesets are signed by their authors and checked against keys pinned in `/.well-known/hive.json`; only additive rules are accepted (require tags, require attestations, show fewer), so none can boost or loosen the floor; every answer names the ruleset and what it changed, and each business it left out says why | `rulesets.py` |
+| A card that arrives over another Hive | A relaying hub forging, tampering with or substituting a card | A federated result is verified at the destination, never taken from the carrier: the key comes from the card's own hub registry, fetched directly from that hub, and the card must match `hive.verify_pinned` exactly like a local one. A card that fails is dropped, named in `federation.rejected` with the hub that carried it, and costs that hub trust. A relaying hub can therefore withhold or delay a card, never change one | `federation._verified`, `reputation.record_invalid` |
+| Rank in a federated answer | A hub buying rank for its members, or inflating its own scores | No hub can boost another's result: the rank is `local_relevance x hub_path_trust x hop_decay`, all three factors in `score_breakdown` with every hub's trust and reasons in the answer. A hub's trust is this hub's own, never a global score; declaring paid placement, missing deadlines or relaying cards that fail verification only lowers it | `federation.py`, `reputation.hub_trust` |
+| This hub as an amplifier | A stranger using `radius` to make this hub flood its peers | Peer URLs come from configuration only, never from the request; the radius is capped at 3 hops and 4 peers per hop, the whole query runs on one time budget, and a search above radius 0 is rate-limited per client and in total | `guard.federated`, `federation.MAX_RADIUS` |
 | What was promised | A business changing its price or policy after the booking and denying the old terms | Every signed card version is kept; the receipt pins the version and its digest, and `hive_what_was_promised` returns that version, signature included, only to a holder of the receipt | `hive.what_was_promised` |
 | Standing requests | Spam to travellers, profiling who waits | An agent leaves one only when nothing fits and its traveller asked; it holds the structured ask, no name or free text; the agent's token is stored as a hash; requests end at check-in or after 30 days, 500 open at most; each business sends one offer per request, only when its signed card fits; owners see counts and budgets, never a single request | `waiting.py` |
 | Errors | Leaking internals | Agent failures are logged server-side; the client gets a plain message | `main.run_agent` |
@@ -45,6 +48,17 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
 - **Trust in the registry.** Agents trust the keys a Hive publishes for its own cards. A forger who controls the Hive
   itself is not caught by this; the real design anchors owner keys outside it (a city or association registry).
 - **Owner identity.** One shared owner token protects all cards in the demo; production needs per-owner accounts.
+- **A carrier can still name the wrong origin.** A relayed result says which hub it came from, and this hub
+  fetches that hub's registry directly, so a tampered card cannot pass. What is not yet anchored is the hub id
+  itself: a hostile carrier could point at a registry it controls and present a card of its own as another hub's.
+  It cannot forge an existing business's card that way, only offer one nobody else has. Anchoring hub ids (a hub
+  directory, or DNS) is the fix.
+- **Hub reputation is per process and per hub.** It is an opinion this backend formed since it started, not a
+  published score; a restart means every peer starts again at trust on first use. That is deliberate, but it also
+  means a hub that misbehaved before a restart gets a clean slate.
+- **A peer's own ranking is still its own.** This hub re-verifies every card, but it cannot recompute a peer's
+  availability or relevance from outside, so a peer's `local_relevance` is taken as given and discounted by hub
+  trust. That is what makes hub trust, and the incentive behind it, load-bearing.
 - **Rate limits** are kept in memory, which is fine because the backend runs as one instance (DuckDB on local disk).
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
   alike, as on any booking site. CORS is `*` for the same reason. MCP host-header checks are off because the host

@@ -99,6 +99,7 @@ flowchart TB
   SIM[simulate.py<br/>busy week for the demand map]:::mod
   ACT[activity.py<br/>live feed, one line per step]:::mod
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
+  FED[federation.py<br/>hop-limited search over peer Hives]:::mod
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
@@ -123,6 +124,8 @@ flowchart TB
   DOMAINS --> HIVE
   REST --> HIVE
   SEED --> HIVE
+  HIVE -->|radius > 0| FED --> REP
+  FED -->|peer Hives, HTTP| PEERS([Peer Hives<br/>HIVE_PEER_URLS]):::guard
   HIVE --> REP
   HIVE --> DB
 ```
@@ -297,6 +300,7 @@ flowchart LR
   subgraph CRD["Cards and trust"]
     direction TB
     R6["GET /api/hive/cards"]:::door
+    R21["GET /api/hive/discover"]:::door
     R7["GET /api/hive/cards/{card_id}"]:::door
     R8["GET /api/hive/cards/{card_id}/availability"]:::door
     R9["POST /api/hive/cards/{card_id}/book"]:::door
@@ -321,6 +325,45 @@ flowchart LR
 ```
 
 Clay marks the calls that act on a person's yes: Approve, or the owner's Publish.
+
+## 6. How far to look: a federated search
+
+`hive_discover` takes a **radius**: `0`, the default, is this Hive only, and nothing about today's answer
+changes. Above it the query hops to peer Hives, each hop decrementing the radius, naming itself in `seen` so the
+cycles in the peer graph cannot loop, and spending what is left of the time budget. A card that comes back is
+verified here, against the key pinned in *its own* hub's registry — never against the carrier's word — so a
+relaying hub can withhold or delay a card but never forge one. Details: [federation.py](../code/backend/app/federation.py)
+and [reputation.py](../code/backend/app/reputation.py).
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+  autonumber
+  participant AG as Any agent
+  participant H0 as This Hive · hub "local"
+  participant P1 as Peer Hive A
+  participant P2 as Peer of A
+  participant REG as A's own key registry
+
+  AG->>H0: hive_discover(radius 2, budget)
+  Note over H0: radius 0 would stop here, byte for byte as before
+  H0->>H0: local matches, hops 0
+  Note over H0: top 4 peers by trust, in parallel, seen = [local]
+  H0->>P1: GET /api/hive/discover (radius 1, budget left, seen)
+  P1->>P2: one hop further (radius 0, seen = [local, A])
+  P2-->>P1: its cards, signed by their owners
+  P1-->>H0: own + relayed matches, each with its route
+  H0->>REG: GET /.well-known/hive.json, directly
+  REG-->>H0: the owner's pinned key
+  Note over H0: verify_pinned: a tampered copy is rejected and costs A trust
+  H0->>H0: dedup by card digest, shortest route wins
+  H0-->>AG: matches ranked local_relevance x hub_path_trust x hop_decay,<br/>with provenance, hops and all three factors
+```
+
+A peer that misses the deadline is dropped and named in `federation.dropped`; the query still answers with
+everything else. A hub that declares paid placement, or that relays cards which fail verification here, loses
+trust, and with it the rank of every card it carries — so vetting its own members honestly is the hub's own
+interest.
 
 ## Who works where
 

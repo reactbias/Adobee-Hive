@@ -45,5 +45,8 @@ class RateLimiter:
 
 # One budget for everything that may call Claude: agent runs and owner edit proposals.
 llm_calls = RateLimiter(per_client=config.LLM_CALLS_PER_CLIENT_HOUR, total=config.LLM_CALLS_TOTAL_HOUR)
+# A search with a radius above 0 makes this hub fetch from its peers, so a stranger must not be able to use it
+# as an amplifier. Peer URLs come from config only, never from the request.
+federated = RateLimiter(per_client=30, total=300)
 # Simulated traffic writes demand events; keep it to demo use.
 simulations = RateLimiter(per_client=20, total=200)

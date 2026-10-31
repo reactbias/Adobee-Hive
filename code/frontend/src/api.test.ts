@@ -11,6 +11,27 @@ describe("api", () => {
   });
 });
 
+describe("discovery reaches as far as the person asked, and no further", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("asks for this Hive only unless a radius is given", async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ matches: [], excluded: [], ranking_policy: "" }));
+    vi.stubGlobal("fetch", fetch);
+    await api.discover({ kind: "hotel" });
+    expect(fetch.mock.calls[0][0]).toBe("/api/hive/discover?kind=hotel");
+  });
+
+  it("sends the radius, the budget and every feature it was given", async () => {
+    const fetch = vi.fn().mockResolvedValue(ok({ matches: [], excluded: [], ranking_policy: "" }));
+    vi.stubGlobal("fetch", fetch);
+    await api.discover({ features: ["quiet", "dog-friendly"], radius: 2, budget_ms: 1500 });
+    const url = fetch.mock.calls[0][0] as string;
+    expect(url).toContain("radius=2");
+    expect(url).toContain("budget_ms=1500");
+    expect(url).toContain("features=quiet&features=dog-friendly");
+  });
+});
+
 // Render's free backend sleeps: the first request after a while can fail or hang. The chat retries once, then says
 // so in the person's language instead of a raw "Failed to fetch".
 

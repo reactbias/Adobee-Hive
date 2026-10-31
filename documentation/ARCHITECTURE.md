@@ -26,6 +26,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 | `replies.py` | What the backend writes itself (offline planner, rules-off demo, approval, rule-check second opinion) in EN, DE, FR and IT; the language comes from the app's `Accept-Language` header, and model runs are told to answer in it |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `activity.py` | The live activity feed: reads each agent result (run, Approve, ask, hand-off, scout) and keeps one line per step from fixed lists (agent, step, business, outcome, `partner` or `web`), never a person or the question. Newest 300 in `hive_activity`, so they ride along in the Postgres snapshot |
+| `federation.py` | Hop-limited ("node radius") search across peer Hives: a query carries a radius, a time budget and the hubs it has already visited; each hop fans out to its most trusted peers in parallel, verifies every card that comes back against the key pinned in the card's own hub, dedups by card digest and ranks with the hub trust from `reputation.py` |
 | `reputation.py` | Two levels of trust, kept apart: a peer *hub*'s reputation, judged locally and subjectively by this hub (declared vs observed vetting, paid placement, availability, cards it relayed that failed verification here), and a *business*'s reputation, the verified reviews and attestations discovery already scores |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes, and the Postgres snapshot and restore (`DATABASE_URL`) |
@@ -81,7 +82,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose. Returns ranked matches with a score breakdown, and every excluded business with why. People never show up here, only through the HR tools |
+| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown, and every excluded business with why; a federated match adds `provenance`, `hops` and the three federated rank factors. People never show up here, only through the HR tools |
 | `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
@@ -109,6 +110,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/health` | Up, and which model provider the agents use (`openai`, `claude` or `mock`) | |
 | `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
+| `GET /api/hive/discover` | Search with the same constraints as `hive_discover`, plus `radius` (0 = this Hive, up to 3 hops over peer Hives), `budget_ms` and `seen`. Also the door one Hive uses to forward a query to another | rate limit above radius 0 |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
@@ -145,6 +147,16 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 - **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks
   it against the pinned key. It holds no room: the agent still asks its human before `hive_book`.
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
+- **Two levels of trust** (`reputation.py`). A *business* earns reputation from proof-of-stay reviews and
+  attestations. A peer *Hive* earns a hub reputation, judged locally and subjectively by this hub alone: there is
+  no global score and no consensus. New peers start low (trust on first use) and accrue slowly; a hub that
+  declares paid placement, misses deadlines, or relays cards that fail verification here is downweighted, which
+  lowers every card it carries. Vetting its own members honestly is therefore each hub's own interest.
+- **Federated search, hop by hop** (`federation.py`). A query's `radius` is its hop limit (0 = this Hive, cap 3),
+  with a time budget, a breadth cap per hop and a `seen` list that cuts the cycles in the peer graph. A result's
+  rank is `local_relevance x hub_path_trust x hop_decay`, all three in `score_breakdown`, and its `provenance`
+  names every hub it travelled. Signatures are checked at the destination against the key pinned in the card's own
+  hub registry, fetched directly, so a relaying hub can withhold or delay a card but never forge one.
 - **Missed demand.** Every exclusion and every search is logged; owners see what they were turned away for, the
   city sees what nobody offers.
 - **Prompt safety.** Card text is treated as data in the agent's prompt, never as instructions. A guard withholds

@@ -471,8 +471,30 @@ def discover(
     check_in: str | None = None,
     check_out: str | None = None,
     guests: int = 1,
+    radius: int = 0,
+    budget_ms: float | None = None,
+    seen: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Find businesses for an agent. Returns matches with score breakdown and the near-misses."""
+    """Find businesses for an agent. Returns matches with score breakdown and the near-misses.
+
+    radius is the hop limit across peer Hives: 0, the default, is this Hive only; 1 adds its direct peers, 2
+    theirs, up to federation.MAX_RADIUS. budget_ms is the whole query's time budget and seen lists the hubs it
+    has already visited (loop prevention); both only matter above radius 0. See federation.py.
+    """
+    if int(radius or 0) > 0:
+        from . import federation  # imported here: federation builds on discover, so it imports this module
+
+        ask = {
+            "query": query,
+            "kind": kind,
+            "near": near,
+            "max_price_chf": max_price_chf,
+            "features": features,
+            "check_in": check_in,
+            "check_out": check_out,
+            "guests": guests,
+        }
+        return federation.run(ask, int(radius), budget_ms, seen)
     features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
     query = query[:500]
     # What gets logged: the structured ask only. The free-text query can hold a name, so it is never stored.
