@@ -8,12 +8,34 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail ?? `${res.status} ${res.statusText}`);
+    // FastAPI sends a string for our errors and a list of field errors for invalid input
+    const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    throw new Error(detail ?? `${res.status} ${res.statusText}`);
   }
   return res.json() as Promise<T>;
 }
 
-const post = <T>(path: string, body: unknown) => call<T>(path, { method: "POST", body: JSON.stringify(body) });
+const post = <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+  call<T>(path, { method: "POST", body: JSON.stringify(body), headers });
+
+// The deployed demo can require an owner token for card edits (OWNER_EDIT_TOKEN on the backend).
+// It lives only in this tab's sessionStorage.
+const OWNER_TOKEN_KEY = "adobee-owner-token";
+export function setOwnerToken(token: string) {
+  try {
+    sessionStorage.setItem(OWNER_TOKEN_KEY, token);
+  } catch {
+    /* storage blocked: the next edit asks again */
+  }
+}
+function ownerHeaders(): Record<string, string> {
+  try {
+    const token = sessionStorage.getItem(OWNER_TOKEN_KEY);
+    return token ? { "X-Owner-Token": token } : {};
+  } catch {
+    return {};
+  }
+}
 
 export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
 
@@ -150,8 +172,9 @@ export const api = {
   agent: (messages: { role: string; content: string }[]) => post<AgentResult>("/api/agent", { messages }),
   approve: (pending: Pending) => post<Approval>("/api/agent/approve", { pending }),
   owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`),
-  propose: (id: string, instruction: string) => post<Proposal>(`/api/owner/${id}/propose`, { instruction }),
-  publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }),
+  propose: (id: string, instruction: string) =>
+    post<Proposal>(`/api/owner/${id}/propose`, { instruction }, ownerHeaders()),
+  publish: (id: string, proposed: Card) => post<Card>(`/api/owner/${id}/publish`, { proposed }, ownerHeaders()),
   verify: (card: Card) => post<{ signature_valid: boolean }>("/api/hive/verify", { card }),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),

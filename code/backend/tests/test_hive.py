@@ -4,7 +4,7 @@ import asyncio
 
 from mcp import Client
 
-from app import agent, hive, simulate
+from app import agent, config, guard, hive, simulate
 from app.mcp_server import server
 
 REQUEST = (
@@ -134,3 +134,30 @@ def test_agent_falls_back_offline_when_claude_fails(client, monkeypatch):
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     assert out["mode"] == "scripted" and out["fallback"] == "Claude unavailable"  # the UI must not claim Claude ran
     assert out["pending"]["tool"] == "hive_book"
+
+
+def test_owner_edits_need_the_owner_token_when_set(client, monkeypatch):
+    monkeypatch.setattr(config, "OWNER_EDIT_TOKEN", "s3cret")
+    url = "/api/owner/hotel-gare/propose"
+    assert client.post(url, json={"instruction": "add sauna"}).status_code == 403
+    ok = client.post(url, json={"instruction": "add sauna"}, headers={"X-Owner-Token": "s3cret"})
+    assert ok.status_code == 200
+
+
+def test_claude_calls_are_rate_limited(client, monkeypatch):
+    monkeypatch.setattr(guard, "llm_calls", guard.RateLimiter(per_client=1, total=10))
+    monkeypatch.setattr(config, "LLM_ENABLED", True)
+    monkeypatch.setattr(agent, "run", lambda _messages: asyncio.sleep(0, {"reply": "ok"}))
+    body = {"messages": [{"role": "user", "content": "hi"}]}
+    assert client.post("/api/agent", json=body).status_code == 200
+    assert client.post("/api/agent", json=body).status_code == 429
+
+
+def test_bad_input_is_a_clear_400_not_a_crash(client):
+    book = "/api/hive/cards/hotel-rheinblick/book"
+    bad_date = {"unit_id": "single", "check_in": "13.11.2026", "check_out": "2026-11-15", "guest_name": "A"}
+    assert client.post(book, json=bad_date).status_code == 400
+    too_long = {**bad_date, "check_in": "2026-11-01", "check_out": "2027-01-01"}
+    assert client.post(book, json=too_long).status_code == 400
+    oversized = {"messages": [{"role": "user", "content": "x" * 5000}]}
+    assert client.post("/api/agent", json=oversized).status_code == 422

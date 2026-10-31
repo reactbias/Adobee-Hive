@@ -8,13 +8,13 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, hive, hive_seed, mcp_server, owner, simulate
+from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -81,10 +81,17 @@ def well_known(request: Request) -> dict[str, Any]:
 # ---------------------------------------------------------------- Hive (businesses)
 
 
+class Message(BaseModel):
+    """One chat turn."""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
 class AgentRequest(BaseModel):
     """A conversation with the traveller agent; the last message is the traveller's."""
 
-    messages: list[dict[str, str]] = Field(min_length=1)
+    messages: list[Message] = Field(min_length=1, max_length=20)
 
 
 class ApproveRequest(BaseModel):
@@ -99,23 +106,23 @@ class BookRequest(BaseModel):
     unit_id: str
     check_in: str
     check_out: str
-    guest_name: str
-    guests: int = 1
-    notes: str = ""
+    guest_name: str = Field(min_length=1, max_length=hive.MAX_NAME)
+    guests: int = Field(1, ge=1, le=hive.MAX_GUESTS)
+    notes: str = Field("", max_length=hive.MAX_TEXT)
 
 
 class ReviewRequest(BaseModel):
     """A review, valid only with a signed booking receipt."""
 
-    receipt: str
-    rating: int
-    text: str = ""
+    receipt: str = Field(max_length=4000)
+    rating: int = Field(ge=1, le=5)
+    text: str = Field("", max_length=hive.MAX_TEXT)
 
 
 class OwnerEdit(BaseModel):
     """The owner's change, in plain words."""
 
-    instruction: str
+    instruction: str = Field(min_length=1, max_length=1000)
 
 
 class OwnerApply(BaseModel):
@@ -185,28 +192,30 @@ def hive_demand(days: int = 7) -> dict[str, Any]:
 
 
 @app.post("/api/demo/simulate")
-def demo_simulate(n: int = 40) -> dict[str, Any]:
+def demo_simulate(request: Request, n: int = 40) -> dict[str, Any]:
     """Run up to 200 simulated traveller searches to fill the demand map."""
+    guard.simulations.check(request)
     return simulate.run(min(n, 200))
 
 
 @app.post("/api/demo/reset")
 def demo_reset(request: Request) -> dict[str, Any]:
     """Clean slate before going on stage: the seed cards, no bookings, no demand history."""
-    if config.DEMO_RESET_TOKEN and request.headers.get("x-demo-token") != config.DEMO_RESET_TOKEN:
-        raise HTTPException(403, "Reset needs the demo token.")
+    guard.require_secret(request, "X-Demo-Token", config.DEMO_RESET_TOKEN)
     hive_seed.reset()
     return {"cards": len(hive.list_cards())}
 
 
 @app.post("/api/agent")
-async def run_agent(body: AgentRequest) -> dict[str, Any]:
+async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
+    if config.LLM_ENABLED:
+        guard.llm_calls.check(request)
     try:
-        return await agent.run(body.messages)
-    except Exception as err:  # surface agent failures to the demo UI instead of a bare 500
+        return await agent.run([m.model_dump() for m in body.messages])
+    except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
-        raise HTTPException(502, f"Agent failed: {err}") from err
+        raise HTTPException(502, "The agent could not finish this request. Try again.") from err
 
 
 @app.post("/api/agent/approve")
@@ -225,12 +234,16 @@ def owner_overview(card_id: str) -> dict[str, Any]:
 
 
 @app.post("/api/owner/{card_id}/propose")
-async def owner_propose(card_id: str, body: OwnerEdit) -> dict[str, Any]:
+async def owner_propose(card_id: str, body: OwnerEdit, request: Request) -> dict[str, Any]:
     """Turn the owner's words into a proposed card and a diff. Nothing is published yet."""
+    guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
+    if config.LLM_ENABLED:
+        guard.llm_calls.check(request)
     return await asyncio.to_thread(_hive_call, owner.propose, card_id, body.instruction)
 
 
 @app.post("/api/owner/{card_id}/publish")
-def owner_publish(card_id: str, body: OwnerApply) -> dict[str, Any]:
+def owner_publish(card_id: str, body: OwnerApply, request: Request) -> dict[str, Any]:
     """Sign and publish the card the owner approved."""
+    guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
     return _hive_call(owner.apply, card_id, body.proposed)

@@ -244,10 +244,19 @@ def _log_many(events: list[tuple[str, str, str]]) -> None:
 # ---------------------------------------------------------------- discovery
 
 
+MAX_NIGHTS = 30
+MAX_GUESTS = 20
+MAX_TEXT = 2000  # review text and booking notes
+MAX_NAME = 100
+
+
 def _nights(check_in: str, check_out: str) -> int:
-    n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
-    if n <= 0:
-        raise HiveError("check_out must be after check_in.")
+    try:
+        n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
+    except (TypeError, ValueError) as err:
+        raise HiveError("Dates must be YYYY-MM-DD.") from err
+    if not 0 < n <= MAX_NIGHTS:
+        raise HiveError(f"A stay must be 1 to {MAX_NIGHTS} nights.")
     return n
 
 
@@ -309,7 +318,8 @@ def discover(
     guests: int = 1,
 ) -> dict[str, Any]:
     """Find businesses for an agent. Returns matches with score breakdown and the near-misses."""
-    features = [f.lower().strip() for f in (features or []) if f.strip()]
+    features = [f.lower().strip() for f in (features or [])[:20] if f.strip()]
+    query = query[:500]
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     for card in list_cards(kind):
@@ -436,12 +446,14 @@ def book(
 
     Raises HiveError when the dates are invalid, the unit is unknown or sold out, or the guest name is missing.
     """
+    if not guest_name.strip() or len(guest_name) > MAX_NAME:
+        raise HiveError(f"guest_name is required, at most {MAX_NAME} characters.")
+    if not 1 <= guests <= MAX_GUESTS or len(notes) > MAX_TEXT:
+        raise HiveError(f"guests must be 1 to {MAX_GUESTS}; notes at most {MAX_TEXT} characters.")
     card = get_card(card_id)
     free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}
     if unit_id not in free:
         raise HiveError(f"{unit_id} is not available for {guests} guest(s) from {check_in} to {check_out}.")
-    if not guest_name.strip():
-        raise HiveError("guest_name is required.")
     unit = free[unit_id]
     booking_id = "bk_" + db.new_id()
     payload = {
@@ -502,6 +514,8 @@ def cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 
 def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
     """Store a review for a completed booking. Each signed receipt can review once."""
+    if len(text) > MAX_TEXT:
+        raise HiveError(f"Review text is at most {MAX_TEXT} characters.")
     try:
         body = json.loads(base64.urlsafe_b64decode(receipt.split(".")[0]))
     except (ValueError, IndexError) as err:

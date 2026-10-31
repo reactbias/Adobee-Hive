@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type Card, type OwnerOverview, type Proposal } from "../api";
+import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal } from "../api";
 import TrustBadge from "../components/TrustBadge";
 
 const fmt = (v: unknown) => (typeof v === "string" ? v : JSON.stringify(v));
@@ -13,6 +13,8 @@ export default function OwnerStudio() {
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
+  const needsToken = error.includes("X-Owner-Token");
 
   const load = (id: string) =>
     api
@@ -70,7 +72,27 @@ export default function OwnerStudio() {
       <p className="muted">
         No website to maintain. Say what changed; your agent-facing card is updated, re-signed and live for every agent.
       </p>
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error">{needsToken ? "This Hive only lets the owner edit cards." : error}</p>}
+      {needsToken && (
+        <div className="row">
+          <input
+            type="password"
+            placeholder="Owner token"
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            style={{ maxWidth: 280 }}
+          />
+          <button
+            onClick={() => {
+              setOwnerToken(token);
+              setError("");
+            }}
+            disabled={!token}
+          >
+            Use token
+          </button>
+        </div>
+      )}
 
       <div className="grid two">
         <section className="panel stack">

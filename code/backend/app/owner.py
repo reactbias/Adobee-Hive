@@ -27,6 +27,7 @@ Apply the owner's instruction to the card and return the complete updated card.
 - Prices are numbers in CHF. Do not invent facts the owner did not state."""
 
 LOCKED = ("id", "slug", "kind", "version", "published_at")
+MAX_CARD_BYTES = 64_000
 
 
 def _strip(card: dict[str, Any]) -> dict[str, Any]:
@@ -97,6 +98,8 @@ def mock_edit(card: dict[str, Any], instruction: str) -> tuple[dict[str, Any], s
 
 def apply(card_id: str, proposed: dict[str, Any]) -> dict[str, Any]:
     """Sign and publish the approved card. Identity fields (LOCKED) always keep their current values."""
+    if len(hive.canonical(proposed)) > MAX_CARD_BYTES:
+        raise hive.HiveError(f"A card is at most {MAX_CARD_BYTES // 1000} kB.")
     current = hive.get_card(card_id)
     for key in LOCKED:
         proposed[key] = current.get(key)

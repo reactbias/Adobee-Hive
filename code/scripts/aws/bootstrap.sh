@@ -12,6 +12,9 @@ ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 BUCKET="${HIVE_BUCKET:-$NAME-data-$ACCOUNT}"
 IMAGE="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$REPO:latest"
 : "${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY (it goes to Secrets Manager, never into the repo)}"
+# Shared secrets for the team: owner edits and demo reset. Generated unless you pass your own.
+OWNER_EDIT_TOKEN="${OWNER_EDIT_TOKEN:-$(openssl rand -hex 16)}"
+DEMO_RESET_TOKEN="${DEMO_RESET_TOKEN:-$(openssl rand -hex 16)}"
 
 echo "==> ECR repository $REPO"
 aws ecr describe-repositories --repository-names "$REPO" --region "$REGION" >/dev/null 2>&1 ||
@@ -77,7 +80,8 @@ if [ -z "$SERVICE_ARN" ]; then
         \"ImageRepositoryType\": \"ECR\",
         \"ImageConfiguration\": {
           \"Port\": \"8000\",
-          \"RuntimeEnvironmentVariables\": {\"DUCKDB_S3_URI\": \"s3://$BUCKET/abh.duckdb\", \"CORS_ORIGINS\": \"*\"},
+          \"RuntimeEnvironmentVariables\": {\"DUCKDB_S3_URI\": \"s3://$BUCKET/abh.duckdb\", \"CORS_ORIGINS\": \"*\",
+            \"OWNER_EDIT_TOKEN\": \"$OWNER_EDIT_TOKEN\", \"DEMO_RESET_TOKEN\": \"$DEMO_RESET_TOKEN\"},
           \"RuntimeEnvironmentSecrets\": {\"ANTHROPIC_API_KEY\": \"$SECRET_ARN\"}
         }
       }
@@ -87,4 +91,7 @@ fi
 URL=$(aws apprunner describe-service --service-arn "$SERVICE_ARN" --region "$REGION" --query Service.ServiceUrl --output text)
 echo
 echo "Backend:   https://$URL   (MCP for agents: https://$URL/mcp/)"
+echo "Owner token (owner studio edits): $OWNER_EDIT_TOKEN"
+echo "Demo token (X-Demo-Token for /api/demo/reset): $DEMO_RESET_TOKEN"
+echo "Share both with the team in person or a password manager, never in the repo or chat."
 echo "Next: in Amplify set VITE_API_URL=https://$URL, then push to main."
