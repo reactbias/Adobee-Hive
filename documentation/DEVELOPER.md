@@ -124,6 +124,12 @@ cd code/backend && ruff check . && ruff format --check . && pytest -q
 cd code/frontend && npm run format:check && npm test && npm run build
 ```
 
+**Run the backend suite with no model key exported.** The tests pin what the offline planner writes, so an
+`OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in your shell makes the agent answer live and about fifteen of them fail
+for a reason that has nothing to do with your change. Either keep the key in `code/.env` only (uvicorn reads it
+with `--env-file`, pytest does not) or run `env -u OPENAI_API_KEY -u ANTHROPIC_API_KEY pytest -q`. CI has no key,
+so it never sees this.
+
 Fix formatting with `ruff format .` and `npm run format`. Run one file or one test while you work:
 
 ```bash
