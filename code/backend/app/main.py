@@ -93,6 +93,10 @@ class AgentRequest(BaseModel):
     """A conversation with the traveller agent; the last message is the traveller's."""
 
     messages: list[Message] = Field(min_length=1, max_length=20)
+    # Demo only. "injection" adds an unverified mirror whose listing carries hidden instructions to agents.
+    scenario: Literal["injection"] | None = None
+    # Demo only. "off" runs an unguarded agent offline to show what it would do; it never books.
+    rules: Literal["on", "off"] = "on"
 
 
 class ApproveRequest(BaseModel):
@@ -210,10 +214,10 @@ def demo_reset(request: Request) -> dict[str, Any]:
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
-    if config.LLM_ENABLED:
+    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches Claude
         guard.llm_calls.check(request)
     try:
-        return await agent.run([m.model_dump() for m in body.messages])
+        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules)
     except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
         raise HTTPException(502, "The agent could not finish this request. Try again.") from err
