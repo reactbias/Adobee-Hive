@@ -1,0 +1,197 @@
+{
+  "hive": "0.1",
+  "id": "hive:hub.basel.swiss/hotel-krafft@example.com",
+  "seq": 47,
+  "updated": "2026-10-31T09:12:04Z",
+  "kind": "business",
+  "name": "Hotel Krafft Basel",
+  "description": "26 rooms on the Rhine in Basel, since 1872. Quiet side rooms, dogs welcome, 180 m from the water.",
+  "rating": 43,
+  "rating_count": 18,
+  "rating_scale": {
+    "min": 0,
+    "max": 50,
+    "unit": "tenths of a star",
+    "shown_as": "4.3 / 5"
+  },
+  "contact": {
+    "email": "hallo@hotelkrafft.example",
+    "phone": "+41 61 690 91 30",
+    "mobile": "",
+    "address": "Rheingasse 12, 4058 Basel, CH",
+    "mcp": "https://hotelkrafft.example/mcp"
+  },
+  "contact_sharing": {
+    "mobile": "confirm"
+  },
+  "identity": {
+    "name": "Hotel Krafft Basel",
+    "tagline": "26 rooms on the Rhine, since 1872",
+    "locales": [
+      "de-CH",
+      "en",
+      "fr"
+    ],
+    "place": {
+      "locality": "Basel",
+      "country": "CH",
+      "geo": [
+        47.5596,
+        7.5886
+      ]
+    },
+    "timezone": "Europe/Zurich"
+  },
+  "keys": {
+    "sig": {
+      "alg": "ed25519",
+      "pub": "b3f1c2a0e4d5..."
+    },
+    "kex": {
+      "alg": "x25519",
+      "pub": "a1b2c3d4e5f6..."
+    }
+  },
+  "links": [
+    {
+      "rel": "website",
+      "href": "https://hotelkrafft.example",
+      "proof": "dns-txt",
+      "verified": "2026-10-20T11:02:00Z"
+    },
+    {
+      "rel": "instagram",
+      "href": "https://instagram.com/hotelkrafft",
+      "proof": "rel-me",
+      "verified": "2026-10-20T11:04:12Z"
+    },
+    {
+      "rel": "maps",
+      "href": "https://maps.example/place/krafft",
+      "proof": "none",
+      "verified": null
+    }
+  ],
+  "skills": [
+    {
+      "tag": "hospitality.lodging",
+      "level": "primary"
+    },
+    {
+      "tag": "hospitality.dining",
+      "level": "secondary"
+    },
+    {
+      "tag": "events.small-venue",
+      "level": "secondary",
+      "note": "Rhine-side terrace, max 40"
+    }
+  ],
+  "offers": [
+    {
+      "id": "room-booking",
+      "title": "Room reservation",
+      "modality": "in-person",
+      "price": {
+        "from": 165,
+        "to": 310,
+        "currency": "CHF",
+        "unit": "night"
+      },
+      "availability": "mcp://hub.basel.swiss/krafft/availability",
+      "endpoint": "https://hotelkrafft.example/mcp",
+      "terms": "Free cancellation 48h. No prepayment."
+    },
+    {
+      "id": "terrace-event",
+      "title": "Small event on the Rhine terrace",
+      "price": {
+        "from": 800,
+        "currency": "CHF",
+        "unit": "evening"
+      },
+      "endpoint": "https://hotelkrafft.example/mcp"
+    }
+  ],
+  "needs": [
+    {
+      "id": "frontdesk-spring",
+      "title": "Seasonal front-desk staff",
+      "window": "2027-03-01/2027-05-31",
+      "requires": [
+        "de",
+        "en"
+      ],
+      "modality": "on-site",
+      "budget": {
+        "amount": 4800,
+        "currency": "CHF",
+        "unit": "month"
+      }
+    }
+  ],
+  "structure": [
+    {
+      "path": "rooms/",
+      "summary": "Per-room notes: aspect, noise, bed config, quirks",
+      "files": 26,
+      "visibility": "public-summary",
+      "digest": "sha256:9f2a..."
+    },
+    {
+      "path": "rates/",
+      "summary": "Seasonal rate cards and package rules",
+      "files": 8,
+      "visibility": "public-summary",
+      "digest": "sha256:1c88..."
+    },
+    {
+      "path": "house/",
+      "summary": "House rules, breakfast, accessibility, pets",
+      "files": 5,
+      "visibility": "public",
+      "digest": "sha256:44de..."
+    },
+    {
+      "path": "guests/",
+      "summary": "Returning-guest preferences",
+      "files": 211,
+      "visibility": "private",
+      "digest": null
+    }
+  ],
+  "endpoints": {
+    "mcp": "https://hotelkrafft.example/mcp",
+    "handshake": "https://hub.basel.swiss/api/handshake",
+    "contact": "agent://hub.basel.swiss/hotel-krafft@example.com"
+  },
+  "policy": {
+    "handshake": "auto-accept:verified-hub",
+    "human_in_loop": "bookings > CHF 2000, all event contracts",
+    "rate_limit": "60 queries/hour/agent",
+    "data": "No guest data leaves the vault. Booking payloads retained 90 days."
+  },
+  "attestations": [
+    {
+      "by": "hive:hub.basel.swiss/basel-hotelverband@example.com",
+      "claim": "Verified member, Basel hotel association, since 2019",
+      "issued": "2026-01-15T00:00:00Z",
+      "sig": "ed25519:7c4b..."
+    },
+    {
+      "by": "hive:hub.zurich.swiss/anna-weber@example.com",
+      "claim": "Booked and stayed, 2 nights, Sept 2026. Accurate listing.",
+      "receipt": "sha256:ee01...",
+      "countersigned": true,
+      "sig": "ed25519:02ad..."
+    }
+  ],
+  "provenance": {
+    "generator": "claudeconnect-card/0.1",
+    "vault_digest": "sha256:b7714c...",
+    "policy": "claudeconnect/privacy-policy.md@sha256:3301...",
+    "built_by": "claude-opus-5",
+    "human_reviewed": "2026-10-30T18:40:00Z"
+  },
+  "sig": "ed25519:f10a9c3b..."
+}

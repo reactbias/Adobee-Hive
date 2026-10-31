@@ -21,6 +21,7 @@ Open a GitHub issue without exploit details and we will contact you, or tell a T
 | The traveller's money | An agent booking on its own, an edited or replayed approval | The agent holds `hive_book` server-side under a one-time id until the traveller approves; approval books exactly what was held, once. The demo's rules-off run stores no hold, so nothing it shows can be approved | `agent.approve` |
 | The traveller's agent | Prompt injection through card text | Every tool result is scanned before the agent reads it, and text addressed to agents (EN, DE, FR, IT rules) is withheld, shown to the human and logged for the card's owner; the agent verifies each card against the owner's pinned key itself instead of trusting the source's claim, and never pins keys from extra sources; tool results are passed as data and the system prompt says so; every tool call is shown to the human; a separate verifier agent checks the pick against the signed card, and can only warn, never book | `injection.py`, `agent.HiveConnections`, `agent.SYSTEM`, `second_opinion.py`, the agent trace |
 | The demo's API budgets | Someone draining the Claude or OpenAI key | Calls that may reach either are rate-limited per client IP and in total (`LLM_CALLS_PER_CLIENT_HOUR`, `LLM_CALLS_TOTAL_HOUR`); agent turns are capped | `guard.py`, `AGENT_MAX_TURNS`, `POST /api/ask` |
+| Running the hub | Someone else editing the blocklist, admitting entities, or brute-forcing the way in | Admin writes need `X-Admin-Token`: either the static `ADMIN_TOKEN` for curl and CI, or a session token a person gets by posting `ADMIN_PASSWORD` to `/api/admin/login`. Neither configured means every admin write is refused (503), never open. The password is compared with `secrets.compare_digest`, never logged, and has no default in the repo. The login endpoint is limited to 5 attempts per client IP and 30 for the whole backend per 15 minutes, and a lockout says how many seconds to wait. Session tokens are signed with the password plus a per-process secret, expire after `ADMIN_SESSION_MINUTES`, and die on a restart, a password change or a sign-out | `guard.require_admin`, `guard.admin_logins`, `main.admin_login` |
 | Demo data | Wiping or flooding it | Reset needs `X-Demo-Token` when `DEMO_RESET_TOKEN` is set; simulated traffic is rate-limited | `main.py` |
 | The server | Oversized or malformed input | Request models bound every string and count; dates, stay length (30 nights), guests (20) and text sizes are checked in the Hive core, so MCP calls get the same checks as REST | `main.py`, `hive.py` |
 | The database | SQL injection, file access | Parameterised queries only; DuckDB runs with `enable_external_access=false` | `db.py` |
@@ -61,6 +62,17 @@ The container runs as a non-root user. Dependencies are pinned to exact versions
   availability or relevance from outside, so a peer's `local_relevance` is taken as given and discounted by hub
   trust. That is what makes hub trust, and the incentive behind it, load-bearing.
 - **Rate limits** are kept in memory, which is fine because the backend runs as one instance (DuckDB on local disk).
+  They also reset on a restart, so a redeploy clears a lockout.
+
+- **The admin login's global cap is a denial-of-service lever.** 30 guesses per 15 minutes for the whole backend
+  stops a botnet with a fresh IP per attempt from grinding the password, and the same cap lets that botnet keep the
+  real operator out. The static `ADMIN_TOKEN` is the way back in while it is locked, and it is not rate-limited.
+- **An admin session token is a bearer token.** Anything that can read it — a browser extension, a shoulder, a
+  copied URL if someone pastes one — can administer the hub until it expires. It is kept in `sessionStorage` for the
+  tab only, never `localStorage`, and the panel signs out on a 401 or 403. There is no CSRF token, which is safe only
+  because the credential travels in a custom header rather than a cookie.
+- **The password is one shared secret for the whole hub**, like the owner token: no operator accounts, so no audit
+  trail of who admitted or refused what beyond `decided_by: "admin"`.
 - **Open by design.** Reading cards, searching, checking availability and booking are public, for agents and people
   alike, as on any booking site. CORS is `*` for the same reason. MCP host-header checks are off because the host
   serves the public domain; the MCP surface exposes only these public actions.

@@ -361,7 +361,11 @@ def test_discovery_lists_a_person_and_still_guards_their_contact(client):
 
     # Consent, unchanged: a person card carries no contact details at all (domains/hr.py), the
     # result cannot invent any, and an introduction has to be asked for and waits for the person.
-    assert mira["contact"] == {} and "contact" not in hive.get_card("person-mira")
+    # The contact block exists — every entity carries one so nothing downstream has to guard a
+    # lookup — but it holds no values. An empty string reads as "not published", which is the
+    # guarantee and the guard at once: the keys are predictable, the person's details are not here.
+    assert all(not v for v in mira["contact"].values()), f"a person's details leaked: {mira['contact']}"
+    assert all(not v for v in (hive.get_card("person-mira").get("contact") or {}).values())
     assert sharing.resolve(hive.get_card("person-mira").get("sharing"), None) == sharing.CONFIRM
     assert hub.connect("acme", "person-mira")["state"] == connections.REQUESTED  # not open, asked
     assert hr.request_intro("person-mira", "Acme", "Can we talk?")["status"] == "pending_consent"

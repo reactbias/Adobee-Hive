@@ -1,13 +1,37 @@
 import { useEffect, useState } from "react";
-import { api, type Health } from "./api";
+import { api, chosenHub, setChosenHub, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
+import AdminPanel from "./panels/AdminPanel";
+import InstanceFinder from "./panels/InstanceFinder";
 import B6Bee from "./components/B6Bee";
 import { CHAPTERS } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 
+const search = () => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+/** `?admin` opens the hub's own panel instead of the app. Nothing on the public page links to it. */
+const adminMode = () => search().has("admin");
+/**
+ * `?hub=<id>` picks a Hive and skips the instance finder, so the pitch runbook can open straight into a booking
+ * run. `?hub` on its own means the same thing for whatever this backend serves.
+ */
+const hubFromUrl = () => (search().has("hub") ? search().get("hub") || "local" : "");
+
+/**
+ * Forget the hub and go back to the finder with nothing selected. `?hub=` has to come out of the address too:
+ * left in, a reload would re-apply it and bounce straight past the finder, which is exactly what it looked like
+ * when Change Hive seemed to do nothing.
+ */
+function forgetHub() {
+  setChosenHub("");
+  const params = search();
+  params.delete("hub");
+  const query = params.toString();
+  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+}
+
 // One page in three chapters. The header names them, says whether the AI is live, and switches the language.
-function Header() {
+function Header({ onChangeHub }: { onChangeHub?: () => void }) {
   const { t, locale, setLocale } = useI18n();
   const [health, setHealth] = useState<Health | null | undefined>(undefined);
   useEffect(() => {
@@ -52,6 +76,11 @@ function Header() {
           ))}
         </nav>
         <div className="nav-end">
+          {onChangeHub && (
+            <button className="quiet nav-hub" onClick={onChangeHub}>
+              {t("finder.change")}
+            </button>
+          )}
           {mode}
           <div className="locales" role="group" aria-label={t("nav.language")}>
             {LOCALES.map((l: Locale) => (
@@ -74,11 +103,41 @@ function Header() {
 }
 
 export default function App() {
+  // Which Hive the app runs against. The finder sets it; `?hub=` in the address skips the finder entirely.
+  const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
+  const [admin] = useState(adminMode);
+
+  if (admin)
+    return (
+      <>
+        <Header />
+        <main>
+          <AdminPanel onLeave={() => (window.location.search = "")} />
+        </main>
+      </>
+    );
+
+  if (!hub)
+    return (
+      <>
+        <Header />
+        <main>
+          <InstanceFinder onPick={setHub} />
+        </main>
+      </>
+    );
+
   return (
     <>
-      <Header />
+      <Header
+        onChangeHub={() => {
+          forgetHub();
+          setHub("");
+        }}
+      />
       <main>
-        <TravellerAgent />
+        {/* Keyed by the hub, so picking a different one starts the page over instead of layering on the last. */}
+        <TravellerAgent key={hub} />
       </main>
       <B6Bee />
     </>

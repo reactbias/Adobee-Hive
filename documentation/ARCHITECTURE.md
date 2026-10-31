@@ -62,6 +62,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
+| `lib/provenance.ts`, `lib/calibration.ts` | Which hub a result came from (origin first, answering hub last, so a relay is visible) and how a hub's calibration reads (lower is better; negative means it undersold what it offered) |
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
@@ -72,8 +73,20 @@ jumps to: `#travel`, the agent network (a room or any business, one chat); `#bus
 side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
 page appears or when a panel in `code/frontend/src/panels` has no row here.
 
+Two screens sit beside that story rather than inside it, because neither belongs to the traveller:
+
+- **The instance finder** is what a first visit lands on. You pick a Hive before you use one, which is what a
+  federated directory means. The choice is remembered in `sessionStorage` for the tab, and `?hub=<id>` in the
+  address skips the screen entirely — that is what the pitch runbook uses, so nothing stands between the driver
+  and the booking run at 0:15.
+- **The admin panel** opens only with `?admin`. Nothing on the public page links to it. It asks for the hub's
+  password, and the session token it gets back lives in `sessionStorage` for the tab only.
+
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
+| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `NetworkPanel.tsx` | after 2, always (`#network`) | The live node view of the hub network: this hub in the centre of a honeycomb, each configured peer a cell around it with an edge coloured by its calibration, a blocked peer still drawn and visibly cut. Four counts above it, the same hubs as rows below, and the rows alone on a phone. Open to anyone, built from `GET /api/admin/overview` and `/api/admin/neighbours`, with names and entity counts from `/api/hub/directory` where it is deployed; a hub we have not asked reads as unknown, never as zero. Polls every 10 s, only while on screen |
+| `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use, instances.social style: what each hub carries, whether it is accepting members, its admission policy, how many entities, and how closely its published ratings matched what people found. Deliberately a plain first pass, and it says so on screen. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
 | `DemandPanel.tsx` | 2, business | The Demand map tab: what Basel asked for that nobody offers; simulates a busy week with `?demo` |
 | `OwnerPanel.tsx` | 2, business | The whole business chapter: the change box in the brief; in the panel, the owner studio (the booking just made, what agents asked for, the diff, sign and publish, the new version live) and the demand map as a tab; the tamper test with `?demo` |
@@ -124,6 +137,8 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
 | `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
+| `POST /api/admin/login` | Exchange the hub's `ADMIN_PASSWORD` for a short-lived session token, so a person can administer the hub from a browser. A refusal says nothing about the password; a lockout says when to try again | rate limit per client IP **and** in total, fails closed |
+| `POST /api/admin/logout` | End this session token | `X-Admin-Token` |
 | `GET /api/hub/registration` | The admission policy and the exact document to send | — |
 | `POST /api/hub/register` | Apply to join. A refusal is 200 with `state: rejected`, not a 4xx | rate limit |
 | `GET /api/hub/register/{application_id}` | Check on an application | — |
@@ -135,7 +150,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |
 | `GET /api/admin/blocklist` | Everything this hub has shut out; readable without a token on purpose | — |
-| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token`, fails closed |
+| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token` (static or a session token), declared so `/docs` shows a box, fails closed |
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
