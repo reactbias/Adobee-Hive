@@ -46,6 +46,9 @@ const fr: Record<Key, string> = {
   "owner.bookings.guest": "Client",
   "owner.bookings.dates": "Dates",
   "owner.bookings.empty": "Pas encore de réservation.",
+  "owner.handoffs.title": "Transmis à votre site",
+  "owner.handoffs.empty": "Rien de transmis pour l’instant.",
+  "owner.week.handedOff": "transmis à votre site",
 
   "card.tamper.eyebrow": "Des faits signés",
   "card.tamper.title": "Un scraper peut-il falsifier cette carte ?",

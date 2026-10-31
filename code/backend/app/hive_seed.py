@@ -182,8 +182,16 @@ def reset() -> None:
 
 
 def seed_if_empty() -> None:
-    """Seed only when the Hive has no cards yet, so restarts keep the data."""
+    """Seed an empty Hive; in one that has data, publish only the seed cards it does not have yet.
+
+    A persisted Hive keeps its bookings and owner edits across restarts, so cards already there are never touched.
+    A card added to the seed later (a new example business) still arrives on the next start.
+    """
     with db.cursor() as cur:
-        empty = cur.execute("SELECT count(*) FROM hive_cards").fetchone()[0] == 0
-    if empty:
+        have = {row[0] for row in cur.execute("SELECT id FROM hive_cards").fetchall()}
+    if not have:
         run()
+        return
+    for card in CARDS + examples.CARDS:
+        if card["id"] not in have:
+            hive.publish(copy.deepcopy(card))

@@ -237,6 +237,8 @@ export interface OwnerOverview {
     status: string;
     agent: string;
   }[];
+  /** What agents handed off to the business's own site after the person's yes: the item, never who. */
+  handoffs: { item: string; created_at: string }[];
   missed_demand: { detail: string; times: number }[];
   last_7_days: Record<string, number>;
   // Standing requests this card could win by an edit: counts and budgets only, never a single traveller.

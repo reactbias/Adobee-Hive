@@ -5,7 +5,7 @@ import Composer from "../components/Composer";
 import TrustBadge from "../components/TrustBadge";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
-import { chf, stay } from "../lib/format";
+import { chf, day, stay } from "../lib/format";
 import { demoMode } from "../lib/demo";
 import { readable } from "../lib/diff";
 import DemandPanel from "./DemandPanel";
@@ -131,8 +131,16 @@ export default function OwnerPanel({
   const card = overview?.card;
   const name = card?.name ?? cards.find((c) => c.id === cardId)?.name ?? "Hotel Rheinblick";
   const unclaimed = card?.trust.claimed === false;
+  // Nothing to book here (no rooms, no bookings): its yes-moment is a hand-off to the business's own site.
+  const handsOff = !!overview && !overview.card.units?.length && !overview.bookings.length;
   const week = overview
-    ? WEEK.map(([label, kinds]) => [label, kinds.reduce((n, k) => n + (overview.last_7_days[k] ?? 0), 0)] as const)
+    ? WEEK.map(
+        ([label, kinds]) =>
+          [
+            handsOff && label === "owner.week.booked" ? ("owner.week.handedOff" as Key) : label,
+            kinds.reduce((n, k) => n + (overview.last_7_days[k] ?? 0), 0),
+          ] as const,
+      )
     : [];
   // Waiting agents first: an edit wins them now. Then what agents were turned away for this week.
   const asks: Ask[] = [
@@ -279,31 +287,49 @@ export default function OwnerPanel({
                 </dl>
               )}
 
-              <section className="stack">
-                <h3>{t("owner.bookings.title")}</h3>
-                {overview?.bookings.length ? (
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>{t("owner.bookings.guest")}</th>
-                        <th>{t("owner.bookings.dates")}</th>
-                        <th className="end">CHF</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {overview.bookings.map((b) => (
-                        <tr key={b.id}>
-                          <td>{b.guest_name}</td>
-                          <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
-                          <td className="end">{b.total_chf}</td>
-                        </tr>
+              {handsOff ? (
+                <section className="stack">
+                  <h3>{t("owner.handoffs.title")}</h3>
+                  {overview.handoffs?.length ? (
+                    <ul className="rows compact">
+                      {overview.handoffs.map((h, i) => (
+                        <li key={`${h.created_at}/${i}`} className="spread">
+                          <span>{h.item}</span>
+                          <span className="muted small nowrap">{day(h.created_at.slice(0, 10), intl)}</span>
+                        </li>
                       ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <p className="muted">{t("owner.bookings.empty")}</p>
-                )}
-              </section>
+                    </ul>
+                  ) : (
+                    <p className="muted">{t("owner.handoffs.empty")}</p>
+                  )}
+                </section>
+              ) : (
+                <section className="stack">
+                  <h3>{t("owner.bookings.title")}</h3>
+                  {overview?.bookings.length ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>{t("owner.bookings.guest")}</th>
+                          <th>{t("owner.bookings.dates")}</th>
+                          <th className="end">CHF</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overview.bookings.map((b) => (
+                          <tr key={b.id}>
+                            <td>{b.guest_name}</td>
+                            <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
+                            <td className="end">{b.total_chf}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="muted">{t("owner.bookings.empty")}</p>
+                  )}
+                </section>
+              )}
 
               <section className="stack">
                 <h3 id="owner-asked">{t("owner.asked.title")}</h3>
