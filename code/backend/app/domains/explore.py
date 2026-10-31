@@ -198,7 +198,15 @@ def ask(question: str, mood: str | None = None, today: date | None = None) -> di
             scored.append((score, card, item, why))
 
     scored.sort(key=lambda s: -s[0])
-    picked = scored[: pref["limit"]]
+    limit = pref["limit"]
+    if len(named) > 1:  # several businesses of the kind asked for (five taxis): each one's best item first
+        best = {}
+        for entry in scored:
+            best.setdefault(entry[1]["id"], entry)
+        firsts = list(best.values())
+        scored = firsts + [entry for entry in scored if entry not in firsts]
+        limit = max(limit, len(firsts))
+    picked = scored[:limit]
     replies: dict[str, dict[str, Any]] = {}
     for _, card, item, why in picked:
         reply = replies.setdefault(card["id"], _reply_head(card))
@@ -321,6 +329,8 @@ def phrase(result: dict[str, Any]) -> dict[str, Any]:
     if not config.LLM_ENABLED or not result["replies"]:
         return result
     data = {k: result[k] for k in ("question", "preference", "replies", "excluded", "budget_chf", "rate")}
+    if not result["preference"]["mood"]:
+        del data["preference"]  # no mood chosen: nothing to honour, and nothing for the model to name
     data["pending"] = bool(result["pending"])
     try:
         out = llm.structured(

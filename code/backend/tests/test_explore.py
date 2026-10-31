@@ -131,3 +131,16 @@ def test_the_example_questions_work_in_four_languages(client):
     ):
         out = explore.ask(q, today=NOV)
         assert out["budget_chf"] == 500 and out["pending"] and out["replies"][0]["card_id"] == "x-bekenya", q
+
+
+def test_no_mood_is_not_described_as_one(client, monkeypatch):
+    seen = {}
+
+    def fake(system, user, schema, **kw):
+        seen["data"] = json.loads(user)
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(explore.config, "LLM_ENABLED", True)
+    monkeypatch.setattr(explore.llm, "structured", fake)
+    explore.phrase(explore.ask("What's going on at BaselHack this month?"))
+    assert "preference" not in seen["data"]
