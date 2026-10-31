@@ -6,11 +6,16 @@ import { I18nProvider } from "./i18n";
 import en from "./i18n/en";
 
 // The app is one page: the traveller's group chat, with everything else behind the same door. api.ts is mocked.
+//
+// A first visit now lands on the instance finder, because you pick a Hive before you use one. These tests
+// describe the app *after* a hub is chosen, so they set the choice the finder would have made; the finder's own
+// behaviour is at the bottom of this file and in panels/InstanceFinder.test.tsx.
 
 describe("the app", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
+    sessionStorage.setItem("adobee-hub", "local");
     vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
     vi.spyOn(api, "cards").mockResolvedValue([]);
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
@@ -100,6 +105,77 @@ describe("the app", () => {
     expect(screen.getByText(en["agent.test.eyebrow"])).toBeInTheDocument();
     screen.getByRole("tab", { name: en["business.tab.demand"] }).click();
     expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("offers an obvious way back to change hub", () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("button", { name: en["finder.change"] })).toBeInTheDocument();
+  });
+});
+
+// Pick a door before you walk through it. The finder must never stand between the pitch driver and a booking run,
+// so a remembered choice and `?hub=` both skip it.
+describe("the first screen", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+    window.history.replaceState(null, "", "/");
+    vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
+  });
+
+  it("is the instance finder when no hub has been chosen", async () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+  });
+
+  it("is skipped once a hub has been chosen in this tab", () => {
+    sessionStorage.setItem("adobee-hub", "local");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+  });
+
+  it("is skipped by ?hub= in the address, which is what the pitch runbook uses", () => {
+    window.history.replaceState(null, "", "/?hub=local");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("opens the hub's own panel with ?admin, and asks for the password", () => {
+    window.history.replaceState(null, "", "/?admin");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
+    expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
     window.history.replaceState(null, "", "/");
   });
 });

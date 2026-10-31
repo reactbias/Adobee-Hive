@@ -72,8 +72,19 @@ jumps to: `#travel`, the agent network (a room or any business, one chat); `#bus
 side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
 page appears or when a panel in `code/frontend/src/panels` has no row here.
 
+Two screens sit beside that story rather than inside it, because neither belongs to the traveller:
+
+- **The instance finder** is what a first visit lands on. You pick a Hive before you use one, which is what a
+  federated directory means. The choice is remembered in `sessionStorage` for the tab, and `?hub=<id>` in the
+  address skips the screen entirely — that is what the pitch runbook uses, so nothing stands between the driver
+  and the booking run at 0:15.
+- **The admin panel** opens only with `?admin`. Nothing on the public page links to it. It asks for the hub's
+  password, and the session token it gets back lives in `sessionStorage` for the tab only.
+
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
+| `AdminPanel.tsx` | `?admin` only (`#admin`) | Run the hub: sign in with its password, then the overview (the three stores counted, and the settings form generated from the fields `GET /api/admin/settings` returns), the signup queue (admit, or refuse with a required reason), the blocklist (add with a required reason, lift) and the neighbours with their calibration. A 401 or 403 returns to the password form; a 404 from an endpoint this hub does not serve yet says so instead of failing |
+| `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use, instances.social style: what each hub carries, whether it is accepting members, its admission policy, how many entities, and how closely its published ratings matched what people found. Deliberately a plain first pass, and it says so on screen. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
 | `DemandPanel.tsx` | 2, business | The Demand map tab: what Basel asked for that nobody offers; simulates a busy week with `?demo` |
 | `OwnerPanel.tsx` | 2, business | The whole business chapter: the change box in the brief; in the panel, the owner studio (the booking just made, what agents asked for, the diff, sign and publish, the new version live) and the demand map as a tab; the tamper test with `?demo` |

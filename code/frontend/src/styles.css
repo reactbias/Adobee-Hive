@@ -2747,3 +2747,122 @@ button.self-start {
     grid-column: 3;
   }
 }
+
+/* ---------- The instance finder, and the hub admin panel ---------- */
+
+/* Deliberately plain: a readable column of rows on paper, nothing laid out cleverly, nothing that moves. It is a
+   first pass, and it should look like one. Paper, ink and the one accent, as everywhere else. */
+.finder {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s7);
+  display: grid;
+  gap: var(--s4);
+}
+.finder h1,
+.admin h1,
+.admin-signin h1 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0;
+}
+.finder-draft {
+  margin: 0;
+  padding: var(--s3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  background: var(--sunk);
+}
+.finder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.finder-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--line);
+}
+.finder-row h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.finder-row p {
+  margin: 0;
+}
+.finder-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  font-size: var(--t-sm);
+}
+.nav-hub {
+  min-height: 32px;
+  padding: 0 var(--s3);
+}
+
+/* The admin panel: one column, forms and lists, no chapter frame. Operators, not visitors. */
+.admin,
+.admin-signin {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s7);
+}
+.admin-signin {
+  display: grid;
+  gap: var(--s3);
+  max-width: 24rem;
+}
+.admin-signin label,
+.admin-card label,
+.admin-fields label {
+  font-size: var(--t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.admin-head {
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.admin-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: var(--s4);
+}
+.admin-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.admin-fields input,
+.admin-fields select {
+  max-width: 18rem;
+}
+.admin-fields li,
+.rows.tight li {
+  align-items: flex-start;
+}
+
+@media (max-width: 480px) {
+  .finder-row button,
+  .admin-fields input,
+  .admin-fields select {
+    width: 100%;
+    max-width: none;
+  }
+}
