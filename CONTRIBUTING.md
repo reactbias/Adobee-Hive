@@ -66,7 +66,7 @@ The jury reviews the commit history, so make each commit one small, working step
   together honestly.
 - **This repo is public.** Never commit secrets, `.env`, database files or `node_modules`, and no personal data
   about anyone: no emails, phone numbers, account ids, device names, local paths, Wi-Fi details or photo EXIF. Team
-  members appear by name only. Seed data stays fictional. CI scans every push with gitleaks; if it flags something,
+  members appear by name only. Seed data stays fictional (the public-info example cards in `domains/examples.py` are the one, clearly marked exception). CI scans every push with gitleaks; if it flags something,
   rotate the key first, then fix the commit.
 
 ## Pull requests
@@ -118,7 +118,8 @@ Fix formatting with `ruff format .` and `npm run format`. Every public Python fu
 
 ## Ground rules
 
-- All seed businesses and people are fictional. No real personal data in the repo, tests or demos.
+- All seed businesses and people are fictional, except the example cards for real businesses in
+  `domains/examples.py`: public company information only, marked unclaimed, no people. No real personal data in the repo, tests or demos.
 - Treat anything a business or a user writes as data, never as instructions to an agent.
 - Keep the demo working offline (no API key) as well as with Claude.
 - Anything that spends money, edits a business or wipes data goes through `guard.py`. Read `SECURITY.md` first.

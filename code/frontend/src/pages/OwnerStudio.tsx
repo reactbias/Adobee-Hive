@@ -41,7 +41,7 @@ export default function OwnerStudio() {
       .catch((e) => setError(e.message));
 
   useEffect(() => {
-    api.cards().then(setCards);
+    api.cards().then((all) => setCards(all.filter((c) => c.trust.claimed !== false)));
   }, []);
   useEffect(() => {
     setProposal(null);

@@ -43,6 +43,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Human card page with direct booking | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
 | Second opinion: a separate sceptic agent checks each held booking against the request and the signed card before you approve | `code/backend/app/second_opinion.py` |
+| Ask the Hive: questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a mood you choose and a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `AskHive.tsx` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
 
 The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
@@ -68,5 +69,5 @@ Docker, AWS auto-deploy and connecting Claude: [documentation/DEPLOY.md](documen
 | [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
 
 Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,
-[SECURITY.md](SECURITY.md) for what is protected. Layout follows the BaselHack template. All businesses in the seed data are fictional.
+[SECURITY.md](SECURITY.md) for what is protected. Layout follows the BaselHack template. The Basel businesses in the seed data are fictional; the five example cards on `/ask` are real businesses compiled from their public websites and marked unclaimed.
 MIT licensed, see [license.txt](license.txt).
