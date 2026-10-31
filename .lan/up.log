@@ -1,35 +1,34 @@
 This machine: 192.168.21.123
 
 Starting hubs...
-  basel    http://192.168.21.123:8424
-  zurich   http://192.168.21.123:8425
+  basel    http://192.168.21.123:8420
+  zurich   http://192.168.21.123:8421
 
 Seeding the fake vaults through the real signup endpoint...
-  ✓ cafe-rhein       admitted  2 files  admitted automatically: this hub admits anything that passes its check
-  ✓ hotel-krafft     admitted  3 files  admitted automatically: this hub admits anything that passes its check
+  · cafe-rhein       pending   2 files  every application here is read by a person before it is admitted
+  · hotel-krafft     pending   3 files  every application here is read by a person before it is admitted
 
-2/2 on http://127.0.0.1:8424
-  ✓ grid-ops         admitted  2 files  admitted automatically: this hub admits anything that passes its check
-  ✓ lena-hofmann     admitted  3 files  admitted automatically: this hub admits anything that passes its check
-  ✓ pension-limmat   admitted  3 files  admitted automatically: this hub admits anything that passes its check
+2/2 on http://127.0.0.1:8420
+  · grid-ops         pending   2 files  every application here is read by a person before it is admitted
+  · lena-hofmann     pending   3 files  every application here is read by a person before it is admitted
+  · pension-limmat   pending   3 files  every application here is read by a person before it is admitted
 
-3/3 on http://127.0.0.1:8425
+3/3 on http://127.0.0.1:8421
 
-Building the app against http://192.168.21.123:8424 ...
-./lan.sh: line 90: ../../.lan/app.pid: No such file or directory
+Building the app against http://192.168.21.123:8420 ...
 
 ────────────────────────────────────────────────────────────
   Sign up here, from any browser on this network:
 
-      http://192.168.21.123:8426
+      http://192.168.21.123:8424
 
   Laptop or phone, no install. Both hubs are on this machine.
 ────────────────────────────────────────────────────────────
 
-  hub directory   http://192.168.21.123:8424/api/hub/directory
-  what it asks    http://192.168.21.123:8424/api/hub/registration
-  API docs        http://192.168.21.123:8424/docs
-  second hub      http://192.168.21.123:8425
+  hub directory   http://192.168.21.123:8420/api/hub/directory
+  what it asks    http://192.168.21.123:8420/api/hub/registration
+  API docs        http://192.168.21.123:8420/docs
+  second hub      http://192.168.21.123:8421
   logs            .lan/*.log
 
   Tell someone on another device to run:  ./lan.sh check  (or just open the URL)

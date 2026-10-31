@@ -508,8 +508,14 @@ def discover(
     terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
     matches, excluded, events = [], [], []
     cards = list_cards(kind) if kind else [c for k in STAY_KINDS for c in list_cards(k)]
+    # An admin block has to bite here, on the path the API actually calls. Enforcing it only in
+    # the hub façade left a blocked business still listed in every ordinary search, which is a
+    # block that does nothing — found by blocking one and watching it come back.
+    from . import blocklist
+
+    blocked = blocklist.blocked_entities()
     for card in cards:
-        if card["kind"] in NOT_DISCOVERABLE:
+        if card["kind"] in NOT_DISCOVERABLE or card["id"] in blocked:
             continue
         found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
         reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]

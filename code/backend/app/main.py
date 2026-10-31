@@ -73,7 +73,13 @@ app.mount("/mcp", mcp_app)
 def _hive_call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except (hive.HiveError, hub.HubError, connections.ConnectionError_, blocklist.BlockError) as err:
+    except (
+        hive.HiveError,
+        hub.HubError,
+        connections.ConnectionError_,
+        blocklist.BlockError,
+        registration.RegistrationError,
+    ) as err:
         raise HTTPException(400, str(err)) from err
 
 
