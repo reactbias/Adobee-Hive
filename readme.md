@@ -5,6 +5,16 @@
 BaselHack 2026, Team B6, for Adobe's challenge **The Post-Website Business**: how does a local hotel, café or shop
 stay found, trusted and bookable when its first visitor is an AI agent, not a person on a website?
 
+## Links
+
+| What | Where |
+| --- | --- |
+| Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · [/agent](https://reactbias.github.io/Adobee-Hive/agent) · [/ask](https://reactbias.github.io/Adobee-Hive/ask) · [/owner](https://reactbias.github.io/Adobee-Hive/owner) · [/demand](https://reactbias.github.io/Adobee-Hive/demand) |
+| Live backend | Render URL, added here once the service is live ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)); then `<backend>/api/health`, `<backend>/docs`, `<backend>/mcp/` |
+| Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
+| Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
+| Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
+
 ## The next guest is an agent
 
 The website was the front door. Then platforms took it. Now agents walk in, and today they read whatever they
