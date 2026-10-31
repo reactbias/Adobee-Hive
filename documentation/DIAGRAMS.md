@@ -104,6 +104,7 @@ flowchart TB
   SEM[semantic.py<br/>offline similarity · optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
+  FLD[folders.py<br/>two agents link their folders: link · grant · read]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -123,6 +124,8 @@ flowchart TB
   REST --> HUB
   MCP --> HUB
   HUB --> CNX
+  HUB --> FLD
+  CNX --> FLD
   HUB --> SHR
   REST --> ADM
   ADM --> BLK
@@ -472,6 +475,60 @@ A peer that has genuinely never been asked carries `last_asked: null`, and the r
 pretending. One that answered and has since gone quiet keeps the name and count it gave, marked stale, because an
 answer from two minutes ago is more use than no answer at all — as long as the row admits how old it is.
 
+## 7. Two folders link, and only then is anything booked
+
+The index is public and says the *shape* of a business: paths, sizes, digests, never a byte of the contents. So
+between "found you" and "booked you" there is a step of its own, and it is the one the whole product rests on.
+[folders.py](../code/backend/app/folders.py) owns it, in two layers that are deliberately not one layer:
+
+- **The link** is handle to handle, and carries no content at all. What it unlocks is the *manifest*: a linked
+  peer gets to see that the `shared` files exist, which the Card never said. `private` and `hidden` paths are
+  counted and never named — listing a file in order to say it is secret leaks its existence, so a refused grant
+  says the same words for a hidden file as for a file that was never there.
+- **A grant** is per path, and is the only thing that makes bytes readable. It is the owner's to give. `public`
+  is the one case needing no grant: it is already published, and a grant for it would be theatre.
+
+That is the shape [ClaudeConnect](https://github.com/bstadt/cc_daemon) already has — `add_friend` and
+`accept_friend_request` for the link, `add_recipient_to_file` for the grant, both over plain identity strings —
+which is why `LocalFolderLink` (in this process, over the folders in `testdata/vaults/`) and `CcFolderLink` (the
+real library) sit behind one protocol, chosen by `FOLDER_LINK`. The local one is the default and needs no key, no
+network and no new dependency; `/api/health` says which one is in use and, if the real one was asked for and
+could not be had, why the hub is running on the other.
+
+A connection is refused outright when there is no link, because a booking made without one is a booking made on
+what the index said rather than on what the two agents actually agreed.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
+sequenceDiagram
+  autonumber
+  participant AG as Traveller's agent
+  participant HUB as hub.py
+  participant FLD as folders.py
+  participant CNX as connections.py
+  participant OWN as The owner
+
+  AG->>HUB: hub_connect(requester, entity_id)
+  HUB->>FLD: request_link(requester, entity)
+  Note over FLD: a published, freely connectable Card<br/>is a standing yes; a `confirm` Card is not
+  FLD-->>HUB: link established, or requested
+  HUB->>CNX: request(..., folder_link=link)
+  CNX->>FLD: is this pair actually linked?
+  CNX-->>HUB: open (link established) · requested (link waiting)
+  OWN->>CNX: confirm
+  CNX->>FLD: accept_link — the owner's yes is the owner's yes
+  CNX-->>OWN: open, and the link now holds
+  AG->>FLD: manifest(entity, requester)
+  FLD-->>AG: public · public-summary · shared, and a count of what was withheld
+  OWN->>FLD: grant("entity/rates/2027-spring.md", requester)
+  AG->>FLD: read that one path
+  Note over AG,FLD: no link, or no grant → refused, in the same words either way
+```
+
+A connection row made before any of this existed carries no link, and nothing in the hub asks it for one: an old
+row can still be confirmed, scored and counted. The precondition is on making a new booking, not on reading the
+log of the bookings already made.
+
 ## Who works where
 
 The pictures double as a map of the lanes in [CONTRIBUTING.md](../CONTRIBUTING.md). Pick a box, open its file,
@@ -489,5 +546,6 @@ find its test.
 | Pick a Hive, run a hub | `guard.py`, `admin.py`, `InstanceFinder.tsx`, `AdminPanel.tsx` | `test_admin_login.py`, `InstanceFinder.test.tsx`, `AdminPanel.test.tsx`, `calibration.test.ts` |
 | Where a result came from | `federation.py`, `TraceParts.tsx`, `provenance.ts` | `test_federation.py`, `TraceParts.test.tsx`, `provenance.test.ts` |
 | The network, live | `admin.py`, `calibration.py`, `NetworkPanel.tsx`, `network.ts` | `test_hub_api.py`, `NetworkPanel.test.tsx`, `network.test.ts` |
+| Folders linked, then booked | `folders.py`, `connections.py` | `test_folders.py`, `test_hub_trust.py` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |

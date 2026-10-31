@@ -23,6 +23,7 @@ from . import (
     connections,
     db,
     federation,
+    folders,
     guard,
     hive,
     hive_seed,
@@ -50,6 +51,7 @@ async def lifespan(_: FastAPI):
     waiting.init()
     activity.init()
     blocklist.init()
+    folders.init()
     connections.init()
     registration.init()
     if config.SEED_ON_EMPTY:
