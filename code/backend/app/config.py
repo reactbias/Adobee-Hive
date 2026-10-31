@@ -85,3 +85,11 @@ HIVE_DESCRIPTION = os.getenv("HIVE_DESCRIPTION", "Signed cards for Basel busines
 # run after AGENT_TIMEOUT_S, and the offline planner answers instead.
 LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "25"))
 AGENT_TIMEOUT_S = float(os.getenv("AGENT_TIMEOUT_S", "60"))
+
+# Which similarity provider discovery ranks with: "offline" (always available: stems, a concept table and
+# character trigrams, no key and no network) or "embeddings" (only when a key is set). Empty picks the best
+# available, the way LLM_PROVIDER does. Read at call time, so a key set at runtime needs no restart.
+SEMANTIC_PROVIDER = os.getenv("SEMANTIC_PROVIDER", "")
+# The embedding model used when a key is configured. Vectors are cached per card version, so the corpus is
+# embedded when a card is published, never per query.
+OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")

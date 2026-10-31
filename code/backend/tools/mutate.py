@@ -41,6 +41,7 @@ SUITE = [
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_registration.py",
+    "tests/test_semantic.py",
 ]
 
 
@@ -147,6 +148,18 @@ CURATED: list[Mutant] = [
         "an unclaimed card reports itself as bookable, so a lead passes for a business that agreed",
         '"bookable": bool(card.get("units")) and trust["claimed"],',
         '"bookable": True,',
+    ),
+    Mutant(
+        "semantic.py",
+        "the similarity floor goes, so every card is a little bit like every query and ranking is noise",
+        "SIMILARITY_FLOOR = 0.25",
+        "SIMILARITY_FLOOR = 0.0",
+    ),
+    Mutant(
+        "semantic.py",
+        "the concept table stops being consulted, so semantic search is substring search again",
+        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in _concept_index().get(root, ())]',
+        "bag += []",
     ),
     Mutant(
         "calibration.py",
@@ -289,6 +302,7 @@ TARGETS = [
     "connections.py",
     "sharing.py",
     "registration.py",
+    "semantic.py",
 ]
 
 
