@@ -1,19 +1,5 @@
 /* Bundled under the SIL Open Font License; see public/fonts/README.md */
 @font-face {
-  font-family: "Instrument Serif";
-  src: url("/fonts/InstrumentSerif-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Instrument Serif";
-  src: url("/fonts/InstrumentSerif-Italic.woff2") format("woff2");
-  font-weight: 400;
-  font-style: italic;
-  font-display: swap;
-}
-@font-face {
   font-family: "Geist Mono";
   src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
   font-weight: 100 900;
@@ -45,8 +31,9 @@
   --good: #1f7a4d;
   --bad: #b3261e;
 
-  --display: "Instrument Serif", "Iowan Old Style", Palatino, Georgia, serif;
   --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Headlines use the text face, heavier: one voice, no italics. */
+  --display: var(--body);
   --brand: var(--body);
   --mono: "Geist Mono", "SF Mono", ui-monospace, Menlo, monospace;
 
@@ -54,10 +41,10 @@
   --t-sm: 0.875rem;
   --t-base: 1rem;
   --t-md: 1.125rem;
-  --t-lg: 1.625rem;
-  --t-xl: 2.25rem;
-  --t-2xl: clamp(2.5rem, 4.4vw, 3.75rem);
-  --t-3xl: clamp(3rem, 7vw, 5.75rem);
+  --t-lg: 1.375rem;
+  --t-xl: 1.75rem;
+  --t-2xl: clamp(1.75rem, 3vw, 2.5rem);
+  --t-3xl: clamp(2rem, 4vw, 3rem);
 
   --s1: 4px;
   --s2: 8px;
@@ -105,21 +92,21 @@ h1,
 h2,
 h3 {
   font-family: var(--display);
-  font-weight: 400;
-  line-height: 1.02;
-  letter-spacing: -0.012em;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   margin: 0;
   text-wrap: balance;
 }
 h1 {
   font-size: var(--t-3xl);
-  line-height: 0.96;
+  line-height: 1.1;
 }
 h1 em,
 h2 em,
 h3 em {
-  font-style: italic;
-  color: var(--accent);
+  font-style: normal;
+  color: inherit;
 }
 h2 {
   font-size: var(--t-2xl);
@@ -826,6 +813,7 @@ th.end {
 }
 .screen-head h1 {
   font-size: var(--t-2xl);
+  letter-spacing: -0.025em;
 }
 .screen-head .lead {
   font-size: var(--t-base);
@@ -853,7 +841,7 @@ th.end {
   min-width: 0;
 }
 .owner-grid .panel h2 {
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
 }
 .owner-grid .panel h2 .count {
   margin-left: var(--s2);
@@ -1049,7 +1037,7 @@ th.end {
 }
 .card-hit .card-row h3 {
   margin: 0;
-  font-size: var(--t-lg);
+  font-size: var(--t-md);
 }
 .card-row h3 button {
   all: unset;
@@ -2055,8 +2043,8 @@ button.mic.blocked {
   opacity: 0.9;
 }
 .stage-empty > p:first-of-type {
-  font-family: var(--display);
-  font-size: var(--t-xl);
+  font-weight: 600;
+  font-size: var(--t-lg);
   margin-bottom: var(--s3);
 }
 .stage-empty .dim {
@@ -2305,8 +2293,8 @@ button.mic.blocked {
 }
 .gate h3,
 .receipt h3 {
-  font-size: var(--t-xl);
-  margin-top: calc(-1 * var(--s3));
+  font-size: var(--t-lg);
+  margin-top: calc(-1 * var(--s2));
 }
 .gate .label,
 .receipt .label {
@@ -2860,9 +2848,9 @@ button.self-start {
   line-height: 1.5;
 }
 .msg-guest .msg-body p {
-  font-family: var(--display);
-  font-size: var(--t-lg);
-  line-height: 1.25;
+  font-weight: 500;
+  font-size: var(--t-md);
+  line-height: 1.4;
 }
 .msg-mirror .msg-body p {
   color: var(--stage-bad);
@@ -3268,9 +3256,8 @@ button.self-start {
 }
 .refused h4 {
   margin: 0;
-  font-family: var(--display);
-  font-weight: 400;
-  font-size: var(--t-lg);
+  font-weight: 600;
+  font-size: var(--t-md);
   color: var(--st-ink);
 }
 .refused ul {
@@ -3519,9 +3506,9 @@ button.self-start {
 .finder h1,
 .admin h1,
 .admin-signin h1 {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 400;
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
   line-height: 1.1;
   margin: 0;
 }
@@ -3585,9 +3572,9 @@ button.hive-filter[aria-pressed="true"]:hover:not(:disabled) {
 }
 .hive-head h3 {
   margin: 0;
-  font-family: "Instrument Serif", Georgia, serif;
+  font-family: var(--display);
   font-size: var(--t-lg);
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.1;
 }
 .hive-head p {
@@ -3643,9 +3630,9 @@ button.hive-filter[aria-pressed="true"]:hover:not(:disabled) {
   padding: var(--s5) var(--s4) var(--s7);
 }
 .onboard h1 {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 400;
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
   line-height: 1.1;
   margin: 0;
 }
@@ -3785,9 +3772,9 @@ button.onboard-back {
 }
 .onboard-outcome h2 {
   margin: 0;
-  font-family: "Instrument Serif", Georgia, serif;
+  font-family: var(--display);
   font-size: var(--t-lg);
-  font-weight: 400;
+  font-weight: 600;
 }
 .onboard-outcome .rows li {
   flex-direction: column;
@@ -3962,9 +3949,9 @@ button.onboard-back {
   margin: 0 auto;
 }
 .network h2 {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(1.6rem, 4vw, 2.25rem);
-  font-weight: 400;
+  font-family: var(--display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 600;
   line-height: 1.1;
   margin: 0;
 }
@@ -3983,7 +3970,7 @@ button.onboard-back {
   border-left: 2px solid var(--line-strong);
 }
 .net-counts strong {
-  font-family: "Instrument Serif", Georgia, serif;
+  font-family: var(--display);
   font-size: 2rem;
   font-weight: 400;
   line-height: 1;

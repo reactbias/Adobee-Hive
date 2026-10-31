@@ -66,7 +66,7 @@ spelling (ss, not ß), CHF and Swiss date formats. How to add a string: [CONTRIB
 
 The page is **honey on white**: white surfaces, slate ink, one accent, honey. The agents talk on a dark stage,
 where the same honey is lifted to `--accent-bright` so it reads at night. The accent marks what matters: eyebrows,
-the italic turn in a headline, the chosen row, the moment you approve. Status is always a dot and a word, never a
+the chosen row, the moment you approve. Status is always a dot and a word, never a
 pill. The logo and the bee keep their clay and yellow; they are drawings, not interface.
 
 | Token | Value | Use |
@@ -84,11 +84,10 @@ pill. The logo and the bee keep their clay and yellow; they are drawings, not in
 
 Type, bundled with their licence texts in `code/frontend/public/fonts/`:
 
-- **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in honey*
-  (write it as `*text*` in a string; `components/Display.tsx` sets it).
-- The system sans (Inter where installed, else the platform's own) for text, UI and the brand name: no download,
-  readable small. The whiteboard font Mannin stays in the fonts folder for the wordmark and slides.
+- One face for everything in the app: the system sans (Inter where installed, else the platform's own), semibold
+  for headlines, no italics. Plain words, no flourish.
 - **Geist Mono** for tool names, signatures and the run's mode line.
+- Instrument Serif and Mannin stay in the fonts folder for the wordmark and slides; the app no longer loads them.
 
 Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
 
