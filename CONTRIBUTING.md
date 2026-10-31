@@ -10,14 +10,28 @@ to touch another lane's file, say so in the PR description and ping that lane.
 | Lane | Owns |
 | --- | --- |
 | Hive core | `code/backend/app/hive.py`, `hive_seed.py`, `mcp_server.py`, `db.py`, `storage.py` |
-| Agents | `code/backend/app/agent.py`, `llm.py`, `simulate.py` |
+| Agents | `code/backend/app/agent.py`, `second_opinion.py`, `llm.py`, `simulate.py` |
 | Owner studio | `code/backend/app/owner.py`, `code/frontend/src/pages/OwnerStudio.tsx`, `CardPage.tsx` |
-| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/AgentTrace.tsx`, `components/B6Bee.tsx`, `styles.css`, `public/brand/` |
+| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/AgentTrace.tsx`, `components/B6Bee.tsx`, `styles.css`, `src/i18n/`, `public/brand/` |
 | HR workflows | `code/backend/app/domains/hr.py` and any new HR page or component |
 | Vision | `documentation/`, `assets/` |
 | Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, `guard.py`, `SECURITY.md`, CI and deploy files |
 
 A change to the API contract updates `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` in the same PR.
+
+## From the whiteboard to a PR
+
+The kickoff sketches in [`assets/whiteboard/`](assets/whiteboard) are the backlog. Pick an open idea, find its lane,
+open a `task` issue that links the photo, then a branch.
+
+| Sketch | Built on `main` | Open, and where it goes |
+| --- | --- | --- |
+| [whiteboard-1](assets/whiteboard/whiteboard-1.jpg): dashboards, data extraction, "Future: hotels, events, finds" | Hotels end to end, the demand map | Events and "finds" as new domains (see below); an owner dashboard over time (Owner studio) |
+| [whiteboard-1](assets/whiteboard/whiteboard-1.jpg): "find people to work with" | HR starter: person cards, skills search, intros only with consent | The person's yes/no on an intro, a person studio, CV import (HR workflows) |
+| [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): A2A, A2H, H2A, H2H | Agent-to-agent stage, human approval, second opinion | Opt-in outreach from a hotel's agent to a traveller's agent (Agents) |
+| [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): centralised vs federated | `HIVE_MCP_URLS`, each Hive publishes its key registry | A second Hive in the demo, owner-held keys (Hive core) |
+| [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): what a personal agent knows about its human | Request parsing in four languages | A traveller profile the human controls, never stored by the Hive (Agents) |
+| [whiteboard-5](assets/whiteboard/whiteboard-5.jpg): S1 to S6, DuckDB, LLM data protection | DuckDB with S3 snapshots; no free text in logs; `store=false` | Retention limits for bookings and events (Hive core) |
 
 ## Add a use case
 
@@ -38,7 +52,8 @@ or wipes data, it goes through `guard.py`.
 ## Branches
 
 `<type>/<short-topic>`, for example `feat/restaurant-tables`, `fix/owner-diff-prices`, `docs/pitch-beats`.
-Branch from the latest `main`, keep branches short-lived, and rebase onto `main` before asking for review.
+Branch from the latest `main` and keep branches short-lived. To catch up, merge `main` into your branch; never
+rebase or force-push a branch someone else has pulled.
 
 ## Commits
 
@@ -59,7 +74,9 @@ The jury reviews the commit history, so make each commit one small, working step
 - One topic per PR, ideally under 400 changed lines. Fill in the template.
 - CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format and build (`prettier`,
   `tsc`, `vite build`).
-- One review from another person before merging. Squash only if your commits are noise; otherwise keep them.
+- One review from another person before merging, then merge with a merge commit. Never squash: the jury reads the
+  small commits.
+- Stack nothing: every PR targets `main`. A PR merged into another feature branch never reaches `main`.
 - `main` deploys to AWS on every merge. Don't merge in the last 15 minutes before a demo.
 
 ## Strings and languages
