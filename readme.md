@@ -54,7 +54,7 @@ web app speaks English, German, French and Italian.
 ```bash
 cd code/backend && pip install -r requirements.txt -r requirements-dev.txt && pytest -q
 uvicorn app.main:app --port 8000          # add OPENAI_API_KEY for the live agent
-cd ../frontend && npm install && npm run dev   # http://localhost:5173
+cd ../frontend && npm install && npm test && npm run dev   # http://localhost:5173
 ```
 
 Docker, AWS auto-deploy and connecting Claude: [documentation/DEPLOY.md](documentation/DEPLOY.md).

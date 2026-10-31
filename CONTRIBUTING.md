@@ -72,8 +72,8 @@ The jury reviews the commit history, so make each commit one small, working step
 ## Pull requests
 
 - One topic per PR, ideally under 400 changed lines. Fill in the template.
-- CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format and build (`prettier`,
-  `tsc`, `vite build`).
+- CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format, tests and build
+  (`prettier`, `vitest`, `tsc`, `vite build`).
 - One review from another person before merging, then merge with a merge commit. Never squash: the jury reads the
   small commits.
 - Stack nothing: every PR targets `main`. A PR merged into another feature branch never reaches `main`.
@@ -100,6 +100,8 @@ that describes it, then the code that makes them pass. Commit the test with the 
 - Backend: `code/backend/tests/`, pytest. Test through the API (`client`) or MCP (`Client(server)`) where a
   traveller or an agent would; call the module directly for pure logic. Model calls are faked (see the OpenAI loop
   test), so the suite runs with no key and no network.
+- Frontend: `*.test.tsx` next to the component, Vitest and Testing Library. Test what a person sees and clicks,
+  with `api.ts` mocked (`vi.spyOn(api, ...)`); no test talks to a backend. `TravellerAgent.test.tsx` is the example.
 - Keep the promises tested: signatures, one-time approvals, consent, no free text in logs, the offline fallback.
   A PR that weakens one of them needs a test that shows the new behaviour, and a line in `SECURITY.md`.
 - Never skip, loosen or delete a test to get CI green. Fix the code, or explain in the PR why the test was wrong.
@@ -108,7 +110,7 @@ that describes it, then the code that makes them pass. Commit the test with the 
 
 ```bash
 cd code/backend && ruff check . && ruff format --check . && pytest -q
-cd code/frontend && npm run format:check && npm run build
+cd code/frontend && npm run format:check && npm test && npm run build
 ```
 
 Fix formatting with `ruff format .` and `npm run format`. Every public Python function and class gets a docstring

@@ -36,6 +36,7 @@ jobs:
           cache-dependency-path: code/frontend/package-lock.json
       - run: npm ci
       - run: npm run format:check
+      - run: npm test
       - run: npm run build
 
   # The repo is public: every push is scanned for keys, tokens and credentials across the whole history.
