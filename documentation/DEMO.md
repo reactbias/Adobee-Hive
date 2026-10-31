@@ -3,7 +3,9 @@
 Short version for the stage: [PITCH.md](PITCH.md).
 
 The app is one page in two chapters: 1 the agent network (a room or any business, one chat), 2 the business's
-side (the owner studio, with the demand map as a second tab). The header jumps between them. Everything below runs
+side (the owner studio, with the demand map as a second tab). The header jumps between them. Three further
+screens — the instance finder, the node view and the admin panel — sit beside that story and are only for
+questions; see [If the questions go to federation](#if-the-questions-go-to-federation). Everything below runs
 live. Without an API key the agent switches to a scripted planner that walks the same MCP
 tools, so the demo cannot die on stage. The header shows **AI live** or **Offline mode**, and each run says on
 the agent stage whether OpenAI, Claude or the offline planner answered.
@@ -55,6 +57,23 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
    first: "From where to where, and when?"
 7. **Bonus: from Claude itself.** Add the Hive's MCP URL (`<backend>/mcp/`) as a custom connector in Claude and ask
    for a dog-friendly hotel near Basel SBB. Claude books through the same tools.
+
+## If the questions go to federation
+
+Three screens sit beside the two chapters rather than inside them. None is part of the 3-minute run; each answers
+one question from the floor in about twenty seconds.
+
+| Question | Where | What to show |
+| --- | --- | --- |
+| "Which Hive am I even on?" | the first load, or **Change Hive** in the header | The instance finder: each Hive with what it carries, whether it is taking members, its admission policy, how many entities, and how honest its ratings turned out to be. It says on screen that it is a plain first pass, and that this build talks to one backend whatever you pick |
+| "Show me the network" | `#network`, below chapter 2, open to anyone | This hub in the centre of a honeycomb, each peer a cell, each edge coloured by that peer's calibration, a blocked peer still drawn and visibly cut. Four counts above, the same hubs as rows below |
+| "Who runs a Hive, and who gets in?" | `?admin` | The hub's password, then the overview, the signup queue (admit, or refuse with a reason the applicant is told), the entity list with each card's signature and sharing flags, the blocklist, and the neighbours with their calibration |
+
+**The deployed backend has no peers**, so the reach control and the node view both show one hub there. For a real
+federated answer run `./lan.sh up` on the laptop beforehand: three peered hubs, seeded through the real signup
+endpoint, reachable from any phone on the wifi
+([DEVELOPER.md](DEVELOPER.md#three-hubs-on-one-machine-lansh)). What it does not do yet, if asked:
+[LIMITS.md](LIMITS.md).
 
 ## Before going on stage
 

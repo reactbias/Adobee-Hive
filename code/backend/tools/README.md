@@ -43,10 +43,10 @@ touching `semantic.SIMILARITY_FLOOR`.
 ## mutate.py — does the suite actually notice?
 
 Coverage proves a line ran. It does not prove a test would fail if that line were wrong.
-`mutate.py` makes deliberate changes to `app/federation.py`, `app/reputation.py`, `app/hive.py` and
-`app/semantic.py`,
-runs the suite, and reports every change that **survived** — because a surviving mutant is a missing
-assertion, named and located.
+`mutate.py` makes deliberate changes to the eight modules the design rests on — `app/hive.py`,
+`federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `registration.py`,
+`sharing.py` and `semantic.py` — runs the suite, and reports every change that **survived**, because
+a surviving mutant is a missing assertion, named and located. There are 35 curated mutants.
 
 ```bash
 cd code/backend && source .venv/bin/activate
@@ -58,6 +58,11 @@ python tools/mutate.py --all             # both
 
 Exit code is the number of survivors, so CI can gate on it. The source file is always restored,
 even when a run is interrupted.
+
+Run the suite with **no model key in your environment**. An `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+exported in your shell makes the agent answer live, and the tests that pin what the offline planner
+writes then fail for a reason that has nothing to do with your change. CI has no key, which is why
+it does not see this.
 
 ### What it has caught
 

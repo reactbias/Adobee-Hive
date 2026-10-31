@@ -1,8 +1,11 @@
 # testdata — the corpus semantic search is measured against
 
-`vaults/` holds fictional entities, one folder of markdown each, registered through the real signup
+`vaults/` holds 61 fictional entities, one folder of markdown each, registered through the real signup
 endpoint by `code/backend/tools/seed_vaults.py`. Ten folders are hand-written; the rest come from the
 curated table in `code/backend/tools/make_corpus.py`. Nothing here is a real business or a real person.
+
+`./lan.sh up` from the repository root is what puts them on three peered hubs and serves the app in front of
+them: see [documentation/DEVELOPER.md](../documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh).
 
 Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule it enforces:
 
@@ -123,7 +126,9 @@ Diff the two and the model is right there, in four readings:
 ## Why this corpus exists
 
 Today `hive.discover` scores a card by substring: a query term either appears in the card's text,
-offers or needs, or it does not. So a search for **haircut** misses *"Cut, wash and finish"*, and a
+offers or needs, or it does not. `app/semantic.py` is written and tested to close that gap and no module imports
+it yet ([LIMITS.md](../documentation/LIMITS.md#discovery)), so the numbers below are the measurement waiting for
+it. So a search for **haircut** misses *"Cut, wash and finish"*, and a
 search for **hotel** misses *"Gästehaus"*. That gap is built in here deliberately:
 
 - owners write their own words — *"Siedfleisch am Donnerstag"*, *"Oberflächen für Maschinen"*,

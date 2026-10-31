@@ -63,7 +63,8 @@ flowchart LR
 ```
 
 Inside the backend, one Hive core sits under both doors. The REST endpoints call the agents; the agents reach the
-Hive only as MCP clients, the same way an outside agent would.
+Hive only as MCP clients, the same way an outside agent would. Every arrow is a real import: `semantic.py` is drawn
+without one because nothing calls it yet ([LIMITS.md](LIMITS.md#discovery)).
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
@@ -115,19 +116,21 @@ flowchart TB
 
   REST --> GRD
   REST --> A
-  HIVE --> SEM
-  HIVE --> SHR
   HIVE --> BLK
-  FED --> BLK
-  CNX --> CAL
-  CAL --> REP
   REST --> HUB
   MCP --> HUB
   HUB --> CNX
   HUB --> SHR
+  HUB --> BLK
+  HUB --> CAL --> CNX
   REST --> ADM
+  MCP --> ADM
   ADM --> BLK
   REST --> LIM
+  ADM --> SHR
+  ADM --> CAL
+  ADM --> FED
+  ADM --> REG
   REST --> REG
   MCP --> REG
   REG --> LIM
@@ -402,9 +405,11 @@ and the entity's default always wins. [blocklist.py](../code/backend/app/blockli
 operator reaches for, blocking a peer hub or a single entity in both directions, with a reason that has to be readable
 six months later. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
 weeks, for a person to score how the real meeting went; an introduction nobody scores goes stale rather than staying
-open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the only number that
-matters about a peer: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told
-the truth about its members, never on how good they were.
+open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the number a person choosing a hub
+reads: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told the truth
+about its members, never on how good they were. That number orders the directory, the standing table and the
+neighbours view; the rank factor in the search below is `reputation.py`'s, not this one
+([LIMITS.md](LIMITS.md#trust)).
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
