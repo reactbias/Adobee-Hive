@@ -1,0 +1,3 @@
+# Visibility
+
+- preisliste.pdf: public

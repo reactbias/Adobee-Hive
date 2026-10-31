@@ -1,0 +1,3 @@
+# Visibility
+
+- arbeitsproben.pdf: public

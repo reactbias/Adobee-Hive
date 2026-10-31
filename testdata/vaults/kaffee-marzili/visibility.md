@@ -1,0 +1,3 @@
+# Visibility
+
+- karte.pdf: public
