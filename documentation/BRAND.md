@@ -80,14 +80,17 @@ chosen row, a valid seal, the moment you approve. Status is always a dot and a w
 | `--clay-dark` | `#5a2e1a` | Ink on clay |
 | `--bad` | `#a3321f` | Rejected, only ever with the word that says so |
 
-Type, all bundled under the SIL Open Font License (files and licence texts in `code/frontend/public/fonts/`):
+Type, all bundled with their licence texts in `code/frontend/public/fonts/`:
 
 - **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in clay*
   (write it as `*text*` in a string; `components/Display.tsx` sets it).
 - **Geist** for text and UI.
 - **Geist Mono** for tool names, signatures and the run's mode line.
 
-Mannin, from the whiteboard, is not bundled: its licence could not be verified for redistribution in a public repo.
+- **Mannin Bold** for the brand name only: the nav and the wordmark, next to the mark. It is the font from the
+  whiteboard, bundled under the Ubuntu Font Licence 1.0 as *Mannin derivative Adobee* (a Latin subset, renamed as
+  that licence asks; see `code/frontend/public/fonts/README.md`). The set we have has no upright regular, so it is
+  not used for text.
 
 Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
 

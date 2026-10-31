@@ -20,6 +20,12 @@
   font-display: swap;
 }
 @font-face {
+  font-family: "Mannin derivative Adobee";
+  src: url("/fonts/ManninDerivativeAdobee-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
   font-family: "Geist Mono";
   src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
   font-weight: 100 900;
@@ -45,6 +51,7 @@
 
   --display: "Instrument Serif", "Iowan Old Style", Palatino, Georgia, serif;
   --body: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --brand: "Mannin derivative Adobee", var(--body);
   --mono: "Geist Mono", "SF Mono", ui-monospace, Menlo, monospace;
 
   --t-xs: 0.75rem;
@@ -489,8 +496,9 @@ label {
   gap: var(--s6);
 }
 .nav .brand {
-  font-family: var(--display);
-  font-size: 1.25rem;
+  font-family: var(--brand);
+  font-weight: 700;
+  font-size: 1.125rem;
   color: var(--ink);
   text-decoration: none;
   display: flex;
