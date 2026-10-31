@@ -2,9 +2,14 @@
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
+  // The language switch sets <html lang>; the backend answers in it (agent replies, the second opinion).
+  const lang = { "Accept-Language": document.documentElement.lang || "en" };
   const res = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: init?.body instanceof FormData ? init?.headers : { "Content-Type": "application/json", ...init?.headers },
+    headers:
+      init?.body instanceof FormData
+        ? { ...lang, ...init?.headers }
+        : { "Content-Type": "application/json", ...lang, ...init?.headers },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -180,11 +185,16 @@ export interface Change {
   before: unknown;
   after: unknown;
 }
+export type SummaryItem =
+  | { code: "added" | "removed"; tag: string }
+  | { code: "price"; unit: string; price_chf: number };
 export interface Proposal {
   card_id: string;
   proposed: Card;
   changes: Change[];
   summary: string;
+  // Offline edits only: what changed, as items the studio words in the page's language.
+  summary_items?: SummaryItem[] | null;
   mode: string;
 }
 export interface OwnerOverview {
@@ -201,6 +211,13 @@ export interface OwnerOverview {
   }[];
   missed_demand: { detail: string; times: number }[];
   last_7_days: Record<string, number>;
+  // Standing requests this card could win by an edit: counts and budgets only, never a single traveller.
+  waiting: {
+    agents: number;
+    budget_chf: number;
+    asks: { missing: string[]; cheaper: boolean; agents: number; budget_chf: number }[];
+    offers_sent: number;
+  };
 }
 export interface DemandMap {
   days: number;

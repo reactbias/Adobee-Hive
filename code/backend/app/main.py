@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, simulate
+from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, replies, rulesets, simulate, waiting
 from .domains import explore
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,7 @@ async def lifespan(_: FastAPI):
     """Open the database, seed it if empty, and run the MCP session manager for the app's lifetime."""
     db.init()
     hive.init()
+    waiting.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -77,6 +78,7 @@ def well_known(request: Request) -> dict[str, Any]:
         "mcp": {"url": f"{base}/mcp/", "transport": "streamable-http"},
         "signature": "Ed25519 over canonical JSON; a card is valid only if signed by the key pinned for its id below",
         "owner_keys": hive.owner_keys(),
+        "ruleset_keys": rulesets.keys(),
         "ranking_policy": hive.RANKING_POLICY,
     }
 
@@ -224,17 +226,18 @@ async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
-        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules)
+        locale = replies.locale_from(request.headers.get("accept-language", ""))
+        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules, locale)
     except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
         raise HTTPException(502, "The agent could not finish this request. Try again.") from err
 
 
 @app.post("/api/agent/approve")
-async def approve_booking(body: ApproveRequest) -> dict[str, Any]:
+async def approve_booking(body: ApproveRequest, request: Request) -> dict[str, Any]:
     """The human's yes: the agent sends the booking it held back."""
     try:
-        return await agent.approve(body.pending)
+        return await agent.approve(body.pending, replies.locale_from(request.headers.get("accept-language", "")))
     except (ValueError, KeyError) as err:
         raise HTTPException(400, str(err)) from err
 
@@ -272,6 +275,7 @@ def ask_approve(body: AskApprove) -> dict[str, Any]:
 def owner_overview(card_id: str, request: Request) -> dict[str, Any]:
     """Return the owner studio data for one card. Without the owner token, guest names show as initials."""
     overview = _hive_call(hive.owner_overview, card_id)
+    overview["waiting"] = waiting.owner_view(card_id)
     try:
         guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
     except HTTPException:

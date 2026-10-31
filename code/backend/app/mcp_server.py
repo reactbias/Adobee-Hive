@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import domains, hive
+from . import domains, hive, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -18,7 +18,8 @@ server = MCPServer(
         "Use hive_discover to find businesses for the user's constraints, hive_get_card to read one card and "
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
         "Only state facts that come from cards. Tell the user why you picked a business (score_breakdown, why) "
-        "and keep the booking receipt: it is needed to cancel or to leave a verified review."
+        "and keep the booking receipt: it is needed to cancel or to leave a verified review. "
+        "If nothing fits and the user wants to be told, hive_wait leaves an anonymous standing request."
     ),
 )
 
@@ -36,6 +37,7 @@ def hive_discover(
     check_in: str | None = None,
     check_out: str | None = None,
     guests: int = 1,
+    ruleset: str | None = None,
 ) -> dict[str, Any]:
     """Find local businesses in the Hive.
 
@@ -43,8 +45,24 @@ def hive_discover(
     features: exact tags such as 'dog-friendly', 'late check-in', 'quiet', 'breakfast', 'parking'.
     Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
     businesses with why_not, so you can explain the choice to the user.
+    ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
     """
-    return _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests)
+    found = _safe(hive.discover, query, kind, near, max_price_chf, features, check_in, check_out, guests)
+    return found if "error" in found or not ruleset else _safe(rulesets.apply, found, ruleset)
+
+
+@server.tool()
+def hive_what_was_promised(receipt: str) -> dict[str, Any]:
+    """Show the signed card version a booking was made against (prices, policies), and which fields changed since.
+    Use it when the stay differs from what was booked. Verify the old card against the owner's pinned key."""
+    return _safe(hive.what_was_promised, receipt)
+
+
+@server.tool()
+def hive_rulesets() -> dict[str, Any]:
+    """List the rulesets a user can choose for hive_discover, each signed by its author (keys in
+    /.well-known/hive.json under ruleset_keys). A ruleset only narrows results; it never boosts a business."""
+    return rulesets.catalogue()
 
 
 @server.tool()
@@ -86,6 +104,28 @@ def hive_cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
     """Leave a verified review (1-5) for a stay. Requires the booking's signed receipt."""
     return _safe(hive.review, receipt, rating, text)
+
+
+@server.tool()
+def hive_wait(
+    check_in: str,
+    check_out: str,
+    features: list[str] | None = None,
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    guests: int = 1,
+) -> dict[str, Any]:
+    """When hive_discover found nothing that fits, and only if your user wants to be told: leave an anonymous
+    standing request. If a business later changes its signed card to fit, it sends a signed offer. Returns a
+    request_id and a secret token; keep both. Never include the user's name or words."""
+    return _safe(waiting.leave, features, near, max_price_chf, check_in, check_out, guests)
+
+
+@server.tool()
+def hive_check_waiting(request_id: str, token: str) -> dict[str, Any]:
+    """Check a standing request. Offers are signed by the business; verify them against its pinned key and ask
+    your user before booking with hive_book."""
+    return _safe(waiting.check, request_id, token)
 
 
 # The stays tools above came first; every other use case registers its tools from app/domains.

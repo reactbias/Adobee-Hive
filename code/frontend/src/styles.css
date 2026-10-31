@@ -1827,6 +1827,9 @@ button.light:hover:not(:disabled) {
   background: var(--clay);
   border-radius: 2px;
 }
+.stack.tight {
+  gap: var(--s1);
+}
 .clamp {
   display: -webkit-box;
   -webkit-line-clamp: 1;

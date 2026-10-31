@@ -5,6 +5,16 @@
 BaselHack 2026, Team B6, for Adobe's challenge **The Post-Website Business**: how does a local hotel, café or shop
 stay found, trusted and bookable when its first visitor is an AI agent, not a person on a website?
 
+## Links
+
+| What | Where |
+| --- | --- |
+| Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · [/agent](https://reactbias.github.io/Adobee-Hive/agent) · [/ask](https://reactbias.github.io/Adobee-Hive/ask) · [/owner](https://reactbias.github.io/Adobee-Hive/owner) · [/demand](https://reactbias.github.io/Adobee-Hive/demand) |
+| Live backend | Render URL, added here once the service is live ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)); then `<backend>/api/health`, `<backend>/docs`, `<backend>/mcp/` |
+| Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
+| Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
+| Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
+
 ## The next guest is an agent
 
 The website was the front door. Then platforms took it. Now agents walk in, and today they read whatever they
@@ -21,7 +31,9 @@ writes it in plain words, and nothing is booked until a person says yes.
 - **Your yes.** Agents negotiate. People decide. You see every call your agent made before you approve.
 
 And one idea beyond them, **missed demand**: every request no business could serve is recorded. A café learns that
-agents asked for vegan breakfast; Basel learns what nobody offers yet. Agents write the business plan.
+agents asked for vegan breakfast; Basel learns what nobody offers yet. Agents write the business plan. And the
+demand waits: a traveller whose agent found nothing can ask to be told, anonymously, and the moment an owner signs the
+change, that agent receives an offer signed by the business.
 
 What the Hive will not do: sell placement, profile travellers (it learns *what* was asked, never *who*), or take
 orders from a listing (card text is data, never instructions). The full story: [documentation/VISION.md](documentation/VISION.md).
@@ -42,6 +54,8 @@ over MCP. Try it with any MCP client, Claude included.
 | Trust: owner keys pinned in each Hive's registry (`/.well-known/hive.json`); the agent checks every card itself; a changed copy and a stranger-signed copy both fail the live tamper test | `hive.py`, `agent.verify_card`, `CardPage.tsx` |
 | Human card page with direct booking | `CardPage.tsx` |
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
+| Whose rules: signed rulesets a person picks per search ("Dogs, verified" by a dog owners' club). They only narrow, and every answer names the ruleset and what it changed | `code/backend/app/rulesets.py` |
+| Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `OwnerStudio.tsx` |
 | Second opinion: a separate sceptic agent checks each held booking against the request and the signed card before you approve | `code/backend/app/second_opinion.py` |
 | Ask the Hive: questions about five real businesses (adventures, AI workflows, process instrumentation, creative software, BaselHack itself) answered from unclaimed public-info cards, with a mood you choose and a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `AskHive.tsx` |
 | Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
@@ -50,15 +64,57 @@ The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API ke
 scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
 web app speaks English, German, French and Italian.
 
-## Quick start
+## Run it locally in 5 minutes
+
+You need **Git**, **Python 3.12** and **Node 22**. No API key: without one, the agent runs on a scripted planner
+over the same MCP tools and the header shows **Offline mode**.
+
+**1. Clone and configure**
 
 ```bash
-cd code/backend && pip install -r requirements.txt -r requirements-dev.txt && pytest -q
-uvicorn app.main:app --port 8000          # add OPENAI_API_KEY for the live agent
-cd ../frontend && npm install && npm test && npm run dev   # http://localhost:5173
+git clone https://github.com/reactbias/Adobee-Hive.git && cd Adobee-Hive
+cp code/.env.example code/.env        # Windows PowerShell: copy code\.env.example code\.env
 ```
 
-Docker, AWS auto-deploy and connecting Claude: [documentation/DEPLOY.md](documentation/DEPLOY.md).
+For the live agent, put the team's key after `OPENAI_API_KEY=` in `code/.env`. That file is gitignored; never
+commit a key or paste it in a chat.
+
+**2. Backend** (one terminal, from `code/backend`)
+
+| macOS, Linux | Windows (PowerShell) |
+| --- | --- |
+| `python3.12 -m venv .venv` | `py -3.12 -m venv .venv` |
+| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
+
+Then, on both:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest -q                                              # all green, including a booking over MCP
+uvicorn app.main:app --port 8000 --env-file ../.env
+```
+
+**3. Frontend** (a second terminal, from `code/frontend`)
+
+```bash
+npm ci
+npm test                                               # component tests, no backend needed
+npm run dev
+```
+
+**4. Open it**
+
+| URL | What |
+| --- | --- |
+| http://localhost:5173 | The app; start with `/agent` and click the first example |
+| http://localhost:8000/docs | Every REST endpoint, to read and try |
+| http://localhost:8000/api/health | `"llm": "openai"` with a key, `"mock"` offline |
+| http://localhost:8000/mcp/ | The MCP endpoint for any agent, Claude included ([how](documentation/DEPLOY.md#point-any-agent-at-the-hive)) |
+
+Before you push, run the checks in [CONTRIBUTING.md](CONTRIBUTING.md#checks-to-run-before-you-push). What each
+endpoint, MCP tool and page does: [ARCHITECTURE.md](documentation/ARCHITECTURE.md). Docker and hosting:
+[DEPLOY.md](documentation/DEPLOY.md). If PowerShell refuses to run `Activate.ps1`, run
+`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
 
 ## Repository
 

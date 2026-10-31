@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal } from "../api";
+import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
 import TrustBadge from "../components/TrustBadge";
 import Display from "../components/Display";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
-import { stay } from "../lib/format";
+import { chf, stay } from "../lib/format";
 
 // A miss is logged as "missing dog-friendly (asked: dog-friendly, near basel sbb)": the structured ask, never the
 // traveller's own words.
@@ -21,6 +21,21 @@ const WEEK_LABELS: Record<string, Key> = {
   cancelled: "owner.week.cancelled",
 };
 
+type T = ReturnType<typeof useI18n>["t"];
+
+// Offline edits come back as items, so the summary reads in the page's language rather than the backend's English.
+function summarise(p: Proposal, t: T, intl: string): string {
+  if (!p.summary_items) return p.summary;
+  if (!p.summary_items.length) return t("owner.summary.none");
+  return p.summary_items
+    .map((i: SummaryItem) =>
+      i.code === "price"
+        ? t("owner.summary.price", { unit: i.unit, price: chf(i.price_chf, intl) })
+        : t(i.code === "added" ? "owner.summary.added" : "owner.summary.removed", { tag: i.tag }),
+    )
+    .join(" · ");
+}
+
 export default function OwnerStudio() {
   const { t, intl } = useI18n();
   const [cards, setCards] = useState<Card[]>([]);
@@ -31,7 +46,8 @@ export default function OwnerStudio() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [token, setToken] = useState("");
-  const [published, setPublished] = useState(false);
+  // How many waiting agents the last publish sent a signed offer to; null until something is published.
+  const [published, setPublished] = useState<number | null>(null);
   // The backend only asks for a token when OWNER_EDIT_TOKEN is set; only then does the prompt appear.
   const needsToken = error.includes("X-Owner-Token");
 
@@ -46,14 +62,14 @@ export default function OwnerStudio() {
   }, []);
   useEffect(() => {
     setProposal(null);
-    setPublished(false);
+    setPublished(null);
     load(cardId);
   }, [cardId]);
 
   async function propose() {
     setBusy(true);
     setError("");
-    setPublished(false);
+    setPublished(null);
     try {
       setProposal(await api.propose(cardId, instruction));
     } catch (e) {
@@ -67,10 +83,12 @@ export default function OwnerStudio() {
     if (!proposal) return;
     setBusy(true);
     try {
+      const offersBefore = overview?.waiting.offers_sent ?? 0;
       await api.publish(cardId, proposal.proposed);
       setProposal(null);
-      setPublished(true);
-      await load(cardId);
+      const after = await api.owner(cardId);
+      setOverview(after);
+      setPublished(after.waiting.offers_sent - offersBefore);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -81,6 +99,7 @@ export default function OwnerStudio() {
   const card = overview?.card;
   const missed = overview?.missed_demand ?? [];
   const maxMissed = Math.max(1, ...missed.map((m) => m.times));
+  const waiting = overview?.waiting;
   const week = overview ? Object.keys(WEEK_LABELS).map((k) => [k, overview.last_7_days[k] ?? 0] as const) : [];
 
   return (
@@ -138,45 +157,90 @@ export default function OwnerStudio() {
       )}
 
       <div className="grid split">
-        <section className="panel stack loose">
-          <div className="stack">
-            <h3>{t("owner.edit.title")}</h3>
-            <p className="muted">{t("owner.edit.body")}</p>
-          </div>
-          <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} />
-          <div className="spread">
-            <span className="muted">{proposal?.summary ?? (published ? t("owner.published") : "")}</span>
-            <button className={proposal ? "ghost" : ""} onClick={propose} disabled={busy || !instruction.trim()}>
-              {t("owner.preview")}
-            </button>
-          </div>
-          {proposal && (
-            <div className="stack reveal">
-              {proposal.changes.length === 0 ? (
-                <p className="muted">{t("owner.noChange")}</p>
-              ) : (
-                <ul className="rows diff">
-                  {proposal.changes.map((c) => (
-                    <li key={c.field}>
-                      <span className="diff-field">{c.field}</span>
-                      <span className="diff-before">{fmt(c.before)}</span>
-                      <span className="diff-after">{fmt(c.after)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="row">
-                <button onClick={publish} disabled={busy || proposal.changes.length === 0}>
-                  {t("owner.publish")}
-                </button>
-                <button className="quiet" onClick={() => setProposal(null)}>
-                  {t("owner.discard")}
-                </button>
-              </div>
-              <p className="muted">{t("owner.publishNote")}</p>
+        <div className="stack loose">
+          <section className="panel stack loose">
+            <div className="stack">
+              <h3>{t("owner.edit.title")}</h3>
+              <p className="muted">{t("owner.edit.body")}</p>
             </div>
-          )}
-        </section>
+            <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} />
+            <div className="spread">
+              <span className="muted">
+                {(proposal && summarise(proposal, t, intl)) ??
+                  (published === null
+                    ? ""
+                    : published > 0
+                      ? t("owner.publishedOffers", { n: published })
+                      : t("owner.published"))}
+              </span>
+              <button className={proposal ? "ghost" : ""} onClick={propose} disabled={busy || !instruction.trim()}>
+                {t("owner.preview")}
+              </button>
+            </div>
+            {proposal && (
+              <div className="stack reveal">
+                {proposal.changes.length === 0 ? (
+                  <p className="muted">{t("owner.noChange")}</p>
+                ) : (
+                  <ul className="rows diff">
+                    {proposal.changes.map((c) => (
+                      <li key={c.field}>
+                        <span className="diff-field">{c.field}</span>
+                        <span className="diff-before">{fmt(c.before)}</span>
+                        <span className="diff-after">{fmt(c.after)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="row">
+                  <button onClick={publish} disabled={busy || proposal.changes.length === 0}>
+                    {t("owner.publish")}
+                  </button>
+                  <button className="quiet" onClick={() => setProposal(null)}>
+                    {t("owner.discard")}
+                  </button>
+                </div>
+                <p className="muted">{t("owner.publishNote")}</p>
+              </div>
+            )}
+          </section>
+
+          <section className="panel stack">
+            <span className="eyebrow">{t("owner.waiting.eyebrow")}</span>
+            <h3>{t("owner.waiting.title")}</h3>
+            <p className="muted">{t("owner.waiting.body")}</p>
+            {waiting?.asks.length ? (
+              <ul className="rows compact">
+                {waiting.asks.map((a) => {
+                  const what = [...a.missing, ...(a.cheaper ? [t("owner.waiting.cheaper")] : [])].join(" + ");
+                  return (
+                    <li key={what} className="spread">
+                      <div className="stack tight">
+                        <span>{what}</span>
+                        <span className="muted">
+                          {t("owner.waiting.agents", { n: a.agents })}
+                          {a.budget_chf > 0 && ` · ${t("owner.waiting.budget", { chf: chf(a.budget_chf, intl) })}`}
+                        </span>
+                      </div>
+                      {a.missing.length > 0 && !a.cheaper && (
+                        <button
+                          className="quiet"
+                          onClick={() =>
+                            setInstruction(a.missing.map((m) => t("owner.waiting.add", { tag: m })).join(", "))
+                          }
+                        >
+                          {t("owner.waiting.use")}
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="muted">{t("owner.waiting.empty")}</p>
+            )}
+          </section>
+        </div>
 
         <section className="panel stack">
           <span className="eyebrow">{t("owner.missed.eyebrow")}</span>

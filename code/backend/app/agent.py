@@ -29,6 +29,7 @@ from mcp import Client
 
 from . import config, hive, injection, llm, mirror, second_opinion
 from .mcp_server import server as local_server
+from .replies import language_line, say
 
 log = logging.getLogger(__name__)
 
@@ -203,8 +204,10 @@ class HiveConnections:
         return refused
 
 
-async def run(messages: list[dict[str, str]], scenario: str | None = None, rules: str = "on") -> dict[str, Any]:
-    """messages: [{role: user|assistant, content: str}], last one from the user.
+async def run(
+    messages: list[dict[str, str]], scenario: str | None = None, rules: str = "on", locale: str = "en"
+) -> dict[str, Any]:
+    """messages: [{role: user|assistant, content: str}], last one from the user. locale: the app's language.
 
     scenario="injection" adds the unverified mirror with its manipulated listing. rules="off" runs the unguarded
     planner instead: offline, no tokens, and it only says what it would book.
@@ -213,28 +216,28 @@ async def run(messages: list[dict[str, str]], scenario: str | None = None, rules
     extra = [(mirror.NAME, mirror.server)] if scenario == "injection" else []
     async with HiveConnections(extra, guarded=rules != "off") as hives:
         if rules == "off":
-            return await _run_unguarded(hives, text) | {"scenario": scenario}
+            return await _run_unguarded(hives, text, locale) | {"scenario": scenario}
         try:
             if config.LLM_PROVIDER == "openai":
-                result = await _run_openai(hives, messages)
+                result = await _run_openai(hives, messages, locale)
             elif config.LLM_PROVIDER == "claude":
-                result = await _run_claude(hives, messages)
+                result = await _run_claude(hives, messages, locale)
             else:
-                result = await _run_scripted(hives, text)
+                result = await _run_scripted(hives, text, locale)
         except (openai.OpenAIError, anthropic.APIError):  # out of credit, rate limit, outage: the demo goes on
             vendor = "OpenAI" if config.LLM_PROVIDER == "openai" else "Claude"
             log.exception("%s unavailable, falling back to the scripted planner", vendor)
-            result = await _run_scripted(hives, text) | {"fallback": f"{vendor} unavailable"}
+            result = await _run_scripted(hives, text, locale) | {"fallback": f"{vendor} unavailable"}
         result["guard"] = hives.report()
         result["scenario"] = scenario
     if result["pending"]:  # a second agent checks the pick before the human is asked
         result["second_opinion"] = await second_opinion.review(
-            text, parse_request(text), result["pending"]["input"], result["steps"]
+            text, parse_request(text), result["pending"]["input"], result["steps"], locale
         )
     return result
 
 
-async def approve(pending: dict[str, Any]) -> dict[str, Any]:
+async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]:
     """The traveller said yes: send the held hive_book call, unchanged, over MCP. Each hold can be approved once."""
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
@@ -243,10 +246,16 @@ async def approve(pending: dict[str, Any]) -> dict[str, Any]:
     async with HiveConnections() as hives:
         booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
-        return {"reply": f"Booking failed: {booking.get('error')}", "steps": steps, "booking": None}
+        return {"reply": say(locale, "book_failed", error=booking.get("error")), "steps": steps, "booking": None}
     return {
-        "reply": f"Booked {booking['business']}, {booking['unit_name']}, CHF {booking['total_chf']} total. "
-        f"Reference {booking['booking_id']}; the signed receipt is your proof of stay.",
+        "reply": say(
+            locale,
+            "booked",
+            name=booking["business"],
+            unit=booking["unit_name"],
+            total=booking["total_chf"],
+            ref=booking["booking_id"],
+        ),
         "steps": steps,
         "booking": booking,
     }
@@ -291,7 +300,7 @@ HELD = {"status": "held_for_approval", "note": "The traveller confirms this book
 # ---------------------------------------------------------------- OpenAI loop
 
 
-async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]]) -> dict[str, Any]:
+async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
     client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
     tools = [
         {
@@ -309,7 +318,7 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]]) ->
     for _ in range(config.AGENT_MAX_TURNS):
         response = await client.responses.create(
             model=config.OPENAI_MODEL,
-            instructions=SYSTEM.format(name=AGENT_NAME, today=date.today().isoformat()),
+            instructions=SYSTEM.format(name=AGENT_NAME, today=date.today().isoformat()) + language_line(locale),
             input=convo,
             tools=tools,
             reasoning={"effort": "low"},
@@ -335,13 +344,13 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]]) ->
             convo.append(
                 {"type": "function_call_output", "call_id": call.call_id, "output": json.dumps(output, default=str)}
             )
-    return {"reply": "I ran out of steps before finishing.", "steps": steps, "pending": pending, "mode": "openai"}
+    return {"reply": say(locale, "out_of_steps"), "steps": steps, "pending": pending, "mode": "openai"}
 
 
 # ---------------------------------------------------------------- Claude loop
 
 
-async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]]) -> dict[str, Any]:
+async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
     aclient = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
     tools = [dict(t) for t in hives.tools]
     tools[-1]["cache_control"] = {"type": "ephemeral"}  # cache system + tool definitions across turns
@@ -356,14 +365,14 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]]) ->
         response = await aclient.beta.messages.create(
             model=config.CLAUDE_MODEL,
             max_tokens=8000,
-            system=SYSTEM.format(name=AGENT_NAME, today=date.today().isoformat()),
+            system=SYSTEM.format(name=AGENT_NAME, today=date.today().isoformat()) + language_line(locale),
             tools=tools,
             messages=convo,
             output_config={"effort": "low"},
             **extra,
         )
         if response.stop_reason == "refusal":
-            return {"reply": "The model declined this request.", "steps": steps, "pending": None, "mode": "claude"}
+            return {"reply": say(locale, "declined"), "steps": steps, "pending": None, "mode": "claude"}
         convo.append({"role": "assistant", "content": response.content})  # keep every block, unchanged
         calls = [b for b in response.content if b.type == "tool_use"]
         if response.stop_reason != "tool_use" or not calls:
@@ -383,7 +392,7 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]]) ->
                 }
             )
         convo.append({"role": "user", "content": results})
-    return {"reply": "I ran out of steps before finishing.", "steps": steps, "pending": pending, "mode": "claude"}
+    return {"reply": say(locale, "out_of_steps"), "steps": steps, "pending": pending, "mode": "claude"}
 
 
 # ---------------------------------------------------------------- scripted planner (no API key)
@@ -476,7 +485,7 @@ def parse_request(text: str) -> dict[str, Any]:
     }
 
 
-async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
+async def _run_scripted(hives: HiveConnections, text: str, locale: str = "en") -> dict[str, Any]:
     req = parse_request(text)
     steps: list[dict[str, Any]] = []
 
@@ -492,7 +501,7 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
     if not matches:
         why = "; ".join(f"{e['name']}: {', '.join(e['why_not'])}" for e in found.get("excluded", [])[:3])
         return {
-            "reply": f"No business fits all your constraints. Closest: {why}.",
+            "reply": say(locale, "none_fit", why=why),
             "steps": steps,
             "pending": None,
             "mode": "scripted",
@@ -505,11 +514,12 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
             best = candidate
             break
     set_aside = "".join(
-        f" I set aside {b['business']} from {b['source']}: {'; '.join(b['reasons'])}." for b in hives.blocked.values()
+        say(locale, "set_aside", business=b["business"], source=b["source"], reasons="; ".join(b["reasons"]))
+        for b in hives.blocked.values()
     )
     if best is None or card is None:
         return {
-            "reply": "No listing I found passed my checks, so I did not book." + set_aside,
+            "reply": say(locale, "none_passed") + set_aside,
             "steps": steps,
             "pending": None,
             "mode": "scripted",
@@ -520,7 +530,7 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
     )
     if not avail.get("available_units"):
         return {
-            "reply": f"{best['name']} just sold out for those dates.",
+            "reply": say(locale, "sold_out", name=best["name"]),
             "steps": steps,
             "pending": None,
             "mode": "scripted",
@@ -528,13 +538,24 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
     unit = avail["available_units"][0]
 
     second = next((m for m in matches if m is not best and not hives.is_blocked(m)), None)
-    runner = f" Runner-up: {second['name']} ({', '.join(second['why'][:2])})." if second else ""
+    runner = say(locale, "runner_up", name=second["name"], why=", ".join(second["why"][:2])) if second else ""
     reasons = ", ".join(best["why"])
-    attest = ", ".join(a["claim"] + " by " + a["attested_by"] for a in card["trust"]["attestations"])
+    attest = ", ".join(
+        say(locale, "claim_by", claim=a["claim"], by=a["attested_by"]) for a in card["trust"]["attestations"]
+    )
     if not req["wants_booking"]:
         return {
-            "reply": f"Best fit: {best['name']}, {unit['name']} at CHF {unit['total_chf']} "
-            f"for {unit['nights']} nights. Why: {reasons}.{runner}{set_aside}",
+            "reply": say(
+                locale,
+                "best_fit",
+                name=best["name"],
+                unit=unit["name"],
+                total=unit["total_chf"],
+                nights=unit["nights"],
+                reasons=reasons,
+            )
+            + runner
+            + set_aside,
             "steps": steps,
             "pending": None,
             "mode": "scripted",
@@ -552,9 +573,17 @@ async def _run_scripted(hives: HiveConnections, text: str) -> dict[str, Any]:
         }
     )
     reply = (
-        f"Ready to book {best['name']}, {unit['name']}, {req['check_in']} to {req['check_out']}, "
-        f"CHF {unit['total_chf']} total. Why: {reasons}."
-        + (f" Verified claims: {attest}." if attest else "")
+        say(
+            locale,
+            "ready",
+            name=best["name"],
+            unit=unit["name"],
+            check_in=req["check_in"],
+            check_out=req["check_out"],
+            total=unit["total_chf"],
+            reasons=reasons,
+        )
+        + (say(locale, "verified", claims=attest) if attest else "")
         + runner
         + set_aside
     )
@@ -572,7 +601,7 @@ def _orders_in(*values: Any) -> str:
     return " ".join(found)
 
 
-async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
+async def _run_unguarded(hives: HiveConnections, text: str, locale: str = "en") -> dict[str, Any]:
     """Demo only, rules off: an agent that trusts the top listing, skips the signature and obeys card text.
 
     It runs offline, so it costs no tokens, and it never sends hive_book: it returns the call it would have made
@@ -588,7 +617,7 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
     )
     base = {"steps": steps, "pending": None, "mode": "scripted", "rules": "off"}
     if not found.get("matches"):
-        return base | {"reply": "Rules off: nothing matched, so there was nothing to book.", "unguarded": None}
+        return base | {"reply": say(locale, "off.nothing"), "unguarded": None}
     best = found["matches"][0]  # the source's own ranking, taken as given
     card = await hives.step(steps, "hive_get_card", {"card_id": best["id"]})
     avail = await hives.step(
@@ -598,7 +627,7 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
     )
     units = avail.get("available_units") or []
     if not units:
-        return base | {"reply": f"Rules off: {best['name']} has no room for those dates.", "unguarded": None}
+        return base | {"reply": say(locale, "off.no_room", name=best["name"]), "unguarded": None}
     orders = _orders_in(best, card)
     unit = next((u for u in units if u["name"].lower() in orders.lower()), units[0])  # does what the text says
     would = {  # not _hold(): nothing is stored, so this call can never be approved
@@ -631,10 +660,7 @@ async def _run_unguarded(hives: HiveConnections, text: str) -> dict[str, Any]:
             }
         )
     broken.append({"code": "no_approval", "text": "Would book without asking the traveller."})
-    reply = (
-        f"Rules off: I would now book {best['name']}, {unit['name']}, CHF {unit['total_chf']} total, "
-        "without asking you. Nothing was sent."
-    )
+    reply = say(locale, "off.would", name=best["name"], unit=unit["name"], total=unit["total_chf"])
     return base | {
         "reply": reply,
         "unguarded": {"would_call": would, "total_chf": unit["total_chf"], "broken": broken, "sent": False},

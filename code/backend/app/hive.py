@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS hive_cards (
     public_key VARCHAR,
     published_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS hive_card_history (
+    card_id VARCHAR,
+    version INTEGER,
+    data JSON,
+    signature VARCHAR,
+    public_key VARCHAR,
+    PRIMARY KEY (card_id, version)
+);
 CREATE TABLE IF NOT EXISTS hive_keys (
     card_id VARCHAR PRIMARY KEY,
     private_key VARCHAR
@@ -78,6 +86,16 @@ CREATE TABLE IF NOT EXISTS hive_events (
     created_at TIMESTAMP
 );
 """
+
+
+# Signed facts go stale: every version says until when it holds, so a copy scraped last season expires on its own.
+FRESH_DAYS = 90
+
+
+def is_fresh(card: dict[str, Any]) -> bool:
+    """Whether a card's signed facts still hold. Cards signed before expiry existed count as fresh."""
+    until = card.get("valid_until")
+    return not until or datetime.fromisoformat(until) > datetime.now(UTC)
 
 
 class HiveError(ValueError):
@@ -125,18 +143,23 @@ def verify(data: dict[str, Any], signature: str, public_key: str) -> bool:
         return False
 
 
-def owner_keys() -> dict[str, str]:
-    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
-
-    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
-    it is signed by the key pinned here for that card id.
-    """
+def signing_keys() -> dict[str, str]:
+    """Every public key the Hive holds a signing key for: businesses by card id, ruleset authors as "ruleset:<id>"."""
     with db.cursor() as cur:
         rows = cur.execute("SELECT card_id, private_key FROM hive_keys ORDER BY card_id").fetchall()
     return {
         card_id: _public_b64(serialization.load_pem_private_key(pem.encode(), password=None))  # type: ignore[arg-type]
         for card_id, pem in rows
     }
+
+
+def owner_keys() -> dict[str, str]:
+    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
+
+    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
+    it is signed by the key pinned here for that card id.
+    """
+    return {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
 
 
 def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
@@ -165,6 +188,30 @@ def _sign_receipt(card_id: str, payload: dict[str, Any]) -> str:
     return base64.urlsafe_b64encode(canonical(payload)).decode() + "." + base64.urlsafe_b64encode(sig).decode()
 
 
+def sign_statement(card_id: str, payload: dict[str, Any]) -> str:
+    """Sign a statement (a receipt, an offer) with the business's key: base64url(body).base64url(signature)."""
+    return _sign_receipt(card_id, payload)
+
+
+def read_statement(statement: str) -> dict[str, Any]:
+    """Return a signed statement's body without checking it; verify_statement() is the check."""
+    try:
+        return json.loads(base64.urlsafe_b64decode(statement.split(".")[0]))
+    except (ValueError, IndexError) as err:
+        raise HiveError("Malformed statement.") from err
+
+
+def verify_statement(statement: str, public_key: str) -> bool:
+    """What any agent can do on its own: check a signed statement against a business's pinned public key."""
+    try:
+        body_b64, sig_b64 = statement.split(".")
+        pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key))
+        pub.verify(base64.urlsafe_b64decode(sig_b64), base64.urlsafe_b64decode(body_b64))
+        return True
+    except (InvalidSignature, ValueError):
+        return False
+
+
 def _check_receipt(card_id: str, receipt: str) -> dict[str, Any]:
     try:
         body_b64, sig_b64 = receipt.split(".")
@@ -184,7 +231,9 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
     card.pop("trust", None)
     existing = get_record(card["id"])
     card["version"] = (existing["version"] + 1) if existing else 1
-    card["published_at"] = datetime.now(UTC).isoformat(timespec="seconds")
+    signed_at = datetime.now(UTC)
+    card["published_at"] = signed_at.isoformat(timespec="seconds")
+    card["valid_until"] = (signed_at + timedelta(days=FRESH_DAYS)).isoformat(timespec="seconds")
     key = _key_for(card["id"])
     signature = base64.b64encode(key.sign(canonical(card))).decode()
     with db.write() as cur:
@@ -200,6 +249,11 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
                 _public_b64(key),
                 db.now(),
             ],
+        )
+        # Every signed version is kept, so a receipt can later prove what the card said when it was booked.
+        cur.execute(
+            "INSERT OR REPLACE INTO hive_card_history VALUES (?, ?, ?, ?, ?)",
+            [card["id"], card["version"], json.dumps(card), signature, _public_b64(key)],
         )
     return get_card(card["id"])
 
@@ -250,6 +304,7 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
             "rule": "only guests with a signed booking receipt can review",
         },
         "freshness_days": age_days,
+        "fresh": is_fresh(rec["data"]),
     }
 
 
@@ -294,7 +349,8 @@ MAX_TEXT = 2000  # review text and booking notes
 MAX_NAME = 100
 
 
-def _nights(check_in: str, check_out: str) -> int:
+def stay_nights(check_in: str, check_out: str) -> int:
+    """Return the nights between two ISO dates; refuses bad dates and stays over MAX_NIGHTS."""
     try:
         n = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
     except (TypeError, ValueError) as err:
@@ -314,7 +370,7 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
                 [card["id"], check_out, check_in],
             ).fetchall()
         )
-    nights = _nights(check_in, check_out)
+    nights = stay_nights(check_in, check_out)
     free = []
     for unit in card.get("units", []):
         left = unit["quantity"] - booked.get(unit["id"], 0)
@@ -355,6 +411,52 @@ STOPWORDS = {
 }
 
 
+def fit(
+    card: dict[str, Any],
+    features: list[str],
+    near: str | None = None,
+    max_price_chf: float | None = None,
+    check_in: str | None = None,
+    check_out: str | None = None,
+    guests: int = 1,
+) -> dict[str, Any]:
+    """Check one card against hard constraints: why it fits, why not, the missing tags, its price and distance.
+
+    Pure: logs nothing. discover() ranks with it; standing requests (waiting.py) reuse it when a card changes.
+    """
+    reasons, misses = [], []
+    if not is_fresh(card):
+        misses.append(f"signed facts expired on {card['valid_until'][:10]}; the owner has to re-sign")
+    card_feats = {f.lower() for f in card.get("features", [])}
+    missing = [f for f in features if f not in card_feats]
+    if missing:
+        misses.append(f"missing {', '.join(missing)}")
+    elif features:
+        reasons.append(f"has {', '.join(features)}")
+
+    price, unit = None, None
+    if check_in and check_out and not card.get("units"):
+        misses.append("takes no stay bookings")
+    elif check_in and check_out:
+        free = _units_free(card, check_in, check_out, guests)
+        if not free:
+            misses.append(f"no room for {guests} from {check_in} to {check_out}")
+        else:
+            unit, price = free[0], free[0]["price_chf"]
+            reasons.append(f"{unit['name']} free at CHF {price}/night")
+    elif card.get("units"):
+        price = min(u["price_chf"] for u in card["units"])
+    if max_price_chf is not None and price is not None and price > max_price_chf:
+        misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
+
+    dist = None
+    if near:
+        dist = (card.get("distances_m") or {}).get(near.lower())
+        if dist is not None:
+            reasons.append(f"{dist} m from {near}")
+    return {"reasons": reasons, "misses": misses, "missing": missing, "price": price, "unit": unit, "distance_m": dist}
+
+
 def discover(
     query: str = "",
     kind: str | None = None,
@@ -381,34 +483,8 @@ def discover(
     for card in cards:
         if card["kind"] in NOT_DISCOVERABLE:
             continue
-        reasons, misses = [], []
-        card_feats = {f.lower() for f in card.get("features", [])}
-        missing = [f for f in features if f not in card_feats]
-        if missing:
-            misses.append(f"missing {', '.join(missing)}")
-        elif features:
-            reasons.append(f"has {', '.join(features)}")
-
-        price = None
-        if check_in and check_out and not card.get("units"):
-            misses.append("takes no stay bookings")
-        elif check_in and check_out:
-            free = _units_free(card, check_in, check_out, guests)
-            if not free:
-                misses.append(f"no room for {guests} from {check_in} to {check_out}")
-            else:
-                price = free[0]["price_chf"]
-                reasons.append(f"{free[0]['name']} free at CHF {price}/night")
-        elif card.get("units"):
-            price = min(u["price_chf"] for u in card["units"])
-        if max_price_chf is not None and price is not None and price > max_price_chf:
-            misses.append(f"cheapest fit CHF {price} > budget CHF {max_price_chf}")
-
-        dist = None
-        if near:
-            dist = (card.get("distances_m") or {}).get(near.lower())
-            if dist is not None:
-                reasons.append(f"{dist} m from {near}")
+        found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
+        reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
         text = " ".join(
             [
@@ -521,6 +597,8 @@ def book(
         "check_out": check_out,
         "guests": guests,
         "total_chf": unit["total_chf"],
+        "card_version": card["version"],
+        "card_digest": card_digest(card),
     }
     receipt = _sign_receipt(card["id"], payload)
     with db.write() as cur:
@@ -674,3 +752,31 @@ def attest(card_id: str, claim: str, attested_by: str) -> None:
 def card_digest(card: dict[str, Any]) -> str:
     """Return a short hash of a card's content, without its trust block."""
     return hashlib.sha256(canonical({k: v for k, v in card.items() if k != "trust"})).hexdigest()[:16]
+
+
+def what_was_promised(receipt: str) -> dict[str, Any]:
+    """Return the signed card version a booking was made against, and which fields changed since.
+
+    The receipt is checked first, so only the business's own signature can open its history. In a dispute the
+    guest's agent can show the owner's signed words from the day of booking, not today's card.
+    """
+    payload = _check_receipt(read_statement(receipt).get("card_id", ""), receipt)
+    if "card_version" not in payload:
+        raise HiveError("This receipt is older than card history and names no card version.")
+    with db.cursor() as cur:
+        row = cur.execute(
+            "SELECT data, signature, public_key FROM hive_card_history WHERE card_id = ? AND version = ?",
+            [payload["card_id"], payload["card_version"]],
+        ).fetchone()
+    if not row:
+        raise HiveError("That card version is not in this Hive's history.")
+    then = json.loads(row[0])
+    now = {k: v for k, v in get_card(payload["card_id"]).items() if k != "trust"}
+    return {
+        "booking_id": payload["booking_id"],
+        "card": {**then, "trust": {"signature": row[1], "public_key": row[2]}},
+        "digest_matches": card_digest(then) == payload["card_digest"],
+        "changed_since": sorted(
+            k for k in set(then) | set(now) if k not in ("version", "published_at") and then.get(k) != now.get(k)
+        ),
+    }

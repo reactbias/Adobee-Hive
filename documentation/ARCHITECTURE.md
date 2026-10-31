@@ -31,7 +31,10 @@ flowchart LR
 | `injection.py` | The guard on every tool result: text that addresses agents (EN, DE, FR, IT rules) is withheld before the agent reads it and reported in the trace |
 | `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test on `/agent` |
 | `second_opinion.py` | A separate sceptic agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
-| `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
+| `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked. Without a key, a rule-based edit understands add, remove and room prices in EN, DE, FR and IT and returns `summary_items` the studio words in the page's language |
+| `rulesets.py` | Signed rulesets a person chooses per request (e.g. "Dogs, verified" by a fictional dog owners' club). They can only narrow a search, never boost; the answer names the ruleset, its author and what it changed. Authors' keys are in `/.well-known/hive.json` under `ruleset_keys` |
+| `waiting.py` | Standing requests: an agent waits anonymously when nothing fits; the owner sees counts and budgets per missing change; a published card that now fits sends each waiting agent an offer signed with the business's key |
+| `replies.py` | What the backend writes itself (offline planner, rules-off demo, approval, rule-check second opinion) in EN, DE, FR and IT; the language comes from the app's `Accept-Language` header, and model runs are told to answer in it |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
@@ -70,37 +73,83 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
+## Pages
+
+Routes in `code/frontend/src/main.tsx`. `tests/test_docs.py` fails when a route has no row here.
+
+| Route | Page | What a person does there |
+| --- | --- | --- |
+| `/` | `Home.tsx` | The idea in one screen, and the way into each demo |
+| `/agent` | `TravellerAgent.tsx` | States a trip; watches the two agents negotiate; approves or declines the held booking; the stress test |
+| `/card/:slug` | `CardPage.tsx` | Reads a business's signed card as a page, books directly, runs the tamper test |
+| `/owner` | `OwnerStudio.tsx` | Edits a card in plain words, reviews the diff, signs and publishes; sees missed and waiting demand |
+| `/demand` | `DemandMap.tsx` | Sees what Basel asked for that nobody offers; simulates a busy week |
+| `/ask` | `AskHive.tsx` | Asks about the example businesses with a chosen mood; approves any hand-off |
+
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests). Returns ranked matches with a score breakdown, and every excluded business with why. People never show up here, only through the HR tools |
+| `hive_discover` | Search with hard constraints (features, max price, near, dates, guests), optionally under a ruleset the user chose. Returns ranked matches with a score breakdown, and every excluded business with why. People never show up here, only through the HR tools |
+| `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
 | `hive_book` | Book a unit; returns a signed receipt |
+| `hive_what_was_promised` | With a receipt: the signed card version the booking was made against, and which fields changed since |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
+| `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
+| `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the example cards, with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
 Agents can find the endpoint from `/.well-known/hive.json`.
 
-## REST API (for the web app)
+## REST API
 
-`GET /api/health` · `GET /api/hive/cards[/{id}]` · `GET /api/hive/cards/{id}/availability` ·
-`POST /api/hive/cards/{id}/book` · `POST /api/hive/reviews` · `POST /api/hive/verify` · `GET /api/hive/demand` ·
-`POST /api/demo/simulate` · `POST /api/demo/reset` · `POST /api/agent` · `POST /api/agent/approve` · `POST /api/ask` · `POST /api/ask/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
-`POST /api/owner/{id}/publish`
+The web app's contract, in `code/backend/app/main.py`. Every running backend also serves it interactively at
+`/docs` (Swagger UI) and as `/openapi.json`. Change an endpoint, `api.ts` and this table in one PR;
+`tests/test_docs.py` fails when a served endpoint has no row here.
 
-The contract lives in `code/backend/app/main.py`; change an endpoint in one PR so the frontend follows.
+| Endpoint | What it does | Guard |
+| --- | --- | --- |
+| `GET /api/health` | Up, and which model provider the agents use (`openai`, `claude` or `mock`) | |
+| `GET /.well-known/hive.json` | Discovery for agents: the MCP URL, policies, pinned `owner_keys` and `ruleset_keys` | |
+| `GET /api/hive/cards` | All cards, optionally `?kind=` | |
+| `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
+| `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
+| `POST /api/hive/cards/{card_id}/book` | A person's direct booking from the card page; returns a signed receipt | |
+| `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
+| `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
+| `POST /api/hive/demo/forge/{card_id}` | Tamper demo: a copy re-signed by a stranger, which must fail | rate limit |
+| `GET /api/hive/demand` | The city demand map: what agents asked for, how often nobody could serve it | |
+| `POST /api/demo/simulate` | Up to 200 simulated traveller searches for the demand map | rate limit |
+| `POST /api/demo/reset` | Back to the seed cards, no bookings, no demand | `X-Demo-Token` |
+| `POST /api/agent` | Run the traveller agent over MCP; a booking comes back held, as `pending` | model rate limit |
+| `POST /api/agent/approve` | The traveller's yes: send the held booking, once | one-time hold |
+| `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
+| `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |
+| `GET /api/owner/{card_id}` | Owner studio data: bookings, missed demand, waiting requests; guest names as initials without the token | `X-Owner-Token` for names |
+| `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |
+| `POST /api/owner/{card_id}/publish` | Sign and publish the approved card as a new version; waiting agents get signed offers | `X-Owner-Token` |
+
+Every request carries the app's language as `Accept-Language`; `/api/agent`, `/api/agent/approve` and the
+second opinion answer in it.
+
+Rulesets, standing requests and "what was promised" are agent features, so they are MCP tools only (see above).
 
 ## Trust by design
 
 - **Signatures.** Each card version is signed over canonical JSON (sorted keys, compact separators) with the
   owner's Ed25519 key. Agents verify client-side; the card page has a live tamper test.
+- **Expiry.** `publish` signs a `valid_until` into every version (`FRESH_DAYS`, 90); discovery leaves out an
+  expired card with the reason, and `trust.fresh` says whether it still holds.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
-- **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once.
+- **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once. The receipt pins the card
+  version and its digest; every signed version is kept, so the receipt can later show what was promised.
+- **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks
+  it against the pinned key. It holds no room: the agent still asks its human before `hive_book`.
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
 - **Missed demand.** Every exclusion and every search is logged; owners see what they were turned away for, the
   city sees what nobody offers.
