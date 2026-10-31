@@ -112,6 +112,10 @@ TOPICS: list[list[str]] = [
     "course courses training learn learning workshop kurs kurse schulung lernen cours formation apprendre corso "
     "corsi formazione imparare".split(),
     "hackathon hackathons hack coding developers programmieren codage programmazione".split(),
+    "jobs job careers career vacancy vacancies openings hiring employment employer employers apprenticeship "
+    "apprenticeships internship internships stelle stellen stellenangebote karriere jobsuche lehrstelle praktikum "
+    "arbeitgeber emploi emplois carrière carrières recrutement stage apprentissage employeur lavoro carriera "
+    "impiego assunzioni tirocinio apprendistato".split(),
     "automation automate workflow workflows agents automatisierung automatisieren automatiser automatisation "
     "automatizzare automazione".split(),
     "measurement measure instruments instrument sensor sensors process flow level pressure messen messung "
@@ -151,7 +155,7 @@ def _words(text: str) -> list[str]:
 
 def _same(a: str, b: str, typo: bool = True) -> bool:
     """One word for another: equal, a plural or stem of it, or (for the person's words) a typo away."""
-    if a == b:
+    if a == b or a + "s" == b or b + "s" == a:
         return True
     if min(len(a), len(b)) < 5:
         return False
@@ -324,7 +328,12 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
 
     scored.sort(key=lambda s: -s[0])
     limit = pref["limit"]
-    if len(named) > 1:  # several businesses of the kind asked for (five taxis): each one's best item first
+    if terms and not named:  # a topic question: from a card that has items on the topic, only those items
+        on_topic = {c["id"] for _, c, _, why in scored if any(w.startswith("mentions") for w in why)}
+        scored = [e for e in scored if e[1]["id"] not in on_topic or any(w.startswith("mentions") for w in e[3])]
+    cards_seen = {e[1]["id"] for e in scored}
+    if len(named) > 1 or (terms and not named and len(cards_seen) > 1):
+        # Several businesses answer (five taxis, three employers): each one's best item first, none left out.
         best = {}
         for entry in scored:
             best.setdefault(entry[1]["id"], entry)

@@ -134,3 +134,23 @@ def test_the_spoken_answer_gets_no_preference_or_approval_it_does_not_have(clien
     assert "preference" not in seen["data"] and "pending" not in seen["data"]
     explore.phrase(explore.ask("Plan me an adventure", mood="stressed", today=NOV))
     assert seen["data"]["preference"]["mood"] == "stressed" and seen["data"]["pending"] is True
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Which companies here offer jobs?",
+        "I am looking for a career in Basel",
+        "Welche Firmen haben offene Stellen?",
+        "Quelles entreprises proposent des emplois ?",
+        "Quali aziende offrono lavoro?",
+        "any job openings?",
+        "any carreer options?",  # typo
+    ],
+)
+def test_a_jobs_question_finds_every_employer_and_nothing_else(client, question):
+    out = explore.ask(question, today=NOV)
+    ids = [r["card_id"] for r in out["replies"]]
+    assert set(ids) == {"x-endress", "x-adobe", "x-pax"}, question
+    for reply in out["replies"]:  # only the job offer, not the business's products
+        assert [i["id"] for i in reply["items"]] == ["careers"], question
