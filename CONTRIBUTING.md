@@ -9,15 +9,20 @@ to touch another lane's file, say so in the PR description and ping that lane.
 
 | Lane | Owns |
 | --- | --- |
-| Hive core | `code/backend/app/hive.py`, `hive_seed.py`, `mcp_server.py`, `db.py`, `storage.py` |
-| Agents | `code/backend/app/agent.py`, `second_opinion.py`, `llm.py`, `simulate.py` |
+| Hive core | `code/backend/app/hive.py`, `hive_seed.py`, `mcp_server.py`, `db.py`, `storage.py`, `semantic.py`, `rulesets.py`, `waiting.py` |
+| Agents | `code/backend/app/agent.py`, `second_opinion.py`, `critic.py`, `injection.py`, `mirror.py`, `llm.py`, `replies.py`, `simulate.py`, `activity.py` |
+| Federation and trust | `code/backend/app/federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `hub.py`, `sharing.py`, `code/frontend/src/components/Reach.tsx`, `components/TraceParts.tsx`, `lib/provenance.ts`, `lib/calibration.ts`, `lib/hubScene.ts` |
+| Hub operations | `code/backend/app/admin.py`, `registration.py`, `blocklist.py`, `code/frontend/src/panels/AdminPanel.tsx`, `panels/EntitiesPanel.tsx`, `panels/InstanceFinder.tsx`, `panels/NetworkPanel.tsx`, `lib/network.ts`, `lan.sh`, `testdata/`, `code/backend/tools/` |
 | Owner studio | `code/backend/app/owner.py`, `code/frontend/src/panels/OwnerPanel.tsx` |
-| Traveller UI and brand | `code/frontend/src/App.tsx`, `pages/TravellerAgent.tsx`, `panels/DemandPanel.tsx`, `components/Chapter.tsx`, `components/Composer.tsx`, `components/AskParts.tsx`, `components/GroupChat.tsx`, `components/TraceParts.tsx`, `components/NextSteps.tsx`, `components/B6Bee.tsx`, `styles.css`, `src/i18n/`, `public/brand/` |
+| Traveller UI and brand | `code/frontend/src/App.tsx`, `pages/TravellerAgent.tsx`, `panels/DemandPanel.tsx`, `panels/ActivityPanel.tsx`, `components/Chapter.tsx`, `components/Composer.tsx`, `components/MicButton.tsx`, `components/AskParts.tsx`, `components/GeneratedStage.tsx`, `components/GroupChat.tsx`, `components/JourneyLog.tsx`, `components/NextSteps.tsx`, `components/TrustBadge.tsx`, `components/Display.tsx`, `components/Icon.tsx`, `components/B6Bee.tsx`, `lib/` (except the four above), `src/data/`, `styles.css`, `src/i18n/`, `public/brand/` |
+| Any business, scout | `code/backend/app/domains/explore.py`, `scout.py`, `examples.py`, `code/frontend/src/lib/route.ts` |
 | HR workflows | `code/backend/app/domains/hr.py` and any new HR page or component |
 | Vision | `documentation/`, `assets/` |
 | Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, `guard.py`, `SECURITY.md`, CI and deploy files |
 
-A change to the API contract updates `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` in the same PR.
+A change to the API contract updates `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` in the same PR. A
+change that makes a documented claim false updates the page that claims it, in the same PR — including
+[documentation/LIMITS.md](documentation/LIMITS.md), which only earns its place if closing a gap removes its line.
 
 ## From the whiteboard to a PR
 
@@ -27,9 +32,9 @@ open a `task` issue that links the photo, then a branch.
 | Sketch | Built on `main` | Open, and where it goes |
 | --- | --- | --- |
 | [whiteboard-1](assets/whiteboard/whiteboard-1.jpg): dashboards, data extraction, "Future: hotels, events, finds" | Hotels end to end, the demand map | Events and "finds" as new domains (see below); an owner dashboard over time (Owner studio) |
-| [whiteboard-1](assets/whiteboard/whiteboard-1.jpg): "find people to work with" | HR starter: person cards, skills search, intros only with consent | The person's yes/no on an intro, a person studio, CV import (HR workflows) |
+| [whiteboard-1](assets/whiteboard/whiteboard-1.jpg): "find people to work with" | HR starter: person cards, skills search, intros only with consent. People are in `hive_discover` like anyone else, and an introduction to one waits for their yes through `connections.py` | A person studio, the yes/no inside it rather than over the hub API, CV import (HR workflows) |
 | [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): A2A, A2H, H2A, H2H | Agent-to-agent stage, human approval, second opinion | Opt-in outreach from a hotel's agent to a traveller's agent (Agents) |
-| [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): centralised vs federated | `HIVE_MCP_URLS`, each Hive publishes its key registry | A second Hive in the demo, owner-held keys (Hive core) |
+| [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): centralised vs federated | Hop-limited search over peer Hives with a radius, a time budget and loop prevention; verification at the destination; hub reputation and hub calibration; a directory to pick a Hive from; three peered hubs on one laptop via `lan.sh` ([FEDERATION.md](documentation/FEDERATION.md)) | A second Hive deployed in the cloud, calibration as a rank factor, owner-held signing keys ([LIMITS.md](documentation/LIMITS.md)) |
 | [whiteboard-4](assets/whiteboard/whiteboard-4.jpg): what a personal agent knows about its human | Request parsing in four languages | A traveller profile the human controls, never stored by the Hive (Agents) |
 | [whiteboard-5](assets/whiteboard/whiteboard-5.jpg): S1 to S6, DuckDB, LLM data protection | DuckDB with a Postgres snapshot; no free text in logs; `store=false` | Retention limits for bookings and events (Hive core) |
 
