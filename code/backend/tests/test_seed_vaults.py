@@ -77,3 +77,26 @@ def test_a_seeded_person_is_found_by_what_she_offers_and_by_what_she_needs(clien
     offers_side = {m["id"]: m for m in hive.discover(query="svelte contractor")["matches"]}
     assert offers_side["lena-hofmann"]["score_breakdown"]["offers_needs"] == 0
     assert offers_side["grid-ops"]["score_breakdown"]["offers_needs"] == 0
+
+
+def test_a_room_name_with_a_hyphen_in_it_is_still_a_bookable_unit(tmp_path):
+    """`River-view double` parsed as nothing, so the room existed in the prose and not in the hub."""
+    vault = tmp_path / "haus-am-hang"
+    vault.mkdir()
+    (vault / "about.md").write_text("# Haus am Hang\n\nFour rooms.\n", encoding="utf-8")
+    (vault / "rooms.md").write_text(
+        "# Rooms\n\n- South-facing double — 2 guests, CHF 180, 3 of them.\n- Attic single - 1 guest, CHF 90, 2.\n",
+        encoding="utf-8",
+    )
+    units = _seed_vaults().read_units(vault)
+    assert [(u["name"], u["max_guests"], u["price_chf"], u["quantity"]) for u in units] == [
+        ("South-facing double", 2, 180, 3),
+        ("Attic single", 1, 90, 2),
+    ]
+
+
+def test_the_real_hotel_krafft_folder_has_all_three_of_its_rooms():
+    """The hyphen bug cost the demo card its most expensive room; this is the folder on disk."""
+    seed = _seed_vaults()
+    units = seed.read_units(seed.VAULTS / "hotel-krafft")
+    assert [u["name"] for u in units] == ["Courtyard single", "Courtyard double", "River-view double"]

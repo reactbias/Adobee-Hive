@@ -167,8 +167,12 @@ def read_units(vault: Path) -> list[dict]:
         line = line.strip().lstrip("-").strip()
         if not line or line.startswith("#"):
             continue
+        # The separator is an em dash or a *spaced* hyphen, so a hyphen inside the name survives.
+        # It did not before: "River-view double" split at the hyphen, found no guest count, and the
+        # hotel's most expensive room existed in the markdown and nowhere in the hub.
         m = re.match(
-            r"(?P<name>[^—\-]+)[—\-]+\s*(?P<guests>\d+)\s*guests?,\s*CHF\s*(?P<price>\d+)" r"(?:,\s*(?P<qty>\d+))?",
+            r"(?P<name>.+?)\s*(?:[—–]|\s-\s)\s*(?P<guests>\d+)\s*guests?,\s*CHF\s*(?P<price>\d+)"
+            r"(?:,\s*(?P<qty>\d+))?",
             line,
         )
         if not m:
