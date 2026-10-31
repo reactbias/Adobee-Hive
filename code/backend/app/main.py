@@ -27,6 +27,7 @@ from . import (
     hive,
     hive_seed,
     hub,
+    limits,
     mcp_server,
     owner,
     registration,
@@ -67,6 +68,11 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Adobee Hive", version="0.1.0", lifespan=lifespan)
+
+
+# Nothing in FastAPI or uvicorn bounds a request body: a 20 MB application was read into memory,
+# parsed into objects and stored before any check of ours ran. This refuses by size first.
+app.add_middleware(limits.BodyLimit)
 
 
 app.add_middleware(

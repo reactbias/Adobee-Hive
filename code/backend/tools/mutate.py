@@ -42,6 +42,7 @@ SUITE = [
     "tests/test_hub_api.py",
     "tests/test_registration.py",
     "tests/test_semantic.py",
+    "tests/test_limits.py",
 ]
 
 
@@ -252,6 +253,48 @@ CURATED: list[Mutant] = [
         "if state != WITHDRAWN:",
     ),
     Mutant(
+        "limits.py",
+        "the description ceiling is removed, so one entry can carry a megabyte of prose",
+        '"description": MAX_DESCRIPTION,',
+        '"description": 10_000_000,',
+    ),
+    Mutant(
+        "limits.py",
+        "the whole-card ceiling goes, so every field legal still adds up to an unbounded document",
+        "if size > cap:",
+        "if False:",
+    ),
+    Mutant(
+        "limits.py",
+        "zero-width characters survive normalising, so an invisible pad changes every digest",
+        "kept = [ch for ch in text if ch.isspace() or unicodedata.category(ch) not in _INVISIBLE]",
+        "kept = list(text)",
+    ),
+    Mutant(
+        "limits.py",
+        "the request body stops being counted, so a chunked 20 MB application is parsed after all",
+        "if seen > self.max_bytes:",
+        "if False:",
+    ),
+    Mutant(
+        "limits.py",
+        "Content-Length stops being read, so a body that declares itself too big is received anyway",
+        'if name.lower() == b"content-length":',
+        "if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "the second door goes: an entity joins politely and grows unbounded on its next version",
+        "card = limits.vet(card)",
+        "card = limits.normalise(card)",
+    ),
+    Mutant(
+        "registration.py",
+        "the size check stops refusing, so an application of any size is signed for and stored",
+        'return (False, reason) if reason else (True, "within the sizes this hub publishes")',
+        'return True, "not checked"',
+    ),
+    Mutant(
         "reputation.py",
         "distance stops discounting, so a far result outranks an identical near one",
         "HOP_DECAY = 0.85",
@@ -303,6 +346,7 @@ TARGETS = [
     "sharing.py",
     "registration.py",
     "semantic.py",
+    "limits.py",
 ]
 
 
