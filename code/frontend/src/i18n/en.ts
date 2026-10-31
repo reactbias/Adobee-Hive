@@ -403,6 +403,19 @@ const en = {
   "finder.lead":
     "A Hive carries the signed cards of its members. Pick the one you want to search, or the one you want to join.",
   "finder.notDeployed": "This hub does not serve the directory yet, so only the hub you are on is listed.",
+  "finder.failed.read": "The hub directory could not be read, so only the hub you are on is listed.",
+  "finder.failed.status": "This hub refused to list the directory ({status}), so only the hub you are on is listed.",
+  "finder.failed.shape":
+    "This hub answered the directory with something this app cannot read, so only the hub you are on is listed.",
+  "finder.failed.render": "This list could not be drawn. The hub you are on is still listed below.",
+  "finder.slow": "The directory is taking a while. The hub you are on is listed as soon as it answers, or try again.",
+  "finder.retry": "Try again",
+  "finder.mixedContent":
+    "This page is served over HTTPS and {url} over plain HTTP, so your browser will not let this page call it. Open that Hive directly instead.",
+  "finder.pinned": "Picking a Hive points this page at it. Right now it is talking to {backend}.",
+  "nav.onHub": "Hive: {hub}",
+  "app.hubUnreachable": "This Hive could not be reached, so nothing on the page is live.",
+  "finder.noAddress": "This hub's address is not known here, so this page cannot be pointed at it.",
   "finder.loading": "Reading the directory",
   "finder.use": "Use this Hive",
   "finder.change": "Change Hive",
@@ -412,8 +425,6 @@ const en = {
   "finder.unknownDescription": "This hub has not been asked what it carries.",
   "finder.thisHub": "This Hive",
   "finder.thisHubDescription": "The hub this app was deployed against.",
-  "finder.peerNotWired":
-    "Searching through another hub is not wired up yet: the app stays on the hub it was deployed with.",
   "finder.admission.open": "Admits anything that passes its checks",
   "finder.admission.vetted": "A person reads every application",
   "finder.admission.invite": "An invitation is required",
@@ -657,8 +668,6 @@ const en = {
   "network.alone": "No peer hubs are configured yet, so this hub answers every search on its own.",
   "network.legend":
     "The line to a peer carries its calibration: clay means the hub held or beat its own claim, red means it published more than people found, grey means too little evidence to say.",
-  "finder.pinned":
-    "This build talks to {backend} whatever you pick here: the backend address is fixed when the site is built. Picking a hub records your choice; it does not yet move the app to another hub.",
   "network.hubs": "Hubs on this network",
 
   // Introductions: connect to someone found, then score how it actually went

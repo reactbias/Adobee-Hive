@@ -404,6 +404,24 @@ const de: Record<Key, string> = {
     "Ein Hive führt die signierten Karten seiner Mitglieder. Wählen Sie den Hive, den Sie durchsuchen oder dem Sie beitreten möchten.",
   "finder.notDeployed":
     "Dieser Hub liefert das Verzeichnis noch nicht, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.read":
+    "Das Hub-Verzeichnis konnte nicht gelesen werden, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.status":
+    "Dieser Hub hat das Verzeichnis verweigert ({status}), daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.shape":
+    "Dieser Hub hat auf das Verzeichnis mit etwas geantwortet, das diese App nicht lesen kann, daher ist nur der Hub aufgeführt, auf dem Sie sind.",
+  "finder.failed.render":
+    "Diese Liste konnte nicht gezeichnet werden. Der Hub, auf dem Sie sind, steht weiterhin unten.",
+  "finder.slow":
+    "Das Verzeichnis braucht etwas. Der Hub, auf dem Sie sind, erscheint, sobald er antwortet, oder versuchen Sie es erneut.",
+  "finder.retry": "Erneut versuchen",
+  "finder.mixedContent":
+    "Diese Seite wird über HTTPS ausgeliefert und {url} über einfaches HTTP, daher lässt Ihr Browser diesen Aufruf nicht zu. Öffnen Sie diesen Hive direkt.",
+  "finder.pinned": "Die Wahl eines Hive richtet diese Seite darauf aus. Im Moment spricht sie mit {backend}.",
+  "nav.onHub": "Hive: {hub}",
+  "app.hubUnreachable": "Dieser Hive war nicht erreichbar, daher ist auf der Seite nichts live.",
+  "finder.noAddress":
+    "Die Adresse dieses Hubs ist hier nicht bekannt, daher kann diese Seite nicht darauf ausgerichtet werden.",
   "finder.loading": "Verzeichnis wird gelesen",
   "finder.use": "Diesen Hive nutzen",
   "finder.change": "Hive wechseln",
@@ -413,8 +431,6 @@ const de: Record<Key, string> = {
   "finder.unknownDescription": "Dieser Hub wurde nicht gefragt, was er führt.",
   "finder.thisHub": "Dieser Hive",
   "finder.thisHubDescription": "Der Hub, auf dem diese App läuft.",
-  "finder.peerNotWired":
-    "Die Suche über einen anderen Hub ist noch nicht angebunden: Die App bleibt auf dem Hub, mit dem sie ausgeliefert wurde.",
   "finder.admission.open": "Nimmt alles auf, was die Prüfungen besteht",
   "finder.admission.vetted": "Eine Person liest jede Bewerbung",
   "finder.admission.invite": "Eine Einladung ist nötig",
@@ -662,8 +678,6 @@ const de: Record<Key, string> = {
   "network.alone": "Es sind noch keine benachbarten Hubs konfiguriert, dieser Hub beantwortet jede Suche allein.",
   "network.legend":
     "Die Linie zu einem Nachbarn zeigt seine Kalibrierung: Lehm heisst, der Hub hat seine eigene Angabe gehalten oder übertroffen, Rot heisst, er hat mehr veröffentlicht als die Menschen fanden, Grau heisst, die Belege reichen nicht.",
-  "finder.pinned":
-    "Dieser Build spricht mit {backend}, unabhängig von Ihrer Wahl hier: Die Adresse des Backends wird beim Bauen der Seite festgelegt. Eine Wahl wird gemerkt, verschiebt die App aber noch nicht auf einen anderen Hub.",
   "network.hubs": "Hubs in diesem Netz",
 
   "connect.now": "Verbinden",

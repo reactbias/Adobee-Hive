@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, type DirectoryHub } from "../api";
-import { I18nProvider } from "../i18n";
+import { ApiError, api, apiBase, chosenHubUrl, type Directory, type DirectoryHub } from "../api";
+import { I18nProvider, useI18n } from "../i18n";
+import de from "../i18n/de";
 import en from "../i18n/en";
 import InstanceFinder from "./InstanceFinder";
 
@@ -40,6 +41,12 @@ const unasked = (over: Partial<DirectoryHub> = {}): DirectoryHub =>
     last_asked_ok: null,
     ...over,
   });
+
+/** A language switch, so a test can make the finder read the directory a second time the way a person does. */
+function Switcher() {
+  const { setLocale } = useI18n();
+  return <button onClick={() => setLocale("de")}>to german</button>;
+}
 
 const show = (onPick = vi.fn(), onJoin = vi.fn()) =>
   render(
@@ -261,13 +268,103 @@ describe("the instance finder", () => {
     expect(localStorage.getItem("adobee-hub")).toBeNull();
   });
 
-  it("is honest that picking another hub does not yet move the app to it", async () => {
-    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub(), hub({ hub: "zurich.example", home: false })] });
-    show();
+  // "Regardless of which hub they select, they always end up in the same one." The base URL was baked in at
+  // build time, so a pick recorded a preference and every call carried on going to the hub the build was made
+  // against. These pin that a pick really moves the app.
+  describe("picking a Hive points the app at it", () => {
+    it("remembers where the chosen hub answers, not only its name", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub(), hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461", name: "Hive Zurich" })],
+      });
+      show();
 
-    const rows = await screen.findAllByRole("listitem");
-    expect(within(rows[0]).queryByText(en["finder.peerNotWired"])).toBeNull();
-    expect(within(rows[1]).getByText(en["finder.peerNotWired"])).toBeInTheDocument();
+      const rows = await screen.findAllByRole("listitem");
+      await userEvent.click(within(rows[1]).getByRole("button", { name: en["finder.use"] }));
+
+      expect(sessionStorage.getItem("adobee-hub")).toBe("zurich");
+      expect(chosenHubUrl()).toBe("http://10.0.0.2:8461");
+      expect(apiBase()).toBe("http://10.0.0.2:8461");
+    });
+
+    it("sends the next call to the chosen hub's base URL", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461/", name: "Hive Zurich" })],
+      });
+      const fetched = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => ({ status: "ok" }),
+      } as unknown as Response);
+      show();
+
+      await userEvent.click(await screen.findByRole("button", { name: en["finder.use"] }));
+      await api.health();
+
+      expect(fetched).toHaveBeenCalledWith("http://10.0.0.2:8461/api/health", expect.anything());
+      fetched.mockRestore();
+    });
+
+    it("keeps the build's own backend when the hub picked is the home one", async () => {
+      vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub({ url: "http://10.0.0.1:8460" })] });
+      show();
+
+      await userEvent.click(await screen.findByRole("button", { name: en["finder.use"] }));
+
+      expect(chosenHubUrl()).toBe("");
+      expect(apiBase()).toBe("");
+    });
+
+    it("refuses a plain-HTTP hub from an HTTPS page, and says why", async () => {
+      const where = window.location;
+      Object.defineProperty(window, "location", {
+        value: { ...where, protocol: "https:" },
+        writable: true,
+        configurable: true,
+      });
+      try {
+        vi.spyOn(api, "directory").mockResolvedValue({
+          hubs: [hub({ hub: "zurich", home: false, url: "http://10.0.0.2:8461", name: "Hive Zurich" })],
+        });
+        show();
+
+        expect(
+          await screen.findByText(en["finder.mixedContent"].replace("{url}", "http://10.0.0.2:8461")),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: en["finder.use"] })).toBeDisabled();
+      } finally {
+        Object.defineProperty(window, "location", { value: where, writable: true, configurable: true });
+      }
+    });
+
+    it("will not be pointed at a hub whose address it does not know", async () => {
+      // A hub we only know by reputation has no URL. Picking it would show its name and keep calling this one.
+      vi.spyOn(api, "directory").mockResolvedValue({
+        hubs: [hub({ hub: "rumour", home: false, url: "", name: "Hive Rumour" })],
+      });
+      show();
+
+      expect(await screen.findByText(en["finder.noAddress"])).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: en["finder.use"] })).toBeDisabled();
+    });
+
+    it("offers an https hub from an https page as normal", async () => {
+      const where = window.location;
+      Object.defineProperty(window, "location", {
+        value: { ...where, protocol: "https:" },
+        writable: true,
+        configurable: true,
+      });
+      try {
+        vi.spyOn(api, "directory").mockResolvedValue({
+          hubs: [hub({ hub: "zurich", home: false, url: "https://zurich.example", name: "Hive Zurich" })],
+        });
+        show();
+        expect(await screen.findByRole("button", { name: en["finder.use"] })).toBeEnabled();
+      } finally {
+        Object.defineProperty(window, "location", { value: where, writable: true, configurable: true });
+      }
+    });
   });
 
   it("offers no way to use or join a hub this one has blocked", async () => {
@@ -369,5 +466,162 @@ describe("choosing between hives", () => {
     await userEvent.click(taking);
     await userEvent.click(screen.getByRole("button", { name: en["finder.filter.proven"] }));
     expect(await names()).toEqual(["Open"]);
+  });
+});
+
+// "It disappears." It did, completely: a 200 whose body was not {hubs: [...]} set `hubs` to undefined, which is
+// not null, so the loading branch was skipped and `hubs.map` threw mid-render. With no error boundary above it
+// React unmounted the whole root — in a real browser `document.getElementById("root").innerHTML` was "".
+//
+// The rule these pin: the finder always renders something. It never renders nothing.
+describe("the finder always renders something", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+  });
+
+  const alive = () => {
+    expect(screen.getByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.getByText(en["finder.lead"])).toBeInTheDocument();
+  };
+
+  it("survives a directory that answers 200 with no hubs at all", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({} as Directory);
+    show();
+
+    expect(await screen.findByText(en["finder.failed.shape"])).toBeInTheDocument();
+    alive();
+    expect(screen.getByRole("button", { name: en["finder.retry"] })).toBeInTheDocument();
+    expect(screen.getByText(en["finder.thisHub"])).toBeInTheDocument();
+  });
+
+  it("survives hubs that is null, or an object, or full of rubbish", async () => {
+    for (const body of [{ hubs: null }, { hubs: { a: 1 } }, { hubs: "nope" }, null, undefined]) {
+      vi.spyOn(api, "directory").mockResolvedValue(body as unknown as Directory);
+      const { unmount } = show();
+      expect(await screen.findByText(en["finder.failed.shape"])).toBeInTheDocument();
+      alive();
+      unmount();
+    }
+  });
+
+  it("drops a row that is not a hub and keeps the ones that are", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [null, { nope: true }, hub({ hub: "good.example", name: "Hive Good" }), "string"],
+    } as unknown as Directory);
+    show();
+
+    expect(await screen.findByText("Hive Good")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.queryByText(en["finder.failed.shape"])).toBeNull();
+  });
+
+  it("says it is loading while it is loading, and nothing else", () => {
+    vi.spyOn(api, "directory").mockReturnValue(new Promise(() => {}));
+    show();
+
+    expect(screen.getByText(en["finder.loading"])).toBeInTheDocument();
+    alive();
+    expect(screen.queryByRole("listitem")).toBeNull();
+  });
+
+  it("says what failed and offers a retry that actually retries", async () => {
+    const directory = vi
+      .spyOn(api, "directory")
+      .mockRejectedValueOnce(new Error("error.offline"))
+      .mockResolvedValue({ hubs: [hub({ name: "Hive Second Try" })] });
+    show();
+
+    expect(await screen.findByText(en["finder.failed.read"])).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: en["finder.retry"] }));
+
+    expect(await screen.findByText("Hive Second Try")).toBeInTheDocument();
+    expect(screen.queryByText(en["finder.failed.read"])).toBeNull();
+    expect(directory).toHaveBeenCalledTimes(2);
+  });
+
+  it("names the refusal when a hub refuses to list the directory", async () => {
+    vi.spyOn(api, "directory").mockRejectedValue(new ApiError("nope", 503));
+    show();
+
+    expect(await screen.findByText(en["finder.failed.status"].replace("{status}", "503"))).toBeInTheDocument();
+  });
+
+  it("still shows this hub when the directory lists nothing at all", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
+    show();
+
+    expect(await screen.findByText(en["finder.thisHub"])).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["finder.use"] })).toBeEnabled();
+    alive();
+  });
+
+  it("keeps the hubs it already has when a later read fails", async () => {
+    // A language switch re-reads the directory. If that read fails, the list on screen must not be thrown away.
+    vi.spyOn(api, "directory")
+      .mockResolvedValueOnce({ hubs: [hub({ name: "Hive Basel" })] })
+      .mockRejectedValue(new Error("error.offline"));
+    render(
+      <I18nProvider>
+        <Switcher />
+        <InstanceFinder onPick={vi.fn()} onJoin={vi.fn()} />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText("Hive Basel")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "to german" }));
+
+    // The page is in German now, so the failure is said in German; the hub's own name is the owner's text.
+    expect(await screen.findByText(de["finder.failed.read"])).toBeInTheDocument();
+    expect(screen.getByText("Hive Basel")).toBeInTheDocument();
+    expect(screen.queryByText(en["finder.thisHub"])).toBeNull();
+  });
+
+  it("does not blank the screen when a retry fails too", async () => {
+    vi.spyOn(api, "directory").mockRejectedValue(new Error("error.offline"));
+    show();
+
+    expect(await screen.findByText(en["finder.thisHub"])).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: en["finder.retry"] }));
+
+    expect(await screen.findByText(en["finder.failed.read"])).toBeInTheDocument();
+    expect(screen.getByText(en["finder.thisHub"])).toBeInTheDocument();
+    alive();
+  });
+
+  it("says so when the directory is slow, instead of waiting in silence", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(api, "directory").mockReturnValue(new Promise(() => {}));
+      show();
+      expect(screen.getByText(en["finder.loading"])).toBeInTheDocument();
+      await vi.advanceTimersByTimeAsync(16_000);
+      expect(screen.getByText(en["finder.slow"])).toBeInTheDocument();
+      // It says "or try again", so there has to be something to press.
+      expect(screen.getByRole("button", { name: en["finder.retry"] })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the heading and a way out when a row itself throws", async () => {
+    const boom = {
+      ...hub(),
+      get name(): string {
+        throw new Error("a row that cannot be drawn");
+      },
+    } as DirectoryHub;
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [boom] });
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      show();
+      expect(await screen.findByText(en["finder.failed.render"])).toBeInTheDocument();
+      alive();
+      expect(screen.getByRole("button", { name: en["finder.retry"] })).toBeInTheDocument();
+    } finally {
+      quiet.mockRestore();
+    }
   });
 });

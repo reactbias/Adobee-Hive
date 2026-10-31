@@ -1,5 +1,10 @@
-// Typed client for the FastAPI backend. VITE_API_URL is set by the Pages build; empty means same origin (dev proxy).
-const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+// Typed client for the FastAPI backend.
+//
+// The base URL is resolved per call, not baked in. VITE_API_URL is the build's default — what the Pages and
+// Render deploys talk to before anybody picks anything, and empty means same origin through the dev proxy — but a
+// Hive chosen in the finder overrides it for this tab. That is what makes picking Zürich actually talk to Zürich
+// instead of recording a preference and carrying on with Basel.
+const BUILD_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
 /** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
 export const OFFLINE = "error.offline";
@@ -37,8 +42,9 @@ async function call<T>(path: string, init?: RequestInit, retry = true): Promise<
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    // A peer hub's `apply_at` is a full address; everything else is a path on this backend.
-    res = await fetch(/^https?:\/\//.test(path) ? path : `${BASE}${path}`, {
+    // A peer hub's `apply_at` is a full address; everything else is a path on the Hive this tab is pointed at.
+    const target = /^https?:\/\//.test(path) ? path : `${apiBase()}${path}`;
+    res = await fetch(target, {
       ...init,
       signal: abort.signal,
       headers:
@@ -111,12 +117,22 @@ function adminHeaders(): Record<string, string> {
   return token ? { "X-Admin-Token": token } : {};
 }
 
-// The hub the app is pointed at, chosen in the instance finder. Remembered for this tab only.
+// The hub the app is pointed at, chosen in the instance finder: its id, and where it actually answers.
+// Remembered for this tab only, so closing the tab goes back to the build's default.
 const HUB_KEY = "adobee-hub";
-export function setChosenHub(hub: string) {
+const HUB_URL_KEY = "adobee-hub-url";
+
+/**
+ * Remember the chosen Hive. `url` is its base URL; "" means the one this build was pointed at.
+ *
+ * Both halves are kept together on purpose: an id alone cannot be called, and a URL alone cannot be shown.
+ */
+export function setChosenHub(hub: string, url = "") {
   try {
     if (hub) sessionStorage.setItem(HUB_KEY, hub);
     else sessionStorage.removeItem(HUB_KEY);
+    if (hub && url) sessionStorage.setItem(HUB_URL_KEY, url.replace(/\/$/, ""));
+    else sessionStorage.removeItem(HUB_URL_KEY);
   } catch {
     /* storage blocked: the finder asks again on the next load */
   }
@@ -129,13 +145,32 @@ export function chosenHub(): string {
   }
 }
 
-/**
- * The backend this build talks to. VITE_API_URL is baked in at build time, so a deployed build can only reach
- * the hub it was built against: the instance finder says so rather than pretending a pick moves the app.
- */
-export const apiOrigin = () => BASE || window.location.origin;
+/** Where the chosen Hive answers, or "" for the hub this build was pointed at. */
+export function chosenHubUrl(): string {
+  try {
+    return sessionStorage.getItem(HUB_URL_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
 
-export const mcpUrl = () => `${BASE || window.location.origin}/mcp/`;
+/** The base URL every call goes to: the Hive chosen in this tab, else the build's default. */
+export const apiBase = (): string => chosenHubUrl() || BUILD_BASE;
+
+/**
+ * True when this page cannot call that hub at all, whatever the hub allows.
+ *
+ * A page served over HTTPS may not call an `http://` address: that is mixed content, the browser blocks it
+ * before any request is made, and no CORS or private-network header fixes it. The finder refuses such a choice
+ * with that reason rather than appearing to switch and then failing on every call.
+ */
+export const blockedAsMixedContent = (url: string): boolean =>
+  typeof window !== "undefined" && window.location.protocol === "https:" && /^http:\/\//i.test(url);
+
+/** The backend the app is talking to right now: the chosen Hive, the build's default, or this very origin. */
+export const apiOrigin = () => apiBase() || window.location.origin;
+
+export const mcpUrl = () => `${apiOrigin()}/mcp/`;
 
 // ---------- Hive ----------
 
