@@ -48,9 +48,14 @@ describe("card view", () => {
       description: "Quiet courtyard rooms, dogs welcome.",
       rating: 4.6,
       rating_count: 12,
+      tagline: "Quiet rooms over the Rhine",
       address: "Unterer Rheinweg 41, 4058 Basel",
       features: ["quiet", "dog-friendly"],
       policies: { cancellation: "Free until 48 h before arrival" },
+      distances_m: { "basel sbb": 1900 },
+      version: 1,
+      published_at: "2026-10-31T08:41:44+00:00",
+      valid_until: "2027-01-29T08:41:44+00:00",
       units: [
         { id: "single", name: "Courtyard single", max_guests: 1, price_chf: 128, quantity: 3 },
         { id: "double", name: "Courtyard double", max_guests: 2, price_chf: 172, quantity: 4 },
@@ -59,11 +64,33 @@ describe("card view", () => {
     expect(card?.rating).toBe(46);
     expect(card?.offers.map((o) => o.title)).toEqual(["Courtyard single", "Courtyard double"]);
     expect(card?.offers[0].price).toEqual({ amount: 128, currency: "CHF", unit: "night" });
-    expect(card?.facts.map((f) => f.text)).toEqual([
-      "Unterer Rheinweg 41, 4058 Basel",
-      "quiet, dog-friendly",
-      "cancellation: Free until 48 h before arrival",
-    ]);
+    expect(card?.tagline).toBe("Quiet rooms over the Rhine");
+    expect(card?.place).toBe("Unterer Rheinweg 41, 4058 Basel");
+    expect(card?.features).toEqual(["quiet", "dog-friendly"]);
+    // Publishing metadata is for machines; the rest folds under "More about".
+    expect(card?.facts.map((f) => f.key)).toEqual(["policies", "distances_m"]);
+    expect(card?.facts[0].pairs).toEqual([["cancellation", "Free until 48 h before arrival"]]);
+    expect(card?.facts[1].pairs).toEqual([["basel sbb", 1900]]);
+  });
+
+  it("reads a hub offer: its summary under the title, its price per person", () => {
+    const card = readHubCard({
+      id: "x-bekenya",
+      name: "BeKenya",
+      description: "Tours in Kenya.",
+      offers: [
+        {
+          id: "kenya-21",
+          title: "21 days Kenya",
+          summary: "Maasai Mara, then the coast.",
+          duration: "21 days",
+          price: { amount: 1350, currency: "EUR", per: "person" },
+        },
+      ],
+    });
+    expect(card?.offers[0].summary).toBe("Maasai Mara, then the coast.");
+    expect(card?.offers[0].price).toEqual({ amount: 1350, currency: "EUR", unit: "person" });
+    expect(card?.offers[0].fields.map((f) => f.key)).toEqual(["duration"]);
   });
 
   it("keeps a result that arrived through the other hub", () => {

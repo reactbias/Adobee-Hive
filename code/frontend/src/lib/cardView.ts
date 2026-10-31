@@ -10,11 +10,14 @@ export type Price = {
   unit?: string;
 };
 
-/** One field from a file, kept so the screen can show whatever the file included. */
-export type Field = { key: string; text: string };
+/**
+ * One field from a file, kept so the screen can show whatever the file included. An object
+ * (policies, distances) keeps its entries as pairs, so the screen can list them.
+ */
+export type Field = { key: string; text: string; pairs?: [string, string | number][] };
 
-export type Offer = { id: string; title: string; price?: Price; fields: Field[] };
-export type Need = { id: string; title: string; budget?: Price; fields: Field[] };
+export type Offer = { id: string; title: string; summary?: string; price?: Price; fields: Field[] };
+export type Need = { id: string; title: string; summary?: string; budget?: Price; fields: Field[] };
 
 /** The three fields every entity carries, plus the lists a result can draw. */
 export type HiveCard = {
@@ -22,6 +25,10 @@ export type HiveCard = {
   kind: string;
   name: string;
   description: string;
+  tagline?: string;
+  /** Where it is: an address, or a place name. */
+  place?: string;
+  features: string[];
   /** Tenths of a star, 0–50. Null means not rated yet. */
   rating: number | null;
   rating_count: number;
@@ -185,7 +192,21 @@ function price(raw: unknown): Price | undefined {
   if (typeof p.to === "number") out.to = p.to;
   if (typeof p.amount === "number") out.amount = p.amount;
   if (typeof p.unit === "string") out.unit = p.unit;
+  else if (typeof p.per === "string") out.unit = p.per;
   return out;
+}
+
+const text = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value : undefined;
+
+/** An address, or the most specific name a `location` object carries. */
+function placeOf(o: Record<string, unknown>): string | undefined {
+  const direct = text(o.address) ?? text(o.location);
+  if (direct) return direct;
+  const loc = o.location;
+  if (!loc || typeof loc !== "object") return undefined;
+  const l = loc as Record<string, unknown>;
+  return text(l.address) ?? text(l.city) ?? text(l.name);
 }
 
 function asText(value: unknown): string {
@@ -206,8 +227,15 @@ function fieldsOf(raw: Record<string, unknown>, skip: string[]): Field[] {
   const out: Field[] = [];
   for (const [key, value] of Object.entries(raw)) {
     if (skip.includes(key)) continue;
-    const text = asText(value);
-    if (text) out.push({ key, text });
+    const shown = asText(value);
+    if (!shown) continue;
+    const field: Field = { key, text: shown };
+    if (value && typeof value === "object" && !Array.isArray(value) && !("currency" in value)) {
+      field.pairs = Object.entries(value).flatMap(([k, v]): [string, string | number][] =>
+        typeof v === "number" ? [[k, v]] : asText(v) ? [[k, asText(v)]] : [],
+      );
+    }
+    out.push(field);
   }
   return out;
 }
@@ -215,12 +243,21 @@ function fieldsOf(raw: Record<string, unknown>, skip: string[]): Field[] {
 function listing(
   raw: unknown,
   moneyKey: "price" | "budget",
-): { id: string; title: string; money?: Price; fields: Field[] } | null {
+): { id: string; title: string; summary?: string; money?: Price; fields: Field[] } | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
   if (typeof o.id !== "string" || typeof o.title !== "string") return null;
-  return { id: o.id, title: o.title, money: price(o[moneyKey]), fields: fieldsOf(o, ["id", "title", moneyKey]) };
+  return {
+    id: o.id,
+    title: o.title,
+    summary: text(o.summary),
+    money: price(o[moneyKey]),
+    fields: fieldsOf(o, ["id", "title", "summary", moneyKey, ...LISTING_SKIP]),
+  };
 }
+
+// Tags and the hand-off label are for agents; the person sees the offer itself.
+const LISTING_SKIP = ["tags", "action"];
 
 /** Keep a card the UI can draw. A file that lacks the three entity fields is ignored. */
 export function readCard(raw: unknown): HiveCard | null {
@@ -228,18 +265,8 @@ export function readCard(raw: unknown): HiveCard | null {
   const o = raw as Record<string, unknown>;
   if (typeof o.id !== "string" || typeof o.name !== "string" || typeof o.description !== "string") return null;
   if (o.rating != null && typeof o.rating !== "number") return null;
-  const offers = Array.isArray(o.offers)
-    ? o.offers.flatMap((item) => {
-        const row = listing(item, "price");
-        return row ? [{ id: row.id, title: row.title, price: row.money, fields: row.fields }] : [];
-      })
-    : [];
-  const needs = Array.isArray(o.needs)
-    ? o.needs.flatMap((item) => {
-        const row = listing(item, "budget");
-        return row ? [{ id: row.id, title: row.title, budget: row.money, fields: row.fields }] : [];
-      })
-    : [];
+  const offers = Array.isArray(o.offers) ? o.offers.flatMap((item) => asOffer(item)) : [];
+  const needs = Array.isArray(o.needs) ? o.needs.flatMap((item) => asNeed(item)) : [];
   const skills = Array.isArray(o.skills)
     ? o.skills.flatMap((s) =>
         s && typeof s === "object" && typeof (s as { tag?: unknown }).tag === "string"
@@ -259,6 +286,9 @@ export function readCard(raw: unknown): HiveCard | null {
     kind: typeof o.kind === "string" ? o.kind : "business",
     name: o.name,
     description: o.description,
+    tagline: text(o.tagline),
+    place: placeOf(o),
+    features: Array.isArray(o.features) ? o.features.filter((f): f is string => typeof f === "string") : [],
     rating: typeof o.rating === "number" ? o.rating : null,
     rating_count: typeof o.rating_count === "number" ? o.rating_count : 0,
     offers,
@@ -269,7 +299,28 @@ export function readCard(raw: unknown): HiveCard | null {
   };
 }
 
+function asOffer(raw: unknown): Offer[] {
+  const row = listing(raw, "price");
+  return row ? [{ id: row.id, title: row.title, summary: row.summary, price: row.money, fields: row.fields }] : [];
+}
+
+function asNeed(raw: unknown): Need[] {
+  const row = listing(raw, "budget");
+  return row ? [{ id: row.id, title: row.title, summary: row.summary, budget: row.money, fields: row.fields }] : [];
+}
+
 const HUB_SKIP = [
+  // Drawn in their own place on the card.
+  "tagline",
+  "address",
+  "location",
+  "features",
+  // Publishing metadata: the signature already vouches for it.
+  "version",
+  "published_at",
+  "valid_until",
+  "aliases",
+  "provenance",
   "id",
   "slug",
   "name",
@@ -383,14 +434,8 @@ function loadCatalog(): HiveCard[] {
     const card = readCard(raw);
     if (!card) continue;
     const dir = entityDir(path);
-    card.offers = (offers.get(dir) ?? []).flatMap((file) => {
-      const row = listing(file, "price");
-      return row ? [{ id: row.id, title: row.title, price: row.money, fields: row.fields }] : [];
-    });
-    card.needs = (searches.get(dir) ?? []).flatMap((file) => {
-      const row = listing(file, "budget");
-      return row ? [{ id: row.id, title: row.title, budget: row.money, fields: row.fields }] : [];
-    });
+    card.offers = (offers.get(dir) ?? []).flatMap((file) => asOffer(file));
+    card.needs = (searches.get(dir) ?? []).flatMap((file) => asNeed(file));
     card.offers.sort((a, b) => a.id.localeCompare(b.id));
     card.needs.sort((a, b) => a.id.localeCompare(b.id));
     cards.push(card);

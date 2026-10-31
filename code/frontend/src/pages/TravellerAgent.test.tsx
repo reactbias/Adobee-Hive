@@ -214,7 +214,7 @@ describe("traveller agent", () => {
     expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.2"] }], {});
   });
 
-  it("keeps the hub log on the page and refreshes it when details opens", async () => {
+  it("reads the hub log all along and shows it beside the chat when details opens", async () => {
     const activity = vi.spyOn(api, "activity").mockResolvedValue({
       events: [
         {
@@ -234,17 +234,27 @@ describe("traveller agent", () => {
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    expect(await screen.findByRole("region", { name: en["card.log"] })).toBeInTheDocument();
-    expect(await screen.findByText(en["activity.step.discover"])).toBeInTheDocument();
-    expect(screen.getByText(en["activity.outcome.matched"].replace("{n}", "3"))).toBeInTheDocument();
+    await vi.waitFor(() => expect(activity).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
     const before = activity.mock.calls.length;
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
     await user.click(await screen.findByRole("button", { name: en["card.details"] }));
 
     expect(activity.mock.calls.length).toBeGreaterThan(before);
-    expect(screen.getByRole("region", { name: en["card.log"] })).toBeInTheDocument();
-    expect(screen.getByText(en["activity.step.discover"])).toBeInTheDocument();
+    // Already read before the click: the log is there at once, next to the cards.
+    const log = screen.getByRole("region", { name: en["card.log"] });
+    expect(log).toHaveTextContent(en["activity.step.discover"]);
+    expect(log).toHaveTextContent(en["activity.outcome.matched"].replace("{n}", "3"));
+    expect(screen.getByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
+  });
+
+  it("offers New trip only once there is a trip", async () => {
+    const user = setup();
+    expect(screen.queryByRole("button", { name: en["agent.newTrip"] })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    expect(await screen.findByRole("button", { name: en["agent.newTrip"] })).toBeInTheDocument();
   });
 
   it("stays on the card when details cannot reach the backend", async () => {
