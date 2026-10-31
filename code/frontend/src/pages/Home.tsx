@@ -18,13 +18,13 @@ export default function Home() {
         <div>
           <h1>The website is not the front door anymore.</h1>
           <p className="lead">
-            The first visitor of a Basel hotel is now an AI agent. Adobee Hive gives every local business a signed,
-            agent-readable card that agents can search, trust and book through, and that the owner edits in plain words.
-            One presence serves agents and humans.
+            The first visitor of a Basel hotel is increasingly an AI agent. Adobee Hive gives every local business a
+            signed, agent-readable card that agents can search, trust and book through, and that the owner edits in
+            plain words. One presence serves agents and humans, and nothing is booked until a person says yes.
           </p>
           <div className="row">
             <Link className="btn" to="/agent">
-              Watch an agent book
+              Watch two agents negotiate
             </Link>
             <Link className="btn" to="/owner" style={{ background: "transparent" }}>
               I own a business

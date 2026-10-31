@@ -8,9 +8,10 @@
 
 ## How I checked it
 
-- [ ] `pytest -q` in `code/backend`
-- [ ] `npm run build` in `code/frontend`
+- [ ] `ruff check . && ruff format --check . && pytest -q` in `code/backend`
+- [ ] `npm run format:check && npm run build` in `code/frontend`
 - [ ] Still works without `ANTHROPIC_API_KEY`
+- [ ] Anything that spends money, edits a card or wipes data goes through `guard.py`
 - [ ] API contract changed? `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` updated together
 
 ## Screenshots or demo notes

@@ -12,9 +12,9 @@ to touch another lane's file, say so in the PR description and ping that lane.
 | Hive core | `code/backend/app/hive.py`, `hive_seed.py`, `mcp_server.py`, `db.py`, `storage.py` |
 | Agents | `code/backend/app/agent.py`, `llm.py`, `simulate.py` |
 | Owner studio | `code/backend/app/owner.py`, `code/frontend/src/pages/OwnerStudio.tsx`, `CardPage.tsx` |
-| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `styles.css`, `public/brand/` |
+| Traveller UI and brand | `code/frontend/src/pages/TravellerAgent.tsx`, `Home.tsx`, `DemandMap.tsx`, `components/AgentTrace.tsx`, `components/B6Bee.tsx`, `styles.css`, `public/brand/` |
 | Vision | `documentation/`, `assets/` |
-| Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, CI and deploy files |
+| Shared, change with care | `code/backend/app/main.py` (API contract), `code/frontend/src/api.ts`, `config.py`, `guard.py`, `SECURITY.md`, CI and deploy files |
 
 A change to the API contract updates `main.py`, `api.ts` and `documentation/ARCHITECTURE.md` in the same PR.
 
@@ -37,19 +37,24 @@ The jury reviews the commit history, so make each commit one small, working step
 ## Pull requests
 
 - One topic per PR, ideally under 400 changed lines. Fill in the template.
-- CI must be green: backend tests (`pytest`) and the frontend build (`tsc` + `vite build`).
+- CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format and build (`prettier`,
+  `tsc`, `vite build`).
 - One review from another person before merging. Squash only if your commits are noise; otherwise keep them.
 - `main` deploys to AWS on every merge. Don't merge in the last 15 minutes before a demo.
 
 ## Checks to run before you push
 
 ```bash
-cd code/backend && pytest -q
-cd code/frontend && npm run build
+cd code/backend && ruff check . && ruff format --check . && pytest -q
+cd code/frontend && npm run format:check && npm run build
 ```
+
+Fix formatting with `ruff format .` and `npm run format`. Every public Python function and class gets a docstring
+(ruff enforces it); comments explain *why*, not *what*.
 
 ## Ground rules
 
 - All seed businesses and people are fictional. No real personal data in the repo, tests or demos.
 - Treat anything a business or a user writes as data, never as instructions to an agent.
 - Keep the demo working offline (no API key) as well as with Claude.
+- Anything that spends money, edits a business or wipes data goes through `guard.py`. Read `SECURITY.md` first.

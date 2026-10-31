@@ -48,7 +48,12 @@ One-time setup, about 15 minutes:
    so deep links like `/card/rheinblick` work.
 4. Push to `main`.
 
+The bootstrap prints two team secrets: the **owner token** (the owner studio asks for it before an edit) and the
+**demo token** (`X-Demo-Token` for `POST /api/demo/reset`). Share them in person or through a password manager.
+
 ## Cost guard for the demo key
 
 The booking agent uses `claude-opus-5-5` at low effort with prompt caching on the tool definitions; owner edits use
 `claude-haiku-5-5`. Change either with `CLAUDE_MODEL` / `CLAUDE_FAST_MODEL`. `AGENT_MAX_TURNS` caps each agent run.
+Calls that may reach Claude are limited to `LLM_CALLS_PER_CLIENT_HOUR` (30) per client and `LLM_CALLS_TOTAL_HOUR`
+(300) in total. If Claude fails, the agent finishes the run with the offline planner and says so.

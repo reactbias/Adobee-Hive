@@ -28,8 +28,20 @@ flowchart LR
 | `agent.py` | The traveller agent: a Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
 | `simulate.py` | Simulated traveller searches for the demand map |
+| `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
 | `llm.py`, `config.py` | Claude client with structured outputs and fallbacks; environment settings |
+
+## Frontend (`code/frontend/src`)
+
+| File | Responsibility |
+| --- | --- |
+| `api.ts` | Typed client for the REST API |
+| `pages/TravellerAgent.tsx`, `components/AgentTrace.tsx` | The traveller's chat, the agent-to-agent trace and the approval step |
+| `pages/OwnerStudio.tsx` | Plain-language edits, diff, sign and publish, missed demand |
+| `pages/CardPage.tsx` | The human view of a card, direct booking and the tamper test |
+| `pages/DemandMap.tsx` | What Basel asked for that nobody offers |
+| `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust chips; the footer easter egg |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
@@ -63,6 +75,9 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
 - **Missed demand.** Every exclusion and every search is logged; owners see what they were turned away for, the
   city sees what nobody offers.
 - **Prompt safety.** Card text is treated as data in the agent's prompt, never as instructions.
+- **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`).
+- **Abuse limits.** Owner edits can require a token, Claude calls are rate-limited, all input is bounded.
+  Details and known limits: [SECURITY.md](../SECURITY.md).
 
 ## Stack and cost
 

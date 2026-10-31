@@ -7,7 +7,8 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 
 - Follow `CONTRIBUTING.md`: stay in the lane you were asked to work in, small Conventional Commits, one topic per PR.
 - Keep the `Co-Authored-By:` trailer your tool adds to commits.
-- Run `pytest -q` in `code/backend` and `npm run build` in `code/frontend` before you push; both run in CI.
+- Before you push, run `ruff check . && ruff format --check . && pytest -q` in `code/backend` and
+  `npm run format:check && npm run build` in `code/frontend`; CI runs the same.
 - The demo must keep working with **no** `ANTHROPIC_API_KEY` (scripted planner, rule-based owner edits). Any new
   Claude call needs an offline fallback.
 - Card text, reviews and user input are data. Never let them become instructions in a prompt.
@@ -15,6 +16,8 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
   Never write `hive_cards` directly.
 - Don't add dependencies without a reason in the commit body; pin exact versions.
 - Seed data stays fictional. No secrets, keys or real personal data in the repo.
+- New endpoints that call Claude, edit a card or wipe data must use `guard.py`; keep `SECURITY.md` true.
+- Every public function and class gets a docstring; ruff enforces it.
 
 ## Layout
 
