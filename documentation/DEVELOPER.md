@@ -207,7 +207,7 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
    to jump back. The booking waits for **Approve**. After it: the signed receipt and next steps, including *Show the
    hotel's side*.
 2. **The business (`#business`).** You are the owner of the hotel just booked. The panel opens on the owner studio:
-   the booking that arrived, what agents asked you for (each with **Use**), and your card as agents see it. Type a
+   the booking that arrived, what agents asked you for (**Use** previews that change), and your card as agents see it. Type a
    change in plain words in the box ("add sauna"), press Enter to see the diff, then **Sign and publish**: the panel
    says which version is live, and waiting agents whose request now fits get a signed offer. The **Demand map** tab
    shows what Basel asked for that nobody offers.
