@@ -369,4 +369,27 @@ export const api = {
     post<AskResult>("/api/ask", pick ? { question, mood, pick } : { question, mood }),
   scout: (question: string) => post<ScoutResult>("/api/ask/scout", { question }),
   askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
+  activity: (after = 0) => call<ActivityFeed>(`/api/activity?after=${after}`),
 };
+
+// ---------- The live activity feed (?demo) ----------
+
+/** One step an agent took. Codes from fixed lists; `business` is a card's public name, never a person. */
+export interface ActivityEvent {
+  n: number;
+  /** Lines from the same request share a run. */
+  run: string;
+  at: string;
+  agent: "traveller" | "verifier" | "critic" | "concierge" | "scout" | "hive";
+  step: string;
+  business: string | null;
+  outcome: string | null;
+  /** partner: the business's own signed card. web: compiled from the public web, hand-off only. */
+  source: "partner" | "web" | "model" | "rules" | null;
+  count: number | null;
+}
+export interface ActivityFeed {
+  events: ActivityEvent[];
+  /** The cursor: pass it back to get only newer lines. */
+  last: number;
+}

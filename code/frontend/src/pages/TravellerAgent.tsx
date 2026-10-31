@@ -16,6 +16,7 @@ import Composer from "../components/Composer";
 import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
+import ActivityPanel from "../panels/ActivityPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -323,6 +324,9 @@ export default function TravellerAgent() {
                     <span>{t("agent.test.rulesOff")}</span>
                   </label>
                 </fieldset>
+                <a className="link" href="#activity">
+                  {t("activity.link")}
+                </a>
               </details>
             )}
             {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
@@ -512,6 +516,7 @@ export default function TravellerAgent() {
         initial={owner?.id}
         sectionRef={businessRef}
       />
+      {demoMode() && <ActivityPanel />}
     </>
   );
 }

@@ -10,11 +10,25 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, replies, rulesets, simulate, waiting
+from . import (
+    activity,
+    agent,
+    config,
+    db,
+    guard,
+    hive,
+    hive_seed,
+    mcp_server,
+    owner,
+    replies,
+    rulesets,
+    simulate,
+    waiting,
+)
 from .domains import explore, scout
 
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +42,7 @@ async def lifespan(_: FastAPI):
     db.init()
     hive.init()
     waiting.init()
+    activity.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -227,19 +242,21 @@ async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
         guard.llm_calls.check(request)
     try:
         locale = replies.locale_from(request.headers.get("accept-language", ""))
-        return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules, locale)
+        result = await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules, locale)
     except Exception as err:  # log the details, show the UI a plain message
         logging.exception("agent run failed")
         raise HTTPException(502, "The agent could not finish this request. Try again.") from err
+    return await asyncio.to_thread(activity.track, activity.from_agent_run, result)
 
 
 @app.post("/api/agent/approve")
 async def approve_booking(body: ApproveRequest, request: Request) -> dict[str, Any]:
     """The human's yes: the agent sends the booking it held back."""
     try:
-        return await agent.approve(body.pending, replies.locale_from(request.headers.get("accept-language", "")))
+        result = await agent.approve(body.pending, replies.locale_from(request.headers.get("accept-language", "")))
     except (ValueError, KeyError) as err:
         raise HTTPException(400, str(err)) from err
+    return await asyncio.to_thread(activity.track, activity.from_approve, result)
 
 
 class AskRequest(BaseModel):
@@ -267,13 +284,13 @@ async def ask_hive(body: AskRequest, request: Request) -> dict[str, Any]:
     )
     if config.LLM_ENABLED and result["replies"]:
         result = await asyncio.to_thread(explore.phrase, result)
-    return result
+    return await asyncio.to_thread(activity.track, activity.from_ask, result)
 
 
 @app.post("/api/ask/approve")
 def ask_approve(body: AskApprove) -> dict[str, Any]:
     """The person's yes: hand the held action off to the business."""
-    return _hive_call(explore.approve, body.id)
+    return activity.track(activity.from_ask_approve, _hive_call(explore.approve, body.id))
 
 
 class ScoutRequest(BaseModel):
@@ -286,7 +303,16 @@ class ScoutRequest(BaseModel):
 async def ask_scout(body: ScoutRequest, request: Request) -> dict[str, Any]:
     """Find, verify and add unclaimed cards from the public web when nothing in the Hive answers."""
     guard.llm_calls.check(request)  # web search and page fetches cost money and other sites' bandwidth
-    return await asyncio.to_thread(_hive_call, scout.find, body.question)
+    result = await asyncio.to_thread(_hive_call, scout.find, body.question)
+    return await asyncio.to_thread(activity.track, activity.from_scout, result)
+
+
+@app.get("/api/activity")
+def activity_feed(
+    after: int = Query(0, ge=0), limit: int = Query(activity.PAGE, ge=1, le=activity.MAX_EVENTS)
+) -> dict[str, Any]:
+    """The live feed of what the agents do: one line per step, newer than `after`. No person, no question text."""
+    return activity.recent(after, limit)
 
 
 @app.get("/api/owner/{card_id}")

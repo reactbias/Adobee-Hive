@@ -97,6 +97,7 @@ flowchart TB
   WAIT[waiting.py<br/>standing requests, signed offers]:::mod
   RUL[rulesets.py<br/>signed rules a person picks]:::mod
   SIM[simulate.py<br/>busy week for the demand map]:::mod
+  ACT[activity.py<br/>live feed, one line per step]:::mod
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
   SEED[hive_seed.py<br/>fictional Basel businesses]:::mod
   DB[db.py · storage.py]:::mod
@@ -113,6 +114,7 @@ flowchart TB
   REST --> OWN --> HIVE
   OWN --> WAIT
   REST --> SIM --> HIVE
+  REST --> ACT --> DB
   MCP --> DOMAINS
   MCP --> RUL
   MCP --> WAIT
@@ -244,7 +246,7 @@ flowchart TB
   end
 
   subgraph WRITE["Every write · db.write"]
-    W1[hive.publish · booking · review · demand]:::step
+    W1[hive.publish · booking · review · demand · activity]:::step
     W2[(DuckDB)]:::store
     W3[storage.snapshot<br/>background thread, bursts coalesced]:::step
     W4[(Postgres<br/>one row, latest wins)]:::store
@@ -309,6 +311,7 @@ flowchart LR
   subgraph OPS["Health and ?demo"]
     direction TB
     R16["GET /api/health"]:::door
+    R20["GET /api/activity"]:::door
     R17["POST /api/hive/demo/forge/{card_id}"]:::door
     R18["POST /api/demo/simulate"]:::door
     R19["POST /api/demo/reset"]:::door
@@ -330,5 +333,6 @@ find its test.
 | Your agent, verifier, critic | `agent.py`, `second_opinion.py`, `critic.py` | `test_critic.py`, `test_injection.py`, `test_languages.py` |
 | Any business, scout | `explore.py`, `scout.py` | `test_explore.py`, `test_relevance.py`, `test_scout.py` |
 | Owner studio | `owner.py`, `waiting.py` | `test_owner_languages.py`, `test_waiting.py`, `test_card_stats.py` |
+| Live activity feed | `activity.py`, `ActivityPanel.tsx` | `test_activity.py`, `ActivityPanel.test.tsx` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |

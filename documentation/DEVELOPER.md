@@ -214,7 +214,10 @@ The answer holds `proposed` (the whole new card) and `summary_items` (what chang
 
 Presenter tools stay off the public page: open it with `?demo` (for example
 `http://localhost:5173/?demo`) for the stress test (a manipulated mirror listing, rules off), *Simulate 40 traveller
-searches*, the tamper test and the raw MCP exchange in the chat (`lib/demo.ts`).
+searches*, the tamper test and the raw MCP exchange in the chat (`lib/demo.ts`). With `?demo` the page also ends in
+the **live activity feed** (`?demo#activity`, linked from the stress test): one line per agent step as it happens,
+partner cards first, the web scout when none fits, *hand-off only* for web results, Approve and receipt for partners.
+It polls `GET /api/activity?after=<last>`; the lines name agents, steps and businesses, never a person.
 
 Speech input is the browser's own Web Speech API (`components/MicButton.tsx`) in the page's language: no key and
 no service of ours. Chrome and Edge send the audio to their vendor's recogniser, Safari listens on the device, and

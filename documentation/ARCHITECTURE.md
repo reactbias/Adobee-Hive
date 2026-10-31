@@ -25,6 +25,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 | `waiting.py` | Standing requests: an agent waits anonymously when nothing fits; the owner sees counts and budgets per missing change; a published card that now fits sends each waiting agent an offer signed with the business's key |
 | `replies.py` | What the backend writes itself (offline planner, rules-off demo, approval, rule-check second opinion) in EN, DE, FR and IT; the language comes from the app's `Accept-Language` header, and model runs are told to answer in it |
 | `simulate.py` | Simulated traveller searches for the demand map |
+| `activity.py` | The live activity feed: reads each agent result (run, Approve, ask, hand-off, scout) and keeps one line per step from fixed lists (agent, step, business, outcome, `partner` or `web`), never a person or the question. Newest 300 in `hive_activity`, so they ride along in the Postgres snapshot |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes, and the Postgres snapshot and restore (`DATABASE_URL`) |
 | `llm.py`, `config.py` | Structured-output calls on OpenAI or Claude; provider choice and environment settings |
@@ -71,6 +72,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |
+| `ActivityPanel.tsx` | after 2, `?demo` only (`#activity`) | Presenter tools: what the agents do behind the scenes, live: partner cards first, the web scout when none fits, hand-off only for web results, the Approve and receipt for partners |
 | `DemandPanel.tsx` | 2, business | The Demand map tab: what Basel asked for that nobody offers; simulates a busy week with `?demo` |
 | `OwnerPanel.tsx` | 2, business | The whole business chapter: the change box in the brief; in the panel, the owner studio (the booking just made, what agents asked for, the diff, sign and publish, the new version live) and the demand map as a tab; the tamper test with `?demo` |
 
@@ -120,6 +122,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
 | `POST /api/ask/scout` | No card answered: the scout finds, verifies and adds unclaimed cards from the public web, then asks again; the request counts as unserved demand | model rate limit |
 | `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |
+| `GET /api/activity` | The live activity feed: lines newer than `?after=` (oldest first, up to `limit`), and `last` as the next cursor. No personal data | |
 | `GET /api/owner/{card_id}` | Owner studio data for any card, unclaimed too: bookings, hand-offs to the business's site (item and time, never who), missed demand, waiting requests, and what agents did with the card in the last 7 days (`shown`, `read`, `checked`, `booked`, `explore_handoff`); guest names as initials without the token | `X-Owner-Token` for names |
 | `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |
 | `POST /api/owner/{card_id}/publish` | Sign and publish the approved card as a new version; waiting agents get signed offers | `X-Owner-Token` |
