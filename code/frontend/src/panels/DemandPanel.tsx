@@ -33,14 +33,6 @@ export default function DemandPanel() {
           <Display text={t("demand.title")} />
         </h3>
         <p className="lead">{t("demand.lead")}</p>
-        {demoMode() && (
-          <div className="row">
-            <button onClick={simulate} disabled={busy}>
-              {t("demand.simulate")}
-            </button>
-            {simulated > 0 && <span className="muted">{t("demand.simulated", { n: simulated })}</span>}
-          </div>
-        )}
       </div>
 
       {demand && (
@@ -53,10 +45,6 @@ export default function DemandPanel() {
             <div>
               <dd className="num">{demand.unserved_searches}</dd>
               <dt>{t("demand.kpi.unserved")}</dt>
-            </div>
-            <div>
-              <dd>{demand.features[0]?.feature ?? "–"}</dd>
-              <dt>{t("demand.kpi.top")}</dt>
             </div>
           </dl>
 
@@ -88,6 +76,15 @@ export default function DemandPanel() {
             )}
           </section>
         </>
+      )}
+
+      {demoMode() && (
+        <div className="presenter row">
+          <button className="quiet small" onClick={simulate} disabled={busy}>
+            {t("demand.simulate")}
+          </button>
+          {simulated > 0 && <span className="muted small">{t("demand.simulated", { n: simulated })}</span>}
+        </div>
       )}
     </div>
   );

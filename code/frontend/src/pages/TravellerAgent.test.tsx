@@ -268,15 +268,16 @@ describe("traveller agent", () => {
     expect(approve).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the city's missed demand under the chat, without a click", async () => {
+  it("keeps the city's missed demand one tab away in the business chapter", async () => {
     vi.spyOn(api, "demand").mockResolvedValue({
       days: 7,
       searches: 40,
       unserved_searches: 12,
       features: [{ feature: "pool", asked: 9, unserved: 9 }],
     } as never);
-    setup();
+    const user = setup();
 
+    await user.click(screen.getByRole("tab", { name: en["business.tab.demand"] }));
     expect(await screen.findAllByText("pool")).not.toHaveLength(0);
   });
 
