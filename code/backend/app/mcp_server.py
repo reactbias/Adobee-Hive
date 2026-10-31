@@ -134,7 +134,7 @@ domains.register_all(server)
 
 def http_app():
     """Return the MCP server as an ASGI app for Streamable HTTP, mounted at /mcp."""
-    # Behind App Runner / Amplify the Host header is the public domain, so host checks are off;
+    # Behind the hosting proxy the Host header is the public domain, so host checks are off;
     # the MCP surface only exposes public card data and actions that don't reveal private data.
     return server.streamable_http_app(
         streamable_http_path="/",
