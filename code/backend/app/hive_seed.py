@@ -2,7 +2,7 @@
 
 import copy
 
-from . import db, hive, waiting
+from . import activity, db, hive, waiting
 from .domains import examples
 
 SBB, MESSE, MARKT, BADISCHER = "basel sbb", "messe basel", "marktplatz", "badischer bahnhof"
@@ -163,6 +163,7 @@ def run() -> None:
 
 TABLES = (
     *waiting.TABLES,
+    activity.TABLE,
     "hive_events",
     "hive_reviews",
     "hive_bookings",
