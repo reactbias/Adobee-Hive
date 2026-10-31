@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The Hive, the open directory">
+  <defs>
+    <clipPath id="c"><path d="M32 2 58 17v30L32 62 6 47V17Z"/></clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b85c34"/><stop offset="1" stop-color="#7c3a1f"/></linearGradient>
+    
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="64" height="64" fill="url(#bg)"/>
+    <g fill="none" stroke="#f6efe4" stroke-width="1.6" stroke-linejoin="round"><path d="M24 17l7 4v8l-7 4-7-4v-8Z"/><path d="M40 17l7 4v8l-7 4-7-4v-8Z"/><path d="M32 31l7 4v8l-7 4-7-4v-8Z" fill="#f6efe4" fill-opacity=".18"/></g>
+  </g>
+</svg>

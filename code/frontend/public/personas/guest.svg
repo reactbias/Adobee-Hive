@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The guest, a fictional traveller">
+  <defs>
+    <clipPath id="c"><path d="M32 2 58 17v30L32 62 6 47V17Z"/></clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe3d2"/><stop offset="1" stop-color="#d9c4a9"/></linearGradient>
+    
+  </defs>
+  <g clip-path="url(#c)">
+    <rect width="64" height="64" fill="url(#bg)"/>
+    <circle cx="32" cy="26" r="9.5" fill="#3a2a1e"/><path d="M13 62c1.5-12 9.5-19 19-19s17.5 7 19 19Z" fill="#3a2a1e"/><path d="M22.5 24.5c1.5-6 5-8.5 9.5-8.5 5.5 0 9 3.5 9.7 8.8-3.4-2.3-7.6-3.3-12-2.6-2.5.4-4.8 1.2-7.2 2.3Z" fill="#a24f2c"/>
+  </g>
+</svg>
