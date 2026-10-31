@@ -7,6 +7,8 @@
 
 import asyncio
 import logging
+import re
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal
 
@@ -224,6 +226,56 @@ def hive_cards(kind: str | None = None) -> list[dict[str, Any]]:
 # A repeated query parameter needs Query(); module-level, so it is not a call in a default (ruff B008).
 FEATURES_QUERY = Query(None, description="Exact tags, repeated: features=quiet&features=dog-friendly")
 SEEN_QUERY = Query(None, description="Hub ids this query already visited, so a hop never doubles back")
+STAY_QUERY = re.compile(
+    r"\b(?:hotels?|hôtels?|hostels?|rooms?|zimmer|unterkunft|chambres?|hébergement|"
+    r"camere?|alloggio|alberghi|albergo)\b",
+    re.IGNORECASE,
+)
+# Mentioning a hotel as a destination or customer is not asking for its rooms.
+NON_STAY_QUERY = re.compile(
+    r"\b(?:taxi|taxis|cab|ride|chauffeur|fahrdienst|navetta|services?|dienstleistungen|"
+    r"servizi|website|websites|web|software|developer|développeur|entwickler|sviluppatore)\b",
+    re.IGNORECASE,
+)
+
+
+def _discovery_stay(query: str, explicit: Mapping[str, str], constraints: dict[str, Any]) -> dict[str, Any]:
+    """Normalise explicit room requests without applying the booking planner's implicit dates."""
+    if (
+        constraints["looking_for"] != "offers"
+        or constraints["kind"] not in (None, "hotel")
+        or not STAY_QUERY.search(query)
+    ):
+        return {"query": query, **constraints}
+    try:
+        parsed = agent.parse_request(query)
+        if parsed["named"]:
+            # Strip only the declared identity, not matching words elsewhere in the request.
+            query = re.sub(
+                r"(?:name is|for|guest|Name ist|m'appelle|chiamo)\s+" + re.escape(parsed["guest_name"]),
+                "",
+                query,
+                count=1,
+            )
+            parsed = agent.parse_request(query)
+    except ValueError as err:
+        if NON_STAY_QUERY.search(query):
+            return {"query": query, **constraints}
+        raise HTTPException(400, "Dates must be YYYY-MM-DD.") from err
+    if not STAY_QUERY.search(query) or NON_STAY_QUERY.search(query):
+        return {"query": query, **constraints}
+    dates = agent._dates(query)
+    inferred = {key: parsed[key] for key in ("kind", "features", "near", "max_price_chf", "guests")}
+    if dates:
+        inferred["check_in"] = dates[0]
+        # A single date alone does not authorise the planner's default two-night stay.
+        if len(dates) >= 2 or re.search(r"\d+\s*(?:nights?|nächte|nacht|nuits?|notti|notte)\b", query, re.I):
+            inferred["check_out"] = parsed["check_out"]
+    return {
+        "query": query,
+        **constraints,
+        **{key: value for key, value in inferred.items() if key not in explicit},
+    }
 
 
 @app.get("/api/hive/discover")
@@ -252,21 +304,27 @@ async def hive_discover(
     """
     if radius:
         guard.federated.check(request)  # a far search costs this hub outbound calls to its peers
+    constraints = _discovery_stay(
+        query,
+        request.query_params,
+        {
+            "kind": kind,
+            "near": near,
+            "max_price_chf": max_price_chf,
+            "features": features,
+            "check_in": check_in,
+            "check_out": check_out,
+            "guests": guests,
+            "looking_for": looking_for,
+        },
+    )
     return await asyncio.to_thread(
         _hive_call,
         hive.discover,
-        query,
-        kind,
-        near,
-        max_price_chf,
-        features,
-        check_in,
-        check_out,
-        guests,
-        radius,
-        budget_ms,
-        seen,
-        looking_for,
+        **constraints,
+        radius=radius,
+        budget_ms=budget_ms,
+        seen=seen,
     )
 
 
