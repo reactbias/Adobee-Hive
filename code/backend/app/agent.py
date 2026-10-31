@@ -118,7 +118,10 @@ class HiveConnections:
 
     async def _call(self, label: str, name: str, args: dict[str, Any]) -> dict[str, Any]:
         self.last_source = label
-        text = _tool_result_text(await self.sources[label].call_tool(name, args))
+        result = await self.sources[label].call_tool(name, args)
+        text = _tool_result_text(result)
+        if result.is_error:  # e.g. arguments the tool's schema refused: an error, never an empty answer
+            return {"error": text}
         try:
             output = json.loads(text)
         except json.JSONDecodeError:
@@ -127,6 +130,7 @@ class HiveConnections:
 
     async def call(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         """Call one MCP tool and return its JSON result; discovery fans out to every source."""
+        args = {k: v for k, v in args.items() if v is not None}  # models send null for open arguments
         labels = self.routes.get(name)
         if not labels:
             return {"error": f"unknown tool {name}"}
@@ -137,15 +141,19 @@ class HiveConnections:
 
     def _merge(self, results: list[tuple[str, dict[str, Any]]]) -> dict[str, Any]:
         """One discovery answer from several sources, each match tagged with where it came from."""
-        matches, excluded = [], []
+        matches, excluded, errors = [], [], []
         for label, out in results:
+            if "matches" not in out:  # a refused call or a broken source must not read as "nothing fits"
+                errors.append({"source": label, "error": str(out.get("error") or out.get("text") or out)})
             for match in out.get("matches", []):
                 matches.append(match | {"source": label})
                 self.origin.setdefault(match["id"], label)
             excluded += [e | {"source": label} for e in out.get("excluded", [])]
         self.last_source = results[0][0] if len(results) == 1 else ", ".join(label for label, _ in results)
         matches.sort(key=lambda m: m.get("score", 0), reverse=True)
-        return {"matches": matches, "excluded": excluded, "ranking_policy": results[0][1].get("ranking_policy")}
+        policy = next((out["ranking_policy"] for _, out in results if out.get("ranking_policy")), None)
+        merged = {"matches": matches, "excluded": excluded, "ranking_policy": policy}
+        return merged | {"errors": errors} if errors else merged
 
     def _block(self, source: str, card_id: str | None, business: str | None, code: str, reason: str) -> None:
         entry = self.blocked.setdefault(
