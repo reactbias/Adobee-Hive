@@ -44,5 +44,5 @@ tools, so the demo cannot die on stage. The header shows **Claude live** or **Of
 - Then click **Simulate 40 traveller searches** once on `/demand` so the map and Gare Central's missed demand have
   data to show.
 - Keep the browser zoom at 125 % so the jury can read the agent stage.
-- Set the language switch in the header to **EN**: the offline planner understands English requests only. With
-  Claude live, German, French and Italian requests work too.
+- Set the language switch in the header to the language of the pitch. The example requests, Claude and the
+  offline planner all work in English, German, French and Italian.

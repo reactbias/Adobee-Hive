@@ -43,7 +43,7 @@ over MCP. Try it with any MCP client, Claude included.
 | Basel demand map: what agents asked for that nobody offers | `DemandMap.tsx` |
 
 Without an API key everything still runs on a scripted planner over the same tools, so the demo never dies. The
-web app speaks English, German, French and Italian (the offline planner reads English requests).
+web app speaks English, German, French and Italian.
 
 ## Quick start
 

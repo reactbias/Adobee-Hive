@@ -68,7 +68,7 @@ human only sets intent and approves.
   seed, so Gare Central is not dog-friendly again, and clears bookings and demand.
 - [ ] On `/demand`, click **Simulate 40 traveller searches** once. This fills the city map and logs Gare Central's
   dog-friendly misses for 1:50.
-- [ ] Language switch in the header on **EN** (the offline planner understands English requests only).
+- [ ] Language switch in the header on the language we pitch in (EN by default).
 - [ ] Five tabs in order: slides, `/agent` (example 1 in the box, not sent), `/card/rheinblick`, `/owner` (Gare
   Central selected), `/demand`. Zoom 125 %. Notifications off, on power, projector tested.
 - [ ] A 50-second screen recording of beats 3 to 5 on the desktop and a USB stick. [S6]
