@@ -140,6 +140,7 @@ function Overview({ overview, settings }: { overview: AdminOverview | null; sett
           <p className="muted">{t("admin.loading")}</p>
         )}
         <p className="muted small">{t("admin.settingsReadOnly")}</p>
+        <p className="muted small">{t("admin.settingsEnglish")}</p>
       </section>
     </div>
   );
