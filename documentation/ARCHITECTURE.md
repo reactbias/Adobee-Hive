@@ -1,24 +1,12 @@
 # Architecture
 
 One FastAPI backend serves the web app over REST and agents over MCP. Both read the same signed Hive cards in
-DuckDB. A model (OpenAI by default, Claude as an alternative, see `LLM_PROVIDER`) is called only by the booking
-agent, for owner edits and for the second opinion on a held booking. Without a key, offline paths do all three.
+DuckDB, kept across redeploys as a Postgres snapshot. A model (OpenAI `gpt-5-mini` by default, Claude as an
+alternative, see `LLM_PROVIDER`) is called by your agent, the verifier, the relevance check, the scout and owner
+edits. Without a key, offline paths do all of them.
 
-```mermaid
-flowchart LR
-  T[Traveller] --> UI[React app<br/>code/frontend]
-  O[Owner] --> UI
-  X[Any MCP client<br/>e.g. Claude] -->|MCP /mcp/| MCP
-  UI -->|REST /api| API[FastAPI<br/>code/backend/app/main.py]
-  API --> AG[Traveller agent<br/>agent.py]
-  AG -->|MCP client| MCP[Hive MCP server<br/>mcp_server.py]
-  AG --> C[(OpenAI or Claude)]
-  AG --> SO[Second opinion<br/>second_opinion.py] --> C
-  API --> OW[Owner studio<br/>owner.py] --> C
-  MCP --> H[Hive core<br/>hive.py]
-  API --> H
-  H --> DB[(DuckDB<br/>Postgres snapshot)]
-```
+Pictures of the hosting, a booking from question to receipt, a question about any business and the data path:
+[DIAGRAMS.md](DIAGRAMS.md).
 
 ## Modules (`code/backend/app`)
 
@@ -170,10 +158,10 @@ Rulesets, standing requests and "what was promised" are agent features, so they 
 
 ## Stack and cost
 
-Python 3.12, FastAPI, DuckDB 2, MCP Python SDK 2, Anthropic SDK; React 18, Vite, TypeScript.
-The booking agent uses `claude-opus-5-5` at low effort with cached tool definitions; owner edits use
-`claude-haiku-5-5`. Override with `CLAUDE_MODEL` and `CLAUDE_FAST_MODEL`; `AGENT_MAX_TURNS` caps each run. This
-stretches the USD 75 demo key. Without a key everything still runs offline.
+Python 3.12, FastAPI, DuckDB, MCP Python SDK, OpenAI SDK (Anthropic SDK as the alternative); React 18, Vite,
+TypeScript. Agents use `gpt-5-mini` (`OPENAI_MODEL`); `AGENT_MAX_TURNS` caps each run and `AGENT_TIMEOUT_S` hands a
+slow run to the offline planner. Hosting is free: GitHub Pages for the app, Render and Render Postgres for the
+backend. Without a key everything still runs offline.
 
 ## Known limits
 

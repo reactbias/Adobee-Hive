@@ -12,7 +12,7 @@ down; if one stops working, fix the command or the code in the same PR.
 | Frontend | `code/frontend/src` | http://localhost:5173 | React + Vite: one page in two chapters (the agent network for a room or any business, the business's side) |
 | Data | `code/backend/data/abh.duckdb` | local file, gitignored | Signed cards, bookings, demand; seeded with fictional Basel businesses on first start |
 
-Which module does what: [ARCHITECTURE.md](ARCHITECTURE.md). Where each one is hosted: [DEPLOY.md](DEPLOY.md).
+How the parts fit, in four pictures: [DIAGRAMS.md](DIAGRAMS.md). Which module does what: [ARCHITECTURE.md](ARCHITECTURE.md). Where each one is hosted: [DEPLOY.md](DEPLOY.md).
 
 ## Start it
 
