@@ -283,6 +283,7 @@ const de: Record<Key, string> = {
   "next.business.body": "Dieselbe Buchung aus Sicht des Hotels, und wonach Agenten noch fragen.",
   "next.business.cta": "Seite des Hotels zeigen",
   "nav.chapters": "Weg",
+  "nav.network": "Hub-Netzwerk",
   "chapter.travel": "Finden und buchen",
   "chapter.business": "Für Betriebe",
   "chapter.business.lead":
@@ -673,7 +674,7 @@ const de: Record<Key, string> = {
   "network.blockedHub": "Ausgeschlossen: In keiner Richtung geht etwas durch",
   "network.alone": "Es sind noch keine benachbarten Hubs konfiguriert, dieser Hub beantwortet jede Suche allein.",
   "network.legend":
-    "Die Linie zu einem Nachbarn zeigt seine Kalibrierung: Lehm heisst, der Hub hat seine eigene Angabe gehalten oder übertroffen, Rot heisst, er hat mehr veröffentlicht als die Menschen fanden, Grau heisst, die Belege reichen nicht.",
+    "Die Linie zu einem Nachbarn zeigt seine Kalibrierung: Honig heisst, der Hub hat seine eigene Angabe gehalten oder übertroffen, Rot heisst, er hat mehr veröffentlicht als die Menschen fanden, Grau heisst, die Belege reichen nicht.",
   "network.hubs": "Hubs in diesem Netz",
 
   "connect.now": "Verbinden",

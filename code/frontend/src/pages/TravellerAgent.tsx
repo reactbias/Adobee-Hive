@@ -19,7 +19,6 @@ import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
 import ActivityPanel from "../panels/ActivityPanel";
 import Introductions from "../panels/Introductions";
-import NetworkPanel from "../panels/NetworkPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
@@ -649,8 +648,7 @@ export default function TravellerAgent({
         </div>
       </section>
       <Introductions refresh={introduced} />
-      {/* The hub network and the live feed are for presenters and operators; visitors see the product only. */}
-      {demoMode() && <NetworkPanel />}
+      {/* The live feed is for presenters; visitors see the product only. */}
       {demoMode() && <ActivityPanel />}
     </>
   );

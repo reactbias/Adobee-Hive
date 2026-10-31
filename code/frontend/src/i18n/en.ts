@@ -285,6 +285,7 @@ const en = {
   "next.business.body": "The same booking from the hotel's side, and what agents still ask for.",
   "next.business.cta": "Show the hotel's side",
   "nav.chapters": "Journey",
+  "nav.network": "Hub network",
   "chapter.travel": "Find and book",
   "chapter.business": "For businesses",
   "chapter.business.lead": "{name}: say what changed, in plain words. Agents read the signed new version.",
@@ -664,7 +665,7 @@ const en = {
   "network.blockedHub": "Shut out: nothing passes in either direction",
   "network.alone": "No peer hubs are configured yet, so this hub answers every search on its own.",
   "network.legend":
-    "The line to a peer carries its calibration: clay means the hub held or beat its own claim, red means it published more than people found, grey means too little evidence to say.",
+    "The line to a peer carries its calibration: honey means the hub held or beat its own claim, red means it published more than people found, grey means too little evidence to say.",
   "network.hubs": "Hubs on this network",
 
   // Introductions: connect to someone found, then score how it actually went

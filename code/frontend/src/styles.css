@@ -4094,3 +4094,22 @@ button.onboard-back {
 .nav-hub-name {
   white-space: nowrap;
 }
+
+/* The footer's links read as quiet buttons, like Change Hive beside them. */
+.footer-hive a.nav-hub {
+  min-height: 32px;
+  text-decoration: none;
+  color: var(--ink-3);
+}
+.footer-hive a.nav-hub[aria-current="page"] {
+  color: var(--ink);
+}
+.footer-hive a.nav-hub:hover {
+  color: var(--ink);
+}
+/* Each screen keeps the page's width; the network panel brought its own band, which the screen now provides. */
+.network {
+  border-top: 0;
+  background: transparent;
+  padding: var(--s6) 0 var(--s8);
+}

@@ -284,6 +284,7 @@ const it: Record<Key, string> = {
   "next.business.body": "La stessa prenotazione dal lato dell'hotel, e cosa chiedono ancora gli agenti.",
   "next.business.cta": "Mostra il lato dell'hotel",
   "nav.chapters": "Percorso",
+  "nav.network": "Rete di hub",
   "chapter.travel": "Trova e prenota",
   "chapter.business": "Per le attività",
   "chapter.business.lead":
@@ -669,7 +670,7 @@ const it: Record<Key, string> = {
   "network.blockedHub": "Escluso: non passa nulla in nessuna direzione",
   "network.alone": "Non è ancora configurato alcun hub vicino, quindi questo hub risponde da solo a ogni ricerca.",
   "network.legend":
-    "La linea verso un vicino porta la sua calibrazione: argilla significa che l'hub ha mantenuto o superato la propria dichiarazione, rosso che ha pubblicato più di quanto le persone hanno trovato, grigio che le prove non bastano.",
+    "La linea verso un vicino porta la sua calibrazione: miele significa che l'hub ha mantenuto o superato la propria dichiarazione, rosso che ha pubblicato più di quanto le persone hanno trovato, grigio che le prove non bastano.",
   "network.hubs": "Hub di questa rete",
 
   "connect.now": "Connetti",

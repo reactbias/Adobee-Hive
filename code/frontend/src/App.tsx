@@ -6,6 +6,7 @@ import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
 import Onboarding from "./panels/Onboarding";
 import OwnerPanel from "./panels/OwnerPanel";
+import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
 import { SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
@@ -19,8 +20,9 @@ const adminMode = () => viewIn(here().search) === "admin";
  * serves. Without it the app runs on the Hive this build was deployed against, until a person picks another.
  */
 const hubFromUrl = () => hubIn(here().search);
-/** Which of the two screens the address asks for: `#business` is the owner's, anything else the traveller's. */
-const screenFromHash = (): ScreenId => (here().hash === "#business" ? "business" : "travel");
+/** Which screen the address asks for: the owner's, the live hub network, else the traveller's. */
+const screenFromHash = (): ScreenId =>
+  here().hash === "#business" ? "business" : here().hash === "#network" ? "network" : "travel";
 
 /** Rewrite the address without reloading. Used only to make it agree with what is on screen. */
 const rewrite = (to: string) => history.replaceState(null, "", to);
@@ -246,10 +248,17 @@ export default function App() {
         <div hidden={screen !== "business"}>
           <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
         </div>
+        {/* The hub network, live: its own screen, reached from the footer, so the two tabs stay for people. */}
+        <div hidden={screen !== "network"}>
+          <NetworkPanel key={`${hub}@${chosenHubUrl()}`} />
+        </div>
       </main>
       <B6Bee>
         {/* Which Hive answered, always visible, and the one way to pick another. */}
         {hub && <span className="nav-hub-name">{t("nav.onHub", { hub })}</span>}
+        <a className="btn quiet nav-hub" href="#network" aria-current={screen === "network" ? "page" : undefined}>
+          {t("nav.network")}
+        </a>
         <button className="quiet nav-hub" onClick={changeHub}>
           {t("finder.change")}
         </button>

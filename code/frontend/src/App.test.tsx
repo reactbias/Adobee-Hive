@@ -130,24 +130,22 @@ describe("the app", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("keeps the hub network and the activity feed for presenters only", async () => {
+  it("keeps the hub network on its own screen, reached from the footer", async () => {
     window.history.replaceState(null, "", "/");
-    const { unmount } = render(
-      <I18nProvider>
-        <App />
-      </I18nProvider>,
-    );
-    expect(screen.queryByRole("heading", { name: en["network.title"] })).toBeNull();
-    unmount();
-
-    window.history.replaceState(null, "", "/?demo");
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
+    expect(screen.queryByRole("heading", { name: en["network.title"] })).toBeNull();
+    const link = screen.getByRole("link", { name: en["nav.network"] });
+    expect(link).toHaveAttribute("href", "#network");
+
+    window.location.hash = "#network";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
     expect(await screen.findByRole("heading", { name: en["network.title"] })).toBeInTheDocument();
-    window.history.replaceState(null, "", "/");
+    expect(screen.queryByRole("heading", { name: en["find.title"] })).toBeNull();
+    window.location.hash = "";
   });
 
   it("offers an obvious way back to change hub", () => {
