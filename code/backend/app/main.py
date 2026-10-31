@@ -638,7 +638,7 @@ def admin_applications(state: str = "") -> dict[str, Any]:
 
 
 @app.post("/api/admin/applications/{application_id}")
-def admin_decide(application_id: str, body: DecisionBody, request: Request) -> dict[str, Any]:
+def admin_decide(application_id: str, body: DecisionBody, x_admin_token: AdminToken = None) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
-    guard.require_admin(request, config.ADMIN_TOKEN)
+    guard.require_admin(x_admin_token, config.ADMIN_TOKEN, config.ADMIN_PASSWORD)
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)
