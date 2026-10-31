@@ -23,13 +23,13 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
 
 1. **Traveller agent** (chapter 1). Click the first example; it goes straight to your agent:
    *"Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15.
-   My name is Lena Brunner."*
+   My name is Tobi Muster."*
    The right side shows the two agents talking: your agent asks, the Hive and Hotel Rheinblick answer
    (`hive_discover`, `hive_get_card`, `hive_check_availability`), with the signature check and round-trip times.
    Your agent stops and asks, on a paper card, whether to book the room it chose. Click **Approve booking**: only now does it send `hive_book`, and the
    hotel answers with a signed receipt. "The human states the intent and says yes. The agents do the rest."
 2. **The hotel's side** (chapter 3). Tap **Show the hotel's side** under the receipt. The page turns to the business:
-   the demand map, then the owner studio, opened on Hotel Rheinblick with Lena Brunner's booking in its list. Under
+   the demand map, then the owner studio, opened on Hotel Rheinblick with Tobi Muster's booking in its list. Under
    **How agents see you**, click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*, and
    a copy re-signed by a stranger's key *rejected* too, because agents only accept the owner's pinned key.
 3. **Owner studio** (chapter 3), pick Gare Central in **Business**. Show the missed demand ("dog-friendly" turned away). Type

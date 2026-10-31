@@ -6,7 +6,7 @@ from app import replies, second_opinion
 
 ASK = (
     "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
-    "2026-12-04 to 2026-12-06, my name is Lena Brunner"
+    "2026-12-04 to 2026-12-06, my name is Tobi Muster"
 )
 
 

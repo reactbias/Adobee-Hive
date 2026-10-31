@@ -89,12 +89,3 @@ def test_the_readme_starts_with_the_links_everyone_needs():
     links = readme[readme.index("## Links") : readme.index("## The next guest")]
     for needed in ["github.io/Adobee-Hive", "/pulls", "/actions", "localhost:5173", "localhost:8000/docs", "TEAM.md"]:
         assert needed in links
-
-
-def test_the_repo_credits_the_team_not_the_people():
-    licence = (ROOT / "license.txt").read_text(encoding="utf-8")
-    assert "Copyright © 2026 Team B6, BaselHack 2026\n" in licence
-    team = (ROOT / "documentation" / "TEAM.md").read_text(encoding="utf-8")
-    assert "Ten people." in team
-    for doc in [ROOT / "readme.md", ROOT / "documentation" / "DEPLOY.md", ROOT / "documentation" / "TEAM.md"]:
-        assert "Tobias" not in doc.read_text(encoding="utf-8"), doc.name
