@@ -24,8 +24,16 @@ component renders all three.
 
 ### Two things to get right
 
-**`rating` is tenths of a star, not stars.** `43` → `4.3 / 5`. Divide by 10 for display. The
-resolution is deliberate: 4.3 is a real answer and integers do not drift when averaged.
+**In this model `rating` is tenths of a star, not stars.** `43` → `4.3 / 5`. Divide by 10 for
+display. The resolution is deliberate: 4.3 is a real answer and integers do not drift when averaged.
+
+**The live backend does not serve this field in tenths yet.** `GET /api/hive/discover` and
+`GET /api/admin/entities/{id}` return `rating` as the verified-review average on the 1-to-5 scale a
+review is left on (`4.33`, or `null`), because `hive.review` takes 1 to 5. Tenths is already the
+unit everywhere a *hub* is involved — a connection score (`hub_score`,
+`POST /api/hub/connections/{id}/score`, 0 to 50) and a calibration error are tenths, and
+`hub._published_rating` multiplies the review average by ten to record one. Two scales, both
+correct, and converting in the wrong direction is the bug to watch for.
 
 **`rating: null` means not rated yet. It is not zero.** Render "no rating yet", never an empty star
 row and never `0.0`. A business nobody has reviewed is not a bad business, and showing it as one
@@ -111,12 +119,21 @@ withheld without naming them. Diff the two files and the privacy model is right 
 
 ## How this relates to what runs today
 
-The live backend serves a simpler card (`code/backend/app/hive.py`) and is converging on this. Already
-landed: `name`, `description`, `rating`, `rating_count`, per-item sharing flags, and the two-key
-split. `contact` is served today as an open map — this page adds the guarantee that `email` and
-`phone` are always present, and `contact_sharing` alongside it. Still design: `seq`, `structure`, `offers`/`needs` as modelled here, and portable
-`attestations`.
+The live backend serves a simpler card (`code/backend/app/hive.py`) and is converging on this.
 
-So: **build against the three entity fields now** — they are served today. Treat the rest as the
-direction of travel. [FEDERATION.md](../FEDERATION.md) is the architecture. How an entity gets a Card in the first place is
-registration, which is in flight.
+| In this model | On `main` today |
+| --- | --- |
+| `name`, `description`, `rating_count` | served, same meaning |
+| `rating` as tenths, 0–50 | served as the 1-to-5 review average, or `null`. See the two scales above |
+| `contact` always present, `email` and `phone` always inside it | served, and guaranteed by `hive.with_contact`, which fills the keys without inventing values |
+| `contact_sharing`, per-item sharing flags | served. `sharing.py` resolves the entity default against the item's own flag, stricter wins |
+| `offers` / `needs` as both sides of one market | **this is the live index.** `hive.discover` searches both and `looking_for` picks a side; the field shapes here are richer than what is stored |
+| `keys`: `sig` Ed25519 **and** `kex` X25519 | **not built.** Only the Ed25519 signing key exists; nothing in the backend does key exchange, and the `kex` entry in the two card files above is model, not code |
+| `id` as `hive:<hub>/<entity>` | a plain lower-case id (`hotel-krafft`), with the hub named separately in a result's `provenance` |
+| `seq`, `structure`, portable `attestations`, `policy.handshake` | still design |
+
+So: **build against `name`, `description`, `rating_count`, `contact` and `contact_sharing` now** —
+they are served today — and read `rating`'s scale off the endpoint you called. Treat the rest as the
+direction of travel. [FEDERATION.md](../FEDERATION.md) is the architecture, and
+[LIMITS.md](../LIMITS.md) is what is honestly not there. How an entity gets a Card in the first
+place is built: [REGISTRATION.md](../REGISTRATION.md).
