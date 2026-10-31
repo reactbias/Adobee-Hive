@@ -30,6 +30,7 @@ import { reasonText } from "../lib/reasons";
 import JourneyLog, { useActivityLog } from "../components/JourneyLog";
 import { sceneFor, type Scene } from "../lib/cardView";
 import { hubScene } from "../lib/hubScene";
+import Reach from "../components/Reach";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
@@ -57,6 +58,8 @@ export default function TravellerAgent() {
   const [busy, setBusy] = useState(false);
   // The hubs are being asked; the agent is not involved yet.
   const [searching, setSearching] = useState(false);
+  // How far the hubs are asked: this one only until the person chooses further.
+  const [radius, setRadius] = useState(0);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
@@ -97,7 +100,7 @@ export default function TravellerAgent() {
     if (!live && !mirror) {
       setSearching(true);
       setError("");
-      const drawn = await hubScene(text)
+      const drawn = await hubScene(text, radius)
         .catch(() => null)
         .then((found) => found ?? sceneFor(text))
         .finally(() => setSearching(false));
@@ -294,6 +297,7 @@ export default function TravellerAgent() {
     setNearby(null);
     setReviewed("");
     setError("");
+    setRadius(0);
   }
 
   async function leaveReview() {
@@ -363,6 +367,7 @@ export default function TravellerAgent() {
                 )
               }
             />
+            <Reach radius={radius} disabled={busy || searching} onChange={setRadius} />
             {/* The manipulation demo stays one tap away, folded so the brief fits the screen. */}
             {demoMode() && (
               <details className="stress">

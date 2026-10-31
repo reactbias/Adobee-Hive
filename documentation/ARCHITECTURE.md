@@ -27,6 +27,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `activity.py` | The live activity feed: reads each agent result (run, Approve, ask, hand-off, scout) and keeps one line per step from fixed lists (agent, step, business, outcome, `partner` or `web`), never a person or the question. Newest 300 in `hive_activity`, so they ride along in the Postgres snapshot |
 | `federation.py` | Hop-limited ("node radius") search across peer Hives: a query carries a radius, a time budget and the hubs it has already visited; each hop fans out to its most trusted peers in parallel, verifies every card that comes back against the key pinned in the card's own hub, dedups by card digest and ranks with the hub trust from `reputation.py` |
+| `semantic.py` | Semantic similarity behind a small provider interface, so a search for "haircut" finds *"Cut, wash and finish"*. The offline provider is the default and needs no key, no network and no new dependency: accent-folded stems, a small four-language concept table and character trigrams, compared with cosine similarity above a named floor. An optional embedding provider is used when a key is set. `hive.discover()` turns a hit into one score component and a readable reason; `/api/health` says which provider is in use |
 | `reputation.py` | Two levels of trust, kept apart: a peer *hub*'s reputation, judged locally and subjectively by this hub (declared vs observed vetting, paid placement, availability, cards it relayed that failed verification here), and a *business*'s reputation, the verified reviews and attestations discovery already scores |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
 | `db.py`, `storage.py` | DuckDB connection, writes, and the Postgres snapshot and restore (`DATABASE_URL`) |
@@ -56,6 +57,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
+| `components/Reach.tsx`, `lib/hubScene.ts` | How far a search goes (this Hive, nearby Hives, further: discover radius 0, 1 or 3) and the live search that draws the result cards, each saying which hub it came from and how many hops away, with any hub that did not answer or copy that was refused |
 | `components/NextSteps.tsx`, `lib/next.ts` | After a booking: a calendar file, a nearby place from the Hive, the walk from Basel SBB, and the hotel's side further down. None of them books or pays |
 | `components/Icon.tsx`, `components/Display.tsx` | Our icon set; headlines with one italic phrase |
 | `panels/` | The parts of chapters 2 and 3, one file each; see [The page](#the-page) |

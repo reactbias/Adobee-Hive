@@ -50,10 +50,18 @@ export type Hit = {
   /** The request asked to act, so the picked offering can ask for a yes. */
   acting: boolean;
   /** How this hub found it, when the row came from a live search. */
-  found?: { why: string[]; path: string[] };
+  found?: { why: string[]; path: string[]; hops: number; origin: string };
 };
 
-export type Scene = { query: string; hits: Hit[] };
+/** What the other hubs did with a search above radius 0: who was asked, who did not answer, which copy was refused. */
+export type Federation = {
+  radius: number;
+  asked: { hub: string; name: string }[];
+  dropped: { hub: string; reason: string }[];
+  rejected: { hub: string; card_id: string; reason: string }[];
+};
+
+export type Scene = { query: string; hits: Hit[]; federation?: Federation };
 
 const STOP = new Set([
   "the",
@@ -377,7 +385,7 @@ export function readHubCard(raw: unknown): HiveCard | null {
 /** One row per discover match, using the card the hub returned for that id. */
 export function sceneFromDiscovery(
   query: string,
-  matches: { id: string; why?: string[]; provenance?: { path?: string[] } }[],
+  matches: { id: string; why?: string[]; hops?: number; provenance?: { path?: string[]; origin?: string } }[],
   cards: Record<string, unknown>,
 ): Scene | null {
   const asked = plain(query);
@@ -392,7 +400,12 @@ export function sceneFromDiscovery(
       offers: card.offers,
       needs: card.needs,
       acting,
-      found: { why: (match.why ?? []).filter((line) => typeof line === "string"), path },
+      found: {
+        why: (match.why ?? []).filter((line) => typeof line === "string"),
+        path,
+        hops: typeof match.hops === "number" ? match.hops : Math.max(0, path.length - 1),
+        origin: match.provenance?.origin ?? path[0] ?? "",
+      },
     });
   }
   return hits.length ? { query, hits } : null;
