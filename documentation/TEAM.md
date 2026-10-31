@@ -2,22 +2,23 @@
 
 BaselHack 2026, Adobe challenge *The Post-Website Business*. Hands off Sunday 2026-11-01 at 12:00, pitches at 13:00.
 
-10 people. We list workstreams, not names or skills; who works on what is settled in person.
+The current named assignments, three-hour focus block and handover expectations are in the
+[README team focus block](../readme.md#team-focus-block). That roster supersedes historical next-deliverable lists.
 
 ## Workstreams
 
 From the whiteboard, pointed at the challenge. Each maps to its own files so people don't collide.
 
-| # | Workstream | Files | Next deliverable |
-| --- | --- | --- | --- |
-| 1 | Hive core: cards, trust, discovery, booking | `hive.py`, `hive_seed.py`, `mcp_server.py`, `semantic.py` | Wire `semantic.py` into `discover`, a restaurant table flow, cancellation edge cases |
-| 2 | Agents | `agent.py`, `second_opinion.py`, `critic.py` | Live OpenAI run tuned on the demo prompts; booking from Claude via the MCP URL |
-| 3 | Owner studio and tamper test | `panels/OwnerPanel.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
-| 4 | Traveller agent UI and brand | `TravellerAgent.tsx`, `App.tsx`, `styles.css` | Demo rehearsal |
-| 5 | Vision deck | `documentation/`, `assets/` | The 5 to 10 year story: hotels, events, people; Adobe's brand-visibility angle |
-| 6 | HR workflows | `code/backend/app/domains/hr.py`, tests, later an HR page | Fictional person seed, a person view, the person's yes/no inside it |
-| 7 | Federation and trust | `federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `hub.py`, `sharing.py` | A second hub deployed, calibration as a rank factor |
-| 8 | Hub operations | `admin.py`, `registration.py`, `blocklist.py`, `panels/AdminPanel.tsx`, `panels/InstanceFinder.tsx`, `panels/NetworkPanel.tsx`, `lan.sh` | Route the app at the Hive the finder picked; a credential on the admission queue |
+| # | Workstream | Files |
+| --- | --- | --- |
+| 1 | Hive core: cards, trust, discovery, booking | `hive.py`, `hive_seed.py`, `mcp_server.py`, `semantic.py` |
+| 2 | Agents | `agent.py`, `second_opinion.py`, `critic.py` |
+| 3 | Owner studio and tamper test | `panels/OwnerPanel.tsx`, `owner.py` |
+| 4 | Traveller agent UI and brand | `TravellerAgent.tsx`, `App.tsx`, `styles.css` |
+| 5 | Vision deck | `documentation/`, `assets/` |
+| 6 | HR workflows | `code/backend/app/domains/hr.py`, tests and HR integration |
+| 7 | Federation and trust | `federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `hub.py`, `sharing.py` |
+| 8 | Hub operations | `admin.py`, `registration.py`, `blocklist.py`, `panels/AdminPanel.tsx`, `panels/InstanceFinder.tsx`, `panels/NetworkPanel.tsx`, `lan.sh` |
 
 The full file-to-lane map, which is the one that stops two people editing the same file, is in
 [CONTRIBUTING.md](../CONTRIBUTING.md#find-your-lane).
@@ -42,11 +43,10 @@ The full file-to-lane map, which is the one that stops two people editing the sa
    invitation from your GitHub notifications or email.
 2. **Set up.** Clone the repo and follow [Run it locally in 5 minutes](../readme.md#run-it-locally-in-5-minutes).
    Ask a teammate in person for the OpenAI key if you need the live agent; it works offline without one.
-3. **Pick a lane.** Find your workstream above and its files. Open ideas from the whiteboard are mapped to lanes in
-   [CONTRIBUTING.md](../CONTRIBUTING.md#from-the-whiteboard-to-a-pr).
-4. **First PR.** Branch from the latest `main` as `<type>/<short-topic>` (`docs/team-name`, `feat/restaurant-tables`),
-   write the failing test first, keep it small, and open a PR into `main`. Please don't add your name or skills to the
-   docs: the team is counted, not listed.
+3. **Pick a lane.** Use the [current assignments](../readme.md#team-focus-block), then the file ownership map in
+   [CONTRIBUTING.md](../CONTRIBUTING.md#find-your-lane). Agree cross-lane changes with Ole and the affected teammate.
+4. **First PR.** Branch from the latest `main` as `<type>/<short-topic>` (`docs/team-guide`, `fix/booking-terms`),
+   reproduce a bug before fixing it, keep the change nonbreaking and include behavior-focused verification.
 5. **Merge.** CI must be green and one teammate reviews; merge with a merge commit, never squash.
 
 Every link (live app, PRs, CI, local URLs): [readme](../readme.md#links).

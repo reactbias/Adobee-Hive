@@ -1,313 +1,268 @@
 <p align="center"><img src="assets/brand/adobee-hive-wordmark.png" alt="Adobee Hive" width="420"></p>
 
-<p align="center"><b>The front door, signed.</b></p>
+# Adobee Hive — team working guide
 
-BaselHack 2026, Team B6, for Adobe's challenge **The Post-Website Business**: how does a local hotel, café or shop
-stay found, trusted and bookable when its first visitor is an AI agent, not a person on a website?
+BaselHack 2026, Team B6, Adobe's **The Post-Website Business** challenge. We are building a directory of signed business/person cards that people use through a web app and agents use through MCP. Hotels are the first booking workflow; finding people and their supporting files is the next integration.
+
+**This README is the handover for our three-hour focus block, not the jury pitch.** Architecture checked against `main` at [`067d7d8`](https://github.com/reactbias/Adobee-Hive/tree/067d7d8354745876e094d01fb2a64bc653ea9e23). Pending work below is not a shipped capability. The pre-presentation rewrite is tracked in [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
+
+Start with [your lane](#team-focus-block), [local setup](#run-it-locally-in-5-minutes), then the [REST/MCP contracts](#integration-contracts). Use fictional data throughout.
 
 ## Links
 
-| What | Where |
+| Need | Entry point |
 | --- | --- |
-| Live app (deploys from `main`) | https://reactbias.github.io/Adobee-Hive/ · one page, two chapters: [agent network](https://reactbias.github.io/Adobee-Hive/#travel) · [business](https://reactbias.github.io/Adobee-Hive/#business) |
-| Live backend | [adobee-hive.onrender.com](https://adobee-hive.onrender.com/api/health) ([setup](documentation/DEPLOY.md#free-hosting-github-pages--render-the-hackathon-setup)): [`/api/health`](https://adobee-hive.onrender.com/api/health), [`/docs`](https://adobee-hive.onrender.com/docs), MCP for agents [`/mcp/`](https://adobee-hive.onrender.com/mcp/) · [Render dashboard](https://dashboard.render.com) (access: ask the repository owner) |
-| Presenter view (stage) | [`?demo`](https://reactbias.github.io/Adobee-Hive/?demo) adds the stress test, Simulate 40, the tamper test and the raw MCP exchange · [live activity feed](https://reactbias.github.io/Adobee-Hive/?demo#activity) |
-| Code, PRs, issues | [Repository](https://github.com/reactbias/Adobee-Hive) · [Pull requests](https://github.com/reactbias/Adobee-Hive/pulls) · [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [Actions (CI and deploys)](https://github.com/reactbias/Adobee-Hive/actions) |
-| Local, after the [5-minute setup](#run-it-locally-in-5-minutes) | App http://localhost:5173 · API docs http://localhost:8000/docs · health http://localhost:8000/api/health · MCP http://localhost:8000/mcp/ |
-| Team, lanes and joining | [documentation/TEAM.md](documentation/TEAM.md) |
+| Local app / REST docs / MCP | http://localhost:5173 · http://localhost:8000/docs · http://localhost:8000/mcp/ |
+| Public app | https://reactbias.github.io/Adobee-Hive/ — deployment can lag `main` |
+| Public backend | [Health](https://adobee-hive.onrender.com/api/health) · [REST docs](https://adobee-hive.onrender.com/docs) · [MCP](https://adobee-hive.onrender.com/mcp/) |
+| Work queue / integration | [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [PRs](https://github.com/reactbias/Adobee-Hive/pulls) · [CI/deploys](https://github.com/reactbias/Adobee-Hive/actions) |
+| Detailed maps | [Architecture/module inventory](documentation/ARCHITECTURE.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) |
+| Working agreements | [Contributing/file ownership](CONTRIBUTING.md) · [Team](documentation/TEAM.md) · [Security](SECURITY.md) · [Known limits](documentation/LIMITS.md) |
+| Deck and rehearsal | [Pitch](documentation/PITCH.md) · [Demo](documentation/DEMO.md) · [Vision](documentation/VISION.md) · [Assets](assets/README.md) |
 
-## Where to read what
+## Team focus block
 
-Six questions a reviewer asks, one hop each.
+These are the current named assignments; they supersede older workstream/next-deliverable lists. Agree the issue and shared-file changes with Ole before starting. **Andrey's two lanes are alternatives, not two simultaneous commitments.**
 
-| Question | Page |
-| --- | --- |
-| What is this, and why is it plausible in five years? | [VISION.md](documentation/VISION.md) |
-| What is in the JSON every team reads? | [The Card](#the-card-the-json-every-team-reads-and-writes) |
-| How does a search reach another Hive? | [FEDERATION.md](documentation/FEDERATION.md#how-far-to-look-the-radius) |
-| How is a Hive measured, and how is a business? | [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
-| How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
-| How do two agents share the folders behind their Cards? | [FOLDERS.md](documentation/FOLDERS.md) |
-| How do I run it, and what does each part do? | [DEVELOPER.md](documentation/DEVELOPER.md) · [ARCHITECTURE.md](documentation/ARCHITECTURE.md) · [DIAGRAMS.md](documentation/DIAGRAMS.md) |
-| How is it tested, and what is protected? | [DEVELOPER.md](documentation/DEVELOPER.md#tests-and-checks) · [tools/README.md](code/backend/tools/README.md) · [SECURITY.md](SECURITY.md) |
-| How do I search it from my own code? | [SEARCH_API.md](documentation/SEARCH_API.md) |
-
-And the one a jury asks last: **what does it not do?**
-[LIMITS.md](documentation/LIMITS.md) — every gap we know of, checked against the code.
-
-## The Card: the JSON every team reads and writes
-
-One entity — a hotel, a freelancer, an electrician — is one **Card**. It is the only thing that
-crosses a hub boundary, so it is the contract between the backend, the traveller UI, the onboarding
-flow and anyone building a search over us. Everything below is read off a live hub, not from a
-design note; `GET /api/hive/cards/{id}` on any running Hive serves the real thing.
-
-**The rule that matters most:** `offers` and `needs` are the index. `kind` is only a filter. A hub
-carries a tavern, a frontend developer and an electrician side by side, so nothing downstream may
-assume a narrow domain — group by what someone offers or needs, never by what they are.
-
-### Required, and that is all
-
-The shape check (`registration._check_shape`) enforces exactly three fields. Everything else is
-optional and routinely absent, so **guard every other read**.
-
-| Field | Rule |
-| --- | --- |
-| `id` | `^[a-z0-9][a-z0-9-]{1,62}$` — 2–63 chars, lower-case, digits, hyphens. Unique per hub |
-| `name` | non-empty. What a person sees in a result |
-| `kind` | non-empty, free text. `hotel`, `person`, `service`, `cafe` … — a filter, not a taxonomy |
-
-### The rest of the Card
-
-| Field | Type | Notes |
+| Who | Focus | Starting point and handover |
 | --- | --- | --- |
-| `description` | string | Up to 2000 characters. **Write it for discovery** — in a web where the visitor is an agent, this is the pitch to that agent |
-| `tagline` | string | Short form. Often the first line of `description` |
-| `offers` | list of `{title, summary, price_chf?}` | **Primary index.** What this entity can do for you |
-| `needs` | list of same | **Primary index.** What it is looking for. Frequently empty |
-| `features` | list of strings | Flat tags |
-| `units` | list of `{id, name, max_guests, price_chf, quantity}` | Bookable things, where the kind has any |
-| `contact` | object | Channel → value. Only the channels the owner gave; a channel may be present but empty |
-| `contact_sharing` | object | Channel → one of the four flags below. A channel absent here is `public` |
-| `structure` | list of `{path, bytes, visibility, digest}` | The folder's **shape, never its contents**. Every file is listed; only markdown is ever read |
-| `sharing` | string | The entity-wide default flag |
-| `custody` | `"owner"` or `"hub"` | Who was *recorded* as holding the key — see the warning below |
-| `owner_public_key` | base64 | Recorded at registration. **Not what signatures are checked against** |
-| `trust` | object | `{signature_valid, claimed, provenance, signature, public_key, algorithm}` |
-| `version`, `published_at`, `valid_until` | int, ISO 8601, ISO 8601 | `valid_until` is 90 days out |
-| `registered_via` | string | The application id that admitted it |
-| `slug` | string | Usually equal to `id` |
+| **Tobi (`reactbias`)** | UI and the end-to-end browser experience | `code/frontend/src/App.tsx`, `pages/TravellerAgent.tsx`, `panels/`, `components/`, `api.ts`, `i18n/`. Keep selected-hub status, discovery, Details, explicit approval and receipt usable. Coordinate API changes with Ole; pair with Andrey on the hotel-MCP alternative below. |
+| **Andrey (`dodonov-dev`)** | Support fuzzy search over the cards' JSON; **alternatively**, help Tobi handle a hotel that advertises its own booking MCP in a discovered folder | Search: `app/hive.py`, `app/semantic.py`, [Search API](documentation/SEARCH_API.md), `tools/eval_answer_key.py`, `tools/eval_search.py`. Work with the existing offline matcher and score breakdown. Hotel-MCP option: [provider handoff](#a-hotel-advertises-its-own-booking-mcp), with Tobi and Ole; agree a real provider contract before changing routing. |
+| **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](#architecture-on-main) and [journeys](#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
+| **Felix + baker** | Tests, measured performance gains, stability and fixes for existing issues — **nonbreaking changes only** | `code/backend/tests/`, frontend `*.test.ts(x)`, `code/backend/tools/`. Pick a bounded issue with Ole, reproduce on current `main`, add a behavior regression, measure before/after for performance work. Keep public schemas, signatures, consent/approval gates and offline behavior intact; no broad refactor or dependency/DB cutover. See [stability work](#stability-work-without-breaking-the-demo). |
+| **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](#mcp-for-an-external-agent) and [the CV/folder path](#cv-and-folder-integration). Distinguish card metadata from file bytes. Use the fictional HTTP fixture now; coordinate the authenticated hub read surface with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
+| **Ole (`busssard`)** | Keep the team focused and supply a working backend MCP/REST API | `code/backend/app/main.py`, `mcp_server.py`, `domains/`, `config.py`, `guard.py`, storage and folder integration. Own shared-contract decisions, backend availability, integration order and rehearsal. Unblock other lanes without changing their interfaces underneath them. |
 
-### Two sharing vocabularies — do not mix them up
+`app/...` above means `code/backend/app/...`. Coordinate edits to `main.py`, `mcp_server.py`, `api.ts`, `hive.py`, `config.py`, auth and deployment files; those are shared boundaries, not independent sandboxes.
 
-This has already cost one team an afternoon. They are different scales on different fields.
+**How to use the block:** get a clean run and agree one deliverable per lane first; spend the middle on small tested changes; reserve the end for integration and rehearsal, not new architecture. Hand over the branch/PR, exact entry command, changed contract, observed result and remaining blocker. Do not merge another lane's unfinished work merely to make a demo appear complete.
 
-**Item flags** (`sharing`, `contact_sharing`) — from `app/sharing.py`:
+## Architecture on main
 
-| Flag | In a search | A connection request |
-| --- | --- | --- |
-| `public` | yes | granted at once |
-| `confirm` | yes | waits for the owner's yes |
-| `push` | **no** | cannot be requested — the owner pushes it to someone they chose |
-| `never` | no | never |
+This is a **single-instance Python backend**, not a microservice system. React/Vite/TypeScript is the browser client; FastAPI serves REST and mounts the MCP Streamable HTTP server. Both reach the same core modules and local DuckDB. Domain modules add HR, Explore and Scout tools, rather than separate databases.
 
-The stricter of the entity default and the item's own flag always wins, so loosening an account
-default can never quietly open an item that was closed.
-
-**File visibility** (`structure[].visibility`) — a five-value scale: `public`, `public-summary`,
-`private`, `shared`, `hidden`. `private` collapses to a folder and a file **count** — no names, no
-digest. `shared` and `hidden` are **absent from the Card entirely**, because listing a file in order
-to say it is secret leaks its existence.
-
-### ⚠️ Two keys, and the one you want is not the obvious one
-
-A Card carries `owner_public_key`, and `/api/hub/registration` says *"bring a public key and you
-keep the private half"*. **Verify against `trust.public_key` instead.** `hive.publish` mints and
-keeps a per-card signing key whichever custody was recorded, and that key — not
-`owner_public_key` — is the one published in `/.well-known/hive.json` and used by every check. On a
-live hub the two fields hold different values on the same Card. Owner-held keys are recorded today,
-not yet honoured; `custody` is an intention, not a guarantee. Tracked in
-[LIMITS.md](documentation/LIMITS.md).
-
-### Always say which hub a result came from
-
-A search result adds `provenance` alongside the Card. Read the chain **origin first**:
-
-```json
-"provenance": { "path": ["bern", "basel"], "hops": 1, "origin": "bern" }
+```mermaid
+flowchart TB
+    UI[React browser: App, panels, api.ts] -->|REST /api/*| REST[FastAPI main.py]
+    EXT[External agents: CV/search clients] -->|Streamable HTTP /mcp/| MCP[mcp_server.py + domains]
+    REST --> AGENT[Traveller agent: model or scripted planner]
+    AGENT -->|MCP client; configured sources| MCP
+    REST --> CORE[Hive cards, search, booking and trust]
+    MCP --> CORE
+    CORE --> DB[(Local DuckDB: db.py)]
+    DB -.->|optional whole-file snapshot: storage.py| PG[(Postgres backup)]
+    CORE --> FED[Federation: peer selection and origin verification]
+    FED -->|HTTP search + key registries| PEERS[Other Hive instances]
+    REST --> LINK[Hub introductions + folder links/grants]
+    MCP --> LINK
+    LINK --> DB
+    LINK --> FILES[Local filesystem: FOLDER_ROOT]
+    FIXTURE[Separate serve_folders.py HTTP fixture] --> FILES
 ```
 
-That card is carried by Basel and originally from Bern. A result relayed twice shows every hop, and
-`also_reached_by` lists other routes the same card arrived by. **Showing the carrying hub is a
-product requirement, not a nicety** — a user must never be unable to tell whose directory answered.
+### Boundaries to keep straight
 
-### A real Card, trimmed
+- **Index versus files.** A Card is JSON with offers/needs, descriptions and optional folder metadata. Original PDFs, images and other bytes stay on disk; DuckDB/Postgres do not constitute a file-sync service. The fixture server is a separate development process, not a route on the hub.
+- **Search versus models.** `hive.discover()` combines explicit constraints, literal matching and the implemented offline similarity provider. It does not need an LLM key or an external vector database. Optional embeddings are not implemented.
+- **Peers versus booking providers.** `HIVE_PEER_URLS` seeds the hub's peer table for HTTP federation; the operator can then change that table at runtime. `HIVE_MCP_URLS` configures the traveller agent's MCP sources. Empty means the local in-process Hive; a nonempty list replaces that default. Neither setting discovers a hotel provider from folder text.
+- **Signatures versus identity.** `hive.publish()` signs normalized, versioned card JSON with a hub-held per-card Ed25519 key, retains history and publishes the verification key in the origin registry. This detects tampering; it is not verified real-world business identity or implemented owner-held signing custody.
+- **Reputation versus calibration.** Federation uses source relevance × carrier-path trust × hop decay. Published-versus-realised introduction ratings produce calibration/standing, but outcome calibration is not yet a federated ranking factor.
+- **Persistence versus production durability.** DuckDB is the working database. Optional `DATABASE_URL` restores a missing local file and asynchronously snapshots the whole file to Postgres; it is not direct SQL-on-Postgres or a shared transactional store. Holds, rate counters, admin-session state and operational reputation remain process-local. Use one backend worker, not a multiworker deployment.
+- **Admin versus ownership.** Operator writes fail closed without configured admin credentials. Owner/demo token checks are separate and optional in local development. Stored service keys and peer settings exist, but shared operator credentials are not individual owner accounts. Do not use real personal files or credentials as test fixtures.
 
-```json
-{
-  "id": "hotel-krafft", "kind": "hotel", "name": "Hotel Krafft Basel",
-  "description": "26 rooms on the Rhine, since 1872. The quiet side of the old town …",
-  "offers": [{ "title": "Courtyard single", "summary": "1 guest, CHF 128", "price_chf": 128 }],
-  "needs": [],
-  "contact": { "email": "hallo@hotelkrafft.example", "phone": "+41 61 690 91 30", "mobile": "" },
-  "contact_sharing": { "mobile": "confirm" },
-  "structure": [{ "path": "about.md", "bytes": 258, "visibility": "public-summary",
-                  "digest": "sha256:3039dc6315ac" }],
-  "custody": "owner",
-  "owner_public_key": "X7YBkN0iVSnj61GSO333iypZ…",
-  "trust": { "signature_valid": true, "public_key": "hB4uD9KaaA1I0VGWGfWNJJ…",
-             "algorithm": "Ed25519 over canonical JSON (sorted keys, no spaces)" },
-  "version": 1, "published_at": "2026-10-31T19:28:58+00:00",
-  "valid_until": "2027-01-29T19:28:58+00:00"
-}
-```
+### The two journeys
 
-### Gotchas worth knowing before you debug
+**Booking:** browser REST request → traveller agent → MCP discovery/card/availability → server-held `hive_book` proposal → explicit human approval → the original configured MCP source → booking and signed receipt. The critic is deterministic; the second opinion can use OpenAI or a rule check. The hotel persona in the chat is not an independent negotiating agent. A hold is neither an inventory reservation nor a guarantee against later price/terms changes; see [#103](https://github.com/reactbias/Adobee-Hive/issues/103) and [#104](https://github.com/reactbias/Adobee-Hive/issues/104). External clients calling `hive_book` directly must implement their own approval policy.
 
-- **`matches` is the whole hub, ranked** — every entity that failed no hard constraint, including
-  `score: 0`. Threshold it yourself.
-- **An unknown card id returns 400, not 404.** Every `HiveError` maps to 400.
-- **`rating` and `rating_count` are on search results, not on a Card.** They are derived from
-  `trust.verified_reviews`; a Card from `/api/hive/cards/{id}` has no top-level `rating`.
-- **A `person` Card can carry contact details.** Older prose said otherwise. What is real is that
-  some kinds default to `confirm` rather than `public`.
-- **Field sizes are enforced per field**, and `GET /api/hub/registration` publishes the table, so
-  read the ceilings from the hub rather than hard-coding them.
+**Candidate/CV:** external system → MCP discovery → signed person Card and `structure` → introduction/link metadata → authorized file access → its own CV extraction. **The last network file-access step is not exposed by the hub on this snapshot.** Use the separate fixture to develop extraction while the read API is integrated; do not treat a returned path or a link as permission to read private bytes.
 
-Deeper, per endpoint: the hub publishes its own field ceilings at `GET /api/hub/registration`, and
-every search endpoint is live at `/docs` on any running Hive. A full written spec — real requests
-and responses, the scoring breakdown, and a fixture that serves three vault folders to an agent
-that crawls unstructured files — lands with `documentation/SEARCH_API.md`.
-
-## The next guest is an agent
-
-The website was the front door. Then platforms took it. Now agents walk in, and today they read whatever they
-scrape and guess. Adobee Hive gives the front door back to the business.
-
-Every business publishes one **Hive card**: its rooms or tables, prices, availability and policies, **signed by the
-owner**. Agents find it, verify it and book through it over **MCP**. People see the same card as a page. The owner
-writes it in plain words, and nothing is booked until a person says yes.
-
-- **Signed facts.** Every card carries the owner's Ed25519 signature. Agents verify it themselves and turn away any
-  altered copy; third parties attest single claims like "dog-friendly".
-- **Open ranking.** Every result says why it won and why the others were left out. Placement cannot be bought.
-- **Proof of stay.** Only a signed booking receipt can leave a review. No stay, no review.
-- **Your yes.** Agents negotiate. People decide. You see every call your agent made before you approve.
-
-And one idea beyond them, **missed demand**: every request no business could serve is recorded. A café learns that
-agents asked for vegan breakfast; Basel learns what nobody offers yet. Agents write the business plan. And the
-demand waits: a traveller whose agent found nothing can ask to be told, anonymously, and the moment an owner signs the
-change, that agent receives an offer signed by the business.
-
-What the Hive will not do: sell placement, profile travellers (it learns *what* was asked, never *who*), or take
-orders from a listing (card text is data, never instructions). The full story: [documentation/VISION.md](documentation/VISION.md).
-
-> On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.
-
-## What works today
-
-An agent that never opens a website discovers, verifies, compares and books a fictional Basel hotel, end to end
-over MCP. Try it with any MCP client, Claude included.
-
-| Piece | Where |
-| --- | --- |
-| Hive cards for six fictional Basel businesses, signed with Ed25519 | `code/backend/app/hive.py`, `hive_seed.py` |
-| MCP server: discover, get card, check availability, book, cancel, review | `code/backend/app/mcp_server.py` |
-| Traveller agent: an OpenAI or Claude model over MCP, verifies every signature, explains its choice, books only after you approve. You watch it play out as a group chat of named agents, and after the booking it offers next steps | `code/backend/app/agent.py`, `TravellerAgent.tsx`, `GroupChat.tsx` |
-| One page in two chapters: one agent chat for a room or any business, then the business's side, where the hotel sees the booking arrive | `App.tsx`, `TravellerAgent.tsx`, `components/Chapter.tsx` |
-| Owner studio (chapter 2): plain-language edit, diff, sign and publish, missed demand | `code/backend/app/owner.py`, `panels/OwnerPanel.tsx` |
-| Trust: owner keys pinned in each Hive's registry (`/.well-known/hive.json`); the agent checks every card itself; a changed copy and a stranger-signed copy both fail the live tamper test in the owner studio | `hive.py`, `agent.verify_card`, `panels/OwnerPanel.tsx` |
-| Basel demand map (chapter 2): what agents asked for that nobody offers | `panels/DemandPanel.tsx` |
-| Whose rules: signed rulesets a person picks per search ("Dogs, verified" by a dog owners' club). They only narrow, and every answer names the ruleset and what it changed | `code/backend/app/rulesets.py` |
-| Standing requests: when nothing fits, an agent can wait anonymously; the owner sees how many wait for which change, and publishing it sends each a signed offer | `code/backend/app/waiting.py`, `panels/OwnerPanel.tsx` |
-| Three agents agree before you are asked: your agent proposes, a critic always argues for the strongest alternative from the open ranking, and a verifier checks the held booking against the request and the signed card. If they don't all agree, the chat says so and you still decide | `code/backend/app/critic.py`, `second_opinion.py` |
-| Any business, in the same chat (chapter 1): questions about six real businesses (adventures, AI workflows, process instrumentation, creative software, life insurance, BaselHack itself) answered from unclaimed public-info cards, with a yes before any hand-off | `code/backend/app/domains/explore.py`, `examples.py`, `components/AskParts.tsx`, `lib/route.ts` |
-| Web scout: when no card fits ("book me a taxi"), the agent first asks what is missing (route and time), then looks on the public web, a verifier checks each business's own site, and the find joins the Hive as an unclaimed card. Unclaimed cards say *Unclaimed · hand-off only*: the agent never books them, it takes you to the business's site after your yes. Jobs questions list the employers' careers pages | `code/backend/app/domains/scout.py`, `explore.py` |
-| Live activity feed (`?demo#activity`): one line per agent step, partner or web, never a person | `code/backend/app/activity.py`, `panels/ActivityPanel.tsx` |
-| Persistence: the Hive lives in DuckDB and is snapshotted to Postgres when `DATABASE_URL` is set, so a redeploy keeps cards, bookings and demand; without it the backend seeds a fresh Basel | `code/backend/app/storage.py` |
-| Second use case, HR (starter): person cards, skills search, introductions only with consent | `code/backend/app/domains/hr.py` |
-| Federated search with a hop radius: a query carries how far it may travel, the time it has left and the hubs it has already visited; every card that comes back is verified against the key pinned in *its own* hub, so a relaying hub can withhold a card but never forge one ([how](documentation/FEDERATION.md)) | `code/backend/app/federation.py`, `components/Reach.tsx` |
-| Two levels of trust: a peer *hub*'s reputation from how it has behaved, and its *calibration* from whether its published ratings matched what our people found afterwards (published minus realised, lower is better) | `reputation.py`, `calibration.py`, `connections.py` |
-| Joining a hub: one signed JSON application, five checks in order, and an admission policy of `open`, `vetted`, `invite` or `closed`. A refusal is an answer with a reason and a next step ([how](documentation/REGISTRATION.md)) | `code/backend/app/registration.py` |
-| Joining from a browser, without filling in a profile: point it at a folder on your disk, which is read in the page and never uploaded, and the Card is filled from it; the Ed25519 key is made in the browser and the private half is yours to download; you see the exact JSON before it is signed and sent | `panels/Onboarding.tsx`, `lib/signing.ts`, `lib/folderScan.ts` |
-| Asking to be introduced to someone a search found: a `public` entry connects at once, a `confirm` one says it waits for the owner's yes before you click, and the owner accepts or declines the ones waiting on them in the business chapter | `components/Connect.tsx`, `components/ConnectionRequests.tsx`, `code/backend/app/connections.py` |
-| Scoring the real meeting afterwards, which is the only thing that teaches this Hive which other Hives to believe: tenths of a star, once, with the deadline visible, and the answer shows what the hub promised against what you found, and where that leaves the hub it came from | `panels/Introductions.tsx`, `code/backend/app/hub.py` |
-| Item-level sharing: `public`, `confirm`, `push` (held, never searchable) or `never`, set per item, and the stricter of the item's flag and the entity's default always wins | `code/backend/app/sharing.py` |
-| A hub directory and an instance finder: pick a Hive before you use one, instances.social style, with the one column a Mastodon directory cannot offer — how honest each hub's ratings turned out to be | `admin.directory`, `panels/InstanceFinder.tsx` |
-| Running a hub in a browser: `?admin`, the hub's password for a short-lived session, then the overview, the signup queue, the entity list, the blocklist and the neighbours | `code/backend/app/admin.py`, `panels/AdminPanel.tsx` |
-| The network, live: this hub in the centre of a honeycomb, each peer a cell with an edge coloured by its calibration, a blocked peer still drawn and visibly cut | `panels/NetworkPanel.tsx`, `lib/network.ts` |
-| Three peered hubs on one machine, reachable from any phone on the wifi, seeded through the real signup endpoint ([how](documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh)) | `lan.sh`, `tools/seed_vaults.py` |
-| A test corpus whose cards never use the words a person would type, with an answer key, so search can be measured rather than demonstrated | [`testdata/`](testdata/README.md), `tools/make_corpus.py` |
-| `contact` on every entity: the key is always there, an empty value means "not published", and a channel the owner marked `never` is absent rather than listed as withheld | `hive.with_contact`, `documentation/cards/README.md` |
-| Semantic similarity with no key, no network and no new dependency: stems, a four-language concept table and character trigrams above a measured floor. Discovery combines it with literal matching; the optional embedding provider is not implemented ([limits](documentation/LIMITS.md)) | `code/backend/app/semantic.py` |
-
-The live agent runs on OpenAI (or Claude, see `LLM_PROVIDER`). Without an API key everything still runs on a
-scripted planner over the same tools, so the demo never dies. Bookings are held server-side until you approve, once. The
-web app speaks English, German, French and Italian.
-
-## Who tests the tests
-
-Coverage proves a line ran. It does not prove a test would fail if that line were wrong. So on every pull
-request, after the ordinary tests pass, CI **deliberately breaks the code** and checks the suite notices:
-remove the loop guard that stops a federated search revisiting a hub, flip the sign of a hub's calibration
-error, let a stale introduction be scored, let a blocked entity back into a search. Thirty-five of these,
-each aimed at a promise the design rests on. **Every one must fail the tests.** A change nothing notices is
-a hole in the tests, named and located.
-
-It has already found four real holes. The clearest: `HttpTransport` had **no test at all** — the fakes
-replaced it wholesale, so the parser that supplies the keys every relayed card is verified against was
-never executed. Blanking `owner_keys` there passed all twenty-four federation tests. Coverage could not see
-it, because the line *was* covered, by a fake.
-
-The harness is itself tested (`tests/test_mutation.py`), because the one failure mode that makes such a tool
-worse than useless is a confident false all-clear — which happened once, when two test files were missing
-from its list and eight breakages were reported as "survived" while the real tests caught every one.
-
-How it works and how to run it: [code/backend/tools/README.md](code/backend/tools/README.md).
+For Saad/Emily: the supplied [LAN architecture SVG](http://192.168.21.123:8490/05-current-architecture.svg) is a working sketch, only reachable on the team network. Its “browser never passes radius” warning is stale, its calibration/ranking relationship is not implemented, and its folder/API status must be rechecked after merges. Use the version-controlled map above for this handover; refresh the presentation visual under [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
 
 ## Run it locally in 5 minutes
 
-You need **Git**, **Python 3.12** and **Node 22**. No API key: without one, the agent runs on a scripted planner
-over the same MCP tools. The status strip shows backend reachability separately from the configured planner.
+Prerequisites: **Git, Python 3.12, Node 22 and npm**. No model key, Postgres or ClaudeConnect installation is required for local discovery and the scripted booking workflow. The web scout can still make public-network requests without a model key; no-key does not mean every feature is network-free.
 
-**1. Clone and configure**
+From a new checkout:
 
 ```bash
-git clone https://github.com/reactbias/Adobee-Hive.git && cd Adobee-Hive
-cp code/.env.example code/.env        # Windows PowerShell: copy code\.env.example code\.env
+git clone https://github.com/reactbias/Adobee-Hive.git
+cd Adobee-Hive
+cp code/.env.example code/.env
+cd code/backend
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-For the live agent, put the team's key after `OPENAI_API_KEY=` in `code/.env`. That file is gitignored; never
-commit a key or paste it in a chat.
+On Windows PowerShell use `Copy-Item code/.env.example code/.env`, `py -3.12 -m venv .venv` and `.venv\Scripts\Activate.ps1` in the corresponding directories. For a predictable no-key run set `LLM_PROVIDER=offline` in `code/.env`. Keep `DATABASE_URL` empty for an isolated local database; never borrow the production snapshot database for development.
 
-**2. Backend** (one terminal, from `code/backend`)
-
-| macOS, Linux | Windows (PowerShell) |
-| --- | --- |
-| `python3.12 -m venv .venv` | `py -3.12 -m venv .venv` |
-| `source .venv/bin/activate` | `.venv\Scripts\Activate.ps1` |
-
-Then, on both:
+**Terminal A**, from `code/backend`, venv active:
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-pytest -q                                              # all green, including a booking over MCP
-uvicorn app.main:app --port 8000 --env-file ../.env
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --env-file ../.env
 ```
 
-**3. Frontend** (a second terminal, from `code/frontend`)
+**Terminal B**, from the repository root:
 
 ```bash
+cd code/frontend
 npm ci
-npm test                                               # component tests, no backend needed
 npm run dev
 ```
 
-**4. Open it**
+Open http://localhost:5173. The default is the build's own hub; **Change Hive** opens the finder. `#travel`, `#business` and `#network` switch screens; `?admin` opens administration and needs locally configured admin credentials. The backend status strip separates reachability from configured planner mode; “model configured” is not a successful quota/billing check. Default startup seeds fictional hotels and public-info example cards, not the full person/CV corpus.
 
-| URL | What |
+Vite proxies `/api`, `/mcp` and `/.well-known` to `http://localhost:8000`. For a backend on another port, set `VITE_DEV_BACKEND` when starting Vite. `VITE_API_URL` is a browser build-time default; a selected hub's URL overrides it. Pointing the browser at another hub must change the actual API target, not only its label.
+
+### Configuration that matters
+
+| Setting | Meaning |
 | --- | --- |
-| http://localhost:5173 | The app, one page; click the first example |
-| http://localhost:8000/docs | Every REST endpoint, to read and try |
-| http://localhost:8000/api/health | `"llm": "openai"` with a key, `"mock"` offline |
-| http://localhost:8000/mcp/ | The MCP endpoint for any agent, Claude included ([how](documentation/DEPLOY.md#point-any-agent-at-the-hive)) |
+| `LLM_PROVIDER`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Optional planner provider/keys; keep secrets in ignored `code/.env`. The scripted planner remains usable without them. |
+| `DUCKDB_PATH`, `DATABASE_URL` | Local database file (default `code/backend/data/abh.duckdb`) and optional Postgres snapshot destination. |
+| `SEED_ON_EMPTY` | Seed the small default demo when the card database is empty. |
+| `HIVE_HUB_ID`, `HIVE_PEER_URLS` | This hub's identity and initial HTTP peers; peers thereafter live in the operator-managed table. |
+| `HIVE_MCP_URLS` | Operator-configured MCP sources for the booking agent, not arbitrary discovered provider URLs. |
+| `FOLDER_ROOT`, `FOLDER_LINK` | Local vault root and folder implementation selection; `local` is the working default. The optional ClaudeConnect adapter is absent on this snapshot, so selecting it falls back to local. |
+| `ADMISSION_POLICY` | Default `vetted`: valid registrations can remain pending. The LAN demo explicitly uses `open`; do not mistake a pending application for a searchable card. |
+| `ADMIN_PASSWORD`, `ADMIN_TOKEN`, `OWNER_EDIT_TOKEN`, `DEMO_RESET_TOKEN` | Separate operator/session, owner-write and reset credentials. Never put live values in README examples or PRs. |
 
-Before you push, run the checks in [CONTRIBUTING.md](CONTRIBUTING.md#checks-to-run-before-you-push). What each
-endpoint, MCP tool and page does: [ARCHITECTURE.md](documentation/ARCHITECTURE.md). Docker and hosting:
-[DEPLOY.md](documentation/DEPLOY.md). If PowerShell refuses to run `Activate.ps1`, run
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` once.
+The `.env.example` is a starting subset; `app/config.py` contains the full settings. Do not commit `.env`, DuckDB files, `.lan/`, keys or real CVs.
 
-Taking over the code? The [diagrams](documentation/DIAGRAMS.md) show how the parts fit; the [developer guide](documentation/DEVELOPER.md) shows how to start, test, call and ship every part.
+### Three hubs and the fictional search corpus
 
-## Repository
+After installing both sets of dependencies above, **from the repository root** on Linux/Bash:
 
-| Folder | Contents |
-| --- | --- |
-| [`code/`](code) | `backend/` FastAPI + DuckDB (Postgres snapshot) + MCP + agents, `frontend/` React + Vite, `docker-compose.yml` |
-| [`documentation/`](documentation) | [Challenge](documentation/CHALLENGE.md) · [Vision](documentation/VISION.md) · [Pitch](documentation/PITCH.md) · [Demo script](documentation/DEMO.md) · [Architecture](documentation/ARCHITECTURE.md) · [Federation](documentation/FEDERATION.md) · [The Card](documentation/cards/README.md) · [Joining a hub](documentation/REGISTRATION.md) · [Search API](documentation/SEARCH_API.md) · [Known limits](documentation/LIMITS.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Run and deploy](documentation/DEPLOY.md) · [Brand](documentation/BRAND.md) · [Team](documentation/TEAM.md) |
-| [`testdata/`](testdata/README.md) | Fictional vaults and the answer key search is measured against; `lan.sh` seeds them into three hubs through the real signup endpoint |
-| [`assets/`](assets) | Whiteboard photos, jury slide, logo and mascot exports ([index](assets/README.md)) |
+```bash
+PORT_APP=8540 PORT_A=8520 PORT_B=8521 PORT_C=8522 ./lan.sh up
+```
 
-Working on it: [CONTRIBUTING.md](CONTRIBUTING.md) for people, [AGENTS.md](AGENTS.md) for coding agents,
-[SECURITY.md](SECURITY.md) for what is protected. Layout follows the BaselHack template. The Basel businesses in the seed data are fictional; the six example cards are real businesses compiled from their public websites and marked unclaimed.
-MIT licensed, see [license.txt](license.txt).
+The launcher seeds fictional vaults through registration, starts Basel/Zürich/Bern with separate databases and builds/proxies the app. Pin unused ports when another stack is already running; otherwise the hub ports can move. Read the URLs and logs it prints. It requires the venv at `code/backend/.venv`.
+
+**Only Ole/the current host operator should start or stop the shared LAN stack.** `lan.sh up` can reclaim its configured app port; choose a free one, not another team's live port. Do not reset or reseed the presentation instance as a test. The older warning in `SEARCH_API.md` about `down` sweeping every worktree is historical: current cleanup checks process working directories, but the shared instance is still not your sandbox.
+
+## Integration contracts
+
+### REST for UI and JSON search
+
+With the single-hub backend running:
+
+```bash
+curl -fsS http://localhost:8000/api/health
+curl -fsS http://localhost:8000/.well-known/hive.json
+curl -fsS -G http://localhost:8000/api/hive/discover \
+  --data-urlencode 'query=quiet dog-friendly hotel near Basel SBB under CHF 200' \
+  --data-urlencode 'kind=hotel' --data-urlencode 'radius=0'
+curl -fsS http://localhost:8000/api/hive/cards/hotel-rheinblick
+```
+
+The live schemas are at `/docs` and `/openapi.json`. `GET /api/hub/registration` publishes admission policy and field ceilings; fetch those rather than inventing another validator.
+
+For Andrey and Tobi:
+
+- `offers`/`needs` are the market-side index; `kind` is an optional filter. Use `looking_for=offers|needs|any` deliberately. Do not make every service or CV search a hotel search.
+- Hard constraints determine eligibility. Free-text relevance determines ranking, **not inclusion**: `matches` can contain zero-score entries and reputation points do not prove a content match. Inspect `score_breakdown`, `why` and `excluded`; choose an appropriate relevance policy in the consumer.
+- REST recognizes explicit room requests and reuses the stay parser; explicit parameters win. MCP uses its explicit tool parameters, not that REST text-normalization step. Supply structured dates, guests, budget and features when their correctness matters.
+- `radius=0` is local; positive radius searches configured peers, up to three hops. REST additionally exposes `budget_ms` and `seen`. The presenter reach control already passes radius; broader browser search controls remain incomplete.
+- A local match is a summary: fetch its Card by ID. A federated match includes its signed `card`; do not fetch a remote ID from the answering hub's local card endpoint. Show origin-first `provenance.path` and retain `origin_url`/source identity. Cross-hub introduction routing is still [#143](https://github.com/reactbias/Adobee-Hive/issues/143).
+- The full [Search API handover](documentation/SEARCH_API.md) has payloads and fixtures, but some recorded startup/routing warnings predate subsequent fixes. Current code and the running schema win over historical observations.
+
+### MCP for an external agent
+
+Use **Streamable HTTP**, not a plain GET or an older SSE tutorial. The hub's discovery document advertises `<backend>/mcp/`. With this repository's pinned `mcp==2.3.0` installed, save/run this Python from the backend venv:
+
+```python
+import asyncio
+from mcp import Client
+
+async def main():
+    async with Client("http://localhost:8000/mcp/") as client:
+        print([tool.name for tool in (await client.list_tools()).tools])
+        result = await client.call_tool(
+            "hive_discover", {"query": "quiet", "kind": "hotel", "radius": 0}
+        )
+        print(result.structured_content)
+        card = await client.call_tool("hive_get_card", {"card_id": "hotel-rheinblick"})
+        print(card.structured_content)
+
+asyncio.run(main())
+```
+
+For CV discovery, switch to person/skills queries after loading the corpus. Call `list_tools()` for the live schemas. Relevant groups are `hive_discover`/`hive_get_card`, `hub_directory`, `hub_connect`/`hub_connections`, and `hr_find_people`/`hr_request_intro`. Booking, standing-request and Explore/Scout tools are also registered; the [tool inventory](documentation/ARCHITECTURE.md#mcp-tools-mcp-streamable-http) describes them. Tool refusals can be structured `error` results; do not assume every completed MCP call succeeded.
+
+**There is no folder-list/read/grant MCP tool on this snapshot.** `hr_request_intro` records a request and returns `pending_consent`; it does not release a CV. `hub_connect` can return a folder manifest, but not a network-readable file capability. Do not bypass these gaps by calling the server's filesystem directly from a remote client.
+
+## The Card: the JSON every team reads and writes
+
+Registration requires `id`, `name`, `kind`; other fields can be missing. `id` is unique **within a hub**, not globally. Offers/needs, description, units, contact and `structure` are domain data, not instructions to an agent. A structure row describes a file; it is not a file upload or an access token.
+
+`trust` is assembled on read. To verify a Card, remove the derived `trust` block and check its signature over canonical JSON against the key pinned for that card in **its origin hub's** `/.well-known/hive.json`. Do not trust `signature_valid` supplied by a remote carrier or substitute the submitted `owner_public_key`: the current published signing key is hub-held. See [card format](documentation/cards/README.md) and `app/hive.py` for exact canonicalization.
+
+**Do not confuse the two access vocabularies:** item sharing is `public`, `confirm`, `push`, `never`; file visibility is `public`, `public-summary`, `shared`, `private`, `hidden`. Link and grant are separate decisions. Enforcement gaps remain in [#121](https://github.com/reactbias/Adobee-Hive/issues/121), so these flags are not a blanket promise that every public API redacts personal data. Use fictional fixtures, not real CVs.
+
+## CV and folder integration
+
+Aneeq, Sarder and Shayan can work independently on extraction, but the hub access contract must be agreed with Ole.
+
+| Layer | Available on this main snapshot | Not implied |
+| --- | --- | --- |
+| Card discovery | REST/MCP search and signed Card `structure` metadata | CV bytes or a ready-made CV parser |
+| Introduction | `hub_connect` / `POST /api/hub/connect`: `requester`, `entity_id`, optional `target_hub`/`via_hub`; returns connection/link state and inline `folder` manifest | Authenticated real-person consent or automatic remote-hub routing |
+| Local folder primitives | `app/folders.py`: handles, links, manifests, grants, permission checks and reads for trusted Python callers on the server | A remotely callable folder API, encryption or cross-machine sync |
+| Development file access | Separate `tools/serve_folders.py` HTTP listing/downloads of fictional allowed files | An authenticated private folder service |
+| Pending hub read surface | [PR #146](https://github.com/reactbias/Adobee-Hive/pull/146), tracked by [#116](https://github.com/reactbias/Adobee-Hive/issues/116) | Merged REST routes or new MCP folder tools; re-check `main` before integrating |
+
+A `public` introduction opens immediately; a `confirm` one waits. A link reveals additional manifest metadata, **not blanket byte access**; nonpublic reads need a separate grant in the local implementation. Current requester strings and confirmation routes do not establish caller ownership. Do not describe them as production authentication. The [folder plan](documentation/FOLDERS.md) is merged design documentation, not proof its proposed endpoints are available.
+
+### Start extraction now, with a fictional CV
+
+From `code/backend`, venv active, in its own terminal:
+
+```bash
+python tools/serve_folders.py --host 127.0.0.1 --port 8600 --vault jonas-brun
+```
+
+Then inspect and download:
+
+```bash
+curl -fsS http://127.0.0.1:8600/jonas-brun/
+curl -fsS http://127.0.0.1:8600/jonas-brun/cv.pdf -o /tmp/hive-fictional-cv.pdf
+```
+
+The file is a real PDF containing fictional test material. The fixture deliberately serves `public` **and `public-summary` anonymously**, including this CV; `--strict` restricts it to `public` and would exclude this CV. It is for development, **not a privacy boundary or a way to expose real folders**. The source corpus and field/visibility examples are in [testdata](testdata/README.md) and [the fixture guide](documentation/SEARCH_API.md#the-three-folder-fixture).
+
+For another laptop, the fixture host must explicitly bind an agreed LAN interface (`--host 0.0.0.0`) and share its actual address/port. `localhost` on a teammate's laptop is not Ole's server. Coordinate with Ole; keep extracted personal data and secrets out of git, prompts and public logs.
+
+### A hotel advertises its own booking MCP
+
+**Andrey's alternative with Tobi, coordinated with Ole.** Main can carry an arbitrary contact channel such as `contact.mcp` (the folder seeder reads `contact.md`), but no current fixture advertises a hotel MCP. Neither the folder manifest nor the booking agent implements automatic folder-to-provider discovery. There is no agreed descriptor-file schema to assume.
+
+The handover to agree is: find the advertisement → establish the hotel's/provider's identity and permitted endpoint → inspect its real transport/auth/tool schemas → map the discovered hotel/room to provider IDs → display an offer → obtain explicit approval → book through that same provider. Finding a URL is data, **not authorization to connect or book**.
+
+The existing planner expects Hive-shaped discovery/cards/availability. **Only the exact `hive_book` tool name is held for approval today**; a different provider's mutating tool name is not automatically protected. Do not simply add an arbitrary hotel's MCP to `HIVE_MCP_URLS` and assume compatibility or consent. Preserve server-side source binding through approval and reject missing/untrusted providers instead of falling back to another hotel. This is proposed integration work, not a shipped workflow.
+
+## Stability work without breaking the demo
+
+Felix and baker: choose a small issue with Ole and check the current revision before fixing it. An open issue can describe code that has since changed; search normalization, source-bound approval and backend-status fixes are already merged even where old issues remain open.
+
+Useful starting issues: [slow-peer timing race #140](https://github.com/reactbias/Adobee-Hive/issues/140), [inventory concurrency #103](https://github.com/reactbias/Adobee-Hive/issues/103), [approval terms #104](https://github.com/reactbias/Adobee-Hive/issues/104), [federation deadline #112](https://github.com/reactbias/Adobee-Hive/issues/112), [cross-hub connect #143](https://github.com/reactbias/Adobee-Hive/issues/143), and [onboarding exit #142](https://github.com/reactbias/Adobee-Hive/issues/142). Coordinate fixes touching booking or auth with Ole rather than silently changing the contract.
+
+**Nonbreaking means:** preserve request/response shapes, signed canonical data, explicit approvals, origin verification, withheld-data rules and the no-key path. Keep performance work measurable on the same fictional workload; do not trade away relevance or safety checks for speed. No test skipping, raised timeouts to hide races, swallowed errors or synthetic success fallbacks. For a bug, keep a behavior regression and exercise the actual API/MCP/UI path after the fix.
+
+From the repository root, with the backend venv active and frontend dependencies installed:
+
+```bash
+( cd code/backend && python -m ruff check . && python -m ruff format --check . && python -m pytest -q )
+( cd code/frontend && npm run format:check && npm test && npm run build )
+```
+
+For federation/trust/access-rule changes also run the existing mutation gate from `code/backend`: `python tools/mutate.py`. Search measurements: `python tools/eval_answer_key.py` and `python tools/eval_search.py`. These are commands to run for your change, not a claim that the current branch is green. CI's snapshot round-trip test uses a throwaway Postgres via `TEST_DATABASE_URL`; do not point it at the live database. Use the existing test fixtures and keep checks deterministic and isolated.
+
+## Continuing work and presentation cutover
+
+- Branch from latest `main`, keep small Conventional Commits and one topic per PR. Share the issue/PR and changed contract with the affected lane. [CONTRIBUTING.md](CONTRIBUTING.md) has the full workflow.
+- New browser strings ship in EN, DE (Swiss), FR and IT in the same change. `api.ts` and backend schema/documentation move together when the contract changes. Preserve the no-key rehearsal path.
+- **Do not claim yet:** private cross-machine context exchange, arbitrary hotel-MCP handoff, independent business negotiation, owner-held publishing keys, verified real-world identity, verified completed stays, payments or production-grade ownership/consent. The code supports a prototype; [known limits](documentation/LIMITS.md) and the open issues describe its boundaries.
+- Before the jury/presentation, execute [#147](https://github.com/reactbias/Adobee-Hive/issues/147): check final `main` and deployments, update the architecture/deck, rehearse the exact try-it path, then make the README visitor-first while retaining this contributor handover through linked developer documentation.
+
+MIT licensed; see [license.txt](license.txt). Seed businesses and people are fictional; the clearly marked unclaimed example cards use public business information, not evidence of owner endorsement.

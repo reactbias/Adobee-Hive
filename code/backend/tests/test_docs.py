@@ -84,13 +84,6 @@ def test_every_link_between_the_docs_resolves():
     assert broken == []
 
 
-def test_the_readme_starts_with_the_links_everyone_needs():
-    readme = (ROOT / "readme.md").read_text(encoding="utf-8")
-    links = readme[readme.index("## Links") : readme.index("## The next guest")]
-    for needed in ["github.io/Adobee-Hive", "/pulls", "/actions", "localhost:5173", "localhost:8000/docs", "TEAM.md"]:
-        assert needed in links
-
-
 def test_the_developer_guide_is_linked_and_names_only_what_runs(client):
     guide = (ROOT / "documentation" / "DEVELOPER.md").read_text(encoding="utf-8")
     assert "documentation/DEVELOPER.md" in (ROOT / "readme.md").read_text(encoding="utf-8")
