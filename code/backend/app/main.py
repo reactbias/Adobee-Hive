@@ -214,7 +214,7 @@ def demo_reset(request: Request) -> dict[str, Any]:
 @app.post("/api/agent")
 async def run_agent(body: AgentRequest, request: Request) -> dict[str, Any]:
     """Run the traveller agent over MCP. A booking comes back held, as pending."""
-    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches Claude
+    if config.LLM_ENABLED and body.rules == "on":  # the rules-off run is scripted and never reaches a model
         guard.llm_calls.check(request)
     try:
         return await agent.run([m.model_dump() for m in body.messages], body.scenario, body.rules)
