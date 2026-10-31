@@ -151,6 +151,8 @@ is worse than one slightly too generous.
 | `structure` | 1000 entries | One row per file in your folder: path and digest, never contents |
 | `contact` | 20 channels | The open map of how to reach you |
 | `contact.<channel>` | 200 characters | One channel's value, e.g. a postal address |
+| `proofs` | 8 entries | Claims about the world. Recorded unverified, never trusted |
+| `proofs[].subject` | 200 characters | What one proof is about, e.g. a domain name |
 | `any other text` | 500 characters | Any string the card carries that is not named above |
 | `any other list` | 200 entries | Any list the card carries that is not named above |
 | `keys per object` | 64 keys | How many keys one object may carry |

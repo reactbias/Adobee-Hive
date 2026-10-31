@@ -273,6 +273,12 @@ CURATED: list[Mutant] = [
     Mutant(
         "limits.py",
         "the request body stops being counted, so a chunked 20 MB application is parsed after all",
+        "if seen > self.max_bytes:",
+        "if False:",
+    ),
+    Mutant(
+        "limits.py",
+        "Content-Length stops being read, so a body that declares itself too big is received anyway",
         'if name.lower() == b"content-length":',
         "if False:",
     ),

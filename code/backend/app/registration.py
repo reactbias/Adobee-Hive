@@ -90,7 +90,9 @@ POLICIES = (OPEN, VETTED, INVITE, CLOSED)
 
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}$")
 PROOF_TYPES = ("dns-txt", "rel-me", "email")
-MAX_PROOFS = 8
+#: One source for how many claims an application may carry: `limits.py` publishes it, and
+#: `_check_size` bounds what each one says.
+MAX_PROOFS = limits.MAX_PROOFS
 
 
 class RegistrationError(ValueError):

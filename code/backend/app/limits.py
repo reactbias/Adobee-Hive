@@ -84,6 +84,7 @@ MAX_PATH = 400  # a folder path in `structure`; corpus widest 10
 MAX_DIGEST = 120  # "sha256:" plus a hash; corpus widest 19
 MAX_CONTACT_VALUE = 200  # corpus widest 39 (an email); a postal address is the long one
 MAX_KEY = 40  # an object key, e.g. a contact channel name; corpus widest 7
+MAX_PROOF_TEXT = 200  # a proof's subject, e.g. a domain name. Recorded unverified, so only bounded
 
 MAX_OFFERS = 50  # corpus widest 6
 MAX_NEEDS = 50  # corpus widest 3
@@ -94,6 +95,7 @@ MAX_LINKS = 50
 MAX_ATTESTATIONS = 50
 MAX_TAGS = 20  # corpus widest 4
 MAX_CONTACT_CHANNELS = 20  # corpus widest 4; the map stays open, so this is the only bound
+MAX_PROOFS = 8  # claims about the world, recorded unverified; `registration.CHECKS` reads this too
 MAX_LIST = 200  # any other list a card carries
 
 MAX_KEYS = 64  # keys in any one object; corpus widest 15 (the card itself)
@@ -147,6 +149,8 @@ LIMITS: tuple[Limit, ...] = (
     Limit("structure", "entries", MAX_STRUCTURE, "One row per file in your folder: path and digest, never contents"),
     Limit("contact", "channels", MAX_CONTACT_CHANNELS, "The open map of how to reach you"),
     Limit("contact.<channel>", "characters", MAX_CONTACT_VALUE, "One channel's value, e.g. a postal address"),
+    Limit("proofs", "entries", MAX_PROOFS, "Claims about the world. Recorded unverified, never trusted"),
+    Limit("proofs[].subject", "characters", MAX_PROOF_TEXT, "What one proof is about, e.g. a domain name"),
     Limit("any other text", "characters", MAX_TEXT, "Any string the card carries that is not named above"),
     Limit("any other list", "entries", MAX_LIST, "Any list the card carries that is not named above"),
     Limit("keys per object", "keys", MAX_KEYS, "How many keys one object may carry"),
@@ -251,6 +255,8 @@ def _text_cap(path: tuple[str, ...]) -> int:
         return MAX_CONTACT_VALUE
     if root == "features":
         return MAX_FEATURE
+    if root == "proofs":
+        return MAX_PROOF_TEXT
     return MAX_TEXT
 
 
@@ -262,6 +268,8 @@ def _list_cap(path: tuple[str, ...]) -> int:
         return CARD_LISTS[path[-1]]
     if path[0] in ("offers", "needs") and path[-1] == "tags":
         return MAX_TAGS
+    if path == ("proofs",):
+        return MAX_PROOFS
     return MAX_LIST
 
 
@@ -275,8 +283,7 @@ def _walk_refusal(value: Any, path: tuple[str, ...]) -> str:
     if isinstance(value, dict):
         cap = _keys_cap(path)
         if len(value) > cap:
-            where = _name_for(path) if path else "a card"
-            return f"{where} holds at most {cap} keys; this one has {len(value)}"
+            return f"{_name_for(path)} holds at most {cap} keys; this one has {len(value)}"
         for key, item in value.items():
             if isinstance(key, str) and len(key) > MAX_KEY:
                 return f"a key is at most {MAX_KEY} characters; {key[:20]!r} is {len(key)}"
@@ -331,6 +338,9 @@ def application_refusal(application: dict[str, Any]) -> str:
     """
     if reason := document_refusal(application, cap=MAX_APPLICATION_BYTES, what="an application"):
         return reason
+    proofs = application.get("proofs")
+    if isinstance(proofs, list) and (reason := _walk_refusal(normalise(proofs), ("proofs",))):
+        return reason
     entity = application.get("entity")
     if not isinstance(entity, dict):
         return ""  # not this check's business: `_check_shape` says what an entity has to be
@@ -338,9 +348,11 @@ def application_refusal(application: dict[str, Any]) -> str:
 
 
 def storable(entity: dict[str, Any]) -> dict[str, Any]:
-    """What to keep in the application queue for an entity that is over a limit: its size, not its text.
+    """What to keep in the application queue for an entity too big to keep: that it was, not its text.
 
-    A refusal is recorded, and recording it must not be the way the database gets filled.
+    A refusal is recorded, and recording it must not itself be the way the database gets filled. An
+    entity that merely has one field over its ceiling is kept in full, so an applicant can see what
+    they sent; one over the whole-document ceiling is kept as its id, kind, name and a flag.
     """
     if not document_refusal(entity):
         return entity

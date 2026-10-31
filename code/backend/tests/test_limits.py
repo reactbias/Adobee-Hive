@@ -8,6 +8,7 @@ to pass unchanged. If a real entity trips a limit, the limit is wrong.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import importlib.util
 import json
@@ -92,6 +93,37 @@ def test_a_refusal_names_the_limit_and_the_actual_size(field, cap, build):
     assert str(cap) in reason, f"the published limit is missing from {reason!r}"
     assert str(cap + 7) in reason, f"the actual size is missing from {reason!r}"
     assert reason == reason.strip() and not reason.endswith("."), "the style is a sentence fragment, like the others"
+
+
+def _application(**entity) -> dict:
+    """An application a hub would accept, for one part of it at a time to be pushed over."""
+    return {"entity": _card(**entity), "public_key": "", "proofs": [], "invite": "", "signature": ""}
+
+
+def test_a_proof_is_bounded_by_how_many_and_by_what_each_one_says():
+    """Proofs are recorded unverified, which is a reason to bound them rather than not to."""
+    ok = _application()
+    ok["proofs"] = [{"type": "dns-txt", "subject": "s" * limits.MAX_PROOF_TEXT}] * limits.MAX_PROOFS
+    assert limits.application_refusal(ok) == ""
+
+    too_many = _application()
+    too_many["proofs"] = [{"type": "dns-txt", "subject": "x"}] * (limits.MAX_PROOFS + 1)
+    assert str(limits.MAX_PROOFS) in limits.application_refusal(too_many)
+
+    too_long = _application()
+    over = limits.MAX_PROOF_TEXT + 1
+    too_long["proofs"] = [{"type": "dns-txt", "subject": "s" * over}]
+    reason = limits.application_refusal(too_long)
+    assert "subject" in reason and str(limits.MAX_PROOF_TEXT) in reason and str(over) in reason, reason
+
+
+def test_the_whole_application_has_a_ceiling_of_its_own():
+    """The card plus its key, proofs and signature, measured as the one document that was signed."""
+    app = _application()
+    app["proofs"] = [{"type": "dns-txt", "subject": "s" * limits.MAX_PROOF_TEXT}] * limits.MAX_PROOFS
+    app["entity"]["structure"] = [{"path": f"{i}/" + "p" * limits.MAX_PATH} for i in range(limits.MAX_STRUCTURE)]
+    reason = limits.application_refusal(app)
+    assert "an application" in reason and str(limits.MAX_APPLICATION_BYTES) in reason, reason
 
 
 def test_the_whole_card_has_a_ceiling_even_when_every_field_is_inside_its_own():
@@ -227,6 +259,32 @@ def test_a_body_over_the_limit_is_refused_by_size_before_it_is_parsed(client):
     assert str(limits.MAX_BODY_BYTES) in res.json()["detail"], res.json()
     assert str(len(body)) in res.json()["detail"], "the refusal says what actually arrived"
     assert hive.get_record("too-big") is None
+
+
+def test_a_declared_oversize_is_refused_without_one_byte_of_it_being_read():
+    """The fast path, at the ASGI level: `Content-Length` over the ceiling and nothing is received.
+
+    Without this the guard could lean entirely on counting the bytes as they arrive, which answers
+    413 just the same and reads the whole body to get there.
+    """
+    sent: list[dict] = []
+
+    async def receive() -> dict:
+        raise AssertionError("the body must not be read once Content-Length says it is too big")
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    async def never(*_args: object) -> None:
+        raise AssertionError("the app must not be reached")
+
+    declared = limits.MAX_BODY_BYTES + 1
+    scope = {"type": "http", "method": "POST", "headers": [(b"content-length", str(declared).encode())]}
+    asyncio.run(limits.BodyLimit(never)(scope, receive, send))
+
+    assert sent[0]["status"] == 413
+    assert str(declared) in sent[1]["body"].decode()
+    assert str(limits.MAX_BODY_BYTES) in sent[1]["body"].decode()
 
 
 def test_a_chunked_body_that_declares_no_length_is_counted_as_it_arrives(client):
