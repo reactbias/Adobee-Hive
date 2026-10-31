@@ -180,6 +180,7 @@ const en = {
   "trace.ask.availability": "What is free at {name}, {dates}?",
   "trace.ask.book": "Book it at {name} for {guest}, {dates}.",
   "trace.reply.discover": "{fit} of {total} fit. Ranked in the open; no paid placement.",
+  "trace.reply.discoverFailed": "The Hive refused this request. Your agent sees the error and can ask again.",
   "trace.reply.card": "Card version {version}, signed by the owner.",
   "trace.reply.full": "Fully booked for those dates.",
   "trace.reply.book": "Confirmed under {id}. The receipt is signed.",

@@ -176,6 +176,7 @@ const fr: Record<Key, string> = {
   "trace.ask.availability": "Qu'est-ce qui est libre chez {name}, {dates} ?",
   "trace.ask.book": "Réservez chez {name} pour {guest}, {dates}.",
   "trace.reply.discover": "{fit} sur {total} conviennent. Classement ouvert, aucune place payée.",
+  "trace.reply.discoverFailed": "La Hive a refusé cette demande. Votre agent voit l’erreur et peut redemander.",
   "trace.reply.card": "Carte version {version}, signée par le propriétaire.",
   "trace.reply.full": "Complet à ces dates.",
   "trace.reply.book": "Confirmé sous {id}. Le reçu est signé.",
