@@ -306,3 +306,26 @@ def test_the_corpus_stays_small_enough_to_live_in_git():
     seed = _seed_vaults()
     total = sum(p.stat().st_size for p in seed.VAULTS.rglob("*") if p.is_file())
     assert total < 400_000, f"{total} bytes of test data is too much for a repository"
+
+
+def test_no_card_in_the_corpus_quotes_a_file_the_seeder_must_not_read():
+    """Shape, never contents, over all 61 real folders and not only a vault built inside a test.
+
+    The seeder now walks every file to measure and hash it, which is exactly the moment a careless
+    change could start reading one. So this takes every line of every non-markdown file in the
+    corpus and asserts it appears nowhere in the Card that folder produces.
+    """
+    seed = _seed_vaults()
+    checked = 0
+    for vault in sorted(p for p in seed.VAULTS.iterdir() if p.is_dir()):
+        card = json.dumps(seed.build_card(vault), ensure_ascii=False)
+        for file in sorted(vault.rglob("*")):
+            if not file.is_file() or file.suffix == ".md":
+                continue
+            checked += 1
+            for raw in file.read_bytes().splitlines():
+                line = raw.decode("utf-8", "ignore").strip()
+                # Long enough to be a quotation rather than a coincidence of short words.
+                if len(line) > 12 and line.isprintable():
+                    assert line not in card, f"{file.relative_to(seed.VAULTS)} is quoted in the card"
+    assert checked > 100, f"only {checked} files to check: the corpus lost its non-markdown files"

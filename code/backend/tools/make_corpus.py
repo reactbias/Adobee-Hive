@@ -1280,7 +1280,15 @@ def asset_bytes(entity: Entity, path: str) -> bytes:
     if suffix == ".csv":
         return csv_bytes(entity, path)
     if suffix == ".txt":
-        return (f"{entity.name}\n" + "\n".join(entity.contact) + "\n").encode("utf-8")
+        # Its own content, not a copy of the card's: a note that repeats the published email would
+        # make the "no card quotes a file" test fail for a reason that is not the seeder's fault.
+        return (
+            b"Pikett / on call\n\n"
+            b"- Montag bis Mittwoch: Beat\n"
+            b"- Donnerstag bis Sonntag: Noemi\n"
+            b"- Zentrale ab sieben Uhr: +41 31 000 99 01\n"
+            b"- Code fuer den Schluesselkasten steht im Safe\n"
+        )
     if suffix == ".md":
         return f"# {Path(path).stem.replace('-', ' ').title()}\n\n{entity.about}\n".encode()
     raise SystemExit(f"{path}: nothing here can write a real {suffix} file")
