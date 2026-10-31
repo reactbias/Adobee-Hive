@@ -27,7 +27,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `activity.py` | The live activity feed: reads each agent result (run, Approve, ask, hand-off, scout) and keeps one line per step from fixed lists (agent, step, business, outcome, `partner` or `web`), never a person or the question. Newest 300 in `hive_activity`, so they ride along in the Postgres snapshot |
 | `federation.py` | Hop-limited ("node radius") search across peer Hives: a query carries a radius, a time budget and the hubs it has already visited; each hop fans out to its most trusted peers in parallel, verifies every card that comes back against the key pinned in the card's own hub, dedups by card digest and ranks with the hub trust from `reputation.py` |
-| `semantic.py` | Semantic similarity behind a small provider interface, so a search for "haircut" finds *"Cut, wash and finish"*. The offline provider is the default and needs no key, no network and no new dependency: accent-folded stems, a small four-language concept table and character trigrams, compared with cosine similarity above a named floor. An optional embedding provider is used when a key is set. `hive.discover()` turns a hit into one score component and a readable reason; `/api/health` says which provider is in use |
+| `semantic.py` | Semantic similarity behind a small provider interface, so that a search for "haircut" can find *"Cut, wash and finish"*. The offline provider is the default and needs no key, no network and no new dependency: accent-folded stems, a small four-language concept table and character trigrams, compared with cosine similarity above a named floor (`SIMILARITY_FLOOR`). **Not wired into discovery yet:** no module imports it, `hive.discover` still matches by substring, and `/api/health` does not report a provider. Tested on its own in `tests/test_semantic.py`, measured against the corpus in [`testdata/`](../testdata/README.md), and listed in [LIMITS.md](LIMITS.md#discovery) |
 | `reputation.py` | Two levels of trust, kept apart: a peer *hub*'s reputation, judged locally and subjectively by this hub (declared vs observed vetting, paid placement, availability, cards it relayed that failed verification here), and a *business*'s reputation, the verified reviews and attestations discovery already scores |
 | `folders.py` | The folder link: two agents connecting their private folders between the search and the booking. A *link* is handle to handle and carries no content, and unlocks only the manifest — a linked peer sees that the `shared` files exist, which the Card never said. A *grant* is per path and is the only thing that makes bytes readable. `private` and `hidden` paths are counted, never named, and a refused grant says the same words for a hidden file as for one that was never there. One protocol, two implementations chosen by `FOLDER_LINK`: `LocalFolderLink` over the folders in `testdata/vaults/` (default; no key, no network, no new dependency) and `CcFolderLink` over [ClaudeConnect](https://github.com/bstadt/cc_daemon). `/api/health` says which is in use and why |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
@@ -41,8 +41,8 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | Domain | Card kind | Tools | Where |
 | --- | --- | --- | --- |
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
-| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py`; people are in `hive_discover` too, their contact never is |
-| Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
+| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py`; people are in `hive_discover` too, found by what they offer and need like anyone else. A person card carries no contact details at all, so there is none to hand out, and an unflagged person card defaults to `confirm` (`hive.CONSENT_FIRST_KINDS`) so an introduction waits for them |
+| Explore | `adventure`, `service`, `industrial`, `software`, `insurance`, `event` | `explore_ask` | `domains/explore.py`, six unclaimed cards in `domains/examples.py` |
 | Scout | any kind found on the web (`taxi`, ...) | `hive_scout` | `domains/scout.py`: web search, verifier, unclaimed cards `w-*` |
 
 Each domain module has a `register(server)` function and is listed in `domains.DOMAINS`. How to add one:
@@ -56,6 +56,12 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `App.tsx`, `main.tsx` | The one page: a header with the two chapters, the AI status and the language switch |
 | `pages/TravellerAgent.tsx` | The page itself: the traveller's brief, the approval step, the signed receipt and the next steps, questions about any business in the same chat (chapter 1), then the business's side (chapter 2) |
 | `components/Chapter.tsx` | A chapter of the page: number, headline, lead and its anchor |
+| `components/Composer.tsx`, `components/MicButton.tsx` | The one input: a textarea that grows with the request, one-tap examples, and dictation through the browser's own Web Speech API where it has one |
+| `components/GeneratedStage.tsx`, `lib/cardView.ts` | The result stage: one row per card, unfolding into who it is, what it offers, what it is looking for, and the listing the agent acted on |
+| `components/JourneyLog.tsx` | The hub's own step log beside the chat, from `GET /api/activity`: agent, step, business, outcome |
+| `lib/network.ts` | The node view's data and honeycomb geometry, from the overview, the neighbours and the directory |
+| `lib/route.ts`, `lib/demo.ts` | Whether a request is a stay or a question about any business; whether `?demo` is on |
+| `data/hubs/` | Two bundled hub folders (`basel.swiss`, `zurich.swiss`), one entity each with its offers and searches, so the stage has something to draw with no backend |
 | `components/GroupChat.tsx` | The agent stage as a group chat: every MCP call and answer becomes a message from a named persona, paced by `lib/pace.ts`, with Replay and Skip |
 | `components/TraceParts.tsx` | How each MCP call and answer reads in the chat (ranking ledger, signed card, availability) |
 | `components/Reach.tsx`, `lib/hubScene.ts` | How far a search goes (this Hive, nearby Hives, further: discover radius 0, 1 or 3) and the live search that draws the result cards, each saying which hub it came from and how many hops away, with any hub that did not answer or copy that was refused |
@@ -104,7 +110,7 @@ Two screens sit beside that story rather than inside it, because neither belongs
 
 | Tool | What it does |
 | --- | --- |
-| `hive_discover` | Search **everything on the hub** by what it offers and what it needs: hotels, people, cafés, unclaimed example cards. `looking_for` says which side of the market the caller is on — `offers` (the default) finds whoever provides the thing, `needs` whoever wants what the caller provides, `any` both. `kind` is a filter the caller may apply, not a gate the hub applies for them. Hard constraints as before (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown (`constraints`, `offers_needs`, `text_relevance`, `proximity`, reputation) and every excluded entity with why. `constraints` is earned, not granted: it is paid for the constraints the ask actually carried and the entity met, so an ask with no dates, no budget and no features pays nobody and relevance decides. Every entity carries `name`, `description`, `rating` (null until a signed receipt earns one), `contact`, `claimed` and `bookable`: an unclaimed card is a lead compiled from public information, never bookable. A federated match adds `provenance`, `hops` and the three federated rank factors |
+| `hive_discover` | Search **everything on the hub** by what it offers and what it needs: hotels, people, cafés, unclaimed example cards. `looking_for` says which side of the market the caller is on — `offers` (the default) finds whoever provides the thing, `needs` whoever wants what the caller provides, `any` both. `kind` is a filter the caller may apply, not a gate the hub applies for them. Hard constraints as before (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown (`constraints`, `offers_needs`, `text_relevance`, `proximity`, reputation) and every excluded entity with why. `constraints` is earned, not granted: it is paid for the constraints the ask actually carried and the entity met, so an ask with no dates, no budget and no features pays nobody and relevance decides. Every entity carries `name`, `description`, `rating` (the verified-review average on the 1-to-5 review scale, `null` until a signed receipt earns one — not tenths; a *connection* score is tenths, see `hub_score`), `rating_count`, `contact`, `contact_sharing`, `claimed` and `bookable`: an unclaimed card is a lead compiled from public information, never bookable. A federated match adds `provenance`, `hops` and the three federated rank factors |
 | `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
@@ -126,7 +132,9 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
-Agents can find the endpoint from `/.well-known/hive.json`.
+Agents can find the endpoint from `/.well-known/hive.json`. How a search reaches another hub and how a hub is
+measured: [FEDERATION.md](FEDERATION.md). How an entity gets into a hub in the first place:
+[REGISTRATION.md](REGISTRATION.md). What a card carries: [cards/README.md](cards/README.md).
 
 ## REST API
 
@@ -240,6 +248,13 @@ backend. Without a key everything still runs offline.
 
 ## Known limits
 
-- The server holds each owner's signing key (the vision is owner-held keys).
-- DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
-- No real payments; restaurant table booking is not built yet.
+The whole list, each line checked against the code: [LIMITS.md](LIMITS.md). The three that change how you read
+this page:
+
+- **The hub holds a signing key for every card.** An application may bring a `public_key`, which proves the
+  applicant holds the private half and is recorded as `custody: "owner"` with `owner_public_key` on the card — but
+  `hive.publish` still signs each version with a key it generates and keeps, and that is the key in `owner_keys`
+  that every signature check uses. Owner-held signing keys are the vision, not today.
+- **Discovery matches by substring.** `semantic.py` exists, is tested and is not connected.
+- DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Rate limits, held bookings and
+  hub reputation are in that process and reset with it. Fine for a demo.
