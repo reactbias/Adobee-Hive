@@ -151,11 +151,17 @@ export default function App() {
       setScreen(screenFromHash());
       setHub((chosen) => chosen || hubFromUrl() || chosenHub());
     };
+    // A screen opens at its top. The browser has just scrolled to the anchor, which sits under the sticky
+    // header; a screen is not an anchor on a long page, so that jump is undone.
+    const switched = () => {
+      sync();
+      window.scrollTo?.({ top: 0 });
+    };
     window.addEventListener("popstate", sync);
-    window.addEventListener("hashchange", sync);
+    window.addEventListener("hashchange", switched);
     return () => {
       window.removeEventListener("popstate", sync);
-      window.removeEventListener("hashchange", sync);
+      window.removeEventListener("hashchange", switched);
     };
   }, []);
 

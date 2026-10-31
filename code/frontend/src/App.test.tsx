@@ -63,11 +63,15 @@ describe("the app", () => {
     expect(screen.queryByRole("region", { name: en["card.stage"] })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
 
+    const scrollTo = vi.fn();
+    window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
     window.location.hash = "#business";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     expect(
       await screen.findByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") }),
     ).toBeInTheDocument();
+    // The screen opens at its top, not at the anchor the browser jumped to under the header.
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
     expect(screen.queryByRole("heading", { name: en["find.title"] })).toBeNull();
     expect(links[1]).toHaveAttribute("aria-current", "page");
     window.location.hash = "";
