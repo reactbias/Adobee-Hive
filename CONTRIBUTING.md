@@ -92,6 +92,9 @@ has text outside `t()` (`src/i18n/hardcoded.test.ts`).
 3. In the component: `const { t, intl } = useI18n();` then `t("owner.publish")` or `t("card.bookFor", { price })`.
    Format dates and money with `lib/format.ts` and `intl`, never by hand.
 
+Text the backend writes itself (agent replies, the rule-check second opinion) lives in
+`code/backend/app/replies.py`, also in all four; `tests/test_languages.py` checks it.
+
 Formal register (Sie, vous, Lei), Swiss spelling (ss, not ß), CHF. Business data from a card (names, features,
 policies) is the owner's text and is not translated. Voice and names of the features: [BRAND.md](documentation/BRAND.md).
 
