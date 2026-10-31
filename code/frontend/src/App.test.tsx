@@ -42,40 +42,39 @@ describe("the app", () => {
     expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
-  it("tells one journey: Search, then Opportunities", () => {
+  it("is two screens, one per person, switched in the header by hash", async () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
 
-    const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
-    const links = chapters.getAllByRole("link");
+    const tabs = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
+    const links = tabs.getAllByRole("link");
     expect(links.map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
     expect(links[0]).toHaveTextContent(en["chapter.travel"]);
     expect(links[1]).toHaveTextContent(en["chapter.business"]);
-    expect(screen.getByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    expect(links[0]).toHaveAttribute("aria-current", "page");
+
+    // The traveller's screen first; the business's is there but not on show.
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en["find.title"]);
+    expect(screen.queryByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeNull();
     // Nothing is drawn until an endpoint returns it: no empty stage, no empty log.
     expect(screen.queryByRole("region", { name: en["card.stage"] })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
+
+    window.location.hash = "#business";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    expect(
+      await screen.findByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: en["find.title"] })).toBeNull();
+    expect(links[1]).toHaveAttribute("aria-current", "page");
+    window.location.hash = "";
   });
 
-  it("keeps Search as one stack and Opportunities as a brief beside one panel", () => {
-    const { container } = render(
-      <I18nProvider>
-        <App />
-      </I18nProvider>,
-    );
-    const search = container.querySelector("section#travel");
-    expect(search?.classList.contains("stack")).toBe(true);
-    expect(search?.querySelector(":scope > .frame")).toBeNull();
-    const grid = container.querySelector("section#business > .chapter-grid");
-    expect(grid).not.toBeNull();
-    expect(grid!.querySelector(":scope > .brief")).not.toBeNull();
-    expect(grid!.querySelector(":scope > .frame")).not.toBeNull();
-  });
-
-  it("opens the business chapter on the owner studio, with the demand map one tab away", () => {
+  it("opens the business screen on the card, with the city's demand one tab away", () => {
+    window.history.replaceState(null, "", "/#business");
     render(
       <I18nProvider>
         <App />
@@ -83,6 +82,7 @@ describe("the app", () => {
     );
     expect(screen.getByRole("tab", { name: en["business.tab.owner"] })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: en["business.tab.demand"] })).toHaveAttribute("aria-selected", "false");
+    window.history.replaceState(null, "", "/");
   });
 
   it("scrolls back to the top when the logo is clicked", async () => {
@@ -110,38 +110,24 @@ describe("the app", () => {
 
   it("gives presenters their tools with ?demo", async () => {
     window.history.replaceState(null, "", "/?demo");
-    render(
+    const { unmount } = render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
     expect(screen.getByText(en["agent.test.eyebrow"])).toBeInTheDocument();
-    screen.getByRole("tab", { name: en["business.tab.demand"] }).click();
-    expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
-    window.history.replaceState(null, "", "/");
-  });
+    expect(screen.getByRole("radio", { name: en["reach.local"] })).toBeInTheDocument();
+    unmount();
 
-  it("shows the four principles, in the brand's order, between the two chapters", () => {
-    const { container } = render(
+    window.history.replaceState(null, "", "/?demo#business");
+    render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    const strip = screen.getByRole("list", { name: en["principles.label"] });
-    expect(
-      within(strip)
-        .getAllByRole("heading")
-        .map((h) => h.textContent),
-    ).toEqual([
-      en["principles.signed.title"],
-      en["principles.ranking.title"],
-      en["principles.stay.title"],
-      en["principles.yes.title"],
-    ]);
-    const travel = container.querySelector("section#travel")!;
-    const business = container.querySelector("section#business")!;
-    expect(travel.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(strip.compareDocumentPosition(business) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    screen.getByRole("tab", { name: en["business.tab.demand"] }).click();
+    expect(await screen.findByRole("button", { name: en["demand.simulate"] })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
   });
 
   it("keeps the hub network and the activity feed for presenters only", async () => {
@@ -191,13 +177,13 @@ describe("the first screen", () => {
     vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
   });
 
-  it("is the search, with the headline and the bar, when no hub has been chosen", async () => {
+  it("is the search, with the question and the bar, when no hub has been chosen", async () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en["hero.title"].replace(/\*/g, ""));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en["find.title"]);
     expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: en["finder.title"] })).toBeNull();
     // Nothing was chosen on the visitor's behalf: the home Hive is the default, not a remembered pick.

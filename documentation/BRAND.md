@@ -78,8 +78,8 @@ pill. The logo and the bee keep their clay and yellow; they are drawings, not in
 | `--line` | `#e6e7e3` | Hairlines |
 | `--accent` | `#d99a1e` | Honey on white: focus rings, the chosen row, the diff |
 | `--accent-ink` | `#8a5f0a` | Honey as text on white: eyebrows, prices |
-| `--accent-bright` | `#f2b63c` | Honey on the dark stage and the hero: the italic phrase, Send, the pinned question |
-| `--stage` | `#15171c` | The hero and the agent stage |
+| `--accent-bright` | `#f2b63c` | Honey on the dark agent stage: the seal, the pinned question |
+| `--stage` | `#15171c` | The agent stage, where the agents talk |
 | `--good` / `--bad` | `#1f7a4d` / `#b3261e` | A valid seal; rejected, only ever with the word that says so |
 
 Type, bundled with their licence texts in `code/frontend/public/fonts/`:

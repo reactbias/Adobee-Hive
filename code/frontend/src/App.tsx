@@ -5,8 +5,9 @@ import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
 import Onboarding from "./panels/Onboarding";
+import OwnerPanel from "./panels/OwnerPanel";
 import B6Bee from "./components/B6Bee";
-import { CHAPTERS } from "./components/Chapter";
+import { SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
 
@@ -18,6 +19,8 @@ const adminMode = () => viewIn(here().search) === "admin";
  * serves. Without it the app runs on the Hive this build was deployed against, until a person picks another.
  */
 const hubFromUrl = () => hubIn(here().search);
+/** Which of the two screens the address asks for: `#business` is the owner's, anything else the traveller's. */
+const screenFromHash = (): ScreenId => (here().hash === "#business" ? "business" : "travel");
 
 /** Rewrite the address without reloading. Used only to make it agree with what is on screen. */
 const rewrite = (to: string) => history.replaceState(null, "", to);
@@ -31,12 +34,15 @@ function forgetHub() {
   rewrite(without(here(), "hub"));
 }
 
-// One page in two chapters. The header names them, says whether the AI is live, and switches the language.
+// Two screens, one for each person the Hive serves. The header switches between them, says whether the AI is
+// live, and switches the language.
 function Header({
+  screen,
   onLeaveAdmin,
   hub,
   onHealth,
 }: {
+  screen?: ScreenId;
   onLeaveAdmin?: () => void;
   hub?: string;
   onHealth?: (reached: boolean) => void;
@@ -85,8 +91,8 @@ function Header({
           <span>Adobee Hive</span>
         </a>
         <nav className="nav-links" aria-label={t("nav.chapters")}>
-          {CHAPTERS.map((c) => (
-            <a key={c} className="link" href={`#${c}`}>
+          {SCREENS.map((c) => (
+            <a key={c} className="link" href={`#${c}`} aria-current={screen === c ? "page" : undefined}>
               {t(`chapter.${c}` as Key)}
             </a>
           ))}
@@ -120,6 +126,10 @@ export default function App() {
   const [choosing, setChoosing] = useState(false);
   // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
   const [admin, setAdmin] = useState(adminMode);
+  // The screen on show, from the hash. Both screens stay mounted, so a booking survives a look at the other.
+  const [screen, setScreen] = useState<ScreenId>(screenFromHash);
+  // The business the owner's screen opens on: the one just booked, when the traveller turns the page to it.
+  const [business, setBusiness] = useState<string | undefined>(undefined);
   // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
   const [reached, setReached] = useState(true);
   // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
@@ -136,16 +146,21 @@ export default function App() {
     // The address is the one source of truth for the view, so back and forward change what is on screen.
     const sync = () => {
       setAdmin(adminMode());
+      setScreen(screenFromHash());
       setHub((chosen) => chosen || hubFromUrl() || chosenHub());
     };
     window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
+    window.addEventListener("hashchange", sync);
+    return () => {
+      window.removeEventListener("popstate", sync);
+      window.removeEventListener("hashchange", sync);
+    };
   }, []);
 
   useEffect(() => {
     if (!admin) return;
-    // A hash is an anchor on the app's one page and the panel has none of its own, so any hash while the panel is
-    // open is in-app navigation: `#travel` means "show me the traveller app", and now it does.
+    // A hash is one of the app's two screens and the panel has none of its own, so any hash while the panel is
+    // open is in-app navigation: `#travel` means "show me the traveller's screen", and now it does.
     const navigated = () => window.location.hash.length > 1 && leaveAdmin(true);
     window.addEventListener("hashchange", navigated);
     // A pasted `?admin#travel` claims two views at once. It resolves to the panel, with the stray anchor dropped,
@@ -204,9 +219,16 @@ export default function App() {
     setChoosing(true);
   };
 
+  // The traveller turns the page to the business just booked: its owner sees the booking arrive.
+  const openBusiness = (cardId: string) => {
+    setBusiness(cardId);
+    window.location.hash = "business";
+    window.scrollTo?.({ top: 0 });
+  };
+
   return (
     <>
-      <Header hub={hub} onHealth={setReached} />
+      <Header screen={screen} hub={hub} onHealth={setReached} />
       <main>
         {/* A chosen Hive that cannot be reached says so and offers the way back, rather than a dead page. */}
         {!reached && (
@@ -218,7 +240,12 @@ export default function App() {
           </p>
         )}
         {/* Keyed by the hub and its URL, so picking a different one starts the page over against that backend. */}
-        <TravellerAgent key={`${hub}@${chosenHubUrl()}`} />
+        <div hidden={screen !== "travel"}>
+          <TravellerAgent key={`${hub}@${chosenHubUrl()}`} onOpenBusiness={openBusiness} />
+        </div>
+        <div hidden={screen !== "business"}>
+          <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
+        </div>
       </main>
       <B6Bee>
         {/* Which Hive answered, always visible, and the one way to pick another. */}

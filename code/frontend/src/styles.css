@@ -80,6 +80,10 @@
 
 /* ---------- Base ---------- */
 
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -532,6 +536,11 @@ label {
   color: var(--ink);
   border-bottom-color: var(--accent-bright);
 }
+.nav a.link[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
 .nav .status {
   margin-left: auto;
   font-size: var(--t-xs);
@@ -802,28 +811,100 @@ th.end {
   font-weight: 600;
 }
 
-/* ---------- Every chapter: the brief on paper beside one panel of the screen's height ---------- */
+/* ---------- Two screens: the traveller's and the business's ---------- */
 
-.chapter-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  gap: var(--s7);
-  align-items: start;
-}
-@media (max-width: 1000px) {
-  .chapter-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--s6);
-  }
-}
-.brief {
+.screen {
   display: flex;
   flex-direction: column;
   gap: var(--s5);
+  padding: var(--s6) 0 var(--s8);
 }
-.brief .page-head h1,
-.brief .page-head h2 {
-  font-size: clamp(2.25rem, 3.6vw, 3.25rem);
+.screen-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.screen-head h1 {
+  font-size: var(--t-2xl);
+}
+.screen-head .lead {
+  font-size: var(--t-base);
+}
+.screen-business .screen-head {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+.screen-business .picker {
+  width: min(320px, 100%);
+}
+.screen-business .tabs {
+  border-bottom: 1px solid var(--line);
+}
+.owner-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: start;
+}
+.owner-grid > * {
+  min-width: 0;
+}
+.owner-grid .panel h2 {
+  font-size: var(--t-lg);
+}
+.owner-grid .panel h2 .count {
+  margin-left: var(--s2);
+  font-family: var(--body);
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink-3);
+  vertical-align: middle;
+}
+.card-preview .chips {
+  margin: 0;
+}
+.units {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.units li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--t-sm);
+}
+.units li span:last-child {
+  color: var(--accent-ink);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.card-preview .facts dt {
+  text-transform: capitalize;
+  letter-spacing: 0;
+  font-size: var(--t-xs);
+}
+.card-preview .facts dd {
+  font-size: var(--t-sm);
+}
+@media (max-width: 1000px) {
+  .owner-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s4);
+  }
+}
+@media (max-width: 900px) {
+  .screen {
+    padding: var(--s5) 0 var(--s7);
+  }
+  .screen-head h1 {
+    font-size: var(--t-xl);
+  }
 }
 
 /* The panel: whatever an agent generates appears here and scrolls inside, so the page keeps its shape. */
@@ -1183,33 +1264,12 @@ th.end {
 }
 
 /* Chapter 1: the search stays on screen, the chips sit under it, and the buttons under the chips. */
-.hero {
-  background: radial-gradient(70% 90% at 100% 0%, rgba(242, 182, 60, 0.18), transparent 60%), var(--stage);
-  color: var(--stage-ink);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--s8) var(--s7) var(--s5);
-}
-.hero .eyebrow {
-  color: var(--accent-bright);
-}
-.hero h1 {
-  max-width: 11em;
-}
-.hero h1 em {
-  color: var(--accent-bright);
-}
-.hero .lead {
-  color: var(--stage-mute);
-  max-width: 34em;
-}
 .search-top {
   position: sticky;
   top: var(--nav-h);
   z-index: 12;
-  background: var(--stage);
-  color: var(--stage-ink);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: var(--s3) var(--s7) var(--s5);
+  background: var(--bg);
+  padding: var(--s2) 0 var(--s3);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1226,7 +1286,7 @@ th.end {
 .search-top .examples .rows {
   max-width: 100%;
 }
-/* How far to search sits left of the buttons, on one row, so the bar stays short while it is pinned. */
+/* How far to search (presenters) sits left of the buttons, on one row, so the bar stays short while pinned. */
 .search-top > .reach {
   order: 3;
   flex: 1 1 auto;
@@ -1237,50 +1297,18 @@ th.end {
   margin-left: auto;
 }
 /* Once there are results, and on a phone, the examples become one swipeable line: the pinned bar stays short. */
-.chapter.stack:has(.journey > *) .search-top .examples .rows,
-.chapter.stack:has(.result-pending) .search-top .examples .rows {
+.screen-find:has(.journey > *) .search-top .examples .rows,
+.screen-find:has(.result-pending) .search-top .examples .rows {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 2px;
 }
-.chapter.stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-height: 0;
-  padding-top: var(--s5);
+.screen-find .journey,
+.screen-find .result-pending {
+  margin-top: var(--s4);
 }
-.chapter.stack .journey,
-.chapter.stack .result-pending {
-  margin-top: var(--s6);
-}
-.chapter.stack .page-head {
-  gap: var(--s3);
-}
-.chapter.stack .page-head h1 {
-  font-size: var(--t-3xl);
-}
-.chapter.stack .lead {
-  max-width: 40rem;
-}
-@media (max-width: 900px) {
-  .hero {
-    padding: var(--s7) var(--s5) var(--s4);
-  }
-  .search-top {
-    padding: var(--s3) var(--s5) var(--s4);
-  }
-}
-@media (max-width: 600px) {
-  .hero,
-  .search-top {
-    margin: 0 calc(-1 * var(--s4));
-    border-radius: 0;
-    padding-inline: var(--s4);
-  }
-}
-.chapter.stack .frame {
+.screen-find .frame {
   position: relative;
   top: auto;
   width: 100%;
@@ -1292,18 +1320,18 @@ th.end {
   border: 0;
   box-shadow: none;
 }
-.chapter.stack .frame > .frame-head {
+.screen-find .frame > .frame-head {
   padding: 0 var(--s2) var(--s4);
   border-bottom: 0;
 }
-.chapter.stack .frame > .frame-body {
+.screen-find .frame > .frame-body {
   padding: 0;
 }
-.chapter.stack .frame-body {
+.screen-find .frame-body {
   flex: none;
   overflow: visible;
 }
-.chapter.stack .chat-stage .chat-scroll {
+.screen-find .chat-stage .chat-scroll {
   flex: none;
   max-height: 24rem;
   overflow-y: auto;
@@ -1311,11 +1339,11 @@ th.end {
 .search-top .composer.bar {
   display: block;
   padding: var(--s3) var(--s5);
-  border: 1px solid transparent;
+  border: 1px solid var(--line-strong);
   border-radius: 24px;
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--lift);
   transition:
     border-color 0.2s var(--ease),
     box-shadow 0.2s var(--ease);
@@ -1323,8 +1351,8 @@ th.end {
 .search-top .composer.bar:focus-within {
   border-color: var(--accent);
   box-shadow:
-    0 20px 50px -20px rgba(0, 0, 0, 0.6),
-    0 0 0 4px rgba(242, 182, 60, 0.25);
+    var(--lift),
+    0 0 0 4px rgba(217, 154, 30, 0.16);
 }
 .search-top .composer.bar label {
   position: absolute;
@@ -1368,7 +1396,7 @@ th.end {
 }
 .search-top .examples .eyebrow {
   flex: none;
-  color: var(--stage-dim);
+  color: var(--ink-3);
 }
 .search-top .examples .rows {
   display: flex;
@@ -1387,10 +1415,10 @@ th.end {
   max-width: 26rem;
   margin: 0;
   padding: 6px 14px;
-  border: 1px solid rgba(243, 244, 246, 0.18);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
-  background: transparent;
-  color: var(--stage-mute);
+  background: var(--surface);
+  color: var(--ink-2);
   font-size: var(--t-sm);
   line-height: 1.4;
   white-space: nowrap;
@@ -1434,59 +1462,10 @@ th.end {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  color: var(--stage-dim);
+  color: var(--ink-3);
 }
 .search-top .reach button.tab {
-  color: var(--stage-mute);
   font-size: var(--t-sm);
-}
-.search-top .reach button.tab:hover:not(:disabled) {
-  color: var(--stage-ink);
-}
-.search-top .reach button.tab.on {
-  color: var(--stage-ink);
-  border-bottom-color: var(--accent-bright);
-}
-/* On the dark bar the primary button is honey, the microphone and New trip stay quiet. */
-.search-top .composer-actions > button:last-child {
-  background: var(--accent-bright);
-  border-color: var(--accent-bright);
-  color: var(--stage);
-  font-weight: 600;
-}
-.search-top .composer-actions > button:last-child:hover:not(:disabled) {
-  background: #f5c35a;
-}
-.search-top .composer-actions button.quiet {
-  color: var(--stage-mute);
-}
-.search-top .composer-actions button.quiet:hover:not(:disabled) {
-  color: var(--stage-ink);
-}
-.search-top button.mic {
-  background: transparent;
-  border-color: rgba(243, 244, 246, 0.18);
-  color: var(--stage-ink);
-}
-.search-top button.mic:hover:not(:disabled) {
-  background: transparent;
-  border-color: var(--accent-bright);
-  color: var(--accent-bright);
-}
-.search-top .stress {
-  border-top-color: rgba(243, 244, 246, 0.1);
-}
-.search-top .stress .eyebrow {
-  color: var(--stage-dim);
-}
-.search-top .check {
-  color: var(--stage-mute);
-}
-.search-top .stress a.link {
-  color: var(--stage-mute);
-}
-.search-top .error {
-  color: var(--stage-bad);
 }
 .reach-steps {
   flex-wrap: wrap;
@@ -1500,10 +1479,6 @@ th.end {
 }
 .search-top .search-actions {
   margin-top: var(--s4);
-}
-.chapter.stack > .page-head,
-.chapter.stack .page-head {
-  margin-bottom: 0;
 }
 .result-pending {
   display: flex;
@@ -1893,8 +1868,8 @@ button.mic.blocked {
 }
 .search-top .examples .example:hover:not(:disabled) {
   border-color: var(--accent);
-  background: rgba(242, 182, 60, 0.12);
-  color: var(--stage-ink);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
   transform: translateY(-1px);
 }
 .search-top .examples .example:disabled {
@@ -2454,49 +2429,6 @@ main:has(> .chapter) {
 .icon {
   flex-shrink: 0;
   display: block;
-}
-
-/* ---------- The four promises, between the two chapters ---------- */
-
-.principles {
-  padding: var(--s7) 0;
-  border-top: 1px solid var(--line);
-}
-.principles-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-  gap: var(--s4);
-}
-.principles-list li {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  padding: var(--s5);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-}
-.principles-list .icon {
-  color: var(--accent-ink);
-}
-.principles-list h3 {
-  font-size: var(--t-md);
-  font-family: var(--body);
-  font-weight: 600;
-  letter-spacing: 0;
-}
-.principles-list p {
-  font-size: var(--t-sm);
-  color: var(--ink-2);
-  line-height: 1.5;
-}
-@media (max-width: 900px) {
-  .principles {
-    padding: var(--s6) 0;
-  }
 }
 
 /* ---------- Business chapter: the owner's side ---------- */

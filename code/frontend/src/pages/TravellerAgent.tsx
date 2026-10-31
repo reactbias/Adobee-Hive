@@ -12,7 +12,6 @@ import {
   type Step,
   type Unguarded,
 } from "../api";
-import Chapter from "../components/Chapter";
 import Composer from "../components/Composer";
 import GeneratedStage, { type Deal } from "../components/GeneratedStage";
 import GroupChat, { type Segment } from "../components/GroupChat";
@@ -21,7 +20,6 @@ import { namesFrom } from "../components/TraceParts";
 import ActivityPanel from "../panels/ActivityPanel";
 import Introductions from "../panels/Introductions";
 import NetworkPanel from "../panels/NetworkPanel";
-import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
@@ -32,7 +30,6 @@ import JourneyLog, { useActivityLog } from "../components/JourneyLog";
 import { sceneFor, type Scene } from "../lib/cardView";
 import { hubScene } from "../lib/hubScene";
 import Reach from "../components/Reach";
-import Principles from "../components/Principles";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
@@ -49,7 +46,13 @@ function lastOutput(steps: Step[], tool: string): Rec | undefined {
   return lastStep(steps, tool)?.output;
 }
 
-export default function TravellerAgent() {
+/** The traveller's screen: one request, the cards that answer it, and the agent's one question. */
+export default function TravellerAgent({
+  onOpenBusiness,
+}: {
+  /** Turn the page to the business just booked, so its owner sees the booking arrive. */
+  onOpenBusiness?: (cardId: string) => void;
+}) {
   const { t, intl } = useI18n();
   const [input, setInput] = useSample(EXAMPLES);
   const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
@@ -78,8 +81,6 @@ export default function TravellerAgent() {
   // Demo only: plant a manipulated listing, and optionally run the agent without its rules.
   const [mirror, setMirror] = useState(false);
   const [rulesOff, setRulesOff] = useState(false);
-  // The last chapter is the business's side of the same booking; Next steps can turn the page to it.
-  const businessRef = useRef<HTMLElement>(null);
   const { events: log, pull: pullLog } = useActivityLog();
   // On a narrow screen Details opens under the cards: bring it into view once, without hiding them for good.
   const sideRef = useRef<HTMLDivElement>(null);
@@ -88,7 +89,8 @@ export default function TravellerAgent() {
     sideRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [details]);
   const box = useRef<HTMLTextAreaElement>(null);
-  const openBusiness = () => businessRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  // After the booking, the business's side of it is the other screen.
+  const openBusiness = () => onOpenBusiness?.(hotel?.id ?? String(booking?.booking_id ?? ""));
 
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
   async function send(raw = input, base = history, off = rulesOff, live = false) {
@@ -340,9 +342,6 @@ export default function TravellerAgent() {
   const why = (list(lastOutput(steps, "hive_discover")?.matches).find((m) => m.id === pending?.card_id)?.why ??
     []) as string[];
 
-  // The business chapter opens on the hotel just booked, so its owner sees the booking arrive.
-  const owner = hotel?.id ? hotel : null;
-
   // One gate and one receipt, drawn under the card and in Details alike: approving in either is the same yes.
   const gate = pending && (
     <div className="gate">
@@ -494,81 +493,76 @@ export default function TravellerAgent() {
 
   return (
     <>
-      <Chapter
-        id="travel"
-        stack
-        heading="hero.title"
-        headingLevel={1}
-        eyebrow={t("hero.eyebrow")}
-        lead={t("hero.lead")}
-        side={
-          <div className="search-top">
-            <Composer
-              bar
-              id="intent"
-              label={history.length ? t("agent.followUp") : t("agent.intent")}
-              value={input}
-              onChange={setInput}
-              onSend={(text) => send(text)}
-              busy={busy || searching}
-              sendLabel={t("agent.send")}
-              busyLabel={searching ? t("card.searching") : t("agent.sending")}
-              placeholder={t("agent.placeholder")}
-              tryLabel={t("agent.try")}
-              examples={TRY.map((k) => t(k))}
-              boxRef={box}
-              secondary={
-                history.length > 0 && (
-                  <button
-                    className="quiet"
-                    onClick={() => {
-                      reset();
-                      box.current?.focus();
-                    }}
+      <section id="travel" className="screen screen-find" aria-labelledby="find-title">
+        <div className="screen-head">
+          <h1 id="find-title">{t("find.title")}</h1>
+          <p className="lead">{t("find.lead")}</p>
+        </div>
+        <div className="search-top">
+          <Composer
+            bar
+            id="intent"
+            label={history.length ? t("agent.followUp") : t("agent.intent")}
+            value={input}
+            onChange={setInput}
+            onSend={(text) => send(text)}
+            busy={busy || searching}
+            sendLabel={t("agent.send")}
+            busyLabel={searching ? t("card.searching") : t("agent.sending")}
+            placeholder={t("agent.placeholder")}
+            tryLabel={t("agent.try")}
+            examples={TRY.map((k) => t(k))}
+            boxRef={box}
+            secondary={
+              history.length > 0 && (
+                <button
+                  className="quiet"
+                  onClick={() => {
+                    reset();
+                    box.current?.focus();
+                  }}
+                  disabled={busy}
+                >
+                  {t("agent.newTrip")}
+                </button>
+              )
+            }
+          />
+          {/* Federation and the manipulation demo are presenter tools: one Hive is what a visitor searches. */}
+          {demoMode() && <Reach radius={radius} disabled={busy || searching} onChange={setRadius} />}
+          {demoMode() && (
+            <details className="stress">
+              <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
+              <fieldset>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={mirror}
                     disabled={busy}
-                  >
-                    {t("agent.newTrip")}
-                  </button>
-                )
-              }
-            />
-            <Reach radius={radius} disabled={busy || searching} onChange={setRadius} />
-            {/* The manipulation demo stays one tap away, folded so the brief fits the screen. */}
-            {demoMode() && (
-              <details className="stress">
-                <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
-                <fieldset>
-                  <label className="check">
-                    <input
-                      type="checkbox"
-                      checked={mirror}
-                      disabled={busy}
-                      onChange={(e) => {
-                        setMirror(e.target.checked);
-                        if (!e.target.checked) setRulesOff(false);
-                      }}
-                    />
-                    <span>{t("agent.test.injection")}</span>
-                  </label>
-                  <label className={`check danger${mirror ? "" : " off"}`}>
-                    <input
-                      type="checkbox"
-                      checked={rulesOff}
-                      disabled={busy || !mirror}
-                      onChange={(e) => setRulesOff(e.target.checked)}
-                    />
-                    <span>{t("agent.test.rulesOff")}</span>
-                  </label>
-                </fieldset>
-                <a className="link" href="#activity">
-                  {t("activity.link")}
-                </a>
-              </details>
-            )}
-            {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
-          </div>
-        }
-      >
+                    onChange={(e) => {
+                      setMirror(e.target.checked);
+                      if (!e.target.checked) setRulesOff(false);
+                    }}
+                  />
+                  <span>{t("agent.test.injection")}</span>
+                </label>
+                <label className={`check danger${mirror ? "" : " off"}`}>
+                  <input
+                    type="checkbox"
+                    checked={rulesOff}
+                    disabled={busy || !mirror}
+                    onChange={(e) => setRulesOff(e.target.checked)}
+                  />
+                  <span>{t("agent.test.rulesOff")}</span>
+                </label>
+              </fieldset>
+              <a className="link" href="#activity">
+                {t("activity.link")}
+              </a>
+            </details>
+          )}
+          {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
+        </div>
         {searching && !scene && (
           <div className="result-pending" role="status">
             <span className="pulse" aria-hidden />
@@ -653,14 +647,8 @@ export default function TravellerAgent() {
             </div>
           )}
         </div>
-      </Chapter>
+      </section>
       <Introductions refresh={introduced} />
-      <Principles />
-      <OwnerPanel
-        key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`}
-        initial={owner?.id}
-        sectionRef={businessRef}
-      />
       {/* The hub network and the live feed are for presenters and operators; visitors see the product only. */}
       {demoMode() && <NetworkPanel />}
       {demoMode() && <ActivityPanel />}

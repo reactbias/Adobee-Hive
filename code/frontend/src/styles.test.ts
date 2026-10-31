@@ -27,8 +27,8 @@ describe("styles", () => {
   });
 
   // A phone in German: long labels must never make the page wider than the screen.
-  it("lets a single-column chapter shrink to the screen, whatever its content", () => {
-    expect(css).toMatch(/\.chapter-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
+  it("lets the business screen collapse to one column, whatever its content", () => {
+    expect(css).toMatch(/\.owner-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 
   it("keeps the search bar on screen, and wraps a long request inside it", () => {
@@ -76,9 +76,9 @@ describe("styles", () => {
     expect(css).not.toMatch(/--clay|--paper\b|#a24f2c|#d98b5f/);
   });
 
-  it("opens on a dark hero that holds the headline and the search bar", () => {
-    expect(rule(".hero")).toMatch(/background:[^;]*var\(--stage\)/);
-    expect(rule(".search-top")).toMatch(/background:[^;]*var\(--stage\)/);
+  it("keeps the pinned search bar on white, so the results read under it", () => {
+    expect(rule(".search-top")).toMatch(/background:[^;]*var\(--bg\)/);
+    expect(css).not.toMatch(/\.hero \{|\.principles \{/);
   });
 
   it("keeps only the status dot in a phone's header, so four languages fit beside it", () => {

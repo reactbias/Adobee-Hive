@@ -118,24 +118,25 @@ describe("traveller agent", () => {
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    // The headline is the page's one h1, and the bar sits right under it.
+    // The question is the screen's one h1, and the bar sits right under it.
     const title = screen.getByRole("heading", { level: 1 });
-    expect(title).toHaveTextContent(en["hero.title"].replace(/\*/g, ""));
+    expect(title).toHaveTextContent(en["find.title"]);
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
     expect(title.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const chip = screen.getByRole("button", { name: en["try.coffee"] });
     const send = screen.getByRole("button", { name: en["agent.send"] });
-    const reach = screen.getByRole("radio", { name: en["reach.local"] });
     expect(box.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(chip.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(send.compareDocumentPosition(reach) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Federation is a presenter tool: a visitor searches the Hive in front of them.
+    expect(screen.queryByRole("radio", { name: en["reach.local"] })).not.toBeInTheDocument();
 
     await user.click(send);
     expect(await screen.findByRole("textbox", { name: en["agent.followUp"] })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en["try.tavern"] })).toBeInTheDocument();
   });
 
-  it("searches this hub only until the person chooses to look further", async () => {
+  it("searches this hub only until a presenter chooses to look further (?demo)", async () => {
+    window.history.replaceState(null, "", "/?demo");
     const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
@@ -149,6 +150,7 @@ describe("traveller agent", () => {
     expect(screen.getByRole("radio", { name: en["reach.far"] })).toBeChecked();
     await user.type(screen.getByRole("textbox", { name: en["agent.intent"] }), "a quiet hotel{Enter}");
     expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 3 }));
+    window.history.replaceState(null, "", "/");
   });
 
   it("asks the agent and stops at the gate without booking", async () => {
@@ -373,34 +375,25 @@ describe("traveller agent", () => {
     expect(approve).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps the city's missed demand one tab away in the business chapter", async () => {
-    vi.spyOn(api, "demand").mockResolvedValue({
-      days: 7,
-      searches: 40,
-      unserved_searches: 12,
-      features: [{ feature: "pool", asked: 9, unserved: 9 }],
-    } as never);
-    const user = setup();
-
-    await user.click(screen.getByRole("tab", { name: en["business.tab.demand"] }));
-    expect(await screen.findAllByText("pool")).not.toHaveLength(0);
-  });
-
-  it("turns to the hotel's side after the booking, with the booking reloaded", async () => {
+  it("turns the page to the hotel's side after the booking, naming the hotel just booked", async () => {
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
     vi.spyOn(api, "card").mockResolvedValue({ id: "hotel-rheinblick", slug: "rheinblick" } as never);
-    const owner = vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
-    const user = setup();
+    const open = vi.fn();
+    render(
+      <I18nProvider>
+        <TravellerAgent onOpenBusiness={open} />
+      </I18nProvider>,
+    );
+    const user = userEvent.setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
     await openDetails(user);
-    owner.mockClear();
     await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
     await skipAhead(user);
 
-    expect(await screen.findByRole("button", { name: en["next.business.cta"] })).toBeInTheDocument();
-    expect(owner).toHaveBeenCalledWith("hotel-rheinblick");
+    await user.click(await screen.findByRole("button", { name: en["next.business.cta"] }));
+    expect(open).toHaveBeenCalledWith("hotel-rheinblick");
   });
 
   it("lets three agents argue before it asks: the critic challenges, your agent answers, all agree", async () => {
