@@ -60,9 +60,8 @@ rest needs regulation that is already arriving, such as the EU AI Act's transpar
 law. Adobee Hive is built so that following those rules is the default rather than an extra.
 
 **Privacy in the prototype, stated plainly.** A booking stores the guest name the traveller gives, the dates and the
-price; nothing else about the person. Missed-demand logs store the requested features, price and place, with no
-account or identity. The free-text search query is stored too, which a real deployment would drop or reduce to
-features. The agent acts only on what its human asked for: told to compare, it does not book, and every tool call it
+price; only the owner, with the owner token, sees the name in full. Search and missed-demand logs store the
+requested features, price, place and party size, never the traveller's own words or any identity. The agent acts only on what its human asked for: told to compare, it does not book, and every tool call it
 made is shown.
 
 ## The vision no one expects: agents write the business plan
