@@ -10,12 +10,17 @@ From the whiteboard, pointed at the challenge. Each maps to its own files so peo
 
 | # | Workstream | Files | Next deliverable |
 | --- | --- | --- | --- |
-| 1 | Hive core: cards, trust, discovery, booking | `hive.py`, `hive_seed.py`, `mcp_server.py` | More Basel businesses, a restaurant table flow, cancellation edge cases |
-| 2 | Agents | `agent.py` | Live OpenAI run tuned on the demo prompts; booking from Claude via the MCP URL |
+| 1 | Hive core: cards, trust, discovery, booking | `hive.py`, `hive_seed.py`, `mcp_server.py`, `semantic.py` | Wire `semantic.py` into `discover`, a restaurant table flow, cancellation edge cases |
+| 2 | Agents | `agent.py`, `second_opinion.py`, `critic.py` | Live OpenAI run tuned on the demo prompts; booking from Claude via the MCP URL |
 | 3 | Owner studio and tamper test | `panels/OwnerPanel.tsx`, `owner.py` | Polish, mobile view, a "how agents see you" explainer |
 | 4 | Traveller agent UI and brand | `TravellerAgent.tsx`, `App.tsx`, `styles.css` | Demo rehearsal |
 | 5 | Vision deck | `documentation/`, `assets/` | The 5 to 10 year story: hotels, events, people; Adobe's brand-visibility angle |
-| 6 | HR workflows | `code/backend/app/domains/hr.py`, tests, later an HR page | Fictional person seed, the person's yes/no on intros, a person view |
+| 6 | HR workflows | `code/backend/app/domains/hr.py`, tests, later an HR page | Fictional person seed, a person view, the person's yes/no inside it |
+| 7 | Federation and trust | `federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `hub.py`, `sharing.py` | A second hub deployed, calibration as a rank factor |
+| 8 | Hub operations | `admin.py`, `registration.py`, `blocklist.py`, `panels/AdminPanel.tsx`, `panels/InstanceFinder.tsx`, `panels/NetworkPanel.tsx`, `lan.sh` | Route the app at the Hive the finder picked; a credential on the admission queue |
+
+The full file-to-lane map, which is the one that stops two people editing the same file, is in
+[CONTRIBUTING.md](../CONTRIBUTING.md#find-your-lane).
 
 ## How we work
 
