@@ -24,6 +24,7 @@ const fr: Record<Key, string> = {
     "Adobee Hive donne à chaque commerce local une carte signée. Les agents la trouvent, la vérifient et réservent à travers elle. Le propriétaire la rédige avec ses propres mots, et rien n'est réservé sans l'accord d'une personne.",
   "home.fact.cards": "Cartes signées dans le Hive de Bâle",
   "home.fact.signature": "Signature du propriétaire",
+  "home.fact.signatureValue": "Ed25519",
   "home.fact.protocol": "Protocole ouvert",
   "home.fact.placement": "Places payées",
   "home.cta.agent": "Voir un agent réserver",

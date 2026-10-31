@@ -25,6 +25,7 @@ const en = {
     "Adobee Hive gives every local business one signed card. Agents find it, verify it and book through it. The owner writes it in plain words, and nothing is booked until a person says yes.",
   "home.fact.cards": "Signed cards in the Basel Hive",
   "home.fact.signature": "Owner signature",
+  "home.fact.signatureValue": "Ed25519",
   "home.fact.protocol": "Open protocol",
   "home.fact.placement": "Paid placements",
   "home.cta.agent": "Watch an agent book",

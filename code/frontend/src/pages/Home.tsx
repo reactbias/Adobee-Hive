@@ -86,7 +86,7 @@ export default function Home() {
           </div>
           <div>
             <dt>{t("home.fact.signature")}</dt>
-            <dd>Ed25519</dd>
+            <dd>{t("home.fact.signatureValue")}</dd>
           </div>
           <div>
             <dt>{t("home.fact.protocol")}</dt>

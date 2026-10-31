@@ -24,6 +24,7 @@ const it: Record<Key, string> = {
     "Adobee Hive dà a ogni attività locale una scheda firmata. Gli agenti la trovano, la verificano e prenotano attraverso di essa. Il titolare la scrive con parole sue, e nulla viene prenotato senza il sì di una persona.",
   "home.fact.cards": "Schede firmate nell'Hive di Basilea",
   "home.fact.signature": "Firma del titolare",
+  "home.fact.signatureValue": "Ed25519",
   "home.fact.protocol": "Protocollo aperto",
   "home.fact.placement": "Posizioni a pagamento",
   "home.cta.agent": "Guardi un agente prenotare",
