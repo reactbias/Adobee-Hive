@@ -9,7 +9,7 @@ assertion, named and located.
 
 ```bash
 cd code/backend && source .venv/bin/activate
-python tools/mutate.py                   # the twelve curated mutants
+python tools/mutate.py                   # every curated mutant
 python tools/mutate.py --random 12       # random operator and constant flips at real sites
 python tools/mutate.py --random 12 --seed 42   # reproduce a run
 python tools/mutate.py --all             # both
@@ -26,6 +26,7 @@ even when a run is interrupted.
 | Blanking `owner_keys` in the peer parser | `HttpTransport` had **no test at all** — the fakes replace it — so the parser that supplies the keys every relayed card is verified against was never run. |
 | Inverting the filter in `hop_params()` | A forwarded query could arrive empty and nothing noticed. |
 | Blanking a peer's `ranking_policy` | Paid placement is detected from that string, so a hub silently stopped downgrading peers that sell rank. |
+| Hiding people from discovery again, and ignoring `looking_for` | The index is `offers` and `needs` now: these two aim at a hub that quietly goes back to being a room search, and at a search for who *offers* a thing answering with who *wants* it. |
 
 ### Known survivors
 

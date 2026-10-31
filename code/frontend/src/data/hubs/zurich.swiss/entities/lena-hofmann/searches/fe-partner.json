@@ -1,0 +1,7 @@
+{
+  "id": "fe-partner",
+  "title": "Svelte contractor for overflow work",
+  "modality": "remote",
+  "budget": { "amount": 120, "currency": "CHF", "unit": "hour" },
+  "window": "when a sprint overruns"
+}

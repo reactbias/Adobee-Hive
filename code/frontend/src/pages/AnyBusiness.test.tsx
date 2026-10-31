@@ -98,6 +98,8 @@ describe("any business, in the agent chat", () => {
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
+    vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
   });
 
   it("asks the cards, not the booking agent, and the business answers in the chat", async () => {
@@ -194,6 +196,8 @@ describe("when no card answers, the agents look beyond the Hive", () => {
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
+    vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
   });
 
   async function ask(user: ReturnType<typeof userEvent.setup>, text: string) {

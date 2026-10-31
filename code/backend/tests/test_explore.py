@@ -27,9 +27,39 @@ def test_example_cards_are_unclaimed_and_say_where_they_come_from(client):
     assert hive.get_card("hotel-rheinblick")["trust"]["claimed"] is True
 
 
-def test_stays_discovery_leaves_example_cards_out(client):
-    kinds = {m["kind"] for m in hive.discover()["matches"]} | {e["kind"] for e in hive.discover()["excluded"]}
-    assert kinds <= set(hive.STAY_KINDS)
+def test_discovery_lists_an_unclaimed_example_card_and_marks_it_unclaimed(client):
+    """Decided: unclaimed example cards are *in* discovery, and every result says it is unclaimed.
+
+    The old rule kept them out, because discovery was a room search and a card the business never
+    published had no business being ranked beside one it did. `offers` and `needs` are the index
+    now, and these cards hold the only real non-stay offers on the hub: a hub that cannot answer
+    "who runs a Modbus course" while holding the answer is not a directory, it is a room search
+    with a directory's name. Hiding them also hid them from the *reason* machinery — an agent that
+    cannot see a lead cannot be told it is only a lead.
+
+    So the constraint is carried by marking, not by hiding, and this test pins the marking: the
+    result says `claimed` false and `bookable` false, the "why" says where it came from, nothing
+    unclaimed has units to book, and the hand-off still waits for a human yes and sends the
+    business nothing (test_transactions_wait_for_a_yes_and_hand_off_once, owner.apply, SECURITY.md).
+    """
+    found = hive.discover(query="flow measurement and calibration")
+    endress = next(m for m in found["matches"] if m["id"] == "x-endress")
+    assert endress["claimed"] is False and endress["bookable"] is False
+    assert any("unclaimed" in why for why in endress["why"]), "no caller can mistake it for a presence"
+    assert any("offers" in why for why in endress["why"]), "and it is here because of what it offers"
+
+    for spec in examples.CARDS:
+        result = next(
+            (m for m in hive.discover(kind=spec["kind"])["matches"] if m["id"] == spec["id"]),
+            None,
+        )
+        assert result is not None, f"{spec['id']} is findable"
+        assert result["claimed"] is False and result["bookable"] is False, spec["id"]
+        assert hive.get_card(spec["id"])["units"] == [], "nothing unclaimed can be booked"
+
+    # A claimed business is not marked down by the same fields: the flag means unclaimed, not "new".
+    rheinblick = next(m for m in hive.discover(kind="hotel")["matches"] if m["id"] == "hotel-rheinblick")
+    assert rheinblick["claimed"] is True and rheinblick["bookable"] is True
 
 
 def test_owner_cannot_edit_an_unclaimed_card(client):

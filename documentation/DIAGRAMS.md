@@ -240,7 +240,8 @@ sequenceDiagram
 ```
 
 Unclaimed cards say so in every answer, owner edits refuse them, and approving only hands the person off to the
-business's own site.
+business's own site. They are in `hive_discover` as well, where every result carries `claimed` and `bookable`, so
+an agent can see that a card is a lead compiled from public information rather than a business that agreed.
 
 ## 4. Where the data lives
 
@@ -334,6 +335,7 @@ flowchart LR
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
     D0 -. "X-Admin-Token" .-> D3
+    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id}"]:::door
     D4["GET /api/admin/applications"]:::door
     D5["POST /api/admin/applications/{application_id}"]:::held
   end

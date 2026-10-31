@@ -94,15 +94,24 @@ async function skipAhead(user: ReturnType<typeof userEvent.setup>) {
   if (skip) await user.click(skip);
 }
 
+// A stay that the cards cover is drawn first. The agent chat is the details.
+async function openDetails(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: en["card.details"] }));
+  // Details is the finished conversation, so the question is already there.
+  await screen.findByRole("heading", { name: gateQuestion });
+}
+
 describe("traveller agent", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
     // The business chapter reads the owner's view and the demand map as soon as the page opens.
     vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "activity").mockResolvedValue({ events: [], last: 0 });
   });
 
   it("asks the agent and stops at the gate without booking", async () => {
@@ -111,7 +120,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
 
     expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.1"] }], {});
     expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
@@ -126,7 +135,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
     await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
 
     expect(approve).toHaveBeenCalledWith(HELD);
@@ -142,7 +151,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
     await user.click(await screen.findByRole("button", { name: en["agent.decline"] }));
     await skipAhead(user);
 
@@ -151,14 +160,16 @@ describe("traveller agent", () => {
     expect(approve).not.toHaveBeenCalled();
   });
 
-  it("keeps the request and shows the error when the backend fails", async () => {
+  it("keeps the card and shows the error when details cannot be opened", async () => {
     vi.spyOn(api, "agent").mockRejectedValue(new Error("Too many requests. Try again later."));
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: en["card.details"] }));
 
     expect(await screen.findByText("Too many requests. Try again later.")).toBeInTheDocument();
-    expect(screen.getByLabelText(en["agent.intent"])).toHaveValue(en["agent.example.1"]);
+    expect(screen.getByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: en["agent.followUp"] })).toHaveValue("");
   });
 
   it("sends the stress test with rules off, then reruns with rules on (presenters, ?demo)", async () => {
@@ -203,16 +214,73 @@ describe("traveller agent", () => {
     expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.2"] }], {});
   });
 
-  it("holds the approval question until the conversation has played", async () => {
+  it("reads the hub log all along and shows it beside the chat when details opens", async () => {
+    const activity = vi.spyOn(api, "activity").mockResolvedValue({
+      events: [
+        {
+          n: 1,
+          run: "r1",
+          at: "2026-10-31T09:00:00Z",
+          agent: "traveller",
+          step: "discover",
+          business: "Hotel Rheinblick",
+          outcome: "matched",
+          source: "partner",
+          count: 3,
+        },
+      ],
+      last: 1,
+    });
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    await vi.waitFor(() => expect(activity).toHaveBeenCalled());
+    expect(screen.queryByRole("region", { name: en["card.log"] })).not.toBeInTheDocument();
+    const before = activity.mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: en["card.details"] }));
+
+    expect(activity.mock.calls.length).toBeGreaterThan(before);
+    // Already read before the click: the log is there at once, next to the cards.
+    const log = screen.getByRole("region", { name: en["card.log"] });
+    expect(log).toHaveTextContent(en["activity.step.discover"]);
+    expect(log).toHaveTextContent(en["activity.outcome.matched"].replace("{n}", "3"));
+    expect(screen.getByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
+  });
+
+  it("offers New trip only once there is a trip", async () => {
+    const user = setup();
+    expect(screen.queryByRole("button", { name: en["agent.newTrip"] })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    expect(await screen.findByRole("button", { name: en["agent.newTrip"] })).toBeInTheDocument();
+  });
+
+  it("stays on the card when details cannot reach the backend", async () => {
+    vi.spyOn(api, "agent").mockRejectedValue(new Error("500 Internal Server Error"));
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: en["card.details"] }));
+
+    expect(await screen.findByText(en["error.offline"])).toBeInTheDocument();
+    expect(screen.queryByText("500 Internal Server Error")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: en["agent.followUp"] })).toHaveValue("");
+  });
+
+  it("opens the whole chat from details, question included", async () => {
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await act(async () => {});
+    await user.click(await screen.findByRole("button", { name: en["card.details"] }));
 
-    expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
-    await skipAhead(user);
     expect(await screen.findByRole("button", { name: en["agent.approve"] })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["chat.skip"] })).not.toBeInTheDocument();
+    expect(screen.getByText(RESULT.critic!.challenge)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
   });
 
   it("names everyone in the conversation", async () => {
@@ -220,7 +288,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
 
     const roster = screen.getByRole("banner");
     for (const name of [
@@ -254,7 +322,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
     await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
     await skipAhead(user);
 
@@ -289,7 +357,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
     owner.mockClear();
     await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
     await skipAhead(user);
@@ -303,7 +371,7 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
 
     expect(screen.getByText(RESULT.critic!.challenge)).toBeInTheDocument();
     expect(screen.getByText(RESULT.critic!.answer)).toBeInTheDocument();
@@ -325,11 +393,52 @@ describe("traveller agent", () => {
     const user = setup();
 
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
+    await openDetails(user);
 
     expect(screen.getAllByText(en["chat.consensus.split"]).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Not convinced: Gare Central ranks at least as high.").length).toBeGreaterThan(0);
     expect(await screen.findByRole("button", { name: en["agent.approve"] })).toBeInTheDocument();
+  });
+
+  it("draws the rooms the hub returned, including one that came through Zürich", async () => {
+    vi.spyOn(api, "discover").mockResolvedValue({
+      matches: [
+        {
+          id: "pension-limmat",
+          slug: "limmat",
+          name: "Pension Limmat",
+          description: "A quiet room in Zürich.",
+          rating: 4.2,
+          rating_count: 4,
+          kind: "hotel",
+          from_price_chf: 110,
+          distance_m: null,
+          score: 70,
+          score_breakdown: {},
+          why: ["reached through zurich"],
+          signature_valid: true,
+          hops: 1,
+          provenance: { path: ["zurich", "basel"], hops: 1, origin: "zurich", origin_url: null, also_reached_by: [] },
+        },
+      ],
+      excluded: [],
+      ranking_policy: "open",
+    });
+    vi.spyOn(api, "card").mockResolvedValue({
+      id: "pension-limmat",
+      name: "Pension Limmat",
+      description: "A quiet room in Zürich.",
+      units: [{ id: "room", name: "River room", price_chf: 110 }],
+    } as never);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+
+    expect(await screen.findByRole("heading", { name: "Pension Limmat" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pension Limmat" }));
+    expect(screen.getByText("Through zurich → basel")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /River room/ })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Hotel Krafft Basel" })).not.toBeInTheDocument();
   });
 
   it("sends on Enter, and Shift+Enter starts a new line instead", async () => {
@@ -343,13 +452,31 @@ describe("traveller agent", () => {
     expect(box).toHaveValue(en["agent.example.1"] + "\n");
 
     await user.keyboard("{Enter}");
-    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.1"] }], {});
+    expect(agent).not.toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Hotel Krafft Basel" })).toBeInTheDocument();
+    expect(screen.getByText("4.3 / 5")).toBeInTheDocument();
+  });
+
+  it("draws an unrated person as not rated yet, never as zero", async () => {
+    vi.spyOn(api, "agent");
+    const user = setup();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+
+    await user.clear(box);
+    await user.type(box, `${en["card.try.person"]}{Enter}`);
+
+    expect(await screen.findByRole("heading", { name: "Lena Hofmann" })).toBeInTheDocument();
+    expect(screen.getByText(en["card.rating.none"])).toBeInTheDocument();
+    expect(screen.queryByText("0.0 / 5")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument();
   });
 
   it("says the agent is on it while the request is out", async () => {
     vi.spyOn(api, "agent").mockReturnValue(new Promise(() => {}));
     const user = setup();
-    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    await user.clear(box);
+    await user.type(box, "A quiet night in Geneva{Enter}");
     expect(screen.getByRole("button", { name: en["agent.sending"] })).toBeDisabled();
   });
 

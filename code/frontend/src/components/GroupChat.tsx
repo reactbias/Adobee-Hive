@@ -81,6 +81,7 @@ export default function GroupChat({
   followUp,
   refused,
   meta,
+  full = false,
 }: {
   segments: Segment[];
   guestName: string;
@@ -95,10 +96,13 @@ export default function GroupChat({
   /** The listings the agent's guard refused this run, told by the agent itself. */
   refused?: ReactNode;
   meta: ReactNode;
+  /** Details of a drawn card: the whole conversation is there, not played line by line. */
+  full?: boolean;
 }) {
   const { t } = useI18n();
   const scroller = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(0);
+  // Details starts on the last line, so the first paint is the whole chat rather than an empty stage.
+  const [shown, setShown] = useState(() => (full ? Number.MAX_SAFE_INTEGER : 0));
 
   const messages = useMemo(() => {
     const all = segments.flatMap((s) => (s.kind === "steps" ? s.steps : []));
@@ -383,13 +387,19 @@ export default function GroupChat({
 
   // New messages after an approval continue from where the chat was; a new trip starts over.
   useEffect(() => {
-    if (shown > messages.length) setShown(messages.length);
-  }, [shown, messages.length]);
+    if (full || shown <= messages.length) return;
+    setShown(messages.length);
+  }, [full, shown, messages.length]);
   useEffect(() => {
     if (shown >= messages.length) return;
+    // Details opens onto the finished conversation. The stage itself still plays one line at a time.
+    if (full) {
+      setShown(messages.length);
+      return;
+    }
     const timer = setTimeout(() => setShown((n) => n + 1), delayFor(messages[shown].beat, messages[shown].chars));
     return () => clearTimeout(timer);
-  }, [shown, messages.length]);
+  }, [shown, messages.length, full]);
 
   const caughtUp = shown >= messages.length;
   const next = caughtUp ? (pending ? "agent" : null) : messages[shown].who;
@@ -430,11 +440,12 @@ export default function GroupChat({
   const stage = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = stage.current;
-    if (!pending || !el) return;
+    // Details sits under the card. Scrolling it to the top would hide the result.
+    if (full || !pending || !el) return;
     const r = el.getBoundingClientRect();
     if (r.top > window.innerHeight * 0.5 || r.bottom < 80)
       el.scrollIntoView?.({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
-  }, [pending]);
+  }, [pending, full]);
 
   const present = new Map<Who, { name: string; role: string }>();
   for (const m of messages.slice(0, shown)) if (!m.consent) present.set(m.who, { name: m.name, role: m.role });

@@ -16,6 +16,7 @@ import {
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
+import EntitiesPanel from "./EntitiesPanel";
 import NetworkPanel from "./NetworkPanel";
 
 // Running the hub, from a browser instead of curl. The hub's password buys a short-lived session token which
@@ -24,7 +25,7 @@ import NetworkPanel from "./NetworkPanel";
 // Two of these views are built against endpoints that are not on `main` yet (the signup queue, PR #71). A 404 is
 // not an error here, it is "not deployed on this hub": the view says so and the rest of the panel keeps working.
 
-const VIEWS = ["overview", "applications", "blocklist", "neighbours"] as const;
+const VIEWS = ["overview", "entities", "applications", "blocklist", "neighbours"] as const;
 type View = (typeof VIEWS)[number];
 
 const lost = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403);
@@ -404,6 +405,7 @@ export default function AdminPanel({ onLeave }: { onLeave?: () => void }) {
       </div>
       <div id="admin-tabpanel" role="tabpanel" aria-labelledby={`admin-tab-${view}`}>
         {view === "overview" && <Overview overview={overview} settings={settings} />}
+        {view === "entities" && <EntitiesPanel onLost={signOut} />}
         {view === "applications" && <Applications onLost={signOut} />}
         {view === "blocklist" && <BlocklistView onLost={signOut} />}
         {view === "neighbours" && <Neighbours />}
