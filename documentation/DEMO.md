@@ -3,7 +3,8 @@
 Short version for the stage: [PITCH.md](PITCH.md).
 
 Everything below runs live. Without an API key the agent switches to a scripted planner that walks the same MCP
-tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **offline mode**.
+tools, so the demo cannot die on stage. Each run says at the top of the trace whether Claude or the offline
+planner answered.
 
 ## Pitch beats
 
@@ -12,9 +13,9 @@ tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **o
 | 1 | Adobe's timeline, our next box: "the front door becomes a signed card" | 30 s | slide |
 | 2 | Two agents negotiate over MCP; the traveller only states the intent and approves. Hotel Rheinblick is booked, with reasons and who was left out | 90 s | `/agent` |
 | 3 | Tamper with a price: the signature check fails and agents reject the card. A forged review is rejected too | 45 s | `/card/rheinblick` |
-| 4 | Gare Central's owner sees missed dog-friendly demand, fixes it in one sentence, and the next search finds them | 60 s | `/owner` |
+| 4 | Gare Central's owner sees that agents turned her away for dog-friendly and fixes it in one sentence | 60 s | `/owner` |
 | 5 | The twist: Basel's missed-demand map, "agents write the business plan" | 45 s | `/demand` |
-| 6 | Close: federated Hives, and people as Hive cards (the hiring idea) | 30 s | slide |
+| 6 | Close: one business, many agents, many use cases (HR is next), up to the AGI horizon, with the guardrails first | 30 s | slide |
 
 ## Click by click
 
@@ -28,8 +29,8 @@ tools, so the demo cannot die on stage. The nav bar shows **Claude live** or **o
 2. **Human card page** (`/card/rheinblick`). Same card, rendered for people, with direct booking.
    Click **Set the first room to CHF 1 and verify**: original *valid*, tampered *rejected*.
 3. **Owner studio** (`/owner`), pick Gare Central. Show the missed demand ("dog-friendly" turned away). Type
-   *"add dog-friendly"*, click **Preview change**, review the diff, **Sign and publish**. Go back to the agent and search again: Gare Central
-   now shows up.
+   *"add dog-friendly"*, click **Preview change**, review the diff, **Sign and publish**. The card is re-signed as a new version, and agents
+   that ask for dog-friendly now see Gare Central (the first example also asks for quiet, which it isn't).
 4. **Demand map** (`/demand`). Click **Simulate 40 traveller searches** for a busy week. Unserved demand rises to the top: pool,
    vegan breakfast, coworking. "Nobody in Basel offers this. Agents are telling you what to open."
 5. **Bonus: from Claude itself.** Add the Hive's MCP URL (`<backend>/mcp/`) as a custom connector in Claude and ask
