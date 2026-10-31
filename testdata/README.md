@@ -9,7 +9,7 @@ Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule i
 | Hub | Mostly | Also |
 | --- | --- | --- |
 | `basel` | stays, cafés, places to eat | a laundry, a locksmith, a data freelancer |
-| `zurich` | developers, designers, freelance technical work | — |
+| `zurich` | developers, designers, freelance technical work | a bike courier, a guesthouse in the woods |
 | `bern` | local services and trades | — |
 
 ## Why this corpus exists
@@ -51,6 +51,19 @@ the measurement.
 | catering for a wedding of fifty people | `kuechenkollektiv-klybeck` | basel | four cooks who come to your kitchen | "Wir kochen in Ihrer Küche", "Hochzeiten" |
 | I locked myself out of my apartment | `schluesseldienst-spalen` | basel | locksmith, day and night | "Türen öffnen", "Zylinder wechseln" |
 | automate our monthly Excel reports | `mira-luetolf` | basel | data freelancer, off this hub's domain | "outgrown their spreadsheets", "import jobs" |
+| frontend developer for our web shop | `jonas-brun` | zurich | builds the half you can see, Vue | "I build the half of a product you can see" |
+| UX designer for a phone app | `fabienne-roulet` | zurich | wireframes and user journeys | "Je dessine des parcours et des maquettes" |
+| control panel designer for medical devices | `tobias-wenger` | zurich | interfaces that must not be misread | "Oberflächen für Maschinen", "Medizintechnik" |
+| technical writer for our documentation | `anouk-pfister` | zurich | runbooks and release notes | "the pages people read when something has gone wrong" |
+| machine learning engineer | `kaspar-lienhard` | zurich | forecasting models | "builds the thing that guesses the next number" |
+| database performance expert | `kuno-steinmann` | zurich | query and index work | "I make slow queries fast" |
+| WCAG compliance check before we ship | `mirjam-oswald` | zurich | accessibility review | "a screen reader and a keyboard" |
+| QA engineer for test automation | `leonie-frei` | zurich | breaks release candidates | "I break software on purpose" |
+| agency to take over a half finished project | `quellcode-genossenschaft` | zurich | six-person co-operative | "Arbeit, die jemand liegengelassen hat" |
+| retoucher for product photos | `bildwerk-retusche` | zurich | image post-production | "Wir arbeiten Bilder nach" |
+| someone to build us a smartphone app | `basil-zuercher` | zurich | iPhone and Android work | "Apps für iPhone und Android" |
+| somewhere to put our machines that is not a big cloud provider | `datenhaus-oerlikon` | zurich | small hosting outfit | "Wir stellen Server auf und betreuen sie" |
+| same day delivery by bicycle | `kurierdienst-sihlquai` | zurich | courier, off this hub's domain | "Vier Leute, vier Velos" |
 
 <!-- /answer-key -->
 
@@ -64,6 +77,9 @@ better.
 | --- | --- | --- | --- |
 | quiet café where I can work on my laptop | `teestube-amselhof` — its card says "keine Laptops nach vierzehn Uhr" | the only card with the word *Laptops* bans them | `cafe-rhein` ("the long table for a quiet morning meeting") |
 | vegan food for under ten francs | `cafe-rhein` and `suppenkueche-dreirosen` both say *vegan* | one is an CHF 18 all-day breakfast, the other a CHF 9 pot | `suppenkueche-dreirosen` |
+| someone who can write Rust | measured on the running hub: `niko-ferrer` 15, `svenja-aebi` 15, then **`mirjam-oswald` 10**, and `renzo-balmer` 5 | the two who offer Rust do come first, but an accessibility reviewer who never mentions it beats the one who does, because the word *someone* appears in one of her offers. Filler words earn offer points. | `svenja-aebi`, `niko-ferrer`, then `renzo-balmer` last — his card says "I read about Rust on the train and have never once been paid for it" |
+| React developer | `ilaria-conti` wins, correctly | the control: exactly one card in the corpus uses the client's word | `ilaria-conti`, then `jonas-brun` and `tobias-wenger`, who score zero today |
+| frontend developer for our web shop | measured: **`mirjam-oswald` 10**, everyone else 0 | she is the only card containing the string *developer* — in an offer about sitting next to yours. The three people who actually build interfaces score nothing. | `jonas-brun`, `ilaria-conti`, `tobias-wenger` |
 
 ## Both sides of the market
 
@@ -74,6 +90,10 @@ Some needs are answered by an entity on a different hub, which is what federatio
 | `wirtshaus-anker` — "Jemand, der unsere Zimmer fotografiert" | basel | `lichtfeld-foto` — half-day shoot for a hotel | bern |
 | `mira-luetolf` — "make a report look like something" | basel | `lena-hofmann` — dataviz sprint, design system audit | zurich |
 | `beizli-sternen` — "eine Seite, die ein Agent lesen kann" | basel | `schnittwerk-bern` needs the same thing | bern |
+| `lichtfeld-foto` — "a retoucher for busy months" | bern | `bildwerk-retusche` — CHF 12 an image | zurich |
+| `datenhaus-oerlikon` — "eine Elektrikerin für einen zweiten Stromkreis" | zurich | `elektro-mattenhof` | bern |
+| `kurierdienst-sihlquai` — "unsere vier Velos im Winter wartet" | zurich | `velowerk-bern` — service and safety check | bern |
+| `aylin-dervis` and `grid-ops` — "a technical writer" | zurich | `anouk-pfister` — runbooks | zurich |
 
 ## Trust signals
 
