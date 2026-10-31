@@ -896,10 +896,12 @@ th.end {
   text-align: right;
   white-space: nowrap;
 }
+.card-hit h3 {
+  font-size: var(--t-lg);
+}
 .card-tagline {
   margin: 0 0 var(--s3);
-  font-family: var(--serif, inherit);
-  font-size: var(--t-lg, 1.125rem);
+  font-size: var(--t-base, 1rem);
   color: var(--ink-2);
 }
 .card-description {
@@ -953,10 +955,11 @@ th.end {
   width: 100%;
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-content: start;
-  gap: var(--s1) var(--s3);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--s1);
   white-space: normal;
   text-align: left;
   padding: var(--s3) var(--s4);
@@ -987,7 +990,6 @@ th.end {
   white-space: nowrap;
 }
 .offer-summary {
-  grid-column: 1 / -1;
   font-size: var(--t-xs);
   font-weight: 400;
   color: var(--ink-3);
@@ -1165,6 +1167,24 @@ th.end {
     opacity: 0.25;
     transform: scale(0.7);
   }
+}
+.result-head {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+.result-query {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--t-sm);
+  color: var(--ink-2);
+}
+.result-head .eyebrow {
+  white-space: nowrap;
 }
 .result-head button[aria-pressed="true"] {
   border-color: var(--clay);
