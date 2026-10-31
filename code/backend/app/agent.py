@@ -1,6 +1,6 @@
 """The traveller's agent: talks to the Hive only through MCP, like any third-party agent would.
 
-With an API key, Claude runs a tool-use loop over the tools the MCP server(s) advertise.
+With an API key, a model (OpenAI by default, or Claude) runs a tool-use loop over the tools the MCP server(s) advertise.
 Without one, a small scripted planner walks the same MCP tools (discover -> card -> availability -> book),
 so the end-to-end mechanism is real even offline.
 
@@ -17,6 +17,7 @@ from datetime import date, timedelta
 from typing import Any
 
 import anthropic
+import openai
 from mcp import Client
 
 from . import config, hive, llm, second_opinion
@@ -93,14 +94,17 @@ async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
     """messages: [{role: user|assistant, content: str}], last one from the user."""
     text = messages[-1]["content"]
     async with HiveConnections() as hives:
-        if config.LLM_ENABLED:
-            try:
+        try:
+            if config.LLM_PROVIDER == "openai":
+                result = await _run_openai(hives, messages)
+            elif config.LLM_PROVIDER == "claude":
                 result = await _run_claude(hives, messages)
-            except anthropic.APIError:  # out of credit, rate limit, outage: the demo goes on offline
-                log.exception("Claude unavailable, falling back to the scripted planner")
-                result = await _run_scripted(hives, text) | {"fallback": "Claude unavailable"}
-        else:
-            result = await _run_scripted(hives, text)
+            else:
+                result = await _run_scripted(hives, text)
+        except (openai.OpenAIError, anthropic.APIError):  # out of credit, rate limit, outage: the demo goes on
+            vendor = "OpenAI" if config.LLM_PROVIDER == "openai" else "Claude"
+            log.exception("%s unavailable, falling back to the scripted planner", vendor)
+            result = await _run_scripted(hives, text) | {"fallback": f"{vendor} unavailable"}
     if result["pending"]:  # a second agent checks the pick before the human is asked
         result["second_opinion"] = await second_opinion.review(
             text, parse_request(text), result["pending"]["input"], result["steps"]
@@ -127,6 +131,66 @@ async def approve(pending: dict[str, Any]) -> dict[str, Any]:
 
 def _hold(args: dict[str, Any]) -> dict[str, Any]:
     return {"tool": "hive_book", "input": args}
+
+
+def _call_tool(name: str, args: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Hold hive_book for the traveller's approval; any other tool is called. Returns (pending, args to call)."""
+    if name == "hive_book":
+        return _hold(args | {"agent": AGENT_NAME}), {}
+    return None, args
+
+
+HELD = {"status": "held_for_approval", "note": "The traveller confirms this booking themselves."}
+
+
+# ---------------------------------------------------------------- OpenAI loop
+
+
+async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]]) -> dict[str, Any]:
+    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+    tools = [
+        {
+            "type": "function",
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+            "strict": False,
+        }
+        for t in hives.tools
+    ]
+    convo: list[Any] = [{"role": m["role"], "content": m["content"]} for m in messages]
+    steps: list[dict[str, Any]] = []
+    pending = None
+    for _ in range(config.AGENT_MAX_TURNS):
+        response = await client.responses.create(
+            model=config.OPENAI_MODEL,
+            instructions=SYSTEM.format(name=AGENT_NAME, today=date.today().isoformat()),
+            input=convo,
+            tools=tools,
+            reasoning={"effort": "low"},
+            max_output_tokens=8000,
+            store=False,  # nothing kept at OpenAI; reasoning travels back encrypted
+            include=["reasoning.encrypted_content"],
+        )
+        convo += response.output  # keep every item, unchanged
+        calls = [item for item in response.output if item.type == "function_call"]
+        if not calls:
+            return {"reply": response.output_text.strip(), "steps": steps, "pending": pending, "mode": "openai"}
+        for call in calls:
+            try:
+                args = json.loads(call.arguments or "{}")
+            except json.JSONDecodeError:
+                args = None
+            if not isinstance(args, dict):
+                output: dict[str, Any] = {"error": "arguments must be a JSON object"}
+            else:
+                held, args = _call_tool(call.name, args)
+                pending = held or pending
+                output = HELD if held else await hives.step(steps, call.name, args)
+            convo.append(
+                {"type": "function_call_output", "call_id": call.call_id, "output": json.dumps(output, default=str)}
+            )
+    return {"reply": "I ran out of steps before finishing.", "steps": steps, "pending": pending, "mode": "openai"}
 
 
 # ---------------------------------------------------------------- Claude loop
@@ -162,13 +226,9 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]]) ->
             return {"reply": reply, "steps": steps, "pending": pending, "mode": "claude"}
         results = []
         for call in calls:
-            args = dict(call.input or {})
-            if call.name == "hive_book":
-                args["agent"] = AGENT_NAME
-                pending = _hold(args)
-                output = {"status": "held_for_approval", "note": "The traveller confirms this booking themselves."}
-            else:
-                output = await hives.step(steps, call.name, args)
+            held, args = _call_tool(call.name, dict(call.input or {}))
+            pending = held or pending
+            output = HELD if held else await hives.step(steps, call.name, args)
             results.append(
                 {
                     "type": "tool_result",
