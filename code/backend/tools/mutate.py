@@ -123,8 +123,8 @@ CURATED: list[Mutant] = [
     Mutant(
         "calibration.py",
         "over-promising stops costing ranking weight at all",
-        'factor = max(0.0, 1.0 - max(0.0, float(s["error"])) / TRUST_FLOOR_DELTA)',
-        "factor = 1.0",
+        "max(0.0, 1.0 - max(0.0, float(error)) / TRUST_FLOOR_DELTA)",
+        "1.0",
     ),
     Mutant(
         "connections.py",
