@@ -61,6 +61,7 @@ function Discover({ o, guard }: { o: Rec; guard: GuardFinding[] }) {
   const flagged = (m: Rec) => guard.some((f) => f.card_id === m.id && (f.source ?? m.source) === m.source);
   const matches = list(o.matches);
   const excluded = list(o.excluded);
+  if (!matches.length && !excluded.length && list(o.errors).length) return <p>{t("trace.reply.discoverFailed")}</p>;
   return (
     <>
       <p>{t("trace.reply.discover", { fit: matches.length, total: matches.length + excluded.length })}</p>

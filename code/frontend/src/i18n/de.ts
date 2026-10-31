@@ -259,6 +259,7 @@ const de: Record<Key, string> = {
   "trace.ask.availability": "Was ist frei bei {name}, {dates}?",
   "trace.ask.book": "Bitte bei {name} buchen, für {guest}, {dates}.",
   "trace.reply.discover": "{fit} von {total} passen. Offen gerankt, keine bezahlte Platzierung.",
+  "trace.reply.discoverFailed": "Der Hive hat diese Anfrage abgelehnt. Ihr Agent sieht den Fehler und kann neu fragen.",
   "trace.reply.card": "Kartenversion {version}, vom Inhaber signiert.",
   "trace.reply.full": "An diesen Daten ausgebucht.",
   "trace.reply.book": "Bestätigt unter {id}. Die Quittung ist signiert.",
