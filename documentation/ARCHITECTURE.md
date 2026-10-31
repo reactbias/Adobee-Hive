@@ -17,7 +17,7 @@ flowchart LR
   API --> OW[Owner studio<br/>owner.py] --> C
   MCP --> H[Hive core<br/>hive.py]
   API --> H
-  H --> DB[(DuckDB<br/>S3 snapshots)]
+  H --> DB[(DuckDB<br/>Postgres snapshot)]
 ```
 
 ## Modules (`code/backend/app`)
@@ -38,7 +38,7 @@ flowchart LR
 | `replies.py` | What the backend writes itself (offline planner, rules-off demo, approval, rule-check second opinion) in EN, DE, FR and IT; the language comes from the app's `Accept-Language` header, and model runs are told to answer in it |
 | `simulate.py` | Simulated traveller searches for the demand map |
 | `guard.py` | Owner and demo tokens, rate limits on calls that may reach Claude or OpenAI (see `SECURITY.md`) |
-| `db.py`, `storage.py` | DuckDB connection, writes and S3 snapshot and restore |
+| `db.py`, `storage.py` | DuckDB connection, writes, and the Postgres snapshot and restore (`DATABASE_URL`) |
 | `llm.py`, `config.py` | Structured-output calls on OpenAI or Claude; provider choice and environment settings |
 
 ## Use cases (`code/backend/app/domains`)
@@ -178,5 +178,5 @@ stretches the USD 75 demo key. Without a key everything still runs offline.
 ## Known limits
 
 - The server holds each owner's signing key (the vision is owner-held keys).
-- DuckDB on local disk with S3 snapshots pins the backend to one instance. Fine for a demo.
+- DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
 - No real payments; restaurant table booking is not built yet.
