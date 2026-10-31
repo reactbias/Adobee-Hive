@@ -154,3 +154,30 @@ def test_a_jobs_question_finds_every_employer_and_nothing_else(client, question)
     assert set(ids) == {"x-endress", "x-adobe", "x-pax"}, question
     for reply in out["replies"]:  # only the job offer, not the business's products
         assert [i["id"] for i in reply["items"]] == ["careers"], question
+
+
+def test_picking_one_employer_holds_its_hand_off_for_a_yes(client):
+    several = explore.ask("Which companies here offer jobs?", today=NOV)
+    assert several["pending"] is None  # three answers: the person picks one first
+    out = explore.ask("Which companies here offer jobs? Adobe", today=NOV, pick=True)
+    assert [r["card_id"] for r in out["replies"]] == ["x-adobe"]
+    assert [i["id"] for i in out["replies"][0]["items"]] == ["careers"]
+    assert out["pending"]["item_id"] == "careers" and out["pending"]["claimed"] is False
+
+
+def test_the_api_takes_the_pick(client):
+    r = client.post("/api/ask", json={"question": "Which companies offer jobs? Pax", "pick": True})
+    assert r.status_code == 200 and r.json()["pending"]["business"] == "Pax"
+
+
+def test_a_signed_card_ranks_before_an_unclaimed_one(client, monkeypatch):
+    real = explore._cards
+
+    def with_claimed():
+        cards = real()
+        pax = next(c for c in cards if c["id"] == "x-pax")
+        return [*[c for c in cards if c["id"] != "x-pax"], {**pax, "trust": {**pax["trust"], "claimed": True}}]
+
+    monkeypatch.setattr(explore, "_cards", with_claimed)
+    out = explore.ask("Which companies here offer jobs?", today=NOV)
+    assert out["replies"][0]["card_id"] == "x-pax"

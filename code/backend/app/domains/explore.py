@@ -81,7 +81,8 @@ STOP = set(
     please anything some have does they should could would can will where when which find me my mine get got for the
     and our your you are was were been into onto near nearby best good nice cheap help looking look search somewhere
     anywhere someone somebody today tomorrow weekend week days day night evening morning ideas idea things thing
-    doing more less than very just like love would also maybe here two three four five how who why
+    doing more less than very just like love would also maybe here two three four five how who why options option
+    available any
 
     was ich mir mich mein meine eine einen einer ein der die das den dem des und oder mit für bitte brauche möchte
     suche gibt etwas irgendwo jemand heute morgen wochenende diesen dieser dieses kann können wäre zum zur vom nach
@@ -231,11 +232,14 @@ def _items(card: dict[str, Any]) -> list[dict[str, Any]]:
     return out + [{**e, "type": "event"} for e in card.get("events", [])]
 
 
-def ask(question: str, mood: str | None = None, today: date | None = None, judge: bool = False) -> dict[str, Any]:
+def ask(
+    question: str, mood: str | None = None, today: date | None = None, judge: bool = False, pick: bool = False
+) -> dict[str, Any]:
     """Answer a question from the example cards. Returns items per business, exclusions and any held action.
 
     A card answers only what its own text covers. With `judge` and a model key, the model decides which cards cover
     the request; if it fails, the offline judgement stands. Nothing covered means an honest empty answer.
+    `pick`: the person chose one business from the last answer ("... Adobe"); its best action is held for a yes.
     """
     q = question.strip()[:MAX_QUESTION].lower()
     if not q:
@@ -268,7 +272,8 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
         scope = covering
     else:  # an open question ("what should I do this weekend?"): every card, ranked by mood
         scope = cards
-    terms = sorted(set(words))
+    names = {w for c in named for w in _words(f"{c['name']} {c['slug']}")}
+    terms = sorted(set(words) - names)  # "Adobe" picks the business; it is not a topic
     wants_now = bool(NOW.search(q))
     budget_m = BUDGET.search(q)
     budget = float(budget_m.group(1)) * (EUR_TO_CHF if CURRENCY.search(q) else 1) if budget_m else None
@@ -279,9 +284,12 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
         for item in _items(card):
             text = " ".join([item["title"], item.get("summary", ""), " ".join(item["tags"])])
             item_words = {w for w in _words(text) if len(w) > 2} - STOP
-            hits = _covers(terms, (item_words, set()))  # the item's own words; the topic decided the card
-            why = [f"mentions {', '.join(hits)}"] if hits else []
-            score = 3 * len(hits) + (2 if named or card in covering else 0)
+            hits = _covers(terms, (item_words, set()))  # the item's own words weigh most
+            item_topics = {t for w in item_words if (t := _topic(w, typo=False)) is not None}
+            # Same topic in other words ("Stellen" for "jobs"); a mood the person chose orders items instead.
+            near = [w for w in terms if w not in hits and _topic(w) in item_topics] if mood is None else []
+            why = [f"mentions {', '.join(hits + near)}"] if hits or near else []
+            score = 3 * len(hits) + 2 * len(near) + (2 if named or card in covering else 0)
             tags = set(item["tags"])
             if boosted := sorted(tags & pref["boost"]):
                 score += 2 * len(boosted)
@@ -328,7 +336,9 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
 
     scored.sort(key=lambda s: -s[0])
     limit = pref["limit"]
-    if terms and not named:  # a topic question: from a card that has items on the topic, only those items
+    # Signed, claimed cards first: they can take the request; an unclaimed card can only send the person to its site.
+    scored.sort(key=lambda e: not e[1]["trust"]["claimed"])
+    if terms and (not named or pick):  # a topic question: from a card with items on the topic, only those
         on_topic = {c["id"] for _, c, _, why in scored if any(w.startswith("mentions") for w in why)}
         scored = [e for e in scored if e[1]["id"] not in on_topic or any(w.startswith("mentions") for w in e[3])]
     cards_seen = {e[1]["id"] for e in scored}
@@ -360,7 +370,8 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
         )
 
     pending = None
-    if (TRANSACT.search(q) or PLAN.search(q)) and picked:
+    one_business = len({c["id"] for _, c, _, _ in picked}) == 1
+    if (TRANSACT.search(q) or PLAN.search(q) or (pick and one_business)) and picked:
         _, card, item, _ = next((p for p in picked if p[2].get("action")), (None, None, None, None))
         if item:
             pending = _hold(card, item)

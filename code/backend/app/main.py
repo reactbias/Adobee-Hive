@@ -247,6 +247,7 @@ class AskRequest(BaseModel):
 
     question: str = Field(min_length=1, max_length=explore.MAX_QUESTION)
     mood: Literal["curious", "stressed", "planning", "celebrating"] | None = None
+    pick: bool = False  # the person named one business from the last answer: hold its hand-off for a yes
 
 
 class AskApprove(BaseModel):
@@ -261,7 +262,9 @@ async def ask_hive(body: AskRequest, request: Request) -> dict[str, Any]:
     if config.LLM_ENABLED:
         guard.llm_calls.check(request)
     # With a key the model judges which cards cover the request; it runs off the event loop and falls back offline.
-    result = await asyncio.to_thread(_hive_call, explore.ask, body.question, body.mood, judge=config.LLM_ENABLED)
+    result = await asyncio.to_thread(
+        _hive_call, explore.ask, body.question, body.mood, judge=config.LLM_ENABLED, pick=body.pick
+    )
     if config.LLM_ENABLED and result["replies"]:
         result = await asyncio.to_thread(explore.phrase, result)
     return result

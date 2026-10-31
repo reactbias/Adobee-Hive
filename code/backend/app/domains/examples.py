@@ -142,16 +142,6 @@ CARDS = [
         "features": ["flow", "level", "pressure", "temperature", "liquid analysis", "calibration", "iiot"],
         "offers": [
             {
-                "id": "careers",
-                "title": "Jobs and careers at Endress+Hauser",
-                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
-                "page; this card copies none of them.",
-                "duration": None,
-                "price": None,
-                "tags": ["practical"],
-                "action": "See open jobs",
-            },
-            {
                 "id": "flow",
                 "title": "Flow measurement",
                 "summary": "Electromagnetic, Coriolis, ultrasonic, vortex, thermal mass and differential pressure "
@@ -199,6 +189,16 @@ CARDS = [
                 "price": None,
                 "tags": ["practical", "learning"],
                 "action": "Open the portal",
+            },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Endress+Hauser",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
             },
         ],
         "events": [
@@ -248,16 +248,6 @@ CARDS = [
         "features": ["creative", "documents", "pdf", "generative ai", "content credentials", "experience cloud"],
         "offers": [
             {
-                "id": "careers",
-                "title": "Jobs and careers at Adobe",
-                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
-                "page; this card copies none of them.",
-                "duration": None,
-                "price": None,
-                "tags": ["practical"],
-                "action": "See open jobs",
-            },
-            {
                 "id": "express",
                 "title": "Adobe Express",
                 "summary": "Quick posters, menus and social posts from templates; a free plan exists.",
@@ -284,6 +274,16 @@ CARDS = [
                 "price": None,
                 "tags": ["learning"],
                 "action": "Learn more",
+            },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Adobe",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
             },
         ],
         "events": [
@@ -321,16 +321,6 @@ CARDS = [
             "cooperative",
         ],
         "offers": [
-            {
-                "id": "careers",
-                "title": "Jobs and careers at Pax",
-                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
-                "page; this card copies none of them.",
-                "duration": None,
-                "price": None,
-                "tags": ["practical"],
-                "action": "See open jobs",
-            },
             {
                 "id": "analysis",
                 "title": "Pension analysis",
@@ -375,6 +365,16 @@ CARDS = [
                 "price": None,
                 "tags": ["practical", "calm"],
                 "action": "Learn more",
+            },
+            {
+                "id": "careers",
+                "title": "Jobs and careers at Pax",
+                "summary": "Open positions, apprenticeships and internships are listed on the company's own careers "
+                "page; this card copies none of them.",
+                "duration": None,
+                "price": None,
+                "tags": ["practical"],
+                "action": "See open jobs",
             },
         ],
         "events": [
