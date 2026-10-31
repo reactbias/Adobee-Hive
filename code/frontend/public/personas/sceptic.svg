@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The sceptic, a second-opinion agent">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The verifier, an agent that checks the facts">
   <defs>
     <clipPath id="c"><path d="M32 2 58 17v30L32 62 6 47V17Z"/></clipPath>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#454c52"/><stop offset="1" stop-color="#262b2f"/></linearGradient>

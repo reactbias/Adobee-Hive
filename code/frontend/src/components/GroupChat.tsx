@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { Booking, SecondOpinion, Step } from "../api";
+import type { Booking, Critic, SecondOpinion, Step } from "../api";
 import { useI18n } from "../i18n";
 import { delayFor, type Beat } from "../lib/pace";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
@@ -7,14 +7,16 @@ import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
 // The traveller page as a group chat: people and agents in one conversation. Every message comes from real data,
 // the guest's words, an MCP call or its answer. Playback paces the messages so a room can follow who is talking.
 
-export type Who = "guest" | "agent" | "hive" | "business" | "sceptic" | "mirror";
+export type Who = "guest" | "agent" | "hive" | "business" | "critic" | "sceptic" | "mirror";
 
 /** What happened, in order. The chat turns each segment into one or more messages. */
 export type Segment =
   | { kind: "guest"; text: string }
   | { kind: "ack" }
   | { kind: "steps"; steps: Step[] }
+  | { kind: "critic"; critic: Critic }
   | { kind: "opinion"; opinion: SecondOpinion }
+  | { kind: "consensus"; agreed: boolean }
   | { kind: "agent"; text: string }
   | { kind: "consent" }
   | { kind: "receipt"; booking: Booking }
@@ -37,7 +39,7 @@ interface Msg {
   chars?: number;
 }
 
-const WHO: Who[] = ["guest", "agent", "hive", "business", "sceptic", "mirror"];
+const WHO: Who[] = ["guest", "agent", "hive", "business", "critic", "sceptic", "mirror"];
 const AVATAR = Object.fromEntries(WHO.map((who) => [who, `${import.meta.env.BASE_URL}personas/${who}.svg`])) as Record<
   Who,
   string
@@ -104,6 +106,32 @@ export default function GroupChat({
         case "consent":
           out.push({ ...guest, consent: true, beat: "instant", body: <p>{t("chat.guest.yes")}</p> });
           break;
+        // Three agents talk it through before the guest is asked: the critic argues for the strongest alternative.
+        case "critic": {
+          const c = seg.critic;
+          const critic = { who: "critic" as const, name: t("chat.name.critic"), role: t("chat.role.critic") };
+          out.push({ ...critic, beat: "think", body: <p>{c.challenge}</p> });
+          if (c.answer) out.push({ ...agent, to: critic.name, beat: "say", chars: 40, body: <p>{c.answer}</p> });
+          out.push({
+            ...critic,
+            beat: "say",
+            chars: c.note.length,
+            body: (
+              <p>
+                <span className={`status ${c.verdict === "agree" ? "ok" : "no"}`}>
+                  {t(c.verdict === "agree" ? "agent.opinion.agree" : "agent.opinion.concern")}
+                </span>{" "}
+                {c.note}
+              </p>
+            ),
+          });
+          break;
+        }
+        case "consensus": {
+          const line = t(seg.agreed ? "chat.consensus.agree" : "chat.consensus.split");
+          out.push({ ...agent, beat: "say", chars: 20, body: <p className="consensus">{line}</p> });
+          break;
+        }
         case "opinion": {
           const o = seg.opinion;
           out.push({
