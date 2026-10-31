@@ -41,3 +41,29 @@ describe("i18n", () => {
     expect(Object.values(de).filter((s) => s.includes("ß"))).toEqual([]);
   });
 });
+
+// Every change ships in all four languages. These guard what the type check can't see.
+describe("all four languages", () => {
+  const others = { de, fr, it: it_ };
+
+  it("have exactly the same keys, none empty", () => {
+    const keys = Object.keys(en).sort();
+    for (const [name, dict] of Object.entries(others)) {
+      expect([name, Object.keys(dict).sort()]).toEqual([name, keys]);
+      expect([name, Object.entries(dict).filter(([, v]) => !v.trim())]).toEqual([name, []]);
+    }
+  });
+
+  it("are translated, not English copied over", () => {
+    // Short labels, names and codes may match English in every language; longer text may not.
+    const copied = Object.entries(others).flatMap(([name, dict]) =>
+      (Object.keys(en) as Key[])
+        .filter((k) => dict[k] === en[k] && en[k].length >= 14 && !SAME_EVERYWHERE.has(k))
+        .map((k) => `${name}: ${k}`),
+    );
+    expect(copied).toEqual([]);
+  });
+});
+
+// Keys whose text is a name, not language.
+const SAME_EVERYWHERE = new Set<Key>(["footer.line"]);
