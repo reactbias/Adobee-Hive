@@ -33,6 +33,21 @@ describe("styles", () => {
     expect(rule(".search-top .composer.bar textarea")).not.toMatch(/overflow-x:\s*auto/);
   });
 
+  it("shows the search bar's Try examples as chips beside their label, not as loose text", () => {
+    expect(rule(".search-top .examples")).toMatch(/display:\s*flex/);
+    expect(rule(".search-top .examples .example")).toMatch(/border:\s*1px solid/);
+    expect(rule(".search-top .examples .example")).toMatch(/border-radius:\s*999px/);
+    expect(rule(".search-top .examples .example:hover:not(:disabled)")).toMatch(/border-color:\s*var\(--clay\)/);
+  });
+
+  it("keeps the count and the Details toggle in view beside a long question", () => {
+    expect(rule(".result-head")).toMatch(/min-width:\s*0/);
+  });
+
+  it("rings the search bar while you type in it", () => {
+    expect(rule(".search-top .composer.bar:focus-within")).toMatch(/border-color:\s*var\(--clay\)/);
+  });
+
   it("wraps the composer's buttons, and their labels, on a narrow screen", () => {
     expect(rule(".composer-actions")).toMatch(/flex-wrap:\s*wrap/);
     expect(rule(".composer-actions button")).toMatch(/white-space:\s*normal/);
