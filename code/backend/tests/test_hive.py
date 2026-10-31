@@ -53,9 +53,21 @@ def test_discover_explains_exclusions(client):
 
 def test_tampered_card_fails_verification(client):
     card = client.get("/api/hive/cards/rheinblick").json()
-    assert agent.verify_card(card)
+    pins = client.get("/.well-known/hive.json").json()["owner_keys"]
+    assert agent.verify_card(card, pins)
     card["units"][0]["price_chf"] = 1
-    assert not agent.verify_card(card)
+    assert not agent.verify_card(card, pins)
+
+
+def test_card_re_signed_by_a_stranger_is_rejected(client):
+    forged = client.post("/api/hive/demo/forge/hotel-rheinblick").json()
+    assert forged["units"][0]["price_chf"] == 1
+    # The signature is valid for the stranger's key, so only the pinned key catches it.
+    data = {k: v for k, v in forged.items() if k != "trust"}
+    assert hive.verify(data, forged["trust"]["signature"], forged["trust"]["public_key"])
+    assert client.post("/api/hive/verify", json={"card": forged}).json() == {"signature_valid": False}
+    original = client.get("/api/hive/cards/rheinblick").json()
+    assert client.post("/api/hive/verify", json={"card": original}).json() == {"signature_valid": True}
 
 
 def test_reviews_need_a_real_receipt(client):

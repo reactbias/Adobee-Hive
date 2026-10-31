@@ -125,6 +125,41 @@ def verify(data: dict[str, Any], signature: str, public_key: str) -> bool:
         return False
 
 
+def owner_keys() -> dict[str, str]:
+    """The key registry: each business's pinned public key, published in /.well-known/hive.json.
+
+    A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
+    it is signed by the key pinned here for that card id.
+    """
+    with db.cursor() as cur:
+        rows = cur.execute("SELECT card_id, private_key FROM hive_keys ORDER BY card_id").fetchall()
+    return {
+        card_id: _public_b64(serialization.load_pem_private_key(pem.encode(), password=None))  # type: ignore[arg-type]
+        for card_id, pem in rows
+    }
+
+
+def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
+    """Check a card as an agent received it: signed, and signed by the key pinned for its id."""
+    trust = card.get("trust") or {}
+    key = trust.get("public_key", "")
+    data = {k: v for k, v in card.items() if k != "trust"}
+    return bool(key) and pins.get(card.get("id", "")) == key and verify(data, trust.get("signature", ""), key)
+
+
+def forge_demo(card_id: str) -> dict[str, Any]:
+    """For the tamper demo: a copy with a changed fact, re-signed by a stranger's fresh key. Agents must reject it."""
+    card = get_card(card_id)
+    data = {k: v for k, v in card.items() if k != "trust"}
+    if data.get("units"):
+        data["units"][0]["price_chf"] = 1
+    else:
+        data["features"] = [*data.get("features", []), "free breakfast"]
+    stranger = Ed25519PrivateKey.generate()
+    signature = base64.b64encode(stranger.sign(canonical(data))).decode()
+    return {**data, "trust": {**card["trust"], "signature": signature, "public_key": _public_b64(stranger)}}
+
+
 def _sign_receipt(card_id: str, payload: dict[str, Any]) -> str:
     sig = _key_for(card_id).sign(canonical(payload))
     return base64.urlsafe_b64encode(canonical(payload)).decode() + "." + base64.urlsafe_b64encode(sig).decode()
