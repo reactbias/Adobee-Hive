@@ -30,6 +30,7 @@ from . import (
     hub,
     mcp_server,
     owner,
+    peers,
     registration,
     removals,
     replies,
@@ -56,6 +57,7 @@ async def lifespan(_: FastAPI):
     registration.init()
     audit.init()
     removals.init()
+    peers.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -92,6 +94,7 @@ def _hive_call(fn, *args, **kwargs):
         blocklist.BlockError,
         registration.RegistrationError,
         removals.RemovalError,
+        peers.PeerError,
     ) as err:
         raise HTTPException(400, str(err)) from err
 
@@ -607,6 +610,70 @@ def admin_block(body: BlockBody, _: str = Depends(admin_only)) -> dict[str, Any]
 def admin_unblock(kind: str, subject: str, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Lift a block."""
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
+
+
+# ---------------------------------------------------------------- the connected hubs
+
+
+class PeerBody(BaseModel):
+    """A peer hub an operator is adding or editing. The reason goes in the ledger, not in the row."""
+
+    url: str = Field(..., min_length=1, max_length=300, description="The peer's base URL, http(s)")
+    reason: str = Field(..., min_length=1, max_length=500, description="Why, readable six months from now")
+    hub_id: str = Field("", max_length=200, description="Its id, if you know it before asking")
+    name: str = Field("", max_length=200, description="What to call it here; a probe fills this in if empty")
+    note: str = Field("", max_length=500)
+
+
+class PeerRemovalBody(BaseModel):
+    """A peer an operator is dropping. Not a block: see `peers.py` and the blocklist."""
+
+    url: str = Field(..., min_length=1, max_length=300)
+    reason: str = Field(..., min_length=1, max_length=500, description="Readable six months from now")
+
+
+@app.get("/api/admin/peers")
+def admin_peers(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """The peers this hub asks: URL, hub id, name, whether it answers, its calibration, its state.
+
+    A database read. Reachability is the stored result of the last `POST /api/admin/peers/check`,
+    never a fetch made while rendering, so an unreachable peer cannot make this page slow or blank.
+    """
+    return admin.peer_table()
+
+
+@app.post("/api/admin/peers")
+def admin_add_peer(body: PeerBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Add a peer hub. The next federated search asks it: no restart, no redeploy."""
+    return _hive_call(
+        peers.add, body.url, body.reason, hub_id=body.hub_id, name=body.name, note=body.note, added_by=credential
+    )
+
+
+@app.put("/api/admin/peers")
+def admin_edit_peer(body: PeerBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Change what this hub records about a peer: its id, the name shown here, a note."""
+    return _hive_call(
+        peers.edit,
+        body.url,
+        body.reason,
+        hub_id=body.hub_id or None,
+        name=body.name or None,
+        note=body.note or None,
+        changed_by=credential,
+    )
+
+
+@app.post("/api/admin/peers/remove")
+def admin_remove_peer(body: PeerRemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Stop asking a peer. Not a block: use the blocklist to refuse it in both directions."""
+    return _hive_call(peers.remove, body.url, body.reason, removed_by=credential)
+
+
+@app.post("/api/admin/peers/check")
+async def admin_check_peers(_: str = Depends(admin_only)) -> dict[str, Any]:
+    """Ask every peer whether it answers, in parallel under one deadline, and store what came back."""
+    return {"peers": await peers.check()}
 
 
 # ---------------------------------------------------------------- what this hub carries

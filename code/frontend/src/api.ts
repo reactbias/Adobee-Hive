@@ -656,6 +656,41 @@ export interface AdminAudit {
   entries: AuditEntry[];
   who_limit: string;
 }
+/** One peer hub as an operator acts on it: where it is, what it is called, whether it answers, how it rates. */
+export interface AdminPeer {
+  url: string;
+  /** The id to use: what the peer told us, or its host until anyone has asked. */
+  hub: string;
+  hub_id: string;
+  name: string;
+  note: string | null;
+  /** "active" or "removed". A removed row stays, so the environment seed cannot put the peer back. */
+  state: string;
+  added_at: string | null;
+  added_by: string | null;
+  changed_at: string | null;
+  removed_at: string | null;
+  removed_reason: string | null;
+  /** The stored result of the last probe. Null means nobody has asked, which is not a refusal. */
+  answers: boolean | null;
+  last_checked_at: string | null;
+  last_error: string | null;
+  /** Blocked is not removed: a block refuses the hub in both directions. */
+  blocked: boolean;
+  error: number | null;
+  error_stars: number | null;
+  evidence: number;
+  verdict: string;
+  why: string;
+}
+export interface AdminPeers {
+  peers: AdminPeer[];
+  live: string[];
+  seed: string[];
+  /** True while nothing has been stored: HIVE_PEER_URLS is still the live list. */
+  from_environment: boolean;
+  blocked_hubs: string[];
+}
 export interface AdminNeighbours {
   peers: Peer[];
   blocked_hubs: string[];
@@ -755,6 +790,22 @@ export const api = {
     call<AdminAudit>(`/api/admin/audit${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`, {
       headers: adminHeaders(),
     }),
+  /** The peers this hub asks. A database read: it never fetches from a peer, so a dead one costs nothing. */
+  adminPeers: () => call<AdminPeers>("/api/admin/peers", { headers: adminHeaders() }),
+  /** Add a peer. The next federated search asks it: no restart, no redeploy. */
+  adminAddPeer: (url: string, reason: string, name = "") =>
+    post<AdminPeer>("/api/admin/peers", { url, reason, name }, adminHeaders()),
+  adminEditPeer: (url: string, reason: string, name = "", hub_id = "") =>
+    call<AdminPeer>("/api/admin/peers", {
+      method: "PUT",
+      body: JSON.stringify({ url, reason, name, hub_id }),
+      headers: adminHeaders(),
+    }),
+  /** Stop asking a peer. Not a block: a block refuses it in both directions (adminBlock). */
+  adminRemovePeer: (url: string, reason: string) =>
+    post<AdminPeer>("/api/admin/peers/remove", { url, reason }, adminHeaders()),
+  /** Ask every peer whether it answers, in parallel under one deadline, and store the result. */
+  adminCheckPeers: () => post<{ peers: AdminPeer[] }>("/api/admin/peers/check", {}, adminHeaders()),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

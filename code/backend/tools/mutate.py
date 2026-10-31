@@ -42,6 +42,7 @@ SUITE = [
     "tests/test_hub_api.py",
     "tests/test_registration.py",
     "tests/test_admin_manage.py",
+    "tests/test_admin_peers.py",
 ]
 
 
@@ -160,6 +161,24 @@ CURATED: list[Mutant] = [
         "a withdrawn entity can still be booked, so the hub sells what it no longer carries",
         '    carried(card["id"])\n    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
         '    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+    ),
+    Mutant(
+        "peers.py",
+        "a peer an operator removed is asked again, so dropping a neighbour does nothing",
+        "    return [url for url, state in rows if state == ACTIVE]",
+        "    return [url for url, state in rows]",
+    ),
+    Mutant(
+        "peers.py",
+        "the environment wins over the stored list, so nothing an operator adds is ever asked",
+        "    if not rows:",
+        "    if True:",
+    ),
+    Mutant(
+        "peers.py",
+        "a peer change is accepted with no reason, so nobody can tell later why a hub was dropped",
+        '        raise PeerError("a peer change needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
     ),
     Mutant(
         "removals.py",
@@ -316,6 +335,7 @@ TARGETS = [
     "registration.py",
     "removals.py",
     "audit.py",
+    "peers.py",
 ]
 
 

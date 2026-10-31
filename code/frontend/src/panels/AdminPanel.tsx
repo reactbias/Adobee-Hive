@@ -4,20 +4,17 @@ import {
   ApiError,
   api,
   setAdminToken,
-  type AdminNeighbours,
   type AdminOverview,
   type AdminSettings,
   type Application,
   type Blocklist,
-  type DirectoryHub,
-  type Peer,
   type SettingsField,
 } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
-import { readCalibration, stars } from "../lib/calibration";
 import EntitiesPanel from "./EntitiesPanel";
 import NetworkPanel from "./NetworkPanel";
+import PeersPanel from "./PeersPanel";
 
 // Running the hub, from a browser instead of curl. The hub's password buys a short-lived session token which
 // lives in this tab's sessionStorage only; a 401 or 403 from anything drops it and asks again.
@@ -30,18 +27,6 @@ type View = (typeof VIEWS)[number];
 
 const lost = (e: unknown) => e instanceof ApiError && (e.status === 401 || e.status === 403);
 const missing = (e: unknown) => e instanceof ApiError && e.status === 404;
-
-/** Calibration, labelled: lower is better, and a negative error means the hub undersold what it offered. */
-function Calibration({ peer }: { peer: Peer | DirectoryHub }) {
-  const { t, intl } = useI18n();
-  const { reading, stars: n } = readCalibration(peer.error, peer.verdict);
-  if (reading === "unproven") return <span className="status">{t("finder.cal.unproven")}</span>;
-  return (
-    <span className={`status ${reading === "over" ? "no" : "ok"}`}>
-      {t(`finder.cal.${reading}` as Key, { stars: stars(n, intl) })}
-    </span>
-  );
-}
 
 /** The password form. Nothing else is on screen until it succeeds. */
 function SignIn({ onToken }: { onToken: (token: string) => void }) {
@@ -311,39 +296,6 @@ function BlocklistView({ onLost }: { onLost: () => void }) {
   );
 }
 
-/** The peers, each with how closely its published ratings held up. */
-function Neighbours() {
-  const { t } = useI18n();
-  const [out, setOut] = useState<AdminNeighbours | null>(null);
-  useEffect(() => {
-    api
-      .adminNeighbours()
-      .then(setOut)
-      .catch(() => setOut({ peers: [], blocked_hubs: [] }));
-  }, []);
-  if (out === null) return <p className="muted">{t("admin.loading")}</p>;
-  if (!out.peers.length) return <p className="muted">{t("admin.neighbours.empty")}</p>;
-  return (
-    <div className="stack loose">
-      <p className="muted small">{t("finder.cal.explain")}</p>
-      <ul className="rows">
-        {out.peers.map((p) => (
-          <li key={p.hub}>
-            <span className="stack tight">
-              <strong>{p.hub}</strong>
-              <span className="muted small">{p.why}</span>
-            </span>
-            <span className="stack tight">
-              <Calibration peer={p} />
-              <span className="muted small">{t("finder.cal.evidence", { n: p.evidence })}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 /** Chapter 3, operators only (`?admin`): sign in with the hub's password, then run the hub. */
 export default function AdminPanel({ onLeave }: { onLeave?: () => void }) {
   const { t } = useI18n();
@@ -408,7 +360,7 @@ export default function AdminPanel({ onLeave }: { onLeave?: () => void }) {
         {view === "entities" && <EntitiesPanel onLost={signOut} />}
         {view === "applications" && <Applications onLost={signOut} />}
         {view === "blocklist" && <BlocklistView onLost={signOut} />}
-        {view === "neighbours" && <Neighbours />}
+        {view === "neighbours" && <PeersPanel onLost={signOut} />}
       </div>
     </section>
   );

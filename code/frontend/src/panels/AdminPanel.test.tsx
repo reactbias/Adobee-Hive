@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, type AdminOverview, type AdminSettings, type Application } from "../api";
+import { ApiError, api, type AdminOverview, type AdminPeer, type AdminSettings, type Application } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
 import AdminPanel from "./AdminPanel";
@@ -57,6 +57,29 @@ const APPLICATION: Application = {
   next: "Nothing: a person reads every application.",
 };
 
+const PEER: AdminPeer = {
+  url: "https://a.example",
+  hub: "a.example",
+  hub_id: "a.example",
+  name: "",
+  note: "",
+  state: "active",
+  added_at: "2026-10-30T09:00:00",
+  added_by: "session",
+  changed_at: null,
+  removed_at: null,
+  removed_reason: null,
+  answers: null,
+  last_checked_at: null,
+  last_error: "",
+  blocked: false,
+  error: null,
+  error_stars: null,
+  evidence: 8,
+  verdict: "unproven",
+  why: "over its own claim",
+};
+
 const show = () =>
   render(
     <I18nProvider>
@@ -80,6 +103,13 @@ describe("the admin panel", () => {
     vi.spyOn(api, "adminOverview").mockResolvedValue(OVERVIEW);
     vi.spyOn(api, "adminSettings").mockResolvedValue(SETTINGS);
     vi.spyOn(api, "adminNeighbours").mockResolvedValue({ peers: [], blocked_hubs: [] });
+    vi.spyOn(api, "adminPeers").mockResolvedValue({
+      peers: [],
+      live: [],
+      seed: [],
+      from_environment: false,
+      blocked_hubs: [],
+    });
     vi.spyOn(api, "adminBlocklist").mockResolvedValue({ entries: [], kinds: ["hub", "entity"] });
     vi.spyOn(api, "adminApplications").mockResolvedValue({
       applications: [APPLICATION],
@@ -216,12 +246,23 @@ describe("the admin panel", () => {
   });
 
   it("labels a peer's calibration, lower being better", async () => {
+    // The Neighbours tab is PeersPanel now, so the same promise is checked through the panel that owns it.
     vi.spyOn(api, "adminLogin").mockResolvedValue({ token: "v1.1.abc", expires_in: 1800 });
-    vi.spyOn(api, "adminNeighbours").mockResolvedValue({
+    vi.spyOn(api, "adminPeers").mockResolvedValue({
       peers: [
-        { hub: "a.example", error: 5, error_stars: 0.5, evidence: 8, verdict: "weak", why: "over its own claim" },
-        { hub: "b.example", error: -5, error_stars: -0.5, evidence: 8, verdict: "good", why: "modest" },
+        { ...PEER, url: "https://a.example", hub: "a.example", error: 5, error_stars: 0.5, verdict: "weak" },
+        {
+          ...PEER,
+          url: "https://b.example",
+          hub: "b.example",
+          error: -5,
+          error_stars: -0.5,
+          verdict: "good",
+        },
       ],
+      live: ["https://a.example", "https://b.example"],
+      seed: [],
+      from_environment: false,
       blocked_hubs: [],
     });
     await signIn();

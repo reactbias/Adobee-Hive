@@ -93,13 +93,16 @@ def settings() -> dict[str, Any]:
 
 def overview() -> dict[str, Any]:
     """Everything an admin front page shows: the three stores, counted, plus peer standing."""
+    from . import peers as store
+
     peers = calibration.ranked()
     return {
         "hub": config.HIVE_HUB_ID,
         "name": config.HIVE_NAME,
         "index": {"entities": _index_size()},
         "neighbours": {
-            "configured": len(config.HIVE_PEER_URLS),
+            # The live list, which is the stored one once anything has been stored (peers.py).
+            "configured": len(store.urls()),
             "blocked": len(blocklist.blocked_hubs()),
             "with_evidence": len([p for p in peers if p["error"] is not None]),
         },
@@ -246,10 +249,12 @@ def _contact_rows(card: dict[str, Any], default: str) -> list[dict[str, Any]]:
 
 def neighbours() -> dict[str, Any]:
     """The peer list as a table: configured, blocked, and how each one's ratings have held up."""
+    from . import peers as store
+
     blocked = blocklist.blocked_hubs()
     standing = {p["hub"]: p for p in calibration.ranked()}
     rows = []
-    for url in config.HIVE_PEER_URLS:
+    for url in store.urls():
         hub_id = url.rstrip("/").split("//")[-1]
         row = standing.get(hub_id, {})
         rows.append(
@@ -266,6 +271,45 @@ def neighbours() -> dict[str, Any]:
         )
     extra = [s for hub_id, s in standing.items() if hub_id not in {r["hub"] for r in rows}]
     return {"peers": rows + extra, "blocked_hubs": sorted(blocked)}
+
+
+def peer_table() -> dict[str, Any]:
+    """The peers an operator can act on: URL, hub id, name, whether it answers, calibration, state.
+
+    A database read and nothing else. Reachability is the *stored* result of the last probe
+    (`POST /api/admin/peers/check`), never a fetch made while rendering, so an unreachable
+    neighbour cannot make this page slow or blank — it reads as "no answer" with the time it was
+    last tried, which is the honest thing to show anyway.
+    """
+    from . import peers as store
+
+    standing = {p["hub"]: p for p in calibration.ranked()}
+    blocked = blocklist.blocked_hubs()
+    rows = []
+    for row in store.listing():
+        cal = standing.get(row["hub"], {})
+        rows.append(
+            {
+                **row,
+                # Blocked is not removed: see peers.py. Both are shown, because an operator will
+                # otherwise reach for the wrong one.
+                "blocked": row["hub"] in blocked,
+                "error": cal.get("error"),
+                "error_stars": cal.get("error_stars"),
+                "evidence": cal.get("evidence", 0),
+                "verdict": cal.get("verdict", "unproven"),
+                "why": cal.get("why", "no introductions through this hub yet"),
+            }
+        )
+    return {
+        "peers": rows,
+        "live": store.urls(),
+        "seed": list(config.HIVE_PEER_URLS),
+        # True while nothing has been stored: the environment variable is still the live list, and
+        # the first change an operator makes is what takes the hub off it.
+        "from_environment": not rows,
+        "blocked_hubs": sorted(blocked),
+    }
 
 
 def directory() -> dict[str, Any]:

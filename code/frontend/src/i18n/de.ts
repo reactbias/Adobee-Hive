@@ -513,6 +513,43 @@ const de: Record<Key, string> = {
   "admin.ledger.who": "mit dem Merkmal {credential}, am {date}",
   "admin.credential.token": "Hub-Token",
   "admin.credential.session": "Browser-Sitzung",
+  "admin.peers.lead": "Die Hubs, die dieser fragt, wenn eine Suche über diese Stadt hinausgeht.",
+  "admin.peers.fromEnv":
+    "Es ist noch nichts gespeichert, dieser Hub läuft also weiter mit seiner Einstellung HIVE_PEER_URLS. Die erste Änderung hier übernimmt an deren Stelle.",
+  "admin.peers.empty": "Keine Nachbar-Hubs. Jede Suche bleibt auf diesem Hub.",
+  "admin.peers.add": "Hub hinzufügen",
+  "admin.peers.addDo": "Hinzufügen",
+  "admin.peers.url": "Basis-URL",
+  "admin.peers.name": "Hier angezeigter Name",
+  "admin.peers.hubId": "Hub-Kennung",
+  "admin.peers.reason": "Grund, erforderlich",
+  "admin.peers.reasonNeeded":
+    "Jede Änderung an dieser Liste braucht einen Grund, der in sechs Monaten noch lesbar ist.",
+  "admin.peers.check": "Jetzt prüfen",
+  "admin.peers.checking": "Alle Hubs werden gefragt",
+  "admin.peers.answers": "antwortet",
+  "admin.peers.silent": "keine Antwort",
+  "admin.peers.unasked": "noch nicht gefragt",
+  "admin.peers.lastChecked": "zuletzt versucht am {date}",
+  "admin.peers.added": "hinzugefügt am {date}",
+  "admin.peers.edit": "Bearbeiten",
+  "admin.peers.save": "Speichern",
+  "admin.peers.cancel": "Abbrechen",
+  "admin.peers.removeButton": "Nicht mehr fragen",
+  "admin.peers.removeConfirm": "{name} nicht mehr fragen?",
+  "admin.peers.removeWill":
+    "Dieser Hub fragt ihn nicht mehr und führt auch nicht mehr, was er weitergibt. Die nächste Suche läuft ohne ihn.",
+  "admin.peers.removeNotBlock":
+    "Das ist keine Sperre. Entfernen heisst, dass dieser Hub ihn nicht mehr anfragt; er darf weiter bestehen, und Sie können ihn morgen wieder hinzufügen.",
+  "admin.peers.removeDo": "Ja, nicht mehr fragen",
+  "admin.peers.removed": "entfernt, wird nicht mehr gefragt",
+  "admin.peers.blockButton": "Diesen Hub sperren",
+  "admin.peers.blockConfirm": "{name} in beide Richtungen sperren?",
+  "admin.peers.blockWill":
+    "Nichts von uns geht zu ihm und nichts von ihm kommt an, und eine Karte, die über ihn gelaufen ist, wird verworfen, selbst wenn ein anderer Nachbar sie übergibt.",
+  "admin.peers.blockNotRemove": "Das ist stärker als Entfernen. Entfernen hält diesen Hub nur davon ab, ihn zu fragen.",
+  "admin.peers.blockDo": "Sperren",
+  "admin.peers.blocked": "in beide Richtungen gesperrt",
   "admin.ledger.whoLimit":
     "Dieser Hub hat ein einziges gemeinsames Admin-Passwort, deshalb steht in jeder Zeile admin. Zeit, Grund und verwendetes Merkmal sind echt; die Person wird nicht erfasst, weil der Hub sie nicht unterscheiden kann.",
   "admin.applications.notDeployed": "Dieser Hub liefert die Warteschlange für Beitritte noch nicht.",
@@ -534,7 +571,6 @@ const de: Record<Key, string> = {
     "Eine Sperre braucht ein Ziel und einen Grund, der in sechs Monaten noch verständlich ist.",
   "admin.block.empty": "Dieser Hub hat niemanden ausgeschlossen.",
   "admin.block.lift": "Aufheben",
-  "admin.neighbours.empty": "Es sind keine benachbarten Hubs konfiguriert.",
 
   // Where a result came from, and one note on the hub's own settings
   "result.fromThisHub": "von diesem Hub",

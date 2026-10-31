@@ -27,9 +27,11 @@ def nothing_withdrawn(client):
     removals.init()
     with db.write() as cur:
         cur.execute("DELETE FROM hub_removals")
+        cur.execute("DELETE FROM hub_admin_log")
     yield
     with db.write() as cur:
         cur.execute("DELETE FROM hub_removals")
+        cur.execute("DELETE FROM hub_admin_log")
 
 
 def _an_entity(client) -> dict:

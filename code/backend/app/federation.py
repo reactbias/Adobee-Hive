@@ -8,6 +8,11 @@ already spent from `budget_ms` and refuses to forward when too little is left; p
 peer that misses the deadline is dropped from the answer, named in `federation.dropped`, and never fails the query.
 `PEERS_PER_HOP` caps the breadth at each hop, so fan-out cannot explode.
 
+The peer list itself comes from `peers.py`, which stores it: an operator adds, edits or removes a neighbour while
+the hub runs, and `HIVE_PEER_URLS` is only the seed a fresh hub starts from. Peer URLs still never come from a
+request — only from configuration or from an admin-authenticated change — so a stranger cannot use this hub to
+flood another.
+
 Trust is not transitive here. **Signatures are verified at the destination, not taken from the carrier**: a card
 that arrives over a peer is checked with `hive.verify_pinned` against the key pinned in *its own* hub's registry,
 which this hub fetches directly from that hub, not through the relay. A relaying hub can therefore withhold a card
@@ -127,7 +132,12 @@ async def _choose_peers(
     seen: list[str], transport: Transport
 ) -> tuple[list[tuple[str, dict[str, Any], float]], list[dict[str, str]]]:
     """The peers worth asking at this hop: not in `seen`, readable, the `PEERS_PER_HOP` most trusted first."""
-    urls = list(config.HIVE_PEER_URLS)
+    # The stored peer list, not the environment: a neighbour an operator added is asked by the very
+    # next query, and one they removed is not (peers.py). Read per query, so there is no cache to
+    # invalidate and no restart to wait for.
+    from . import peers as peer_store  # imported here: peers.check() reaches back into this module
+
+    urls = peer_store.urls()
     profiles = await asyncio.gather(*[_profile(url, transport) for url in urls])
     peers, skipped = [], []
     for url, profile in zip(urls, profiles, strict=False):

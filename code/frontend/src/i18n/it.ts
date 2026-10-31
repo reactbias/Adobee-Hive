@@ -513,6 +513,43 @@ const it: Record<Key, string> = {
   "admin.ledger.who": "con la credenziale {credential}, il {date}",
   "admin.credential.token": "token dell'hub",
   "admin.credential.session": "sessione del browser",
+  "admin.peers.lead": "Gli hub che questo interroga quando una ricerca va oltre questa città.",
+  "admin.peers.fromEnv":
+    "Non è ancora stato memorizzato nulla, quindi questo hub funziona ancora con l'impostazione HIVE_PEER_URLS. La prima modifica fatta qui prende il suo posto.",
+  "admin.peers.empty": "Nessun hub vicino. Ogni ricerca resta su questo hub.",
+  "admin.peers.add": "Aggiungi un hub",
+  "admin.peers.addDo": "Aggiungi",
+  "admin.peers.url": "URL di base",
+  "admin.peers.name": "Nome mostrato qui",
+  "admin.peers.hubId": "Identificativo dell'hub",
+  "admin.peers.reason": "Motivo, obbligatorio",
+  "admin.peers.reasonNeeded": "Ogni modifica a questo elenco richiede un motivo, ancora leggibile fra sei mesi.",
+  "admin.peers.check": "Controlla ora",
+  "admin.peers.checking": "Interrogazione di tutti gli hub",
+  "admin.peers.answers": "risponde",
+  "admin.peers.silent": "nessuna risposta",
+  "admin.peers.unasked": "non ancora interrogato",
+  "admin.peers.lastChecked": "ultimo tentativo il {date}",
+  "admin.peers.added": "aggiunto il {date}",
+  "admin.peers.edit": "Modifica",
+  "admin.peers.save": "Salva",
+  "admin.peers.cancel": "Annulla",
+  "admin.peers.removeButton": "Non interrogarlo più",
+  "admin.peers.removeConfirm": "Smettere di interrogare {name}?",
+  "admin.peers.removeWill":
+    "Questo hub smette di interrogarlo e di portare ciò che inoltra. La prossima ricerca andrà senza di lui.",
+  "admin.peers.removeNotBlock":
+    "Non è un blocco. Rimuovere significa che questo hub non lo contatta più; può continuare a esistere e domani lo potete riaggiungere.",
+  "admin.peers.removeDo": "Sì, non interrogarlo più",
+  "admin.peers.removed": "rimosso, non più interrogato",
+  "admin.peers.blockButton": "Blocca questo hub",
+  "admin.peers.blockConfirm": "Bloccare {name} in entrambe le direzioni?",
+  "admin.peers.blockWill":
+    "Nulla di nostro va a lui e nulla di suo arriva, e una carta passata da lui viene scartata anche se un altro vicino la consegna.",
+  "admin.peers.blockNotRemove":
+    "È più forte di una rimozione. Rimuovere impedisce soltanto a questo hub di interrogarlo.",
+  "admin.peers.blockDo": "Blocca",
+  "admin.peers.blocked": "bloccato in entrambe le direzioni",
   "admin.ledger.whoLimit":
     "Questo hub ha una sola password di amministrazione condivisa, quindi ogni riga riporta admin. Ora, motivo e credenziale usata sono reali; la persona non viene registrata, perché l'hub non sa distinguerla.",
   "admin.applications.notDeployed": "Questo hub non pubblica ancora la coda delle domande.",
@@ -533,7 +570,6 @@ const it: Record<Key, string> = {
   "admin.block.reasonNeeded": "Un blocco richiede un soggetto e un motivo ancora comprensibile fra sei mesi.",
   "admin.block.empty": "Questo hub non ha escluso nessuno.",
   "admin.block.lift": "Revoca",
-  "admin.neighbours.empty": "Non è configurato alcun hub vicino.",
 
   // Where a result came from, and one note on the hub's own settings
   "result.fromThisHub": "da questo hub",
