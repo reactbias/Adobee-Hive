@@ -556,6 +556,8 @@ def cancel(booking_id: str, receipt: str) -> dict[str, Any]:
     bk = found[0]
     if _check_receipt(bk["card_id"], receipt)["booking_id"] != booking_id:
         raise HiveError("Receipt does not belong to this booking.")
+    if bk["status"] == "cancelled":
+        raise HiveError("This booking is already cancelled.")
     with db.write() as cur:
         cur.execute("UPDATE hive_bookings SET status = 'cancelled' WHERE id = ?", [booking_id])
     _log(bk["card_id"], "cancelled", booking_id)
