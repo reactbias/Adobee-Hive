@@ -85,6 +85,23 @@ HOME = {
     "velowerk-bern": "bern",
     "lichtfeld-foto": "bern",
     "pension-limmat": "bern",
+    # bern — the rest of the test corpus (tools/make_corpus.py)
+    "coiffure-bluemlisalp": "bern",
+    "elektro-mattenhof": "bern",
+    "naehatelier-sulgenau": "bern",
+    "stimmwerk-aare": "bern",
+    "sanitaer-hofstetter": "bern",
+    "dachdecker-laengmoos": "bern",
+    "schreinerei-ostermundigen": "bern",
+    "gartenbau-weissenstein": "bern",
+    "treuhand-kehrli": "bern",
+    "reinigung-sternenfeld": "bern",
+    "hundesalon-wankdorf": "bern",
+    "uhrmacher-bubenberg": "bern",
+    "bildrahmen-kramgasse": "bern",
+    "fahrschule-breitenrain": "bern",
+    "sami-kaufmann": "bern",
+    "kaffee-marzili": "bern",
 }
 #: The kind each folder registers as. Only a filter now: discovery indexes what a card offers and
 #: needs, so a person is found by their skills in the same search that finds a room.
@@ -135,6 +152,22 @@ KIND = {
     "bildwerk-retusche": "service",
     "kurierdienst-sihlquai": "service",
     "gasthof-sihlwald": "hotel",
+    "coiffure-bluemlisalp": "service",
+    "elektro-mattenhof": "service",
+    "naehatelier-sulgenau": "service",
+    "stimmwerk-aare": "service",
+    "sanitaer-hofstetter": "service",
+    "dachdecker-laengmoos": "service",
+    "schreinerei-ostermundigen": "service",
+    "gartenbau-weissenstein": "service",
+    "treuhand-kehrli": "service",
+    "reinigung-sternenfeld": "service",
+    "hundesalon-wankdorf": "service",
+    "uhrmacher-bubenberg": "service",
+    "bildrahmen-kramgasse": "service",
+    "fahrschule-breitenrain": "service",
+    "sami-kaufmann": "person",
+    "kaffee-marzili": "cafe",
 }
 
 #: Folders whose card was compiled from public information rather than written by its subject. The
@@ -144,6 +177,7 @@ UNCLAIMED = frozenset(
     {
         "villa-hirzbrunnen",
         "imbiss-rheinbord",
+        "hundesalon-wankdorf",
     }
 )
 

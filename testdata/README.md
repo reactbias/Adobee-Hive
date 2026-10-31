@@ -10,7 +10,7 @@ Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule i
 | --- | --- | --- |
 | `basel` | stays, cafés, places to eat | a laundry, a locksmith, a data freelancer |
 | `zurich` | developers, designers, freelance technical work | a bike courier, a guesthouse in the woods |
-| `bern` | local services and trades | — |
+| `bern` | local services and trades | a café, a developer who keeps COBOL alive |
 
 ## Why this corpus exists
 
@@ -64,6 +64,20 @@ the measurement.
 | someone to build us a smartphone app | `basil-zuercher` | zurich | iPhone and Android work | "Apps für iPhone und Android" |
 | somewhere to put our machines that is not a big cloud provider | `datenhaus-oerlikon` | zurich | small hosting outfit | "Wir stellen Server auf und betreuen sie" |
 | same day delivery by bicycle | `kurierdienst-sihlquai` | zurich | courier, off this hub's domain | "Vier Leute, vier Velos" |
+| where can I get a haircut | `schnittwerk-bern` | bern | two-chair hairdresser, walk-ins | "Cut, wash and finish", "Walk-ins before eleven" |
+| someone to braid my hair for a party | `coiffure-bluemlisalp` | bern | hairdresser, by appointment | "Wir schneiden, färben und flechten" |
+| electrician to put in a socket | `elektro-mattenhof` | bern | electrical work and inspections | "Steckdosen, Sicherungen, Elektrokontrollen" |
+| tailor to shorten my trousers | `naehatelier-sulgenau` | bern | alterations | "Wir ändern Kleider: kürzen, enger machen" |
+| piano tuner | `stimmwerk-aare` | bern | tunes pianos across the canton | "Wir stimmen Klaviere und Flügel" |
+| accountant for our VAT | `treuhand-kehrli` | bern | bookkeeping for small businesses | "Buchhaltung, Mehrwertsteuer" |
+| plumber for a leak on a Sunday | `sanitaer-hofstetter` | bern | emergency plumbing | "Wir kommen, wenn es tropft" |
+| roofer after a storm | `dachdecker-laengmoos` | bern | roofing and repairs | "Wir decken Dächer", "was der Sturm aufgemacht hat" |
+| gardener to cut a hedge twice a year | `gartenbau-weissenstein` | bern | garden maintenance | "Wir pflegen Gärten, schneiden Hecken" |
+| my grandfather's wind up clock has stopped | `uhrmacher-bubenberg` | bern | watchmaker, mechanical only | "Wir bringen mechanische Uhren wieder zum Laufen" |
+| driving lessons in a car with an automatic gearbox | `fahrschule-breitenrain` | bern | driving school, category B | "Fahrstunden", "auch mit Automat" |
+| grooming for a nervous dog | `hundesalon-wankdorf` | bern | dog groomer (**unclaimed lead**) | "Wir baden und scheren Hunde, auch die nervösen" |
+| picture framing for a large print | `bildrahmen-kramgasse` | bern | framing shop | "Wir fassen Bilder ein" |
+| legacy code nobody dares to touch | `sami-kaufmann` | bern | COBOL and Delphi, off this hub's domain | "I keep old software alive" |
 
 <!-- /answer-key -->
 
@@ -94,6 +108,13 @@ Some needs are answered by an entity on a different hub, which is what federatio
 | `datenhaus-oerlikon` — "eine Elektrikerin für einen zweiten Stromkreis" | zurich | `elektro-mattenhof` | bern |
 | `kurierdienst-sihlquai` — "unsere vier Velos im Winter wartet" | zurich | `velowerk-bern` — service and safety check | bern |
 | `aylin-dervis` and `grid-ops` — "a technical writer" | zurich | `anouk-pfister` — runbooks | zurich |
+| `gaestehaus-sonnenrain` — "eine Gärtnerin für den Frühling" | basel | `gartenbau-weissenstein` | bern |
+| `roesterei-vogelsang` — "eine Buchhalterin für die Mehrwertsteuer" | basel | `treuhand-kehrli` | bern |
+| `wirtshaus-anker` — "ein Sanitär, der am Sonntag abnimmt" | basel | `sanitaer-hofstetter` — emergency at the weekend | bern |
+| `logis-vieux-moulin` — "un couvreur pour le toit" | basel | `dachdecker-laengmoos` | bern |
+| `kanalhaus-lofts` — "eine Reinigungsfirma für den Wechseltag" | basel | `reinigung-sternenfeld` | bern |
+| `sami-kaufmann` — "someone to break it on purpose" | bern | `leonie-frei` — breaks release candidates | zurich |
+| `schreinerei-ostermundigen` — "jemand, der unsere Möbel fotografiert" | bern | `lichtfeld-foto` | bern |
 
 ## Trust signals
 
@@ -103,7 +124,7 @@ Varied on purpose, because a real directory is mostly unrated:
   booking (`hive.review`), so seeding cannot manufacture one, and it should not be able to.
   `reviews.md` in a few folders is owner-written prose; the parser walks past it and it never becomes
   a rating.
-- **Unclaimed:** `villa-hirzbrunnen`, `imbiss-rheinbord`. Compiled from public information, so the
+- **Unclaimed:** `villa-hirzbrunnen`, `imbiss-rheinbord`, `hundesalon-wankdorf`. Compiled from public information, so the
   hub reports them as leads and no agent may treat them as a business that agreed to anything.
 - **Contact sharing:** published, `ask first` and `never` all appear, so consent is exercised rather
   than assumed.
