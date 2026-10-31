@@ -350,3 +350,24 @@ def test_business_discovery_never_lists_people(client):
     assert "person-mira" not in {c["id"] for c in found["matches"] + found["excluded"]}
     assert not any(m["detail"] for m in client.get("/api/owner/person-mira").json()["missed_demand"])
     assert hive.discover(kind="person")["matches"] == []  # not even when asked by kind
+
+
+def test_agent_falls_back_offline_when_the_model_hangs(client, monkeypatch):
+    async def slow(*_args, **_kwargs):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(agent.config, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(agent.config, "AGENT_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(agent, "_run_openai", slow)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["mode"] == "scripted" and out["fallback"] == "OpenAI unavailable"
+
+
+def test_agent_falls_back_offline_when_the_model_returns_garbage(client, monkeypatch):
+    async def garbage(*_args, **_kwargs):
+        raise json.JSONDecodeError("bad", "", 0)
+
+    monkeypatch.setattr(agent.config, "LLM_PROVIDER", "openai")
+    monkeypatch.setattr(agent, "_run_openai", garbage)
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
+    assert out["mode"] == "scripted" and out["fallback"] == "OpenAI unavailable"

@@ -101,7 +101,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 | `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
 | `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
-| `explore_ask` | Answer a question from the example cards, with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
+| `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 

@@ -143,6 +143,9 @@ const de: Record<Key, string> = {
   "chat.role.mirror": "Agent · ungeprüfte Kopie",
   "chat.ask.call": "Wer kann das beantworten? {question}",
   "chat.ask.found": "Betriebe mit einer Antwort auf ihrer Karte: {n}.",
+  "chat.ask.uncovered":
+    "Keine Karte deckt das ab, also schicke ich Ihnen nicht einfach die nächstbeste. Wird es oft gefragt, sieht ein Geschäft, was es als Nächstes anbieten könnte.",
+  "error.offline": "Der Server startet gerade oder ist nicht erreichbar. Bitte versuchen Sie es gleich nochmals.",
   "chat.ask.checked":
     "Geprüfte Karten: {n}. Vom Inhaber signiert: {signed}. Aus öffentlichen Websites zusammengestellt, als nicht beansprucht markiert: {unclaimed}.",
   "chat.role.verifier": "Agent · prüft die Signaturen",

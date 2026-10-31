@@ -1,16 +1,38 @@
 // Typed client for the FastAPI backend. VITE_API_URL is set by the Pages build; empty means same origin (dev proxy).
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
-async function call<T>(path: string, init?: RequestInit): Promise<T> {
+/** Thrown when the backend can't be reached; the page shows t("error.offline") for it. */
+export const OFFLINE = "error.offline";
+// Render's free backend sleeps and takes up to a minute to wake. Past this, the chat stops "thinking" and says so.
+const TIMEOUT_MS = 90_000;
+const COLD = new Set([502, 503, 504]);
+
+async function call<T>(path: string, init?: RequestInit, retry = true): Promise<T> {
   // The language switch sets <html lang>; the backend answers in it (agent replies, the second opinion).
   const lang = { "Accept-Language": document.documentElement.lang || "en" };
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers:
-      init?.body instanceof FormData
-        ? { ...lang, ...init?.headers }
-        : { "Content-Type": "application/json", ...lang, ...init?.headers },
-  });
+  // Only a read is retried after a lost connection: a POST may have arrived, and a booking must not be sent twice.
+  const safe = !init?.method || init.method === "GET";
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: abort.signal,
+      headers:
+        init?.body instanceof FormData
+          ? { ...lang, ...init?.headers }
+          : { "Content-Type": "application/json", ...lang, ...init?.headers },
+    });
+  } catch {
+    if (retry && safe && !abort.signal.aborted) return call<T>(path, init, false);
+    throw new Error(OFFLINE);
+  } finally {
+    clearTimeout(timer);
+  }
+  // A gateway error means the request never reached the app (cold start): safe to send again.
+  if (COLD.has(res.status) && retry) return call<T>(path, init, false);
+  if (COLD.has(res.status)) throw new Error(OFFLINE);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // FastAPI sends a string for our errors and a list of field errors for invalid input
@@ -292,6 +314,9 @@ export interface AskResult {
   rules: string[];
   answer: string | null;
   mode: string;
+  /** No card covers the request: an honest empty answer, counted as demand. */
+  unserved?: boolean;
+  relevance?: { by: string; reason: string | null };
 }
 /** No card answered: the scout looked on the public web. Only cards verified on their own site were added. */
 export interface ScoutResult {

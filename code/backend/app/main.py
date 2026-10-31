@@ -258,9 +258,11 @@ class AskApprove(BaseModel):
 @app.post("/api/ask")
 async def ask_hive(body: AskRequest, request: Request) -> dict[str, Any]:
     """Answer a question from the example cards. Anything transactional comes back held, as pending."""
-    result = _hive_call(explore.ask, body.question, body.mood)
-    if config.LLM_ENABLED and result["replies"]:
+    if config.LLM_ENABLED:
         guard.llm_calls.check(request)
+    # With a key the model judges which cards cover the request; it runs off the event loop and falls back offline.
+    result = await asyncio.to_thread(_hive_call, explore.ask, body.question, body.mood, judge=config.LLM_ENABLED)
+    if config.LLM_ENABLED and result["replies"]:
         result = await asyncio.to_thread(explore.phrase, result)
     return result
 

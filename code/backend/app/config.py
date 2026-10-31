@@ -44,3 +44,7 @@ LLM_ENABLED = LLM_PROVIDER != "offline"
 # Comma-separated URLs federate several Hives, e.g. another team's https://.../mcp/
 HIVE_MCP_URLS = [u.strip() for u in os.getenv("HIVE_MCP_URLS", "").split(",") if u.strip()]
 AGENT_MAX_TURNS = int(os.getenv("AGENT_MAX_TURNS", "10"))
+# A model call that hangs must not leave the chat "thinking": one call gives up after LLM_TIMEOUT_S, a whole agent
+# run after AGENT_TIMEOUT_S, and the offline planner answers instead.
+LLM_TIMEOUT_S = float(os.getenv("LLM_TIMEOUT_S", "25"))
+AGENT_TIMEOUT_S = float(os.getenv("AGENT_TIMEOUT_S", "60"))

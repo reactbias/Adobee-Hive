@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import {
   api,
+  OFFLINE,
   type AgentOptions,
   type AgentResult,
   type AskResult,
@@ -316,7 +317,7 @@ export default function TravellerAgent() {
                 </fieldset>
               </details>
             )}
-            {error && <p className="error">{error}</p>}
+            {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
           </>
         }
       >
