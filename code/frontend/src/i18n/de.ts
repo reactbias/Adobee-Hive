@@ -227,6 +227,22 @@ const de: Record<Key, string> = {
   "ask.ex1": "Was läuft diesen Monat bei BaselHack?",
   "ask.ex2": "Planen Sie mir ein Abenteuer unter 500 CHF",
   "ask.empty": "Noch keine Karte beantwortet das. Es wird als verpasste Nachfrage festgehalten, ohne Ihre Frage.",
+  "scout.call": "Noch keine Karte im Hive beantwortet das. Ich suche ausserhalb des Hive, im öffentlichen Web.",
+  "scout.found":
+    "Im Web gefunden und auf der eigenen Website geprüft: {n}. Als nicht beanspruchte Karten in den Hive aufgenommen.",
+  "scout.verified":
+    "Ich habe jede Website selbst geöffnet: Sie antwortet, der Name steht darauf, sie ist nicht geschlossen. Auf die Karten kam nur, was die Seite selbst sagt.",
+  "scout.rejected": "Abgelehnt",
+  "scout.why.public_url": "keine öffentliche Website",
+  "scout.why.reachable": "die Website antwortet nicht",
+  "scout.why.name_on_site": "der Name steht nicht auf der Website",
+  "scout.why.not_closed": "die Website sagt geschlossen oder zu verkaufen",
+  "scout.why.hive_full": "der Demo-Hive ist voll",
+  "scout.none":
+    "Nichts im öffentlichen Web hat die Prüfung bestanden, darum wurde nichts aufgenommen. Ihre Anfrage zählt als verpasste Nachfrage.",
+  "scout.unavailable": "Die Websuche ist gerade nicht erreichbar. Ihre Anfrage zählt als verpasste Nachfrage.",
+  "scout.unclaimed":
+    "Diese Karten sind nicht beansprucht: eben aus dem öffentlichen Web zusammengestellt, nicht vom Unternehmen bestätigt. Die nächste solche Anfrage findet sie direkt im Hive.",
   "ask.source": "Zusammengestellt aus {url} am {date}. Vom Betrieb nicht geprüft.",
   "ask.free": "Kostenlos",
   "ask.per": "{price} pro {per}",

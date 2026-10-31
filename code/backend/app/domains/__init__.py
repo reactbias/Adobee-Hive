@@ -8,12 +8,12 @@ other domain is a module here with a `register(server)` function, listed in DOMA
 
 from mcp.server.mcpserver import MCPServer
 
-from . import explore, hr
+from . import explore, hr, scout
 from .base import safe
 
 __all__ = ["DOMAINS", "register_all", "safe"]
 
-DOMAINS = [hr, explore]
+DOMAINS = [hr, explore, scout]
 
 
 def register_all(server: MCPServer) -> None:

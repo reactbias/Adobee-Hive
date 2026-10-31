@@ -229,6 +229,21 @@ const en = {
   "ask.ex1": "What's going on at BaselHack this month?",
   "ask.ex2": "Plan me an adventure under 500 CHF",
   "ask.empty": "No card answers this yet. That is recorded as missed demand, without your question.",
+  "scout.call": "Nothing in the Hive answers this yet. I'll look beyond the Hive, on the public web.",
+  "scout.found": "Found on the web and verified on their own websites: {n}. Added to the Hive as unclaimed cards.",
+  "scout.verified":
+    "I opened every website myself: it answers, the name is on the page, it is not closed. Only facts the page states went on the cards.",
+  "scout.rejected": "Turned down",
+  "scout.why.public_url": "not a public website",
+  "scout.why.reachable": "the site does not answer",
+  "scout.why.name_on_site": "the name is not on the site",
+  "scout.why.not_closed": "the site says closed or for sale",
+  "scout.why.hive_full": "the demo Hive is full",
+  "scout.none":
+    "Nothing on the public web passed the checks, so nothing was added. Your request counts as missed demand.",
+  "scout.unavailable": "The web search is not reachable right now. Your request counts as missed demand.",
+  "scout.unclaimed":
+    "These cards are unclaimed: compiled just now from the public web, not verified by the business. The next request like this finds them in the Hive.",
   "ask.source": "Compiled from {url} on {date}. Not verified by the business.",
   "ask.free": "Free",
   "ask.per": "{price} per {per}",

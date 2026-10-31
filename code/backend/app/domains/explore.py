@@ -21,7 +21,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from .. import config, hive, llm
-from . import examples
+from . import hr
 from .base import safe
 
 log = logging.getLogger(__name__)
@@ -97,10 +97,8 @@ STOP = {
 
 
 def _cards() -> list[dict[str, Any]]:
-    cards = []
-    for kind in examples.KINDS:
-        cards += hive.list_cards(kind)
-    return cards
+    """Every card that is neither a stay nor a person: the examples and whatever the scout added from the web."""
+    return [c for c in hive.list_cards() if c["kind"] not in (*hive.STAY_KINDS, hr.KIND)]
 
 
 def _price_chf(price: dict[str, Any] | None) -> float | None:
@@ -137,7 +135,12 @@ def ask(question: str, mood: str | None = None, today: date | None = None) -> di
     scope = named or cards
     terms = _terms(q, scope)
     corpus = " ".join(f"{i['title']} {i.get('summary', '')} {' '.join(i['tags'])}" for c in scope for i in _items(c))
-    terms = [t for t in terms if t in corpus.lower()]  # words no card knows ("weekend") make it an open question
+    known = [t for t in terms if t in corpus.lower()]
+    # Words no card knows ("weekend") make it an open question, answered by mood. Without a mood, a question whose
+    # every word is unknown ("a taxi to Aesch") has no answer here: say so, so the scout can look on the web.
+    if terms and not known and not named and mood is None:
+        scope = []
+    terms = known
     wants_now = bool(NOW.search(q))
     budget_m = BUDGET.search(q)
     budget = float(budget_m.group(1)) * (EUR_TO_CHF if CURRENCY.search(q) else 1) if budget_m else None
