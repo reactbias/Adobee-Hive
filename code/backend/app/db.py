@@ -3,7 +3,6 @@
 Tables are created by the modules that own them (see hive.SCHEMA_SQL).
 """
 
-import shutil
 import threading
 import uuid
 from collections.abc import Iterator
@@ -20,7 +19,7 @@ _conn: duckdb.DuckDBPyConnection | None = None
 
 
 def init() -> None:
-    """Open the DuckDB file (restoring it from S3 first when configured) and lock down external access."""
+    """Open the DuckDB file (restoring it from Postgres first when configured) and lock down external access."""
     global _conn
     if _conn is not None:
         return
@@ -34,11 +33,12 @@ def init() -> None:
 
 
 def close() -> None:
-    """Close the connection; called on app shutdown."""
+    """Close the connection and wait for the last snapshot; called on app shutdown."""
     global _conn
     if _conn is not None:
         _conn.close()
         _conn = None
+    storage.flush()
 
 
 @contextmanager
@@ -55,14 +55,12 @@ def cursor() -> Iterator[duckdb.DuckDBPyConnection]:
 
 @contextmanager
 def write() -> Iterator[duckdb.DuckDBPyConnection]:
-    """Cursor for writes; snapshots the file to S3 afterwards when configured."""
+    """Cursor for writes; snapshots the file to Postgres afterwards when configured."""
     with cursor() as cur:
         yield cur
-        if config.DUCKDB_S3_URI:
+        if storage.enabled():
             cur.execute("CHECKPOINT")
-            copy = config.DUCKDB_PATH.with_suffix(".snapshot")
-            shutil.copyfile(config.DUCKDB_PATH, copy)
-            storage.snapshot(copy)
+            storage.snapshot(config.DUCKDB_PATH.read_bytes())
 
 
 def rows(cur: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:

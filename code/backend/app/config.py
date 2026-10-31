@@ -14,8 +14,9 @@ CLAUDE_FAST_MODEL = os.getenv("CLAUDE_FAST_MODEL", "claude-haiku-5-5")
 CLAUDE_FALLBACKS = os.getenv("CLAUDE_FALLBACKS", "default")
 
 DUCKDB_PATH = Path(os.getenv("DUCKDB_PATH", str(BASE_DIR / "data" / "abh.duckdb")))
-# Optional: s3://bucket/key.duckdb. Restored on boot, uploaded after each write.
-DUCKDB_S3_URI = os.getenv("DUCKDB_S3_URI", "")
+# Optional Postgres (postgresql://...): the DuckDB file is restored from it on boot and saved after each write,
+# so data survives redeploys on hosts without a persistent disk. Empty = local file only.
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
