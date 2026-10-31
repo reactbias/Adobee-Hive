@@ -19,7 +19,7 @@ from typing import Any
 import anthropic
 from mcp import Client
 
-from . import config, hive, llm
+from . import config, hive, llm, second_opinion
 from .mcp_server import server as local_server
 
 log = logging.getLogger(__name__)
@@ -91,14 +91,21 @@ class HiveConnections:
 
 async def run(messages: list[dict[str, str]]) -> dict[str, Any]:
     """messages: [{role: user|assistant, content: str}], last one from the user."""
+    text = messages[-1]["content"]
     async with HiveConnections() as hives:
         if config.LLM_ENABLED:
             try:
-                return await _run_claude(hives, messages)
+                result = await _run_claude(hives, messages)
             except anthropic.APIError:  # out of credit, rate limit, outage: the demo goes on offline
                 log.exception("Claude unavailable, falling back to the scripted planner")
-                return await _run_scripted(hives, messages[-1]["content"]) | {"fallback": "Claude unavailable"}
-        return await _run_scripted(hives, messages[-1]["content"])
+                result = await _run_scripted(hives, text) | {"fallback": "Claude unavailable"}
+        else:
+            result = await _run_scripted(hives, text)
+    if result["pending"]:  # a second agent checks the pick before the human is asked
+        result["second_opinion"] = await second_opinion.review(
+            text, parse_request(text), result["pending"]["input"], result["steps"]
+        )
+    return result
 
 
 async def approve(pending: dict[str, Any]) -> dict[str, Any]:
