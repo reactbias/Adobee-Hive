@@ -17,6 +17,11 @@ describe("styles", () => {
     expect(hover).toMatch(/color:\s*var\(--ink\)/);
   });
 
+  it("keeps a result card's name readable on hover, over the dark hover of every other button", () => {
+    // all: unset loses to button:hover:not(:disabled) on specificity, so the name needs its own hover rule.
+    expect(rule(".card-row h3 button:hover:not(:disabled)")).toMatch(/background:\s*none/);
+  });
+
   it("shows a clamped Try example in full on hover and focus", () => {
     expect(rule(".brief .example:hover,\n.brief .example:focus-visible")).toMatch(/-webkit-line-clamp:\s*unset/);
   });
