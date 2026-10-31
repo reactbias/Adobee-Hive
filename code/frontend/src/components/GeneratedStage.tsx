@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { metres, money } from "../lib/format";
@@ -7,19 +7,40 @@ import { Frame } from "./Chapter";
 
 // A search draws one row per Card. A tap opens a Card one part at a time: who it is, then each
 // offering, then the question only a person can answer, then what happens next. Details opens the whole chat.
+// The cards and Details are two views of one agent run: the hold, the yes and the receipt live in the page.
 
 const STEP_MS = 520;
 
 const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 
+/** What the agent holds or booked for this request: the same run Details shows, never a copy of it. */
+export type Deal = {
+  /** The card the agent holds a booking for, waiting on the person's yes. */
+  heldFor?: string;
+  heldName?: string;
+  /** The agent's own question with its Approve and Decline, the one Details pins under the chat. */
+  gate?: ReactNode;
+  /** The card the booking went to, once the person approved. */
+  bookedFor?: string;
+  /** The signed receipt and what comes after it. */
+  receipt?: ReactNode;
+  /** The agent ran and held nothing: what it said instead. */
+  answer?: string;
+  working: boolean;
+  /** Hand this request to the agent, which holds a booking and asks again. */
+  onAsk: () => void;
+};
+
 export default function GeneratedStage({
   scene,
   onDetails,
   detailsOpen = false,
+  deal,
 }: {
   scene: Scene;
   onDetails: () => void;
   detailsOpen?: boolean;
+  deal?: Deal;
 }) {
   const { t } = useI18n();
   const count = scene.hits.length;
@@ -60,6 +81,7 @@ export default function GeneratedStage({
         <CardHit
           key={hit.card.id}
           hit={hit}
+          deal={deal}
           origin={hubName(scene.federation, hit.found?.origin ?? "")}
           onFollowing={onFollowing}
           onDetails={onDetails}
@@ -118,12 +140,14 @@ function partsIn(hit: Hit): number {
 function CardHit({
   hit,
   origin,
+  deal,
   onFollowing,
   onDetails,
 }: {
   hit: Hit;
   /** The name of the hub the result came from, for a result that travelled. */
   origin: string;
+  deal?: Deal;
   onFollowing: (id: string, pending: boolean) => void;
   onDetails: () => void;
 }) {
@@ -147,6 +171,7 @@ function CardHit({
   const path = hit.found?.path ?? [];
   const why = hit.found?.why ?? [];
   const hops = hit.found?.hops ?? 0;
+  const status = deal?.bookedFor === card.id ? "booked" : deal?.heldFor === card.id && !deal.bookedFor ? "held" : null;
   return (
     <article className={opened ? "card-hit open" : "card-hit"}>
       <div className="card-row">
@@ -157,6 +182,9 @@ function CardHit({
         </h3>
         {card.tagline && <p className="card-tagline">{card.tagline}</p>}
         <p className={score === null ? "card-rating none" : "card-rating"}>
+          {status && (
+            <span className={`status ${status === "booked" ? "ok" : "warm"}`}>{t(`card.status.${status}`)}</span>
+          )}
           {score === null ? t("card.rating.none") : <b>{t("card.rating.score", { score })}</b>}
         </p>
         {hops > 0 && origin && (
@@ -223,8 +251,10 @@ function CardHit({
               key={picked}
               listing={chosen}
               ask={hit.acting && picked?.startsWith("offer:") === true}
+              cardId={card.id}
               name={card.name}
               policy={card.policy}
+              deal={deal}
               onFollowing={setListingDrawing}
               onDetails={onDetails}
               onOther={() => setPicked(null)}
@@ -298,44 +328,36 @@ function Listing({
   );
 }
 
-/** After a yes: the confirmation, the next steps, then the rating. */
-const AFTER_YES = 3;
-
-/** The chosen file, one field at a time, then the yes if this request was an action, then what comes next. */
+/** The chosen file, one field at a time, then, if this request was an action, where the agent stands on it. */
 function OpenListing({
   listing,
   ask,
+  cardId,
   name,
   policy,
+  deal,
   onFollowing,
   onDetails,
   onOther,
 }: {
   listing: { title: string; fields: Field[] };
   ask: boolean;
+  cardId: string;
   name: string;
   policy?: string;
+  deal?: Deal;
   onFollowing: (pending: boolean) => void;
-  /** Hand the request to the agent chat, which asks again before anything is booked or paid. */
+  /** Open the agent chat on this request. */
   onDetails: () => void;
   /** Back to the card's list, with nothing chosen. */
   onOther: () => void;
 }) {
   const { t } = useI18n();
-  const [decision, setDecision] = useState<"open" | "yes" | "no">("open");
-  const [given, setGiven] = useState<number | null>(null);
   const opened = useReveal(listing.fields.length + (ask ? 1 : 0));
-  const afterYes = useReveal(decision === "yes" ? AFTER_YES : 0);
-  const afterNo = useReveal(decision === "no" ? 1 : 0);
-  const afterRate = useReveal(given === null ? 0 : 1);
-  useEffect(() => {
-    const pending =
-      opened < listing.fields.length + (ask ? 1 : 0) ||
-      (decision === "yes" && afterYes < AFTER_YES) ||
-      (decision === "no" && afterNo < 1) ||
-      (given !== null && afterRate < 1);
-    onFollowing(pending);
-  }, [opened, listing.fields.length, ask, decision, afterYes, afterNo, given, afterRate, onFollowing]);
+  useEffect(
+    () => onFollowing(opened < listing.fields.length + (ask ? 1 : 0)),
+    [opened, listing.fields.length, ask, onFollowing],
+  );
   const fields = listing.fields.slice(0, opened);
   const showAsk = ask && opened > listing.fields.length;
   return (
@@ -351,61 +373,74 @@ function OpenListing({
         </dl>
       )}
       {showAsk && (
-        <div className="gate card-step">
-          <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
-          <h3>{t("card.gate", { title: listing.title, name })}</h3>
-          {policy && <p>{policy}</p>}
-          {decision === "open" && (
-            <div className="row gate-actions">
-              <button onClick={() => setDecision("yes")}>{t("card.yes")}</button>
-              <button className="quiet" onClick={() => setDecision("no")}>
-                {t("agent.decline")}
-              </button>
-            </div>
-          )}
-          <p className="fine">{t("card.fine")}</p>
-          {decision === "yes" && afterYes >= 1 && <p className="status ok card-step">{t("card.yes.done")}</p>}
-          {decision === "yes" && afterYes >= 2 && (
-            <div className="card-next card-step">
-              <span className="label">{t("card.next.title")}</span>
-              <p>{t("card.next.agent.body", { name })}</p>
-              <div className="row gate-actions">
-                <button onClick={onDetails}>{t("card.next.agent")}</button>
-                <button className="quiet" onClick={onOther}>
-                  {t("card.next.other")}
-                </button>
-              </div>
-            </div>
-          )}
-          {decision === "yes" && afterYes >= 3 && (
-            <div className="card-step">
-              <span className="label">{t("card.rate.ask")}</span>
-              <div className="stars" role="radiogroup" aria-label={t("card.rate.ask")}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button
-                    key={n}
-                    role="radio"
-                    aria-checked={given === n * 10}
-                    aria-label={String(n)}
-                    className={given !== null && n * 10 <= given ? "on" : ""}
-                    onClick={() => setGiven(n * 10)}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {decision === "no" && afterNo >= 1 && <p className="dim card-step">{t("agent.declined")}</p>}
-        </div>
-      )}
-      {given !== null && afterRate >= 1 && (
-        <p className="card-rating card-step">
-          <span className="label">{t("card.rate.yours")}</span>{" "}
-          <b>{t("card.rating.score", { score: (given / 10).toFixed(1) })}</b>
-        </p>
+        <AgentStand
+          deal={deal}
+          cardId={cardId}
+          title={listing.title}
+          name={name}
+          policy={policy}
+          onDetails={onDetails}
+          onOther={onOther}
+        />
       )}
     </>
+  );
+}
+
+/**
+ * Where the agent stands on this card, read from the run Details shows: the receipt once booked, its own question
+ * while it holds this card, a pointer when it holds another, its answer when it held nothing, otherwise the yes
+ * that hands the request to it.
+ */
+function AgentStand({
+  deal,
+  cardId,
+  title,
+  name,
+  policy,
+  onDetails,
+  onOther,
+}: {
+  deal?: Deal;
+  cardId: string;
+  title: string;
+  name: string;
+  policy?: string;
+  onDetails: () => void;
+  onOther: () => void;
+}) {
+  const { t } = useI18n();
+  if (deal?.bookedFor === cardId) return <div className="card-step">{deal.receipt}</div>;
+  if (deal?.heldFor === cardId && !deal.bookedFor) return <div className="card-step">{deal.gate}</div>;
+  const elsewhere = deal?.bookedFor ? undefined : deal?.heldFor && deal.heldName;
+  return (
+    <div className="gate card-step">
+      <span className="eyebrow">{t("agent.gate.eyebrow")}</span>
+      <h3>{t("card.gate", { title, name })}</h3>
+      {policy && <p>{policy}</p>}
+      {deal?.working ? (
+        <p className="status warm" role="status">
+          {t("card.asking", { name })}
+        </p>
+      ) : elsewhere || deal?.answer ? (
+        <>
+          <p>{elsewhere ? t("card.held.other", { name: elsewhere }) : deal?.answer}</p>
+          <div className="row gate-actions">
+            <button className="ghost" onClick={onDetails}>
+              {t("card.details")}
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="row gate-actions">
+          <button onClick={deal?.onAsk ?? onDetails}>{t("card.yes")}</button>
+          <button className="quiet" onClick={onOther}>
+            {t("agent.decline")}
+          </button>
+        </div>
+      )}
+      <p className="fine">{t("card.fine")}</p>
+    </div>
   );
 }
 
