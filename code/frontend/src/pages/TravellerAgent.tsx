@@ -17,6 +17,7 @@ import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
 import ActivityPanel from "../panels/ActivityPanel";
+import NetworkPanel from "../panels/NetworkPanel";
 import OwnerPanel from "../panels/OwnerPanel";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -517,6 +518,7 @@ export default function TravellerAgent() {
         initial={owner?.id}
         sectionRef={businessRef}
       />
+      <NetworkPanel />
       {demoMode() && <ActivityPanel />}
     </>
   );

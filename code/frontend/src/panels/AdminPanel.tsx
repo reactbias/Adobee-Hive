@@ -16,6 +16,7 @@ import {
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
+import NetworkPanel from "./NetworkPanel";
 
 // Running the hub, from a browser instead of curl. The hub's password buys a short-lived session token which
 // lives in this tab's sessionStorage only; a 401 or 403 from anything drops it and asks again.
@@ -142,6 +143,7 @@ function Overview({ overview, settings }: { overview: AdminOverview | null; sett
         <p className="muted small">{t("admin.settingsReadOnly")}</p>
         <p className="muted small">{t("admin.settingsEnglish")}</p>
       </section>
+      <NetworkPanel />
     </div>
   );
 }
