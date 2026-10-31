@@ -18,3 +18,7 @@ assets/anim/prev-*.png
 # Runtime state from lan.sh: logs, pidfiles, DuckDB files, and the demo entities' Ed25519
 # private keys. None of it belongs in the repo, least of all the keys.
 .lan/
+
+# Runtime state from the backend. The DuckDB file lives here, and any folder-link implementation that
+# claims a handle writes its private key here too. One `git add -A` is all it takes; keys least of all.
+code/backend/data/
