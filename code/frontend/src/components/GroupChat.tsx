@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { AskResult, Booking, Critic, Handoff, SecondOpinion, Step } from "../api";
+import type { AskReply, AskResult, Booking, Critic, Handoff, ScoutResult, SecondOpinion, Step } from "../api";
 import { AskCard } from "./AskParts";
 import { useI18n } from "../i18n";
+import type { Key } from "../i18n/en";
 import { delayFor, type Beat } from "../lib/pace";
 import { demoMode } from "../lib/demo";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
@@ -25,6 +26,8 @@ export type Segment =
   | { kind: "next" }
   | { kind: "refused" }
   | { kind: "ask"; result: AskResult }
+  /** No card answered: the scout's look on the public web, or null when it could not run. */
+  | { kind: "scout"; scout: ScoutResult | null }
   | { kind: "handoff"; handoff: Handoff };
 
 interface Msg {
@@ -98,6 +101,19 @@ export default function GroupChat({
     const guest = { who: "guest" as const, name: guestName, role: t("chat.role.guest") };
     const agent = { who: "agent" as const, name: t("chat.name.agent"), role: t("chat.role.agent") };
     const out: Msg[] = [];
+    // A business card in the chat, with its seal: signed by the owner, unclaimed, or invalid.
+    const cardMsg = (reply: AskReply): Msg => ({
+      who: "business",
+      name: reply.name,
+      role: t("chat.role.card"),
+      beat: "reply",
+      badge: (
+        <span className={`seal-badge ${!reply.signature_valid ? "no" : reply.claimed ? "ok" : "warm"}`}>
+          {!reply.signature_valid ? t("trust.invalid") : reply.claimed ? t("trust.signed") : t("trust.unclaimed")}
+        </span>
+      ),
+      body: <AskCard reply={reply} />,
+    });
     for (const seg of segments) {
       switch (seg.kind) {
         case "guest":
@@ -188,23 +204,7 @@ export default function GroupChat({
             beat: "reply",
             body: <p>{r.replies.length ? t("chat.ask.found", { n: r.replies.length }) : t("ask.empty")}</p>,
           });
-          for (const reply of r.replies)
-            out.push({
-              who: "business",
-              name: reply.name,
-              role: t("chat.role.card"),
-              beat: "reply",
-              badge: (
-                <span className={`seal-badge ${!reply.signature_valid ? "no" : reply.claimed ? "ok" : "warm"}`}>
-                  {!reply.signature_valid
-                    ? t("trust.invalid")
-                    : reply.claimed
-                      ? t("trust.signed")
-                      : t("trust.unclaimed")}
-                </span>
-              ),
-              body: <AskCard reply={reply} />,
-            });
+          for (const reply of r.replies) out.push(cardMsg(reply));
           if (r.excluded.length)
             out.push({
               ...critic,
@@ -235,6 +235,55 @@ export default function GroupChat({
             });
           }
           if (r.answer) out.push({ ...agent, beat: "say", chars: r.answer.length, body: <p>{r.answer}</p> });
+          break;
+        }
+        // Nothing in the Hive answered: your agent looks on the public web, the verifier opens every site, and only
+        // what passed comes back as unclaimed cards. All of it from the one hive_scout answer.
+        case "scout": {
+          const sc = seg.scout;
+          out.push({ ...agent, to: hive, tool: "hive_scout", beat: "think", body: <p>{t("scout.call")}</p> });
+          if (!sc || sc.status === "unavailable") {
+            out.push({ ...agent, beat: "say", chars: 60, body: <p>{t("scout.unavailable")}</p> });
+            break;
+          }
+          if (sc.added.length)
+            out.push({
+              who: "hive",
+              name: hive,
+              role: t("chat.role.hive"),
+              beat: "reply",
+              body: <p>{t("scout.found", { n: sc.added.length })}</p>,
+            });
+          out.push({
+            who: "sceptic",
+            name: t("chat.name.sceptic"),
+            role: t("chat.role.verifier"),
+            beat: "think",
+            body: (
+              <>
+                {sc.added.length > 0 && <p>{t("scout.verified")}</p>}
+                {sc.rejected.length > 0 && (
+                  <>
+                    <p>{t("scout.rejected")}</p>
+                    <ul className="left-out">
+                      {sc.rejected.map((x) => (
+                        <li key={x.url + x.name}>
+                          {x.name}: {x.why_not.map((w) => t(`scout.why.${w}` as Key)).join("; ")}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            ),
+          });
+          for (const reply of sc.result?.replies ?? []) out.push(cardMsg(reply));
+          out.push({
+            ...agent,
+            beat: "say",
+            chars: 80,
+            body: <p>{t(sc.added.length ? "scout.unclaimed" : "scout.none")}</p>,
+          });
           break;
         }
         case "handoff":

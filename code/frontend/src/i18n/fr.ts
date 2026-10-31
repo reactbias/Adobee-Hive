@@ -232,6 +232,22 @@ const fr: Record<Key, string> = {
   "ask.ex1": "Quoi de neuf chez BaselHack ce mois-ci ?",
   "ask.ex2": "Planifiez-moi une aventure à moins de 500 CHF",
   "ask.empty": "Aucune carte n'y répond encore. C'est noté comme demande manquée, sans votre question.",
+  "scout.call": "Aucune carte du Hive n'y répond encore. Je cherche au-delà du Hive, sur le web public.",
+  "scout.found":
+    "Trouvées sur le web et vérifiées sur leur propre site : {n}. Ajoutées au Hive comme cartes non revendiquées.",
+  "scout.verified":
+    "J'ai ouvert chaque site moi-même : il répond, le nom y figure, il n'est pas fermé. Seuls les faits que la page indique figurent sur les cartes.",
+  "scout.rejected": "Écartées",
+  "scout.why.public_url": "pas un site public",
+  "scout.why.reachable": "le site ne répond pas",
+  "scout.why.name_on_site": "le nom ne figure pas sur le site",
+  "scout.why.not_closed": "le site indique fermé ou à vendre",
+  "scout.why.hive_full": "le Hive de démo est plein",
+  "scout.none":
+    "Rien sur le web public n'a passé les contrôles, donc rien n'a été ajouté. Votre demande compte comme demande manquée.",
+  "scout.unavailable": "La recherche web est injoignable pour le moment. Votre demande compte comme demande manquée.",
+  "scout.unclaimed":
+    "Ces cartes ne sont pas revendiquées : compilées à l'instant depuis le web public, non vérifiées par l'entreprise. La prochaine demande de ce type les trouvera dans le Hive.",
   "ask.source": "Compilé d'après {url} le {date}. Non vérifié par l'entreprise.",
   "ask.free": "Gratuit",
   "ask.per": "{price} par {per}",

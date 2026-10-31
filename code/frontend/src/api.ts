@@ -318,6 +318,22 @@ export interface AskResult {
   unserved?: boolean;
   relevance?: { by: string; reason: string | null };
 }
+/** No card answered: the scout looked on the public web. Only cards verified on their own site were added. */
+export interface ScoutResult {
+  question: string;
+  status: "added" | "none" | "unavailable";
+  added: {
+    card_id: string;
+    name: string;
+    url: string;
+    found_via: string;
+    claimed: boolean;
+    checks: { check: string; ok: boolean }[];
+    new: boolean;
+  }[];
+  rejected: { name: string; url: string; why_not: string[] }[];
+  result: AskResult | null;
+}
 export interface Handoff {
   status: "handed_off" | "requested";
   business: string;
@@ -345,5 +361,6 @@ export const api = {
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
   ask: (question: string, mood: Mood | null) => post<AskResult>("/api/ask", { question, mood }),
+  scout: (question: string) => post<ScoutResult>("/api/ask/scout", { question }),
   askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
 };

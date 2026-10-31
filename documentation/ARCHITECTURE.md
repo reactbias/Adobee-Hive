@@ -50,6 +50,7 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
 | HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py` |
 | Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
+| Scout | any kind found on the web (`taxi`, ...) | `hive_scout` | `domains/scout.py`: web search, verifier, unclaimed cards `w-*` |
 
 Each domain module has a `register(server)` function and is listed in `domains.DOMAINS`. How to add one:
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-use-case).
@@ -101,6 +102,7 @@ page appears or when a panel in `code/frontend/src/panels` has no row here.
 | `hive_check_waiting` | Read a standing request with its token: status and any offers, each signed by the business (check with its pinned key) |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
+| `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
 Agents can find the endpoint from `/.well-known/hive.json`.
@@ -128,6 +130,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/agent` | Run the traveller agent over MCP; a booking comes back held, as `pending`, with the verifier's `second_opinion`, the `critic` and `consensus` | model rate limit |
 | `POST /api/agent/approve` | The traveller's yes: send the held booking, once | one-time hold |
 | `POST /api/ask` | Ask the Hive about the example cards, with an optional mood; actions come back held | model rate limit |
+| `POST /api/ask/scout` | No card answered: the scout finds, verifies and adds unclaimed cards from the public web, then asks again; the request counts as unserved demand | model rate limit |
 | `POST /api/ask/approve` | The person's yes: hand the held action off to the business | one-time hold |
 | `GET /api/owner/{card_id}` | Owner studio data for any card, unclaimed too: bookings, missed demand, waiting requests, and what agents did with the card in the last 7 days (`shown`, `read`, `checked`, `booked`, `explore_handoff`); guest names as initials without the token | `X-Owner-Token` for names |
 | `POST /api/owner/{card_id}/propose` | The owner's words to a proposed card and a diff; nothing is published | `X-Owner-Token`, model rate limit |

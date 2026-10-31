@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import agent, config, db, guard, hive, hive_seed, mcp_server, owner, replies, rulesets, simulate, waiting
-from .domains import explore
+from .domains import explore, scout
 
 logging.basicConfig(level=logging.INFO)
 
@@ -271,6 +271,19 @@ async def ask_hive(body: AskRequest, request: Request) -> dict[str, Any]:
 def ask_approve(body: AskApprove) -> dict[str, Any]:
     """The person's yes: hand the held action off to the business."""
     return _hive_call(explore.approve, body.id)
+
+
+class ScoutRequest(BaseModel):
+    """A question no card answered: the scout looks for real businesses on the public web."""
+
+    question: str = Field(min_length=1, max_length=explore.MAX_QUESTION)
+
+
+@app.post("/api/ask/scout")
+async def ask_scout(body: ScoutRequest, request: Request) -> dict[str, Any]:
+    """Find, verify and add unclaimed cards from the public web when nothing in the Hive answers."""
+    guard.llm_calls.check(request)  # web search and page fetches cost money and other sites' bandwidth
+    return await asyncio.to_thread(_hive_call, scout.find, body.question)
 
 
 @app.get("/api/owner/{card_id}")

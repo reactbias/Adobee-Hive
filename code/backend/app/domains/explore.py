@@ -27,7 +27,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 
 from .. import config, hive, llm
-from . import examples
+from . import hr
 from .base import safe
 
 log = logging.getLogger(__name__)
@@ -201,10 +201,8 @@ def _covers_all(words: list[str], vocab: tuple[set[str], set[int]]) -> bool:
 
 
 def _cards() -> list[dict[str, Any]]:
-    cards = []
-    for kind in examples.KINDS:
-        cards += hive.list_cards(kind)
-    return cards
+    """Every card that is neither a stay nor a person: the examples and whatever the scout added from the web."""
+    return [c for c in hive.list_cards() if c["kind"] not in (*hive.STAY_KINDS, hr.KIND)]
 
 
 def _price_chf(price: dict[str, Any] | None) -> float | None:

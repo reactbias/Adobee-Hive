@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type AskResult, type Handoff } from "../api";
+import { api, type AskResult, type Handoff, type ScoutResult } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
 import TravellerAgent from "./TravellerAgent";
@@ -143,5 +143,97 @@ describe("any business, in the agent chat", () => {
     await user.click(await screen.findByRole("button", { name: en["ask.pending.decline"] }));
     expect(screen.queryByText(en["ask.pending.title"])).not.toBeInTheDocument();
     expect(approve).not.toHaveBeenCalled();
+  });
+});
+
+const EMPTY: AskResult = { ...RESULT, question: "A taxi to Aesch", replies: [], excluded: [], pending: null };
+const TAXI: AskResult = {
+  ...EMPTY,
+  replies: [
+    {
+      card_id: "w-taxi-muster",
+      slug: "w-taxi-muster",
+      name: "Taxi Muster",
+      kind: "taxi",
+      claimed: false,
+      signature_valid: true,
+      source: {
+        source: "public web",
+        url: "https://taxi-muster.example",
+        read_on: "2026-10-31",
+        verified_by_owner: false,
+        note: "",
+      },
+      items: [{ id: "o1", type: "offer", title: "Flughafentransfer", why: [] }],
+    },
+  ],
+};
+const SCOUTED: ScoutResult = {
+  question: "A taxi to Aesch",
+  status: "added",
+  added: [
+    {
+      card_id: "w-taxi-muster",
+      name: "Taxi Muster",
+      url: "https://taxi-muster.example",
+      found_via: "web search",
+      claimed: false,
+      checks: [],
+      new: true,
+    },
+  ],
+  rejected: [{ name: "Taxi Gone", url: "https://gone.example", why_not: ["reachable"] }],
+  result: TAXI,
+};
+
+describe("when no card answers, the agents look beyond the Hive", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+  });
+
+  async function ask(user: ReturnType<typeof userEvent.setup>, text: string) {
+    const box = screen.getAllByRole("textbox")[0];
+    await user.clear(box);
+    await user.type(box, `${text}{Enter}`);
+    await skipAhead(user);
+  }
+
+  it("compiles verified, unclaimed cards from the web and shows them in the chat", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(EMPTY);
+    const scout = vi.spyOn(api, "scout").mockResolvedValue(SCOUTED);
+    const user = setup();
+    await ask(user, "A taxi to Aesch");
+
+    expect(scout).toHaveBeenCalledWith("A taxi to Aesch");
+    expect(await screen.findByText("Flughafentransfer")).toBeInTheDocument();
+    expect(screen.getByText(en["scout.call"])).toBeInTheDocument();
+    expect(screen.getByText(en["scout.found"].replace("{n}", "1"))).toBeInTheDocument();
+    expect(screen.getByText(/Taxi Gone/)).toBeInTheDocument();
+    expect(screen.getByText(en["scout.unclaimed"])).toBeInTheDocument();
+    expect(screen.getByText(en["trust.unclaimed"])).toBeInTheDocument();
+  });
+
+  it("says so when nothing passed the checks, and invents nothing", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(EMPTY);
+    vi.spyOn(api, "scout").mockResolvedValue({ ...SCOUTED, status: "none", added: [], result: null });
+    const user = setup();
+    await ask(user, "A taxi to Aesch");
+
+    expect(await screen.findByText(en["scout.none"])).toBeInTheDocument();
+    expect(screen.queryByText("Flughafentransfer")).not.toBeInTheDocument();
+  });
+
+  it("keeps the chat going when the web search is down", async () => {
+    vi.spyOn(api, "ask").mockResolvedValue(EMPTY);
+    vi.spyOn(api, "scout").mockRejectedValue(new Error("502"));
+    const user = setup();
+    await ask(user, "A taxi to Aesch");
+
+    expect(await screen.findByText(en["scout.unavailable"])).toBeInTheDocument();
   });
 });

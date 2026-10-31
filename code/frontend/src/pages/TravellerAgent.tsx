@@ -118,12 +118,19 @@ export default function TravellerAgent() {
         ...h,
         { role: "assistant", content: r.answer ?? t("chat.ask.found", { n: r.replies.length }) },
       ]);
-      setSegments([
+      const asked: Segment[] = [
         ...before,
         { kind: "guest", text },
         ...(before.length ? [] : [{ kind: "ack" } as Segment]),
         { kind: "ask", result: r },
-      ]);
+      ];
+      setSegments(asked);
+      // No card answers: the agents look beyond the Hive, on the public web, in the same conversation.
+      if (!r.replies.length) {
+        const scouted = await api.scout(text).catch(() => null);
+        if (scouted?.result) setAskResult(scouted.result);
+        setSegments([...asked, { kind: "scout", scout: scouted }]);
+      }
     } catch (e) {
       setError((e as Error).message);
       setHistory(history);

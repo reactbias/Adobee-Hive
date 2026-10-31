@@ -174,6 +174,7 @@ claim to have answered it. We hold to one design principle instead: **the rules 
 | A mood the person picks changes what comes first, and the answer shows how | Built in the API (`mood` on `POST /api/ask`: curious, stressed, planning, celebrating); not shown in the app |
 | Every answer lists the rules in force | Built in the API (`rules` in every `explore_ask` answer) |
 | Cards compiled from public sources say they are unclaimed | Built (`trust.claimed`) |
+| When no card answers, agents compile one from the public web, verified against the business's own site, unclaimed until the owner claims it | Built (`hive_scout`); claiming is Next |
 | Only the declared context and what was asked are counted, never the question or the person | Built |
 | A ruleset per jurisdiction, chosen by the person, with the local law as the floor | Next |
 | Rulesets published and signed by who wrote them (a health body, a consumer association), like a card | Built for stays (`hive_rulesets`, `ruleset` on `hive_discover`): "Dogs, verified" by a dog owners' club keeps only a vouched-for dog-friendly; each answer names the ruleset, its author and what it changed |
