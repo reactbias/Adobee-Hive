@@ -183,16 +183,39 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]]) ->
 
 # ---------------------------------------------------------------- scripted planner (no API key)
 
+# Word stems in EN, DE, FR and IT, so the offline planner understands the localized example requests too.
 FEATURE_WORDS = {
     "dog": "dog-friendly",
+    "hund": "dog-friendly",
+    "chien": "dog-friendly",
+    "cane": "dog-friendly",
+    "cani": "dog-friendly",
     "late": "late check-in",
+    "spät": "late check-in",
+    "tardiv": "late check-in",
     "quiet": "quiet",
+    "ruhig": "quiet",
+    "calme": "quiet",
+    "tranquill": "quiet",
     "breakfast": "breakfast",
+    "frühstück": "breakfast",
+    "petit-déjeuner": "breakfast",
+    "colazione": "breakfast",
     "parking": "parking",
+    "parkplatz": "parking",
+    "parcheggio": "parking",
     "sauna": "sauna",
     "kitchen": "kitchen",
+    "küche": "kitchen",
+    "cuisine": "kitchen",
+    "cucina": "kitchen",
     "accessible": "accessible",
+    "barrierefrei": "accessible",
+    "accessibile": "accessible",
     "bike": "bike rental",
+    "velo": "bike rental",
+    "vélo": "bike rental",
+    "bici": "bike rental",
 }
 LANDMARKS = {
     "sbb": "basel sbb",
@@ -200,8 +223,17 @@ LANDMARKS = {
     "messe": "messe basel",
     "marktplatz": "marktplatz",
     "old town": "marktplatz",
+    "altstadt": "marktplatz",
     "badischer": "badischer bahnhof",
 }
+BOOK = r"\b(book|reserve|buche|buchen|réserve|réserver|prenota|prenotami|prenotare)\b"
+DONT_BOOK = r"\b(don'?t|do not|no)\s+book|\bnicht\s+buchen|\bne\s+(pas\s+)?réserve|\bnon\s+prenot"
+
+
+def _dates(text: str) -> list[str]:
+    """Return the dates in a request as ISO strings, accepting 2026-11-13 and 13.11.2026."""
+    found = re.findall(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b", text)
+    return [f"{y}-{m}-{d}" if y else f"{yy}-{int(mm):02d}-{int(dd):02d}" for y, m, d, dd, mm, yy in found]
 
 
 def parse_request(text: str) -> dict[str, Any]:
@@ -210,7 +242,7 @@ def parse_request(text: str) -> dict[str, Any]:
     Only the offline planner uses this; with a key, Claude reads the request itself.
     """
     low = text.lower()
-    dates = re.findall(r"\d{4}-\d{2}-\d{2}", text)
+    dates = _dates(text)
     if len(dates) >= 2:
         check_in, check_out = dates[0], dates[1]
     else:
@@ -219,11 +251,11 @@ def parse_request(text: str) -> dict[str, Any]:
             if dates
             else date.today() + timedelta(days=(4 - date.today().weekday()) % 7 or 7)
         )
-        nights = int(m.group(1)) if (m := re.search(r"(\d+)\s*nights?", low)) else 2
+        nights = int(m.group(1)) if (m := re.search(r"(\d+)\s*(?:nights?|nächte|nacht|nuits?|notti|notte)", low)) else 2
         check_in, check_out = start.isoformat(), (start + timedelta(days=nights)).isoformat()
-    budget = re.search(r"(?:under|below|max|<)\s*(?:chf\s*)?(\d+)", low)
-    guests = re.search(r"(\d+)\s*(?:guests|people|persons|adults)", low)
-    name = re.search(r"(?:name is|for|guest)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)", text)
+    budget = re.search(r"(?:under|below|max|<|unter|moins de|sotto)\s*(?:chf\s*)?(\d+)", low)
+    guests = re.search(r"(\d+)\s*(?:guests|people|persons|adults|gäste|personen|personnes|ospiti|persone)", low)
+    name = re.search(r"(?:name is|for|guest|Name ist|m'appelle|chiamo)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)", text)
     return {
         "kind": "hotel",
         "features": sorted({tag for word, tag in FEATURE_WORDS.items() if word in low}),
@@ -233,10 +265,9 @@ def parse_request(text: str) -> dict[str, Any]:
         "check_out": check_out,
         "guests": int(guests.group(1))
         if guests
-        else (2 if re.search(r"\b(two of us|couple|my partner)\b", low) else 1),
+        else (2 if re.search(r"\b(two of us|couple|my partner|zu zweit|in due)\b|à deux", low) else 1),
         "guest_name": name.group(1) if name else "Demo Traveller",
-        "wants_booking": bool(re.search(r"\bbook\b|\breserve\b", low))
-        and not re.search(r"\b(don'?t|do not|no)\s+book", low),
+        "wants_booking": bool(re.search(BOOK, low)) and not re.search(DONT_BOOK, low),
     }
 
 
