@@ -572,9 +572,17 @@ def main() -> int:
     print("Checking the suite is green before we start...")
     output: list[str] = []
     if not run_suite(keep=output):
-        print("The suite is already red. Fix that first; mutation results would be meaningless.")
-        print("\n".join("    " + line for line in "\n".join(output).strip().splitlines()[-30:]))
-        return 1
+        # Once more before giving up. The subset holds timing-sensitive tests — a fake peer with a
+        # 400ms delay against a 250ms budget, for one — and on a loaded runner those flap. A flap
+        # here costs twelve minutes of mutation coverage and reads as "your change broke the
+        # suite", which is the worst way to be wrong. A test that fails twice is not a flap.
+        print("Red. Running it once more, in case a timing-sensitive test flapped...")
+        output.clear()
+        if not run_suite(keep=output):
+            print("The suite is already red. Fix that first; mutation results would be meaningless.")
+            print("\n".join("    " + line for line in "\n".join(output).strip().splitlines()[-30:]))
+            return 1
+        print("Green on the second run. Whichever test failed first is flaky; that is worth an issue.")
     print("Green.\n")
 
     survivors = []
