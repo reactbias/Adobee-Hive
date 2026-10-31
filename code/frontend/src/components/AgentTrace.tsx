@@ -1,5 +1,6 @@
-import type { Step } from "../api";
+import type { GuardFinding, Step } from "../api";
 import { useI18n } from "../i18n";
+import type { Key } from "../i18n/en";
 import { chf, metres, stay } from "../lib/format";
 
 // The agent-to-agent conversation: what the traveller's agent asked over MCP, and what the Hive answered.
@@ -56,8 +57,9 @@ function Ask({ step, names }: { step: Step; names: Record<string, string> }) {
   }
 }
 
-function Discover({ o }: { o: Rec }) {
+function Discover({ o, guard }: { o: Rec; guard: GuardFinding[] }) {
   const { t, intl } = useI18n();
+  const flagged = (m: Rec) => guard.some((f) => f.card_id === m.id && (f.source ?? m.source) === m.source);
   const matches = list(o.matches);
   const excluded = list(o.excluded);
   return (
@@ -65,17 +67,19 @@ function Discover({ o }: { o: Rec }) {
       <p>{t("trace.reply.discover", { fit: matches.length, total: matches.length + excluded.length })}</p>
       <ol className="ledger">
         {matches.map((m, n) => (
-          <li key={String(m.id)}>
+          <li key={`${m.source ?? ""}/${m.id}`} className={flagged(m) ? "flagged" : ""}>
             <span className="ledger-rank num">{n + 1}</span>
             <span className="ledger-name">{String(m.name)}</span>
             <span className="ledger-why">
-              {chf(m.from_price_chf, intl)} · {metres(m.distance_m, intl)}
+              {flagged(m)
+                ? t("trace.guard.row", { source: String(m.source) })
+                : `${chf(m.from_price_chf, intl)} · ${metres(m.distance_m, intl)}`}
             </span>
             <span className="ledger-score num">{String(m.score)}</span>
           </li>
         ))}
         {excluded.map((x) => (
-          <li key={String(x.id)} className="out">
+          <li key={`${x.source ?? ""}/${x.id}`} className="out">
             <span className="ledger-rank">–</span>
             <span className="ledger-name">{String(x.name)}</span>
             <span className="ledger-why">{(x.why_not as string[] | undefined)?.join("; ")}</span>
@@ -87,13 +91,17 @@ function Discover({ o }: { o: Rec }) {
   );
 }
 
-function SignedCard({ o }: { o: Rec }) {
+function SignedCard({ o, genuine }: { o: Rec; genuine: boolean | null }) {
   const { t } = useI18n();
   const trust = (o.trust ?? {}) as Rec;
   const att = list(trust.attestations);
   return (
     <>
-      <p>{t("trace.reply.card", { version: String(o.version) })}</p>
+      <p>
+        {t(genuine === null ? "trace.reply.cardUnchecked" : genuine ? "trace.reply.card" : "trace.reply.cardForged", {
+          version: String(o.version),
+        })}
+      </p>
       <dl className="seal">
         <dt>{t("trace.key")}</dt>
         <dd className="mono">{String(trust.public_key ?? "").slice(0, 16)}…</dd>
@@ -127,15 +135,40 @@ function Availability({ o, chosen }: { o: Rec; chosen?: string }) {
   );
 }
 
+/** What the agent's guard withheld from this answer, shown to the human word for word. */
+function Withheld({ findings }: { findings: GuardFinding[] }) {
+  const { t } = useI18n();
+  const codes = [...new Set(findings.flatMap((f) => f.codes))];
+  return (
+    <div className="withheld">
+      <span className="status no">{t("trace.guard.title")}</span>
+      {[...new Set(findings.map((f) => f.text))].map((text) => (
+        <blockquote key={text}>{text}</blockquote>
+      ))}
+      <p>
+        {codes.map((c) => t(`guard.${c}` as Key)).join(" · ")}. {t("trace.guard.note")}
+      </p>
+    </div>
+  );
+}
+
+/** The agent's own signature check when it made one; otherwise what the Hive reported. */
+export function genuine(step: Step): boolean | null {
+  if (step.signature === "unchecked") return null;
+  if (step.signature) return step.signature === "valid";
+  if (step.tool !== "hive_get_card" || "error" in step.output) return null;
+  return Boolean((step.output.trust as Rec | undefined)?.signature_valid);
+}
+
 function Reply({ step, chosen }: { step: Step; chosen?: string }) {
   const { t } = useI18n();
   const o = step.output as Rec;
   if ("error" in o) return <p>{String(o.error)}</p>;
   switch (step.tool) {
     case "hive_discover":
-      return <Discover o={o} />;
+      return <Discover o={o} guard={step.guard ?? []} />;
     case "hive_get_card":
-      return <SignedCard o={o} />;
+      return <SignedCard o={o} genuine={genuine(step)} />;
     case "hive_check_availability":
       return <Availability o={o} chosen={chosen} />;
     case "hive_book":
@@ -168,7 +201,8 @@ export default function AgentTrace({
     <ol className="turns">
       {steps.map((s, n) => {
         const failed = "error" in s.output;
-        const sig = s.tool === "hive_get_card" ? Boolean((s.output.trust as Rec | undefined)?.signature_valid) : null;
+        const sig = genuine(s);
+        const via = s.source && s.tool !== "hive_discover" ? s.source : "";
         return (
           <li key={n} className="turn" style={{ animationDelay: `${Math.max(0, n - batchStart) * STAGGER_MS}ms` }}>
             {s.tool === "hive_book" && <div className="consent">{t("trace.approved")}</div>}
@@ -180,15 +214,18 @@ export default function AgentTrace({
               </div>
               <Ask step={s} names={names} />
             </div>
-            <div className={`utter theirs${failed ? " failed" : ""}`}>
+            <div className={`utter theirs${failed || sig === false || s.guard?.length ? " failed" : ""}`}>
               <div className="utter-head">
                 <span>{speaker(s, names, t("trace.hive"))}</span>
+                {via && <span className="via">{t("trace.via", { source: via })}</span>}
+                {s.signature === "unchecked" && <span className="status warm">{t("trace.sig.unchecked")}</span>}
                 {sig !== null && (
                   <span className={`status ${sig ? "ok" : "no"}`}>{sig ? t("trace.sig.ok") : t("trace.sig.bad")}</span>
                 )}
                 {s.ms !== undefined && <span className="num ms">{s.ms} ms</span>}
               </div>
               <Reply step={s} chosen={chosen} />
+              {s.guard && s.guard.length > 0 && <Withheld findings={s.guard} />}
               <details>
                 <summary>{t("trace.raw")}</summary>
                 <pre>{JSON.stringify({ input: s.input, output: s.output }, null, 2)}</pre>
