@@ -27,6 +27,7 @@ Six questions a reviewer asks, one hop each.
 | How does a search reach another Hive? | [FEDERATION.md](documentation/FEDERATION.md#how-far-to-look-the-radius) |
 | How is a Hive measured, and how is a business? | [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
 | How does a business or a person join a Hive? | [REGISTRATION.md](documentation/REGISTRATION.md) |
+| How do two agents share the folders behind their Cards? | [FOLDERS.md](documentation/FOLDERS.md) |
 | How do I run it, and what does each part do? | [DEVELOPER.md](documentation/DEVELOPER.md) · [ARCHITECTURE.md](documentation/ARCHITECTURE.md) · [DIAGRAMS.md](documentation/DIAGRAMS.md) |
 | How is it tested, and what is protected? | [DEVELOPER.md](documentation/DEVELOPER.md#tests-and-checks) · [tools/README.md](code/backend/tools/README.md) · [SECURITY.md](SECURITY.md) |
 | How do I search it from my own code? | [SEARCH_API.md](documentation/SEARCH_API.md) |
