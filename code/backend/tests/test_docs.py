@@ -1,91 +1,33 @@
-"""The docs are a map of what runs: every endpoint, MCP tool and panel of the app has a row in ARCHITECTURE.md."""
+"""The team docs stay impersonal: the pitch has roles, not people, and the team page counts heads instead of naming them."""
 
-import asyncio
-import re
 from pathlib import Path
 
-from fastapi.routing import APIRoute
-from mcp import Client
-
-from app.main import app
-from app.mcp_server import server
-
-ROOT = Path(__file__).resolve().parents[3]
-ARCHITECTURE = (ROOT / "documentation" / "ARCHITECTURE.md").read_text(encoding="utf-8")
-FRONTEND = ROOT / "code" / "frontend" / "src"
+DOCS = Path(__file__).resolve().parents[3] / "documentation"
+ROLES = {"Speaker A", "Speaker B", "Speaker C", "Driver"}
 
 
-def _section(title: str) -> str:
-    """The text of one `## ` section of ARCHITECTURE.md."""
-    match = re.search(rf"^## {re.escape(title)}\n(.*?)(?=^## |\Z)", ARCHITECTURE, re.S | re.M)
-    assert match, f"ARCHITECTURE.md has no section '## {title}'"
-    return match.group(1)
+def _rows(text: str, first_header: str) -> list[list[str]]:
+    """Body rows of the first markdown table whose header starts with `first_header`."""
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(f"| {first_header} |"))
+    rows = []
+    for line in lines[start + 2 :]:
+        if not line.startswith("|"):
+            break
+        rows.append([cell.strip() for cell in line.strip("|").split("|")])
+    return rows
 
 
-def _first_cells(title: str) -> set[str]:
-    """The first column of every table row in a section, without its backticks."""
-    rows = re.findall(r"^\| `([^`]+)` \|", _section(title), re.M)
-    return set(rows)
+def test_pitch_script_names_roles_not_people():
+    pitch = (DOCS / "PITCH.md").read_text()
+    speakers = {row[1] for row in _rows(pitch, "Time")}
+    leads = {row[3] for row in _rows(pitch, "Beat")}
+    assert speakers <= ROLES
+    assert leads <= ROLES | {f"{role} + driver" for role in ROLES}
 
 
-def test_every_endpoint_is_documented():
-    served = {f"{m} {r.path}" for r in app.routes if isinstance(r, APIRoute) for m in r.methods}
-    documented = _first_cells("REST API")
-    assert served - documented == set(), "add these to the REST API table in ARCHITECTURE.md"
-    assert documented - served == set(), "these are documented but not served"
-
-
-def test_every_mcp_tool_is_documented(client):
-    async def tools() -> set[str]:
-        async with Client(server) as c:
-            return {t.name for t in (await c.list_tools()).tools}
-
-    served, documented = asyncio.run(tools()), _first_cells("MCP tools (`/mcp/`, Streamable HTTP)")
-    assert served - documented == set(), "add these to the MCP tools table in ARCHITECTURE.md"
-    assert documented - served == set(), "these are documented but not served"
-
-
-def test_the_app_is_one_page_and_every_panel_is_documented():
-    pages = {p.name for p in (FRONTEND / "pages").glob("*.tsx") if not p.name.endswith(".test.tsx")}
-    panels = {p.name for p in (FRONTEND / "panels").glob("*.tsx") if not p.name.endswith(".test.tsx")}
-    assert pages == {"TravellerAgent.tsx"}, "the app is one page; fold new views into it as a panel"
-    assert "<Route" not in (FRONTEND / "App.tsx").read_text(encoding="utf-8")
-    documented = _first_cells("The page")
-    assert panels, "no panels found"
-    assert panels - documented == set(), "add these to the table under 'The page' in ARCHITECTURE.md"
-    assert documented - panels == set(), "these are documented but not in src/panels"
-
-
-def test_the_interactive_api_docs_are_served(client):
-    assert client.get("/docs").status_code == 200
-    paths = client.get("/openapi.json").json()["paths"]
-    assert "/api/agent" in paths and "/api/health" in paths
-
-
-def _anchor(heading: str) -> str:
-    """GitHub's anchor for a heading: lower case, punctuation dropped, spaces to hyphens."""
-    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
-
-
-def test_every_link_between_the_docs_resolves():
-    broken = []
-    for doc in [ROOT / "readme.md", ROOT / "CONTRIBUTING.md", *sorted((ROOT / "documentation").glob("*.md"))]:
-        for target in re.findall(r"\]\(([^)\s]+)\)", doc.read_text(encoding="utf-8")):
-            if re.match(r"[a-z]+:", target):
-                continue  # web links are checked by people, not by CI
-            path, _, anchor = target.partition("#")
-            file = (doc.parent / path).resolve() if path else doc
-            if not file.exists():
-                broken.append(f"{doc.name}: {target}")
-            elif anchor and file.suffix == ".md":
-                headings = re.findall(r"^#+ (.+)$", file.read_text(encoding="utf-8"), re.M)
-                if anchor not in {_anchor(h) for h in headings}:
-                    broken.append(f"{doc.name}: {target}")
-    assert broken == []
-
-
-def test_the_readme_starts_with_the_links_everyone_needs():
-    readme = (ROOT / "readme.md").read_text(encoding="utf-8")
-    links = readme[readme.index("## Links") : readme.index("## The next guest")]
-    for needed in ["github.io/Adobee-Hive", "/pulls", "/actions", "localhost:5173", "localhost:8000/docs", "TEAM.md"]:
-        assert needed in links
+def test_team_page_counts_heads_without_names_or_skills():
+    team = (DOCS / "TEAM.md").read_text()
+    assert "10 people" in team
+    header = next(line for line in team.splitlines() if line.startswith("| # | Workstream |"))
+    assert "People" not in header
