@@ -126,6 +126,7 @@ different relationships:
 | --- | --- | --- | --- |
 | **Stays** | A hotel or café: rooms, prices, policies | A traveller's agent finds, compares and books | Built end to end |
 | **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`) |
+| **Ask** | Any business: offers, events, news. Five real ones as unclaimed public-info cards | A person asks a question with a mood they choose; actions wait for their yes | Built (`/ask`, `app/domains/explore.py`) |
 | Events, shops, services | Tickets, stock, appointments | Same pattern | Next |
 
 The arc runs from one booking today to agents that handle whole business relationships on our behalf: finding,
@@ -133,6 +134,41 @@ negotiating, booking, hiring, following up. Taken far enough, that is the AGI ho
 alone, the more the guardrails matter: signed facts, consent before contact, a human approval for anything that
 commits us, and every step visible. We build those first, because they are what makes the far end of the arc safe
 to reach.
+
+## Whose rules? Right and healthy depend on who asks
+
+The more an agent does for us, the more often it has to judge, not only look things up. Is this a good offer? Is
+it healthy for me? Is it allowed? None of these has one answer. What may be sold, said or recommended differs
+between Switzerland, the USA, China and Russia, and between cantons. "Healthy" means one thing for an athlete,
+another for someone with diabetes, another for someone who has slept four hours. Ask a question about a business
+while stressed and the right answer is two calm options, not ten.
+
+Today that judgement is made silently: by whoever built the agent, or by a profile the agent has built of its
+user. Both hide the choice. A system that acts for everyone has to say whose values it acts on, and there is no
+neutral default to fall back to. That is the question any claim to general intelligence rests on, and we do not
+claim to have answered it. We hold to one design principle instead: **the rules are visible and chosen.**
+
+- **Facts and judgement are kept apart.** A card holds facts its owner signed. Whatever ranks, filters or advises
+  on top of them is a ruleset, and it is labelled as one, never presented as fact.
+- **Context is declared, not inferred.** Information is clustered by what the person says about this interaction
+  (a mood, a purpose, a place, a budget), not by a hidden profile of who they are. The context lives with the
+  request and ends with it.
+- **The ruleset is chosen per interaction.** The person picks it and can change it. The law of the place they are
+  in is the floor: a person can choose stricter rules than the law, never looser.
+- **The rules travel with the answer.** Every answer says which rules it ran under and what they changed, so a
+  person can disagree with the rules rather than guess at them.
+- **Privacy is not a setting.** The Hive counts what was asked, never who asked, whichever ruleset is chosen.
+- **A person still says yes.** However good the judgement gets, anything that commits a person waits for their
+  approval.
+
+| Principle | Status |
+| --- | --- |
+| A mood the person picks changes what comes first, and the answer shows how | Built (`/ask`, curious, stressed, planning, celebrating) |
+| Every answer lists the rules in force | Built (`/ask`) |
+| Cards compiled from public sources say they are unclaimed | Built (`trust.claimed`) |
+| Only the declared context and what was asked are counted, never the question or the person | Built |
+| A ruleset per jurisdiction, chosen by the person, with the local law as the floor | Next |
+| Rulesets published and signed by who wrote them (a health body, a consumer association), like a card | Next |
 
 ## Beyond the weekend
 
