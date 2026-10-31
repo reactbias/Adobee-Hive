@@ -12,6 +12,7 @@ cd "$(dirname "$0")"
 
 BACKEND=code/backend
 RUN=.lan
+HERE=$(pwd -P)          # this checkout, used to tell our servers from another worktree's
 mkdir -p "$RUN"
 
 lan_ip() {
@@ -179,13 +180,25 @@ case "${1:-up}" in
       kill "$(cat "$f")" 2>/dev/null && echo "stopped $(basename "$f" .pid)"
       rm -f "$f"
     done
-    # Earlier runs leave listeners behind whose pid files are long gone. Reap anything of ours
-    # still holding a port in our range, so a restart is not a slow leak of dead servers.
+    # Earlier runs of THIS checkout leave listeners behind whose pid files are long gone. Reap
+    # those, so a restart is not a slow leak of dead servers.
+    #
+    # Scoped to this checkout deliberately. Several worktrees of this repo run at once - one
+    # serving a demo, others held by people or agents working on branches - and they share the
+    # 8420-8445 range. A sweep that killed every uvicorn in the range would stop a demo this
+    # checkout never started, which is what used to happen: 'down' in one worktree took down the
+    # hubs another had running. A process is ours only if its working directory is inside HERE.
     for port in $(seq 8420 8445); do
       pid=$(ss -ltnp 2>/dev/null | grep ":$port " | grep -oP 'pid=\K[0-9]+' | head -1)
       [ -z "$pid" ] && continue
       case "$(tr '\0' ' ' < /proc/$pid/cmdline 2>/dev/null)" in
-        *uvicorn*|*vite*) kill "$pid" 2>/dev/null && echo "released port $port (stale, pid $pid)" ;;
+        *uvicorn*|*vite*) ;;
+        *) continue ;;
+      esac
+      cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null) || continue
+      case "$cwd/" in
+        "$HERE"/*) kill "$pid" 2>/dev/null && echo "released port $port (stale, pid $pid)" ;;
+        *) echo "left port $port alone (pid $pid belongs to $cwd)" ;;
       esac
     done
     ;;
