@@ -3,9 +3,25 @@ import type { Key } from "./en";
 // Français de Suisse romande.
 const fr: Record<Key, string> = {
   "nav.language": "Langue",
-  "nav.live": "IA en direct",
-  "nav.offline": "Mode hors ligne",
+  "nav.live": "Modèle en ligne configuré",
+  "nav.offline": "Planificateur hors ligne",
   "nav.down": "Backend injoignable",
+  "status.title": "État de la connexion",
+  "status.checking": "Vérification du backend…",
+  "status.reachable": "Backend joignable",
+  "status.modelUnknown": "État du modèle inconnu",
+  "status.modelConfigured":
+    "Fournisseur configuré : {provider} · {model}. La disponibilité du modèle n'est pas vérifiée.",
+  "status.hub": "Hive sélectionné : {hub}",
+  "status.defaultHub": "défaut de compilation",
+  "status.lastChecked": "Dernière vérification :",
+  "status.lastSuccess": "Dernier succès :",
+  "status.retry": "Réessayer maintenant",
+  "status.httpError": "Le point de contrôle de santé a renvoyé HTTP {status}.",
+  "status.timeoutError": "Le backend n'a pas répondu dans les 5 secondes.",
+  "status.networkError":
+    "Échec réseau ou restriction du navigateur. Vérifiez la connexion et la console du navigateur.",
+  "status.responseError": "Le backend a renvoyé une réponse de santé illisible.",
   "footer.line": "Adobee Hive · BaselHack 2026 · Team B6",
   "footer.wake": "Réveiller l'abeille B6",
 

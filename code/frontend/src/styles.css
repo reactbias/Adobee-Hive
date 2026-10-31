@@ -528,12 +528,47 @@ label {
   font-weight: 600;
   border-bottom-color: var(--accent);
 }
-.nav .status {
-  margin-left: auto;
+.backend-status {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s3) var(--s6);
+  border-bottom: 1px solid var(--line);
   font-size: var(--t-xs);
   color: var(--ink-3);
 }
+.backend-status-state,
+.backend-status-details,
+.backend-status-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s5);
+}
+.backend-status .status {
+  font-size: var(--t-xs);
+}
+.backend-status-details {
+  margin-top: var(--s2);
+}
+.backend-address {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.backend-status-failure {
+  margin-top: var(--s2);
+  color: var(--bad);
+}
+.backend-status-failure button {
+  min-height: 28px;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
 @media (max-width: 900px) {
+  .backend-status {
+    padding-left: var(--s4);
+    padding-right: var(--s4);
+  }
   :root {
     --nav-h: 100px;
   }
@@ -580,10 +615,6 @@ label {
   }
 }
 @media (max-width: 480px) {
-  .nav-end .status {
-    font-size: 0;
-    gap: 0;
-  }
   .nav-end .locales button {
     min-width: 34px;
   }
@@ -771,9 +802,6 @@ th.end {
   display: flex;
   align-items: center;
   gap: var(--s5);
-}
-.nav-end .status {
-  margin-left: 0;
 }
 .locales {
   display: flex;
@@ -1291,6 +1319,10 @@ th.end {
   overflow-x: auto;
   scrollbar-width: none;
   padding-bottom: 2px;
+}
+/* Once results arrive, the full search toolbar must not cover their Details or approval controls. */
+.screen-find:has(.journey > *) .search-top {
+  position: static;
 }
 .screen-find .journey,
 .screen-find .result-pending {
