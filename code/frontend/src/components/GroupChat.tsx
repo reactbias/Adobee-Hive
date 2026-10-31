@@ -47,6 +47,8 @@ const AVATAR = Object.fromEntries(WHO.map((who) => [who, `${import.meta.env.BASE
 
 type Rec = Record<string, unknown>;
 
+const reducedMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 export function Avatar({ who, size = 40, live = false }: { who: Who; size?: number; live?: boolean }) {
   return (
     <span className={`avatar avatar-${who}${live ? " live" : ""}`} style={{ width: size, height: size }}>
@@ -237,16 +239,50 @@ export default function GroupChat({
   // Before a call or a judgement an agent thinks; before a line of text anyone types.
   const presence = t(caughtUp || messages[shown].beat === "think" ? "chat.thinking" : "chat.typing");
 
-  useEffect(() => {
+  // Follow the conversation while the reader is at the bottom. Scrolling up to reread stops it, and a button
+  // offers the way back; reaching the bottom again, or the guest speaking, resumes it.
+  const follow = useRef(true);
+  const lastTop = useRef(0);
+  const [behind, setBehind] = useState(false);
+  const toLatest = (smooth = true) => {
     const el = scroller.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    follow.current = true;
+    setBehind(false);
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth && !reducedMotion() ? "smooth" : "auto" });
+  };
+  const onScroll = () => {
+    const el = scroller.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 48) {
+      follow.current = true;
+      setBehind(false);
+    } else if (el.scrollTop < lastTop.current - 2) follow.current = false;
+    lastTop.current = el.scrollTop;
+  };
+  const last = segments[segments.length - 1];
+  useEffect(() => {
+    if (!last || last.kind === "guest") follow.current = true;
+  }, [last]);
+  useEffect(() => {
+    if (follow.current) toLatest();
+    else if (shown > 0) setBehind(true);
   }, [shown, next, caughtUp, pinned]);
+
+  // On a phone or tablet the chat sits under the request: when the agents start talking, bring it into view.
+  const stage = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = stage.current;
+    if (!pending || !el) return;
+    const r = el.getBoundingClientRect();
+    if (r.top > window.innerHeight * 0.5 || r.bottom < 80)
+      el.scrollIntoView?.({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" });
+  }, [pending]);
 
   const present = new Map<Who, { name: string; role: string }>();
   for (const m of messages.slice(0, shown)) if (!m.consent) present.set(m.who, { name: m.name, role: m.role });
 
   return (
-    <section className="chat-stage" aria-label={t("agent.stage")}>
+    <section className="chat-stage" ref={stage} aria-label={t("agent.stage")}>
       <header className="roster">
         <ul>
           {[...present].map(([who, p]) => (
@@ -263,7 +299,13 @@ export default function GroupChat({
           {meta}
           {messages.length > 0 && (
             <span className="controls">
-              <button className="quiet" onClick={() => setShown(0)}>
+              <button
+                className="quiet"
+                onClick={() => {
+                  follow.current = true;
+                  setShown(0);
+                }}
+              >
                 {t("chat.replay")}
               </button>
               {!caughtUp && (
@@ -276,9 +318,14 @@ export default function GroupChat({
         </div>
       </header>
 
-      <div className="chat-scroll" ref={scroller} aria-live="polite">
+      <div className="chat-scroll" ref={scroller} onScroll={onScroll} aria-live="polite">
         {messages.length === 0 && !pending && (
           <div className="stage-empty">
+            <div className="stage-cast" aria-hidden>
+              <Avatar who="agent" size={44} />
+              <Avatar who="critic" size={44} />
+              <Avatar who="sceptic" size={44} />
+            </div>
             <p>{t("agent.empty.title")}</p>
             <p className="dim">{t("agent.empty.body")}</p>
           </div>
@@ -333,6 +380,12 @@ export default function GroupChat({
         </ol>
         {caughtUp && !pending && pinned && <div className="pinned">{pinned}</div>}
       </div>
+      {behind && (
+        <button className="to-latest" onClick={() => toLatest()}>
+          {t("chat.latest")}
+          <span aria-hidden>↓</span>
+        </button>
+      )}
     </section>
   );
 }

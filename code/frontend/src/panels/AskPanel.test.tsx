@@ -88,21 +88,21 @@ describe("ask the Hive", () => {
     localStorage.setItem("adobee-locale", "en");
   });
 
-  it("sends the mood the person picked, and shows what it changed and the rules", async () => {
+  it("asks without a mood picker, and shows the answers and the rules", async () => {
     const ask = vi.spyOn(api, "ask").mockResolvedValue(RESULT);
     const user = setup();
 
-    await user.click(screen.getByRole("button", { name: en["ask.mood.stressed"] }));
+    expect(screen.queryByRole("group", { name: /mood/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Not set")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: en["ask.ex2"] }));
 
-    expect(ask).toHaveBeenCalledWith(en["ask.ex2"], "stressed");
-    expect(await screen.findByText(en["ask.effect.calm_first"])).toBeInTheDocument();
-    expect(screen.getByText(en["ask.rule.yes_before_action"])).toBeInTheDocument();
+    expect(ask).toHaveBeenCalledWith(en["ask.ex2"], null);
+    expect(await screen.findByText(en["ask.rule.yes_before_action"])).toBeInTheDocument();
     expect(screen.getByText(en["trust.unclaimed"])).toBeInTheDocument();
     expect(screen.getByText("EUR 1350 per person is over your budget of CHF 500")).toBeInTheDocument();
   });
 
-  it("sends no mood unless the person sets one", async () => {
+  it("sends the question as written", async () => {
     const ask = vi.spyOn(api, "ask").mockResolvedValue({ ...RESULT, pending: null });
     const user = setup();
 
@@ -137,5 +137,12 @@ describe("ask the Hive", () => {
 
     expect(screen.queryByText(en["ask.pending.title"])).not.toBeInTheDocument();
     expect(approve).not.toHaveBeenCalled();
+  });
+
+  it("asks on Enter", async () => {
+    const ask = vi.spyOn(api, "ask").mockResolvedValue({ ...RESULT, pending: null });
+    const user = setup();
+    await user.type(screen.getByRole("textbox", { name: en["ask.label"] }), "Anything for kids?{Enter}");
+    expect(ask).toHaveBeenCalledWith("Anything for kids?", null);
   });
 });

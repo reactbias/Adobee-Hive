@@ -14,6 +14,7 @@ import GroupChat, { type Segment } from "../components/GroupChat";
 import NextSteps from "../components/NextSteps";
 import { namesFrom } from "../components/TraceParts";
 import Display from "../components/Display";
+import MicButton from "../components/MicButton";
 import AskPanel from "../panels/AskPanel";
 import DemandPanel from "../panels/DemandPanel";
 import OwnerPanel from "../panels/OwnerPanel";
@@ -50,10 +51,12 @@ export default function TravellerAgent() {
   const [rulesOff, setRulesOff] = useState(false);
   // The last chapter is the business's side of the same booking; Next steps can turn the page to it.
   const businessRef = useRef<HTMLElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
   const openBusiness = () => businessRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
 
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
-  async function send(text = input, base = history, off = rulesOff) {
+  async function send(raw = input, base = history, off = rulesOff) {
+    const text = raw.trim();
     const messages = [...base, { role: "user", content: text }];
     const options: AgentOptions = mirror ? { scenario: "injection", rules: off ? "off" : "on" } : {};
     setBusy(true);
@@ -196,20 +199,38 @@ export default function TravellerAgent() {
               <label htmlFor="intent">{history.length ? t("agent.followUp") : t("agent.intent")}</label>
               <textarea
                 id="intent"
+                ref={box}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && input.trim() && !busy) send();
+                  // Enter sends, as in any chat; Shift+Enter is a new line. Not while an IME is composing.
+                  if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+                  e.preventDefault();
+                  if (input.trim() && !busy) send();
                 }}
                 placeholder={t("agent.placeholder")}
+                aria-describedby="intent-hint"
               />
-              <div className="spread">
-                <button className="quiet" onClick={reset} disabled={busy || !history.length}>
-                  {t("agent.newTrip")}
-                </button>
-                <button onClick={() => send()} disabled={busy || !input.trim()}>
-                  {t("agent.send")}
-                </button>
+              <div className="composer-bar">
+                <span id="intent-hint" className="hint">
+                  {t("agent.hint")}
+                </span>
+                <span className="composer-actions">
+                  <button
+                    className="quiet"
+                    onClick={() => {
+                      reset();
+                      box.current?.focus();
+                    }}
+                    disabled={busy || !history.length}
+                  >
+                    {t("agent.newTrip")}
+                  </button>
+                  <MicButton value={input} onChange={setInput} disabled={busy} />
+                  <button className={busy ? "busy" : ""} onClick={() => send()} disabled={busy || !input.trim()}>
+                    {busy ? t("agent.sending") : t("agent.send")}
+                  </button>
+                </span>
               </div>
             </div>
 
@@ -227,30 +248,33 @@ export default function TravellerAgent() {
                 </ul>
               </div>
             )}
-            <fieldset className="stress">
-              <legend className="eyebrow">{t("agent.test.eyebrow")}</legend>
-              <label className="check">
-                <input
-                  type="checkbox"
-                  checked={mirror}
-                  disabled={busy}
-                  onChange={(e) => {
-                    setMirror(e.target.checked);
-                    if (!e.target.checked) setRulesOff(false);
-                  }}
-                />
-                <span>{t("agent.test.injection")}</span>
-              </label>
-              <label className={`check danger${mirror ? "" : " off"}`}>
-                <input
-                  type="checkbox"
-                  checked={rulesOff}
-                  disabled={busy || !mirror}
-                  onChange={(e) => setRulesOff(e.target.checked)}
-                />
-                <span>{t("agent.test.rulesOff")}</span>
-              </label>
-            </fieldset>
+            {/* The manipulation demo stays one tap away, folded so the brief fits the screen. */}
+            <details className="stress">
+              <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
+              <fieldset>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={mirror}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setMirror(e.target.checked);
+                      if (!e.target.checked) setRulesOff(false);
+                    }}
+                  />
+                  <span>{t("agent.test.injection")}</span>
+                </label>
+                <label className={`check danger${mirror ? "" : " off"}`}>
+                  <input
+                    type="checkbox"
+                    checked={rulesOff}
+                    disabled={busy || !mirror}
+                    onChange={(e) => setRulesOff(e.target.checked)}
+                  />
+                  <span>{t("agent.test.rulesOff")}</span>
+                </label>
+              </fieldset>
+            </details>
             {error && <p className="error">{error}</p>}
           </section>
 

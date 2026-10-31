@@ -329,4 +329,26 @@ describe("traveller agent", () => {
     expect(screen.getAllByText("Not convinced: Gare Central ranks at least as high.").length).toBeGreaterThan(0);
     expect(await screen.findByRole("button", { name: en["agent.approve"] })).toBeInTheDocument();
   });
+
+  it("sends on Enter, and Shift+Enter starts a new line instead", async () => {
+    const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    expect(box).toHaveAccessibleDescription(en["agent.hint"]);
+
+    await user.click(box);
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(agent).not.toHaveBeenCalled();
+    expect(box).toHaveValue(en["agent.example.1"] + "\n");
+
+    await user.keyboard("{Enter}");
+    expect(agent).toHaveBeenCalledWith([{ role: "user", content: en["agent.example.1"] }], {});
+  });
+
+  it("says the agent is on it while the request is out", async () => {
+    vi.spyOn(api, "agent").mockReturnValue(new Promise(() => {}));
+    const user = setup();
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    expect(screen.getByRole("button", { name: en["agent.sending"] })).toBeDisabled();
+  });
 });

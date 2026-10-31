@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { api, MOODS, type AskItem, type AskResult, type Handoff, type Mood } from "../api";
+import { api, type AskItem, type AskResult, type Handoff } from "../api";
+import MicButton from "../components/MicButton";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { capitalise, day, money } from "../lib/format";
 
 const EXAMPLES: Key[] = ["ask.ex1", "ask.ex2", "ask.ex3", "ask.ex4"];
 
-// Ask any question about the example businesses. The mood is the person's own, visible setting: it is sent with the
-// question and echoed back with its effects, and nothing here guesses it.
+// Ask any question about the example businesses. The answers come from the businesses' own cards, and anything the
+// agent would do waits for the person's yes.
 export default function AskPanel() {
   const { t, intl } = useI18n();
   const [question, setQuestion] = useState("");
-  const [mood, setMood] = useState<Mood | null>(null);
   const [result, setResult] = useState<AskResult | null>(null);
   const [handoff, setHandoff] = useState<Handoff | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,7 @@ export default function AskPanel() {
     setError("");
     setHandoff(null);
     try {
-      setResult(await api.ask(q, mood));
+      setResult(await api.ask(q, null));
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -49,6 +49,22 @@ export default function AskPanel() {
         ? t("ask.free")
         : t("ask.per", { price: money(i.price.amount, i.price.currency, intl), per: i.price.per });
 
+  // The examples fill the answer side until the first answer, then wait below it.
+  const examplesList = (
+    <div className={`examples${result ? "" : " panel"}`}>
+      <span className="eyebrow">{t("ask.examples")}</span>
+      <ul className="rows">
+        {EXAMPLES.map((k) => (
+          <li key={k}>
+            <button type="button" className="example" onClick={() => ask(t(k))}>
+              {t(k)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
   return (
     <div className="grid split ask">
       <section className="stack loose">
@@ -66,65 +82,30 @@ export default function AskPanel() {
             maxLength={500}
             placeholder={t("ask.ex1")}
             onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing) return;
+              e.preventDefault();
+              if (!busy) ask();
+            }}
           />
 
-          <fieldset className="moods">
-            <legend>{t("ask.mood.label")}</legend>
-            {[null, ...MOODS].map((m) => (
-              <button
-                type="button"
-                key={m ?? "none"}
-                className={m === mood ? "on" : ""}
-                aria-pressed={m === mood}
-                onClick={() => setMood(m)}
-              >
-                {t(m ? (`ask.mood.${m}` as Key) : "ask.mood.none")}
+          <div className="composer-bar">
+            <span className="hint">{t("agent.hint")}</span>
+            <span className="composer-actions">
+              <MicButton value={question} onChange={setQuestion} disabled={busy} />
+              <button type="submit" className="btn" disabled={busy || !question.trim()}>
+                {busy ? t("ask.working") : t("ask.send")}
               </button>
-            ))}
-          </fieldset>
-          <p className="fine muted">{t("ask.mood.note")}</p>
-
-          <button type="submit" className="btn" disabled={busy || !question.trim()}>
-            {busy ? t("ask.working") : t("ask.send")}
-          </button>
+            </span>
+          </div>
         </form>
-
-        <div className="examples">
-          <span className="eyebrow">{t("ask.examples")}</span>
-          <ul className="rows">
-            {EXAMPLES.map((k) => (
-              <li key={k}>
-                <button type="button" className="example" onClick={() => ask(t(k))}>
-                  {t(k)}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
       </section>
 
       <section className="stack" aria-live="polite">
         {error && <p className="error">{error}</p>}
+        {!result && !handoff && examplesList}
         {result && (
           <>
-            <div className="panel stack">
-              <span className="eyebrow">{t("ask.effects")}</span>
-              <div className="statuses">
-                {result.preference.mood && (
-                  <span className="status ok">{t(`ask.mood.${result.preference.mood}` as Key)}</span>
-                )}
-                {result.preference.effects.length ? (
-                  result.preference.effects.map((e) => (
-                    <span key={e} className="status">
-                      {t(`ask.effect.${e}` as Key)}
-                    </span>
-                  ))
-                ) : (
-                  <span className="status">{t("ask.effect.none")}</span>
-                )}
-              </div>
-            </div>
-
             {result.answer && (
               <div className="panel">
                 <p className="lead">{result.answer}</p>
@@ -200,6 +181,7 @@ export default function AskPanel() {
             </div>
           </>
         )}
+        {result && examplesList}
         {handoff && (
           <div className="panel stack">
             <p>{t("ask.handoff", { business: handoff.business })}</p>

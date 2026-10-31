@@ -86,3 +86,13 @@ describe("every string", () => {
 
 // Keys whose text is a name, not language.
 const SAME_EVERYWHERE = new Set<Key>(["footer.line"]);
+
+// Three agents work for the traveller (yours, the critic, the verifier): no line may still count two.
+describe("the agent count", () => {
+  it("is three in every language", () => {
+    expect(en["agent.mode.ready"]).toMatch(/\bthree\b/i);
+    expect(de["agent.mode.ready"]).toMatch(/\bdrei\b/i);
+    expect(fr["agent.mode.ready"]).toMatch(/\btrois\b/i);
+    expect(it_["agent.mode.ready"]).toMatch(/\btre\b/i);
+  });
+});
