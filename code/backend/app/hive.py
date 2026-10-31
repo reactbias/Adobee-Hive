@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db, reputation
+from . import db, removals, reputation
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -309,6 +309,9 @@ def _trust(rec: dict[str, Any]) -> dict[str, Any]:
         },
         "freshness_days": age_days,
         "fresh": is_fresh(rec["data"]),
+        # Still carried by this hub? A withdrawn entity keeps its signature and its history, so the
+        # card reads exactly as the owner signed it; what changed is that this hub no longer offers it.
+        "carried": not removals.is_withdrawn(rec["id"]),
     }
 
 
@@ -341,12 +344,27 @@ def get_card(card_id_or_slug: str) -> dict[str, Any]:
     return {**rec["data"], "trust": _trust(rec)}
 
 
-def list_cards(kind: str | None = None) -> list[dict[str, Any]]:
-    """Return every card, optionally only one kind, ordered by slug."""
+def list_cards(kind: str | None = None, include_withdrawn: bool = False) -> list[dict[str, Any]]:
+    """Return every card this hub carries, optionally only one kind, ordered by slug.
+
+    An entity an operator withdrew is not carried, so it is left out here. This is the one place
+    that guarantee is kept: discovery, the demand map and the hub's own count all read this list,
+    so a withdrawal cannot be enforced in one of them and forgotten in the next. `include_withdrawn`
+    is for administration, which has to be able to see what it removed in order to put it back.
+    """
     with db.cursor() as cur:
         sql = "SELECT id FROM hive_cards" + (" WHERE kind = ?" if kind else "") + " ORDER BY slug"
         ids = [r[0] for r in cur.execute(sql, [kind] if kind else []).fetchall()]
+    if not include_withdrawn:
+        gone = removals.withdrawn()
+        ids = [i for i in ids if i not in gone]
     return [get_card(i) for i in ids]
+
+
+def carried(card_id: str) -> None:
+    """Refuse an action on an entity this hub has withdrawn, naming it. Raises `HiveError`."""
+    if removals.is_withdrawn(card_id):
+        raise HiveError(f"This hub no longer carries '{card_id}'.")
 
 
 def _log(card_id: str, kind: str, detail: str) -> None:
@@ -749,8 +767,9 @@ def discover(
 
 
 def check_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
-    """Return the units free for the whole stay and their totals."""
+    """Return the units free for the whole stay and their totals. Refused for a withdrawn entity."""
     card = get_card(card_id)
+    carried(card["id"])
     return {
         "card_id": card["id"],
         "name": card["name"],
@@ -777,13 +796,17 @@ def book(
 ) -> dict[str, Any]:
     """Book a unit and return the confirmation with a signed receipt.
 
-    Raises HiveError when the dates are invalid, the unit is unknown or sold out, or the guest name is missing.
+    Raises HiveError when the dates are invalid, the unit is unknown or sold out, the guest name is
+    missing, or this hub has withdrawn the entity.
     """
     if not guest_name.strip() or len(guest_name) > MAX_NAME:
         raise HiveError(f"guest_name is required, at most {MAX_NAME} characters.")
     if not 1 <= guests <= MAX_GUESTS or len(notes) > MAX_TEXT:
         raise HiveError(f"guests must be 1 to {MAX_GUESTS}; notes at most {MAX_TEXT} characters.")
     card = get_card(card_id)
+    # An entity the hub withdrew is not bookable. Checked here rather than at the REST door only,
+    # so MCP, the card page and the agent all get the same answer.
+    carried(card["id"])
     free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}
     if unit_id not in free:
         raise HiveError(f"{unit_id} is not available for {guests} guest(s) from {check_in} to {check_out}.")

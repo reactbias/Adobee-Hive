@@ -18,6 +18,8 @@ const RHEINBLICK: AdminEntity = {
   version: 3,
   signature_valid: true,
   bookable: true,
+  carried: true,
+  removal: null,
 };
 
 const LEAD: AdminEntity = {
@@ -80,6 +82,15 @@ const DETAIL: AdminEntityDetail = {
   },
   blocked: false,
   block: null,
+  carried: true,
+  removal: null,
+};
+
+const REMOVAL = {
+  entity_id: "hotel-rheinblick",
+  reason: "asked to be taken off the hub",
+  removed_at: "2026-10-31T11:00:00",
+  removed_by: "session",
 };
 
 const show = () =>
@@ -96,7 +107,8 @@ describe("the entity list", () => {
   });
 
   it("names every entity this hub carries, with its id and kind", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2, withdrawn: 0 });
     show();
 
     expect(await screen.findByText("Hotel Rheinblick")).toBeInTheDocument();
@@ -106,7 +118,8 @@ describe("the entity list", () => {
   });
 
   it("says claimed or unclaimed, as a word and not only a colour", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2, withdrawn: 0 });
     show();
 
     expect(await screen.findByText(en["admin.entities.claimed"])).toBeInTheDocument();
@@ -114,7 +127,8 @@ describe("the entity list", () => {
   });
 
   it("shows a rating only when a signed receipt earned one", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK, LEAD], count: 2, withdrawn: 0 });
     show();
 
     expect(
@@ -136,14 +150,16 @@ describe("the entity list", () => {
   });
 
   it("says so when the hub carries nothing, rather than showing an empty table", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [], count: 0 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [], count: 0, withdrawn: 0 });
     show();
 
     expect(await screen.findByText(en["admin.entities.empty"])).toBeInTheDocument();
   });
 
   it("opens one entity in full: its offers, its contact flags and its signature", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
     vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
     show();
 
@@ -158,7 +174,8 @@ describe("the entity list", () => {
   });
 
   it("does not list a channel the card publishes nothing for", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
     vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
     show();
 
@@ -168,7 +185,8 @@ describe("the entity list", () => {
   });
 
   it("says a blocked entity is blocked, and why, where the operator decides", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
     vi.spyOn(api, "adminEntity").mockResolvedValue({
       ...DETAIL,
       blocked: true,
@@ -190,12 +208,123 @@ describe("the entity list", () => {
   });
 
   it("goes back to the list", async () => {
-    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1 });
+    vi.spyOn(api, "adminAudit").mockResolvedValue({ entries: [], who_limit: "one shared password" });
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
     vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
     show();
 
     await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
     await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.back"] }));
     expect(await screen.findByText(en["admin.entities.lead"])).toBeInTheDocument();
+  });
+
+  it("says what a removal will do, and names the entity, before it does it", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    const remove = vi.spyOn(api, "adminRemoveEntity").mockResolvedValue({
+      entity_id: "hotel-rheinblick",
+      carried: false,
+      history_kept: true,
+    });
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.remove.button"] }));
+
+    expect(screen.getByText(en["admin.remove.confirm"].replace("{name}", "Hotel Rheinblick"))).toBeInTheDocument();
+    expect(screen.getByText(en["admin.remove.will"])).toBeInTheDocument();
+    expect(screen.getByText(en["admin.remove.notBlock"])).toBeInTheDocument();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("will not remove without a reason, and sends the reason when there is one", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    const remove = vi.spyOn(api, "adminRemoveEntity").mockResolvedValue({
+      entity_id: "hotel-rheinblick",
+      carried: false,
+      history_kept: true,
+    });
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.remove.button"] }));
+    expect(screen.getByRole("button", { name: en["admin.remove.do"] })).toBeDisabled();
+    expect(screen.getByText(en["admin.remove.reasonNeeded"])).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText(en["admin.remove.reason"]), "asked to be taken off");
+    await userEvent.click(screen.getByRole("button", { name: en["admin.remove.do"] }));
+
+    expect(remove).toHaveBeenCalledWith("hotel-rheinblick", "asked to be taken off");
+  });
+
+  it("cancels without touching anything", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    const remove = vi.spyOn(api, "adminRemoveEntity");
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.remove.button"] }));
+    await userEvent.click(screen.getByRole("button", { name: en["admin.remove.cancel"] }));
+
+    expect(remove).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: en["admin.remove.button"] })).toBeInTheDocument();
+  });
+
+  it("offers to carry a removed entity again, and says why it was removed", async () => {
+    const gone = { ...RHEINBLICK, carried: false, removal: REMOVAL };
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [gone], count: 0, withdrawn: 1 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue({
+      ...DETAIL,
+      entity: gone,
+      carried: false,
+      removal: REMOVAL,
+    });
+    show();
+
+    expect(await screen.findByText(en["admin.remove.removed"])).toBeInTheDocument();
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+
+    expect(await screen.findByText(en["admin.remove.why"].replace("{reason}", REMOVAL.reason))).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["admin.restore.button"] })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["admin.remove.button"] })).not.toBeInTheDocument();
+  });
+
+  it("says removing and blocking are not the same act, where the operator chooses", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.block.button"] }));
+
+    expect(screen.getByText(en["admin.block.will"])).toBeInTheDocument();
+    expect(screen.getByText(en["admin.block.notRemove"])).toBeInTheDocument();
+  });
+
+  it("shows who changed this entity, when and why, and what the ledger cannot prove", async () => {
+    vi.spyOn(api, "adminEntities").mockResolvedValue({ entities: [RHEINBLICK], count: 1, withdrawn: 0 });
+    vi.spyOn(api, "adminEntity").mockResolvedValue(DETAIL);
+    vi.spyOn(api, "adminAudit").mockResolvedValue({
+      entries: [
+        {
+          id: "a1",
+          at: "2026-10-31T11:00:00",
+          action: "entity.remove",
+          subject: "hotel-rheinblick",
+          reason: "asked to be taken off",
+          actor: "admin",
+          credential: "session",
+          detail: "",
+        },
+      ],
+      who_limit: "one shared password",
+    });
+    show();
+
+    await userEvent.click(await screen.findByRole("button", { name: en["admin.entity.open"] }));
+    expect(await screen.findByText("asked to be taken off")).toBeInTheDocument();
+    expect(screen.getByText(en["admin.ledger.whoLimit"])).toBeInTheDocument();
   });
 });

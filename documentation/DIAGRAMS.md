@@ -103,6 +103,8 @@ flowchart TB
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
+  RMV[removals.py<br/>withdrawn entities: the hub stops carrying, history stays]:::mod
+  AUD[audit.py<br/>the admin ledger: what changed, when, why]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -124,6 +126,9 @@ flowchart TB
   HUB --> SHR
   REST --> ADM
   ADM --> BLK
+  ADM --> RMV
+  REST --> RMV --> AUD
+  HIVE --> RMV
   REST --> REG
   MCP --> REG
   REG --> HIVE
@@ -335,7 +340,9 @@ flowchart LR
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
     D0 -. "X-Admin-Token" .-> D3
-    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id}"]:::door
+    D6["GET /api/admin/entities · GET /api/admin/entities/{entity_id} · GET /api/admin/audit"]:::door
+    D7["POST /api/admin/entities/{entity_id}/remove · POST /api/admin/entities/{entity_id}/restore"]:::held
+    D0 -. "X-Admin-Token" .-> D7
     D4["GET /api/admin/applications"]:::door
     D5["POST /api/admin/applications/{application_id}"]:::held
   end
@@ -394,7 +401,7 @@ Four modules carry the hub's own side of that. [sharing.py](../code/backend/app/
 leave at all — `public`, `confirm`, `push` (held, but never searchable) or `never` — and the stricter of the item's flag
 and the entity's default always wins. [blocklist.py](../code/backend/app/blocklist.py) is the manual override an
 operator reaches for, blocking a peer hub or a single entity in both directions, with a reason that has to be readable
-six months later. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
+six months later. [removals.py](../code/backend/app/removals.py) is the other override, and it is deliberately not the same one: it takes an entity off *this* hub — out of discovery, not bookable — while keeping every signed version, so a receipt can still prove what the card promised. [connections.py](../code/backend/app/connections.py) logs every introduction and waits, sometimes for
 weeks, for a person to score how the real meeting went; an introduction nobody scores goes stale rather than staying
 open for ever. [calibration.py](../code/backend/app/calibration.py) turns those scores into the only number that
 matters about a peer: `published - realised`, in tenths of a star, lower is better. A hub is judged on whether it told

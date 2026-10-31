@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import blocklist, calibration, config, connections, federation, registration, sharing
+from . import blocklist, calibration, config, connections, federation, registration, removals, sharing
 
 
 def settings() -> dict[str, Any]:
@@ -139,21 +139,34 @@ def entities() -> dict[str, Any]:
     same call (`hive.list_cards`), so the two can never disagree about what the hub carries.
     Nothing here is a side channel: every field is already on the public card.
     """
-    rows = [_entity_row(card) for card in _cards()]
-    return {"entities": rows, "count": len(rows)}
+    withdrawn = {row["entity_id"]: row for row in removals.entries()}
+    rows = [_entity_row(card, withdrawn) for card in _cards()]
+    return {
+        "entities": rows,
+        # The count is what the hub carries, so a withdrawn entity is listed but not counted. The
+        # overview's number has to mean the same thing as this one.
+        "count": len([r for r in rows if r["carried"]]),
+        "withdrawn": len([r for r in rows if not r["carried"]]),
+    }
 
 
 def _cards() -> list[dict[str, Any]]:
+    """Every card in the index, what this hub has withdrawn included: administration sees both."""
     from . import hive
 
-    return hive.list_cards()
+    return hive.list_cards(include_withdrawn=True)
 
 
-def _entity_row(card: dict[str, Any]) -> dict[str, Any]:
+def _entity_row(card: dict[str, Any], withdrawn: dict[str, Any] | None = None) -> dict[str, Any]:
     """One row of the entity table: who it is, whether it claimed itself, and how it has been rated."""
     trust = card.get("trust") or {}
     reviews = trust.get("verified_reviews") or {}
+    removal = (withdrawn or {}).get(card["id"])
     return {
+        # Carried or withdrawn. A withdrawn entity keeps its card and its signed history; what
+        # changed is that this hub no longer offers it (removals.py).
+        "carried": removal is None,
+        "removal": removal,
         "id": card["id"],
         "slug": card.get("slug") or card["id"],
         "name": card.get("name") or card["id"],
@@ -187,8 +200,11 @@ def entity(entity_id: str) -> dict[str, Any]:
     card = hive.get_card(entity_id)
     trust = card.get("trust") or {}
     block = next((e for e in blocklist.entries(blocklist.ENTITY) if e["subject"] == card["id"]), None)
+    removal = next((r for r in removals.entries() if r["entity_id"] == card["id"]), None)
     return {
-        "entity": _entity_row(card),
+        "entity": _entity_row(card, {removal["entity_id"]: removal} if removal else {}),
+        "carried": removal is None,
+        "removal": removal,
         # The card exactly as the owner signed it. The trust block is reported separately because it
         # is this hub's reading of the card, not part of what was signed.
         "card": {k: v for k, v in card.items() if k != "trust"},

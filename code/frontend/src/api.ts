@@ -155,6 +155,8 @@ export interface Trust {
   freshness_days: number | null;
   /** False for a card compiled from public sources: signed by the Hive as compiler, not by the business. */
   claimed: boolean;
+  /** False when this hub withdrew the entity. The card and its signed history are untouched either way. */
+  carried?: boolean;
   provenance?: Provenance | null;
 }
 export interface Provenance {
@@ -581,10 +583,22 @@ export interface AdminEntity {
   version: number | null;
   signature_valid: boolean;
   bookable: boolean;
+  /** False when this hub withdrew it: out of search, not bookable, signed history kept. */
+  carried: boolean;
+  removal: AdminRemoval | null;
+}
+/** One withdrawal: this hub stopped carrying an entity, and said why. */
+export interface AdminRemoval {
+  entity_id: string;
+  reason: string;
+  removed_at: string | null;
+  removed_by: string;
 }
 export interface AdminEntities {
   entities: AdminEntity[];
+  /** What the hub carries, so a withdrawn entity is listed but not counted. */
   count: number;
+  withdrawn: number;
 }
 /** One side of the market an entity is indexed by: what it offers, or what it needs. */
 export interface AdminSide {
@@ -623,6 +637,24 @@ export interface AdminEntityDetail {
   /** Blocked is not the same as removed: blocking refuses it wherever it comes from. */
   blocked: boolean;
   block: BlockEntry | null;
+  /** Carried is this hub's side of it: a withdrawn entity is out of search here and nowhere else. */
+  carried: boolean;
+  removal: AdminRemoval | null;
+}
+/** One row of the admin ledger. `actor` is always "admin": one shared password, so no person to name. */
+export interface AuditEntry {
+  id: string;
+  at: string | null;
+  action: string;
+  subject: string;
+  reason: string;
+  actor: string;
+  credential: string;
+  detail: string;
+}
+export interface AdminAudit {
+  entries: AuditEntry[];
+  who_limit: string;
 }
 export interface AdminNeighbours {
   peers: Peer[];
@@ -705,6 +737,24 @@ export const api = {
   /** One entity in full: the signed card, its offers and needs, contact flags, trust and signature. */
   adminEntity: (id: string) =>
     call<AdminEntityDetail>(`/api/admin/entities/${encodeURIComponent(id)}`, { headers: adminHeaders() }),
+  /** Stop carrying an entity: out of search, not bookable, signed history kept. The reason is required. */
+  adminRemoveEntity: (id: string, reason: string) =>
+    post<{ entity_id: string; carried: boolean; history_kept: boolean }>(
+      `/api/admin/entities/${encodeURIComponent(id)}/remove`,
+      { reason },
+      adminHeaders(),
+    ),
+  adminRestoreEntity: (id: string, reason: string) =>
+    post<{ entity_id: string; carried: boolean }>(
+      `/api/admin/entities/${encodeURIComponent(id)}/restore`,
+      { reason },
+      adminHeaders(),
+    ),
+  /** The admin ledger, newest first; pass a subject for one entity's or one peer's history. */
+  adminAudit: (subject = "") =>
+    call<AdminAudit>(`/api/admin/audit${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`, {
+      headers: adminHeaders(),
+    }),
   adminBlocklist: () => call<Blocklist>("/api/admin/blocklist"),
   adminBlock: (kind: string, subject: string, reason: string) =>
     post<BlockEntry>("/api/admin/blocklist", { kind, subject, reason }, adminHeaders()),

@@ -18,6 +18,7 @@ from . import (
     activity,
     admin,
     agent,
+    audit,
     blocklist,
     config,
     connections,
@@ -30,6 +31,7 @@ from . import (
     mcp_server,
     owner,
     registration,
+    removals,
     replies,
     rulesets,
     simulate,
@@ -52,6 +54,8 @@ async def lifespan(_: FastAPI):
     blocklist.init()
     connections.init()
     registration.init()
+    audit.init()
+    removals.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -87,6 +91,7 @@ def _hive_call(fn, *args, **kwargs):
         connections.ConnectionError_,
         blocklist.BlockError,
         registration.RegistrationError,
+        removals.RemovalError,
     ) as err:
         raise HTTPException(400, str(err)) from err
 
@@ -512,9 +517,16 @@ AdminToken = Annotated[
 ]
 
 
-def admin_only(x_admin_token: AdminToken = None) -> None:
-    """Dependency for every admin write: fails closed, and accepts either credential."""
+def admin_only(x_admin_token: AdminToken = None) -> str:
+    """Dependency for every admin write: fails closed, accepts either credential, and names which.
+
+    Returns the *kind* of credential, never the credential: `"static token"` for the ADMIN_TOKEN
+    that curl and CI use, `"session"` for one minted from the password in a browser. That is the
+    most the ledger can honestly record about who acted — the hub has one shared password, so there
+    is no person to name (see `audit.py`).
+    """
     guard.require_admin(x_admin_token, config.ADMIN_TOKEN, config.ADMIN_PASSWORD)
+    return guard.credential_kind(x_admin_token, config.ADMIN_TOKEN)
 
 
 class LoginBody(BaseModel):
@@ -586,13 +598,13 @@ def admin_blocklist(kind: str | None = None) -> dict[str, Any]:
 
 
 @app.post("/api/admin/blocklist")
-def admin_block(body: BlockBody, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_block(body: BlockBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Block a peer hub or an entity, in both directions."""
     return _hive_call(blocklist.block, body.kind, body.subject, body.reason)
 
 
 @app.delete("/api/admin/blocklist/{kind}/{subject}")
-def admin_unblock(kind: str, subject: str, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_unblock(kind: str, subject: str, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Lift a block."""
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
 
@@ -601,7 +613,7 @@ def admin_unblock(kind: str, subject: str, _: None = Depends(admin_only)) -> dic
 
 
 @app.get("/api/admin/entities")
-def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_entities(_: str = Depends(admin_only)) -> dict[str, Any]:
     """Every entity this hub carries: id, name, kind, claimed, rating and count, when it was published.
 
     Behind the admin token although every field is also on the public card, because the list itself
@@ -611,10 +623,46 @@ def admin_entities(_: None = Depends(admin_only)) -> dict[str, Any]:
 
 
 @app.get("/api/admin/entities/{entity_id}")
-def admin_entity(entity_id: str, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_entity(entity_id: str, _: str = Depends(admin_only)) -> dict[str, Any]:
     """One entity in full: the signed card, its offers and needs, contact with the sharing flags,
     its trust block and its signature state, and whether this hub has blocked it."""
     return _hive_call(admin.entity, entity_id)
+
+
+class RemovalBody(BaseModel):
+    """An operator taking an entity off this hub, or putting it back. The reason is not optional."""
+
+    reason: str = Field(..., min_length=1, max_length=500, description="Readable six months from now")
+
+
+@app.post("/api/admin/entities/{entity_id}/remove")
+def admin_remove_entity(entity_id: str, body: RemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Stop carrying an entity: out of discovery, not bookable, signed history kept.
+
+    A withdrawal rather than a delete, because `hive_card_history` is what lets a receipt prove
+    what a card said on the day it was booked (see `removals.py` and `SECURITY.md`). Removing is
+    not blocking: use the blocklist to refuse an entity wherever it comes from.
+    """
+    return _hive_call(removals.withdraw, entity_id, body.reason, removed_by=credential)
+
+
+@app.post("/api/admin/entities/{entity_id}/restore")
+def admin_restore_entity(entity_id: str, body: RemovalBody, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Carry an entity again. The withdrawal goes; the ledger keeps both decisions."""
+    return _hive_call(removals.restore, entity_id, body.reason, restored_by=credential)
+
+
+@app.get("/api/admin/audit")
+def admin_audit(subject: str = "", action: str = "", limit: int = 200, _: str = Depends(admin_only)) -> dict[str, Any]:
+    """The admin ledger: what was changed, when, why, and with which credential.
+
+    `who_limit` comes back with it, because this hub has one shared password and a ledger that
+    implied otherwise would be worse than none.
+    """
+    return {
+        "entries": audit.entries(subject=subject, action_prefix=action, limit=limit),
+        "who_limit": audit.WHO_LIMIT,
+    }
 
 
 # ---------------------------------------------------------------- joining this hub
@@ -677,6 +725,6 @@ def admin_applications(state: str = "") -> dict[str, Any]:
 
 
 @app.post("/api/admin/applications/{application_id}")
-def admin_decide(application_id: str, body: DecisionBody, _: None = Depends(admin_only)) -> dict[str, Any]:
+def admin_decide(application_id: str, body: DecisionBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)

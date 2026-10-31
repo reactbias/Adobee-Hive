@@ -41,6 +41,7 @@ SUITE = [
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_registration.py",
+    "tests/test_admin_manage.py",
 ]
 
 
@@ -147,6 +148,30 @@ CURATED: list[Mutant] = [
         "an unclaimed card reports itself as bookable, so a lead passes for a business that agreed",
         '"bookable": bool(card.get("units")) and trust["claimed"],',
         '"bookable": True,',
+    ),
+    Mutant(
+        "hive.py",
+        "a withdrawn entity is discoverable again, so kicking one off the hub does nothing",
+        "    if not include_withdrawn:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "a withdrawn entity can still be booked, so the hub sells what it no longer carries",
+        '    carried(card["id"])\n    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+        '    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+    ),
+    Mutant(
+        "removals.py",
+        "a removal is accepted with no reason, so nobody can tell later why an entity is missing",
+        '        raise RemovalError("a removal needs a reason: someone has to be able to read this list later")',
+        '        reason = "none given"',
+    ),
+    Mutant(
+        "audit.py",
+        "the reason is dropped on the way into the ledger, so it records only that something happened",
+        '        "reason": (reason or "")[:MAX_REASON],',
+        '        "reason": "",',
     ),
     Mutant(
         "calibration.py",
@@ -289,6 +314,8 @@ TARGETS = [
     "connections.py",
     "sharing.py",
     "registration.py",
+    "removals.py",
+    "audit.py",
 ]
 
 
