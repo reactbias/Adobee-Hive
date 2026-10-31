@@ -60,11 +60,19 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Adobee Hive", version="0.1.0", lifespan=lifespan)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Chrome's Private Network Access: a page on a private address calling another private
+    # address preflights with `Access-Control-Request-Private-Network` and refuses unless the
+    # server answers it. Without this a LAN demo works in Safari, which never asks, and fails in
+    # Chrome — intermittently, because the preflight is cached for ten minutes. Starlette rejects
+    # it outright ("Disallowed CORS private-network") until this is set.
+    allow_private_network=True,
     expose_headers=["mcp-session-id"],
 )
 app.mount("/mcp", mcp_app)
@@ -73,7 +81,13 @@ app.mount("/mcp", mcp_app)
 def _hive_call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except (hive.HiveError, hub.HubError, connections.ConnectionError_, blocklist.BlockError) as err:
+    except (
+        hive.HiveError,
+        hub.HubError,
+        connections.ConnectionError_,
+        blocklist.BlockError,
+        registration.RegistrationError,
+    ) as err:
         raise HTTPException(400, str(err)) from err
 
 
@@ -199,8 +213,12 @@ async def hive_discover(
     radius: int = Query(0, ge=0, le=federation.MAX_RADIUS),
     budget_ms: float = Query(federation.DEFAULT_BUDGET_MS, ge=0, le=20_000),
     seen: list[str] | None = SEEN_QUERY,
+    looking_for: str = "offers",
 ) -> dict[str, Any]:
     """Search the Hive, and with radius above 0 its peer Hives too; radius 0 is this Hive only, as before.
+
+    looking_for is which side of the market the caller is on: "offers" (the default) finds whoever provides the
+    thing asked for, "needs" whoever wants what the caller provides, "any" both.
 
     This is also how one Hive forwards a query to another: a hop passes the radius it has left, the time budget
     left and the hubs the query has already visited (seen), which is how loops in the peer graph are cut.
@@ -221,6 +239,7 @@ async def hive_discover(
         radius,
         budget_ms,
         seen,
+        looking_for,
     )
 
 
@@ -638,7 +657,6 @@ def admin_applications(state: str = "") -> dict[str, Any]:
 
 
 @app.post("/api/admin/applications/{application_id}")
-def admin_decide(application_id: str, body: DecisionBody, request: Request) -> dict[str, Any]:
+def admin_decide(application_id: str, body: DecisionBody, _: None = Depends(admin_only)) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
-    guard.require_admin(request, config.ADMIN_TOKEN)
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)

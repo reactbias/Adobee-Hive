@@ -240,7 +240,8 @@ sequenceDiagram
 ```
 
 Unclaimed cards say so in every answer, owner edits refuse them, and approving only hands the person off to the
-business's own site.
+business's own site. They are in `hive_discover` as well, where every result carries `claimed` and `bookable`, so
+an agent can see that a card is a lead compiled from public information rather than a business that agreed.
 
 ## 4. Where the data lives
 
