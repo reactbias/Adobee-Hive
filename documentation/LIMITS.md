@@ -17,8 +17,9 @@ exactly where this gives up, with an answer key of queries that share no word wi
 **Semantic search is built and not connected.** `app/semantic.py` is a working similarity provider — accent-folded
 stems, a four-language concept table, character trigrams, cosine above a named floor, no key and no network — with
 its own tests. Nothing in `app/` imports it. It is not a score component in `hive.discover`, and `GET /api/health`
-does not report which provider is in use. Wiring it in is one change in `discover`, and until that lands the
-sentence to say out loud is "the module is there, the search does not use it yet".
+does not report which provider is in use. Connecting it means calling `semantic.best` from `discover` and
+scoring the hit; until that lands, the sentence to say out loud is "the module is there, the search does not use
+it yet".
 
 **Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
 reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on
