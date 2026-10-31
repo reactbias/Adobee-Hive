@@ -5,6 +5,7 @@ import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { delayFor, type Beat } from "../lib/pace";
 import { demoMode } from "../lib/demo";
+import { reasonText } from "../lib/reasons";
 import { Ask, Reply, Withheld, genuine, namesFrom } from "./TraceParts";
 
 // The one question the agent asks when a request lacks what is needed to act on it.
@@ -229,7 +230,7 @@ export default function GroupChat({
                   <ul className="left-out">
                     {r.excluded.map((e) => (
                       <li key={e.card_id + e.item}>
-                        {e.business}, {e.item}: {e.why_not.join("; ")}
+                        {e.business}, {e.item}: {e.why_not.map((w) => reasonText(t, w)).join("; ")}
                       </li>
                     ))}
                   </ul>

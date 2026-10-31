@@ -1,5 +1,6 @@
 import type { AskItem, AskReply } from "../api";
 import { useI18n } from "../i18n";
+import { reasonText } from "../lib/reasons";
 import { day, money } from "../lib/format";
 
 // A business's answer to a question, as a card inside the agent chat: its offers or events, straight from its own
@@ -21,7 +22,9 @@ export function AskCard({ reply }: { reply: AskReply }) {
             <h4>{i.title}</h4>
             {i.summary && <p className="dim">{i.summary}</p>}
             <p className="fine">
-              {[i.date && day(i.date, intl), i.duration, price(i), ...i.why].filter(Boolean).join(" · ")}
+              {[i.date && day(i.date, intl), i.duration, price(i), ...i.why.map((w) => reasonText(t, w))]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </li>
         ))}

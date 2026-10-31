@@ -23,6 +23,7 @@ import type { Key } from "../i18n/en";
 import { chf, nights, stay } from "../lib/format";
 import { pickNearby } from "../lib/next";
 import { routeFor } from "../lib/route";
+import { reasonText } from "../lib/reasons";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
@@ -433,7 +434,7 @@ export default function TravellerAgent() {
                   {why.length > 0 && (
                     <div className="why">
                       <span className="label">{t("agent.gate.why")}</span>
-                      <p>{why.join(" · ")}</p>
+                      <p>{why.map((w) => reasonText(t, w)).join(" · ")}</p>
                     </div>
                   )}
                   <div className="row gate-actions">
