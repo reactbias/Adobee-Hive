@@ -27,6 +27,13 @@ OWNER_EDIT_TOKEN = os.getenv("OWNER_EDIT_TOKEN", "")  # when set, owner edits ne
 # fails closed — an unset ADMIN_TOKEN refuses every write rather than leaving the blocklist open.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
+# Who may join this hub. "open" admits anything that passes the checks, "vetted" puts every
+# application in front of a person, "invite" needs a token, "closed" accepts nobody. The default is
+# vetted, because a hub's standing with its peers is measured by whether its published ratings
+# survive contact with real people: letting anyone in is a cost the hub pays later, in calibration.
+ADMISSION_POLICY = os.getenv("ADMISSION_POLICY", "vetted")
+INVITE_TOKENS = [t.strip() for t in os.getenv("INVITE_TOKENS", "").split(",") if t.strip()]
+
 # Cost guard for the demo key: calls that may reach Claude, per client IP and in total, per hour.
 LLM_CALLS_PER_CLIENT_HOUR = int(os.getenv("LLM_CALLS_PER_CLIENT_HOUR", "30"))
 LLM_CALLS_TOTAL_HOUR = int(os.getenv("LLM_CALLS_TOTAL_HOUR", "300"))

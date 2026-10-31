@@ -57,3 +57,15 @@ def test_the_curated_mutants_cover_every_target_module():
     mutate = _mutate()
     aimed = {m.file for m in mutate.CURATED}
     assert set(mutate.TARGETS) - aimed == set(), "add a curated mutant for these"
+
+
+def test_a_run_refuses_to_start_when_a_mutant_is_live_in_the_source():
+    """A killed run leaves the source broken in a way that looks like a real failing test.
+
+    The restore is in a `finally`, which survives an exception and a Ctrl-C but not a SIGKILL. That
+    happened: a kill left `if state != WITHDRAWN` in registration.py and two unrelated-looking test
+    failures. A run now refuses to start until the tree is clean.
+    """
+    mutate = _mutate()
+    assert mutate.live_mutants() == [], "a mutant is sitting in the source right now"
+    assert callable(mutate.live_mutants)

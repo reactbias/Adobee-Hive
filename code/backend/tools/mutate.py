@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import random
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -37,6 +38,7 @@ SUITE = [
     "tests/test_hive.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
+    "tests/test_registration.py",
 ]
 
 
@@ -157,6 +159,48 @@ CURATED: list[Mutant] = [
         "DEFAULT = PUBLIC",
     ),
     Mutant(
+        "registration.py",
+        "a bad signature is admitted, so anyone can register as anyone",
+        'return False, "the signature does not match the key offered"',
+        'return True, "signature was not checked"',
+    ),
+    Mutant(
+        "registration.py",
+        "an application that brings a key need not sign, so the key is just a claim",
+        'return False, "an application that brings a public key must be signed with the private half"',
+        'return True, "unsigned"',
+    ),
+    Mutant(
+        "registration.py",
+        "a blocked entity can register its way back in",
+        'return False, f"{entity_id} is blocked on this hub"',
+        'return True, "not blocked"',
+    ),
+    Mutant(
+        "registration.py",
+        "an id already in the index can be taken over by a new applicant",
+        "if hive.get_record(entity_id) is not None:",
+        "if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "a vetted hub admits without a person ever looking",
+        "elif config.ADMISSION_POLICY == VETTED:",
+        "elif False:",
+    ),
+    Mutant(
+        "registration.py",
+        "an invite-only hub lets anyone in",
+        "if offered and offered in config.INVITE_TOKENS:",
+        "if True:",
+    ),
+    Mutant(
+        "registration.py",
+        "a failed check still publishes the entity",
+        "if state == ADMITTED:",
+        "if state != WITHDRAWN:",
+    ),
+    Mutant(
         "reputation.py",
         "distance stops discounting, so a far result outranks an identical near one",
         "HOP_DECAY = 0.85",
@@ -200,7 +244,54 @@ SWAPS = [
     (r"- 1\b", "- 0"),
     (r"\bTrue\b", "False"),
 ]
-TARGETS = ["federation.py", "reputation.py", "calibration.py", "connections.py", "sharing.py"]
+TARGETS = [
+    "federation.py",
+    "reputation.py",
+    "calibration.py",
+    "connections.py",
+    "sharing.py",
+    "registration.py",
+]
+
+
+#: The file currently holding a mutant, and the bytes to put back. A module global because a
+#: signal handler has nowhere else to look, and leaving a mutant behind is the worst outcome
+#: this tool has: the source breaks in a way that reads as a genuine failing test.
+_IN_FLIGHT: tuple[Path, str] | None = None
+
+
+def _restore_in_flight() -> None:
+    """Put back whatever is mutated right now. Safe to call twice."""
+    global _IN_FLIGHT
+    if _IN_FLIGHT is not None:
+        path, original = _IN_FLIGHT
+        _IN_FLIGHT = None
+        path.write_text(original, encoding="utf-8")
+
+
+def _on_signal(signum, _frame):
+    """Restore, then die with the conventional code. `finally` does not run on SIGTERM."""
+    _restore_in_flight()
+    print(f"\n  interrupted ({signal.Signals(signum).name}); the source has been put back")
+    sys.exit(128 + signum)
+
+
+def live_mutants() -> list[Mutant]:
+    """Curated mutants that are sitting in the source right now.
+
+    A run restores every file in a `finally`, which covers an exception and a Ctrl-C. It does not
+    survive SIGKILL, and a killed run leaves the source broken in a way that looks like a real
+    failing test. This has happened. So a run refuses to start until the tree is clean, and says
+    exactly which line to put back.
+    """
+    found = []
+    for mutant in CURATED:
+        if not mutant.path.exists():
+            continue
+        src = mutant.path.read_text(encoding="utf-8")
+        if mutant.find not in src and mutant.replace in src:
+            found.append(mutant)
+    return found
 
 
 def run_suite(timeout: int = 120) -> bool:
@@ -234,14 +325,16 @@ def apply(path: Path, find: str, replace: str, count: int, regex: bool = False) 
 
 def check(label: str, why: str, path: Path, find: str, replace: str, count: int, regex: bool = False):
     """Apply one mutant, run the suite, always put the file back."""
+    global _IN_FLIGHT
     original, changed = apply(path, find, replace, count, regex)
     if not changed:
         print(f"  SKIP  {label}: pattern not found ({find!r})")
         return None
+    _IN_FLIGHT = (path, original)
     try:
         green = run_suite()
     finally:
-        path.write_text(original, encoding="utf-8")
+        _restore_in_flight()
     if green:
         print(f"  \033[31mSURVIVED\033[0m  {label}")
         print(f"            {why}")
@@ -299,8 +392,20 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=None, help="seed for --random (default: time-based)")
     ap.add_argument("--all", action="store_true", help="curated plus 12 random")
     args = ap.parse_args()
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        signal.signal(sig, _on_signal)
     seed = args.seed if args.seed is not None else int(time.time())
     n_random = 12 if args.all else args.random
+
+    stray = live_mutants()
+    if stray:
+        print("Refusing to run: a previous run left mutants in the source.\n")
+        for mutant in stray:
+            print(f"  {mutant.file}: {mutant.why}")
+            print(f"    put back: {mutant.find!r}")
+            print(f"    found:    {mutant.replace!r}\n")
+        print("Restore those lines (git checkout the file, if it is tracked) and run again.")
+        return len(stray)
 
     print("Checking the suite is green before we start...")
     if not run_suite():
