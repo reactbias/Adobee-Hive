@@ -53,7 +53,7 @@ export default function Home() {
   useEffect(() => {
     api
       .cards()
-      .then(setCards)
+      .then((all) => setCards(all.filter((c) => c.trust.claimed !== false))) // unclaimed examples live on /ask
       .catch(() => setCards([]));
   }, []);
   const featured = cards.find((c) => c.slug === "rheinblick") ?? cards[0];

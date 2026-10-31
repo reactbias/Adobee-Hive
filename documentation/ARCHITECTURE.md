@@ -45,6 +45,7 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | --- | --- | --- | --- |
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
 | HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py` |
+| Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
 
 Each domain module has a `register(server)` function and is listed in `domains.DOMAINS`. How to add one:
 [CONTRIBUTING.md](../CONTRIBUTING.md#add-a-use-case).
@@ -62,10 +63,11 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `pages/OwnerStudio.tsx` | Plain-language edits, diff, sign and publish, missed demand |
 | `pages/CardPage.tsx` | The human view of a card, direct booking and the tamper test |
 | `pages/DemandMap.tsx` | What Basel asked for that nobody offers |
+| `pages/AskHive.tsx` | Ask the Hive: a question, a mood the person sets, answers per business with their source, and the approval before a hand-off |
 | `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
 | `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
 | `lib/format.ts` | Swiss date, CHF and distance formatting per language |
-| `lib/*.test.ts` | Vitest unit tests (`npm test`) |
+| `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
@@ -79,6 +81,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
 | `hr_find_people` | Find person cards by skills (and location); public fields only, with reasons for who was left out |
+| `explore_ask` | Answer a question from the example cards, with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
 
 Agents can find the endpoint from `/.well-known/hive.json`.
@@ -87,7 +90,7 @@ Agents can find the endpoint from `/.well-known/hive.json`.
 
 `GET /api/health` · `GET /api/hive/cards[/{id}]` · `GET /api/hive/cards/{id}/availability` ·
 `POST /api/hive/cards/{id}/book` · `POST /api/hive/reviews` · `POST /api/hive/verify` · `GET /api/hive/demand` ·
-`POST /api/demo/simulate` · `POST /api/demo/reset` · `POST /api/agent` · `POST /api/agent/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
+`POST /api/demo/simulate` · `POST /api/demo/reset` · `POST /api/agent` · `POST /api/agent/approve` · `POST /api/ask` · `POST /api/ask/approve` · `GET /api/owner/{id}` · `POST /api/owner/{id}/propose` ·
 `POST /api/owner/{id}/publish`
 
 The contract lives in `code/backend/app/main.py`; change an endpoint in one PR so the frontend follows.
@@ -106,6 +109,11 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
   the stress test on `/agent`, or `POST /api/agent` with `"scenario": "injection"` (and `"rules": "off"` for the
   unguarded counterfactual, which is scripted and never books).
 - **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`).
+- **Unclaimed cards.** A card with `provenance.verified_by_owner: false` was compiled from a public website and is
+  signed by the Hive as compiler. `trust.claimed` is false, the UI and every answer say so, owner edits refuse it,
+  and an approved action only hands the person off to the business's own site.
+- **Chosen, not inferred.** The mood on `/ask` is a preference the person sets; the answer echoes it with its
+  effects. Only the mood and the cards asked about are counted, never the question text or who asked.
 - **Abuse limits.** Owner edits can require a token, model calls are rate-limited, all input is bounded.
   Details and known limits: [SECURITY.md](../SECURITY.md).
 

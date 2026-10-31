@@ -61,6 +61,16 @@ export interface Trust {
   attestations: { claim: string; attested_by: string }[];
   verified_reviews: { count: number; average: number | null; recent: { rating: number; text: string }[]; rule: string };
   freshness_days: number | null;
+  /** False for a card compiled from public sources: signed by the Hive as compiler, not by the business. */
+  claimed: boolean;
+  provenance?: Provenance | null;
+}
+export interface Provenance {
+  source: string;
+  url: string;
+  read_on: string;
+  verified_by_owner: boolean;
+  note: string;
 }
 export interface Card {
   id: string;
@@ -140,7 +150,7 @@ export interface Pending {
   tool: "hive_book";
   input: Record<string, unknown>;
 }
-/** A second agent, on another vendor when a key is set, checks the held booking before the human is asked. */
+/** A separate, independent agent checks the held booking before the human is asked; a rule check without a key. */
 export interface SecondOpinion {
   verdict: "agree" | "concern";
   note: string;
@@ -205,6 +215,70 @@ export interface Health {
   fast_model: string;
 }
 
+// ---------- Ask the Hive ----------
+
+export const MOODS = ["curious", "stressed", "planning", "celebrating"] as const;
+export type Mood = (typeof MOODS)[number];
+export interface Price {
+  amount: number;
+  currency: string;
+  per: string;
+  note?: string;
+}
+export interface AskItem {
+  id: string;
+  type: "offer" | "event";
+  title: string;
+  summary?: string | null;
+  duration?: string | null;
+  date?: string | null;
+  price?: Price | null;
+  price_chf?: number | null;
+  action?: string | null;
+  why: string[];
+}
+export interface AskReply {
+  card_id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  tagline?: string;
+  claimed: boolean;
+  source?: Provenance | null;
+  signature_valid: boolean;
+  items: AskItem[];
+}
+/** Held until the person says yes. An unclaimed card can only hand off to the business's own site. */
+export interface AskPending {
+  id: string;
+  card_id: string;
+  business: string;
+  item: string;
+  action: string;
+  url: string;
+  claimed: boolean;
+}
+export interface AskResult {
+  question: string;
+  preference: { mood: Mood | null; effects: string[]; source: string };
+  replies: AskReply[];
+  excluded: { card_id: string; business: string; item: string; why_not: string[] }[];
+  budget_chf: number | null;
+  rate: { EUR_CHF: number; note: string } | null;
+  pending: AskPending | null;
+  rules: string[];
+  answer: string | null;
+  mode: string;
+}
+export interface Handoff {
+  status: "handed_off" | "requested";
+  business: string;
+  item: string;
+  action: string;
+  url: string;
+  sent_to_business: boolean;
+}
+
 export const api = {
   health: () => call<Health>("/api/health"),
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),
@@ -230,4 +304,6 @@ export const api = {
   forge: (cardId: string) => post<Card>(`/api/hive/demo/forge/${encodeURIComponent(cardId)}`, {}),
   demand: () => call<DemandMap>("/api/hive/demand"),
   simulate: (n: number) => post<DemandMap>(`/api/demo/simulate?n=${n}`, {}),
+  ask: (question: string, mood: Mood | null) => post<AskResult>("/api/ask", { question, mood }),
+  askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
 };

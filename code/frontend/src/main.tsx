@@ -8,6 +8,7 @@ import TravellerAgent from "./pages/TravellerAgent";
 import OwnerStudio from "./pages/OwnerStudio";
 import CardPage from "./pages/CardPage";
 import DemandMap from "./pages/DemandMap";
+import AskHive from "./pages/AskHive";
 import B6Bee from "./components/B6Bee";
 import "./styles.css";
 
@@ -44,6 +45,9 @@ function Nav() {
         <div className="nav-links">
           <NavLink to="/agent" className={link}>
             {t("nav.agent")}
+          </NavLink>
+          <NavLink to="/ask" className={link}>
+            {t("nav.ask")}
           </NavLink>
           <NavLink to="/owner" className={link}>
             {t("nav.owner")}
@@ -86,6 +90,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/owner" element={<OwnerStudio />} />
             <Route path="/card/:slug" element={<CardPage />} />
             <Route path="/demand" element={<DemandMap />} />
+            <Route path="/ask" element={<AskHive />} />
           </Routes>
         </main>
         <B6Bee />

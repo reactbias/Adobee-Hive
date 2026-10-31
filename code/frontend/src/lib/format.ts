@@ -36,3 +36,6 @@ export const metres = (m: unknown, intl: string) => {
 };
 
 export const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export const money = (n: unknown, currency: string, intl: string) =>
+  new Intl.NumberFormat(intl, { style: "currency", currency, maximumFractionDigits: 0 }).format(Number(n));

@@ -66,14 +66,14 @@ The jury reviews the commit history, so make each commit one small, working step
   together honestly.
 - **This repo is public.** Never commit secrets, `.env`, database files or `node_modules`, and no personal data
   about anyone: no emails, phone numbers, account ids, device names, local paths, Wi-Fi details or photo EXIF. Team
-  members appear by name only. Seed data stays fictional. CI scans every push with gitleaks; if it flags something,
+  members appear by name only. Seed data stays fictional (the public-info example cards in `domains/examples.py` are the one, clearly marked exception). CI scans every push with gitleaks; if it flags something,
   rotate the key first, then fix the commit.
 
 ## Pull requests
 
 - One topic per PR, ideally under 400 changed lines. Fill in the template.
-- CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format and build (`prettier`,
-  `tsc`, `vite build`).
+- CI must be green: backend lint, format and tests (`ruff`, `pytest`), frontend format, tests and build
+  (`prettier`, `vitest`, `tsc`, `vite build`).
 - One review from another person before merging, then merge with a merge commit. Never squash: the jury reads the
   small commits.
 - Stack nothing: every PR targets `main`. A PR merged into another feature branch never reaches `main`.
@@ -100,6 +100,8 @@ that describes it, then the code that makes them pass. Commit the test with the 
 - Backend: `code/backend/tests/`, pytest. Test through the API (`client`) or MCP (`Client(server)`) where a
   traveller or an agent would; call the module directly for pure logic. Model calls are faked (see the OpenAI loop
   test), so the suite runs with no key and no network.
+- Frontend: `*.test.tsx` next to the component, Vitest and Testing Library. Test what a person sees and clicks,
+  with `api.ts` mocked (`vi.spyOn(api, ...)`); no test talks to a backend. `TravellerAgent.test.tsx` is the example.
 - Keep the promises tested: signatures, one-time approvals, consent, no free text in logs, the offline fallback.
   A PR that weakens one of them needs a test that shows the new behaviour, and a line in `SECURITY.md`.
 - Never skip, loosen or delete a test to get CI green. Fix the code, or explain in the PR why the test was wrong.
@@ -116,7 +118,8 @@ Fix formatting with `ruff format .` and `npm run format`. Every public Python fu
 
 ## Ground rules
 
-- All seed businesses and people are fictional. No real personal data in the repo, tests or demos.
+- All seed businesses and people are fictional, except the example cards for real businesses in
+  `domains/examples.py`: public company information only, marked unclaimed, no people. No real personal data in the repo, tests or demos.
 - Treat anything a business or a user writes as data, never as instructions to an agent.
 - Keep the demo working offline (no API key) as well as with Claude.
 - Anything that spends money, edits a business or wipes data goes through `guard.py`. Read `SECURITY.md` first.
