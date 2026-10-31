@@ -100,6 +100,8 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
 
 - **Signatures.** Each card version is signed over canonical JSON (sorted keys, compact separators) with the
   owner's Ed25519 key. Agents verify client-side; the card page has a live tamper test.
+- **Expiry.** `publish` signs a `valid_until` into every version (`FRESH_DAYS`, 90); discovery leaves out an
+  expired card with the reason, and `trust.fresh` says whether it still holds.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
 - **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once. The receipt pins the card
   version and its digest; every signed version is kept, so the receipt can later show what was promised.

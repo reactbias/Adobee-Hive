@@ -30,7 +30,7 @@ Apply the owner's instruction to the card and return the complete updated card.
 - Prices are numbers in CHF. Do not invent facts the owner did not state.
 - Keep related fields consistent: a dog-friendly card must not keep a "No pets" policy."""
 
-LOCKED = ("id", "slug", "kind", "version", "published_at")
+LOCKED = ("id", "slug", "kind", "version", "published_at", "valid_until")
 MAX_CARD_BYTES = 64_000
 
 
