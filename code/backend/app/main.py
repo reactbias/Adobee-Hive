@@ -8,9 +8,9 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,7 @@ from . import (
     hub,
     mcp_server,
     owner,
+    registration,
     replies,
     rulesets,
     simulate,
@@ -50,6 +51,7 @@ async def lifespan(_: FastAPI):
     activity.init()
     blocklist.init()
     connections.init()
+    registration.init()
     if config.SEED_ON_EMPTY:
         hive_seed.seed_if_empty()
     async with mcp_app.router.lifespan_context(mcp_app):
@@ -479,6 +481,66 @@ def hub_standing() -> dict[str, Any]:
 
 # ---------------------------------------------------------------- administration (GUI-ready)
 
+# Declared as a real Header parameter, not read off the raw Request, so /docs renders an input box for it and an
+# admin write can be tried from there. It carries either the static ADMIN_TOKEN or a session token from
+# /api/admin/login.
+AdminToken = Annotated[
+    str | None,
+    Header(
+        alias="X-Admin-Token",
+        description="The hub's ADMIN_TOKEN, or a session token from POST /api/admin/login.",
+    ),
+]
+
+
+def admin_only(x_admin_token: AdminToken = None) -> None:
+    """Dependency for every admin write: fails closed, and accepts either credential."""
+    guard.require_admin(x_admin_token, config.ADMIN_TOKEN, config.ADMIN_PASSWORD)
+
+
+class LoginBody(BaseModel):
+    """An operator signing in to the hub's administration."""
+
+    password: str = Field(..., min_length=1, max_length=200, description="The hub's ADMIN_PASSWORD. Never logged")
+
+
+@app.post("/api/admin/login")
+def admin_login(body: LoginBody, request: Request) -> dict[str, Any]:
+    """Exchange the hub's password for a short-lived session token, so a browser can administer the hub.
+
+    Hard-limited per client IP and for the whole backend: a password endpoint without a limit is an oracle
+    anyone can question all day. A locked-out answer says how many seconds to wait, in the body and in
+    `Retry-After`. The password is compared in constant time and never written anywhere.
+    """
+    if not guard.admin_configured(config.ADMIN_TOKEN, config.ADMIN_PASSWORD):
+        raise HTTPException(503, "This hub has no ADMIN_PASSWORD set, so there is nothing to sign in to.")
+    guard.admin_logins.check(request)
+    if not guard.check_admin_password(body.password, config.ADMIN_PASSWORD):
+        raise HTTPException(403, "Wrong password.")
+    guard.admin_logins.forget(request)  # getting it right clears the typos that came before it
+    ttl = config.ADMIN_SESSION_MINUTES * 60
+    return {
+        "token": guard.mint_admin_session(config.ADMIN_PASSWORD, ttl),
+        "expires_in": ttl,
+        "header": "X-Admin-Token",
+    }
+
+
+@app.post("/api/admin/logout")
+def admin_logout(x_admin_token: AdminToken = None) -> dict[str, bool]:
+    """End this session token. A token already expired or never ours is accepted quietly: nothing to say."""
+    guard.end_admin_session(x_admin_token or "")
+    return {"signed_out": True}
+
+
+@app.get("/api/hub/directory")
+def hub_directory() -> dict[str, Any]:
+    """Every Hive we know of, for a person choosing which one to join.
+
+    Like instances.social for Mastodon: whether it is taking members, what it asks, what it carries, and
+    — which a Mastodon directory cannot offer — how honest its ratings have turned out to be."""
+    return admin.directory()
+
 
 @app.get("/api/admin/overview")
 def admin_overview() -> dict[str, Any]:
@@ -505,14 +567,78 @@ def admin_blocklist(kind: str | None = None) -> dict[str, Any]:
 
 
 @app.post("/api/admin/blocklist")
-def admin_block(body: BlockBody, request: Request) -> dict[str, Any]:
+def admin_block(body: BlockBody, _: None = Depends(admin_only)) -> dict[str, Any]:
     """Block a peer hub or an entity, in both directions."""
-    guard.require_admin(request, config.ADMIN_TOKEN)
     return _hive_call(blocklist.block, body.kind, body.subject, body.reason)
 
 
 @app.delete("/api/admin/blocklist/{kind}/{subject}")
-def admin_unblock(kind: str, subject: str, request: Request) -> dict[str, Any]:
+def admin_unblock(kind: str, subject: str, _: None = Depends(admin_only)) -> dict[str, Any]:
     """Lift a block."""
-    guard.require_admin(request, config.ADMIN_TOKEN)
     return {"lifted": _hive_call(blocklist.unblock, kind, subject)}
+
+
+# ---------------------------------------------------------------- joining this hub
+
+
+class RegisterBody(BaseModel):
+    """One signed application to join. See GET /api/hub/registration for the shape and the rules."""
+
+    entity: dict[str, Any] = Field(..., description="The card being registered: id, kind, name, description")
+    public_key: str = Field("", max_length=200, description="Base64 Ed25519. Bring one and you keep the private half")
+    proofs: list[dict[str, Any]] = Field(
+        default_factory=list, description="Claims about the world, recorded unverified"
+    )
+    invite: str = Field("", max_length=200)
+    signature: str = Field(
+        "", max_length=400, description="Base64, over the canonical JSON of this without `signature`"
+    )
+
+
+class DecisionBody(BaseModel):
+    """An operator admitting or refusing a pending application."""
+
+    admit: bool
+    reason: str = Field("", max_length=500, description="Required to refuse; the applicant is told it")
+
+
+@app.get("/api/hub/registration")
+def hub_registration_policy() -> dict[str, Any]:
+    """What this hub asks of someone who wants to join, and the exact document to send.
+
+    Published so an applicant can read the rules before spending effort on an application."""
+    return registration.policy()
+
+
+@app.post("/api/hub/register")
+def hub_register(body: RegisterBody, request: Request) -> dict[str, Any]:
+    """Apply to join this hub. Returns the decision, the checks that led to it, and what to do next.
+
+    A refusal is an answer, not an error, so this returns 200 with `state: rejected` rather than a 4xx."""
+    guard.federated.check(request)
+    return _hive_call(registration.apply, body.model_dump())
+
+
+@app.get("/api/hub/register/{application_id}")
+def hub_application(application_id: str) -> dict[str, Any]:
+    """Check on an application."""
+    return _hive_call(registration.get, application_id)
+
+
+@app.post("/api/hub/register/{application_id}/withdraw")
+def hub_withdraw(application_id: str) -> dict[str, Any]:
+    """Withdraw an application before it has been decided."""
+    return _hive_call(registration.withdraw, application_id)
+
+
+@app.get("/api/admin/applications")
+def admin_applications(state: str = "") -> dict[str, Any]:
+    """The admission queue. Pass state=pending for what is waiting on a person."""
+    return {"applications": _hive_call(registration.listing, state), "policy": registration.policy()}
+
+
+@app.post("/api/admin/applications/{application_id}")
+def admin_decide(application_id: str, body: DecisionBody, request: Request) -> dict[str, Any]:
+    """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
+    guard.require_admin(request, config.ADMIN_TOKEN)
+    return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)

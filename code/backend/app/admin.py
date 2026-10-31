@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import blocklist, calibration, config, connections, federation, sharing
+from . import blocklist, calibration, config, connections, federation, registration, sharing
 
 
 def settings() -> dict[str, Any]:
@@ -154,3 +154,73 @@ def neighbours() -> dict[str, Any]:
         )
     extra = [s for hub_id, s in standing.items() if hub_id not in {r["hub"] for r in rows}]
     return {"peers": rows + extra, "blocked_hubs": sorted(blocked)}
+
+
+def directory() -> dict[str, Any]:
+    """Every Hive we know of, as something a person choosing one can read.
+
+    Modelled on instances.social, which solved this for Mastodon: before you can join a federated
+    network you have to pick a door, and a list of names is not enough to choose by. So each row
+    carries what actually decides it — whether it is taking members, what it asks of them, what it
+    carries, and how honest its ratings have turned out to be.
+
+    That last column is the one a Mastodon directory cannot offer. A hub here is not described only
+    by what it says about itself; it is described by whether its claims survived contact with other
+    people's users. `error` is published minus realised, in tenths of a star, and lower is better.
+    """
+    standing = {p["hub"]: p for p in calibration.ranked()}
+    blocked = blocklist.blocked_hubs()
+    rows = [_directory_row(config.HIVE_HUB_ID, "", standing, blocked, home=True)]
+    for url in config.HIVE_PEER_URLS:
+        rows.append(_directory_row(url.rstrip("/").split("//")[-1], url, standing, blocked))
+    for hub_id in standing:
+        if hub_id not in {r["hub"] for r in rows}:
+            rows.append(_directory_row(hub_id, "", standing, blocked))
+    return {
+        "hubs": rows,
+        "help": (
+            "Pick the hub whose admission and subject suit you, then apply to it. Your card is yours: "
+            "a hub carries it, and moving means republishing one file somewhere else."
+        ),
+        "admission_meanings": registration.policy()["means"],
+    }
+
+
+def _directory_row(hub_id: str, url: str, standing: dict, blocked: set, home: bool = False) -> dict[str, Any]:
+    """One row of the directory. Only the home hub can answer for itself in detail."""
+    row = standing.get(hub_id, {})
+    entry = {
+        "hub": hub_id,
+        "url": url,
+        "home": home,
+        "blocked": hub_id in blocked,
+        # Lower is better; None means we have not sent anyone there yet.
+        "error": row.get("error"),
+        "error_stars": row.get("error_stars"),
+        "evidence": row.get("evidence", 0),
+        "verdict": row.get("verdict", "unproven"),
+        "why": row.get("why", "no introductions through this hub yet"),
+    }
+    if home:
+        entry |= {
+            "name": config.HIVE_NAME,
+            "description": config.HIVE_DESCRIPTION,
+            "admission": config.ADMISSION_POLICY,
+            "accepting": config.ADMISSION_POLICY != registration.CLOSED,
+            "verification": config.HIVE_VERIFICATION,
+            "entities": _index_size(),
+            "apply_at": "/api/hub/register",
+        }
+    else:
+        # A peer's own description is read from its discovery document when it is asked; until then
+        # the honest answer is that we do not know, rather than a guess.
+        entry |= {
+            "name": "",
+            "description": "",
+            "admission": "unknown",
+            "accepting": None,
+            "verification": "unknown",
+            "entities": None,
+            "apply_at": f"{url.rstrip('/')}/api/hub/register" if url else "",
+        }
+    return entry

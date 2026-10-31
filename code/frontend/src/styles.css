@@ -2932,3 +2932,290 @@ button.self-start {
     grid-column: 3;
   }
 }
+
+/* ---------- The instance finder, and the hub admin panel ---------- */
+
+/* Deliberately plain: a readable column of rows on paper, nothing laid out cleverly, nothing that moves. It is a
+   first pass, and it should look like one. Paper, ink and the one accent, as everywhere else. */
+.finder {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s7);
+  display: grid;
+  gap: var(--s4);
+}
+.finder h1,
+.admin h1,
+.admin-signin h1 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0;
+}
+.finder-draft {
+  margin: 0;
+  padding: var(--s3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-2);
+  font-size: var(--t-sm);
+  background: var(--sunk);
+}
+.finder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s3);
+}
+.finder-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) 0;
+  border-top: 1px solid var(--line);
+}
+.finder-row h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.finder-row p {
+  margin: 0;
+}
+.finder-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s4);
+  font-size: var(--t-sm);
+}
+.nav-hub {
+  min-height: 32px;
+  padding: 0 var(--s3);
+}
+
+/* The admin panel: one column, forms and lists, no chapter frame. Operators, not visitors. */
+.admin,
+.admin-signin {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: var(--s5) var(--s4) var(--s7);
+}
+.admin-signin {
+  display: grid;
+  gap: var(--s3);
+  max-width: 24rem;
+}
+.admin-signin label,
+.admin-card label,
+.admin-fields label {
+  font-size: var(--t-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.admin-head {
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.admin-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: var(--s4);
+}
+.admin-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.admin-fields input,
+.admin-fields select {
+  max-width: 18rem;
+}
+.admin-fields li,
+.rows.tight li {
+  align-items: flex-start;
+}
+
+@media (max-width: 480px) {
+  .finder-row button,
+  .admin-fields input,
+  .admin-fields select {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+/* ---------- Where a result came from ---------- */
+
+/* Every result row names its hub, local ones included, so a row with no label never reads as unknown. */
+.ledger-source {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--t-xs);
+  color: var(--st-3);
+}
+.ledger-source::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 0.5em;
+  border-radius: 50%;
+  background: var(--st-3);
+  vertical-align: middle;
+}
+.ledger-source.away::before {
+  background: var(--clay-glow);
+}
+.result-route {
+  display: inline;
+}
+.result-route summary {
+  display: inline;
+  cursor: pointer;
+  color: var(--clay-glow);
+}
+.result-route[open] summary {
+  display: block;
+}
+
+/* ---------- The live node view of the hub network ---------- */
+
+/* A honeycomb, because the logo is a bee in an open hexagon and the cell is the shape the brand is built on.
+   Paper and ink, clay for what matters: the hub you are talking to, and a peer that held its own claim.
+   Nothing here animates, so there is nothing for prefers-reduced-motion to switch off. */
+.network {
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  padding: var(--s8) var(--s4);
+}
+.network-inner {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+.network h2 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(1.6rem, 4vw, 2.25rem);
+  font-weight: 400;
+  line-height: 1.1;
+  margin: 0;
+}
+.net-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--s4);
+}
+.net-counts li {
+  display: grid;
+  gap: 2px;
+  padding-left: var(--s3);
+  border-left: 2px solid var(--line-strong);
+}
+.net-counts strong {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ink);
+}
+.net-map {
+  display: block;
+  max-width: min(100%, 36rem);
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+/* Edges carry calibration: clay held or beat its own claim, red over-promised, grey too little evidence. */
+.net-edge line {
+  stroke-width: 2;
+}
+.net-edge.kept line {
+  stroke: var(--clay);
+}
+.net-edge.over line {
+  stroke: var(--bad);
+  stroke-width: 2.5;
+  stroke-dasharray: 11 5;
+}
+.net-edge.unproven line {
+  stroke: var(--line-strong);
+  stroke-dasharray: 4 5;
+}
+.net-edge.cut line {
+  stroke: var(--ink-3);
+  stroke-dasharray: 3 7;
+}
+.net-edge.cut .net-cut line {
+  stroke: var(--bad);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+.net-edge.cut .net-cut circle {
+  fill: var(--paper);
+  stroke: var(--bad);
+  stroke-width: 1.5;
+  stroke-dasharray: none;
+}
+
+.net-cell polygon {
+  fill: var(--surface);
+  stroke: var(--line-strong);
+  stroke-width: 1.5;
+}
+.net-cell.home polygon {
+  fill: var(--ink);
+  stroke: var(--clay);
+  stroke-width: 2;
+}
+.net-cell.blocked polygon {
+  fill: var(--sunk);
+  stroke: var(--ink-3);
+  stroke-dasharray: 5 4;
+}
+.net-cell text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+.net-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+.net-sub {
+  font-size: 11px;
+  fill: var(--ink-3);
+}
+.net-cell.home .net-label {
+  font-size: 13px;
+  fill: var(--paper);
+}
+.net-cell.home .net-sub {
+  fill: var(--clay-glow);
+}
+
+.net-rows .net-row-end {
+  text-align: right;
+  align-items: flex-end;
+}
+
+/* A vertical list reads better than a squashed graph, so the picture steps aside on a phone. */
+@media (max-width: 520px) {
+  .net-map {
+    display: none;
+  }
+  .net-rows .net-row-end {
+    text-align: left;
+    align-items: flex-start;
+  }
+}

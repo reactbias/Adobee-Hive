@@ -9,7 +9,7 @@ from typing import Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import connections, domains, hive, hub, rulesets, waiting
+from . import admin, connections, domains, hive, hub, registration, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -197,3 +197,43 @@ def hub_standing() -> dict[str, Any]:
     `error` is published minus realised, in tenths of a star: lower is better, negative means the Hive
     undersold what it offered. A Hive with too little evidence is reported as unproven rather than guessed at."""
     return hub.standing()
+
+
+@server.tool()
+def hub_registration() -> dict[str, Any]:
+    """Read what this Hive asks of someone who wants to join, before writing an application.
+
+    Returns the admission policy, the checks an application goes through, the proof types accepted, and an
+    example document. Read this first: a hub may be invite-only or closed, and the answer says so."""
+    return registration.policy()
+
+
+@server.tool()
+def hub_register(
+    entity: dict[str, Any],
+    public_key: str = "",
+    proofs: list[dict[str, Any]] | None = None,
+    invite: str = "",
+    signature: str = "",
+) -> dict[str, Any]:
+    """Apply to join this Hive on behalf of your user, with one signed JSON document.
+
+    `entity` is the card: id, kind, name, description, sharing. Bring a `public_key` and your user keeps the
+    private half — sign the canonical JSON of the whole application except `signature` to prove they hold it.
+    Omit the key and this Hive generates and holds one, which is weaker and is recorded as such.
+
+    A refusal is an answer, not a failure: the reply always carries the checks, the reason and what to do next.
+    Never invent proofs — they are claims about the world and a hub that catches a false one will block you."""
+    return _safe(
+        registration.apply,
+        {"entity": entity, "public_key": public_key, "proofs": proofs or [], "invite": invite, "signature": signature},
+    )
+
+
+@server.tool()
+def hub_directory() -> dict[str, Any]:
+    """List the Hives this one knows of, so a user can choose which to join before applying.
+
+    Each row says whether it is taking members, what it asks of them, and how closely its published ratings
+    have matched what real people found: `error` is published minus realised, and lower is better."""
+    return admin.directory()

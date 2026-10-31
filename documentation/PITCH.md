@@ -72,6 +72,7 @@ human only sets intent and approves.
 - [ ] In chapter 2, click **Simulate 40 traveller searches** once. This fills the city map and logs Gare Central's
   dog-friendly misses for 1:35.
 - [ ] In the owner studio (chapter 2), enter the owner token once so the edit at 1:43 doesn't stop for it.
+- [ ] Open the app with `?hub=local&demo`. `?hub=` skips the instance finder, so beat 3 opens straight into chapter 1 and the stopwatch at 0:15 is safe. Without it the first load asks which Hive to use, once.
 - [ ] In chapter 1, both **Stress test** boxes unticked, so the run at 0:15 is the clean one.
 - [ ] Two tabs: slides, and the app at the top of chapter 1 (example 1 in the box, not sent). Zoom 125 %. Notifications off, on power, projector tested.
 - [ ] A 50-second screen recording of the live beats on the desktop and a USB stick. [S6]

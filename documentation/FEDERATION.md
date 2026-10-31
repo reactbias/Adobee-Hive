@@ -10,6 +10,8 @@ traveller never sees, and the half that decides whether the index can be owned b
 progress on a branch. The explainer film in [`assets/hive-federation.mp4`](../assets/hive-federation.mp4) covers
 this page in sixty seconds, and the stills under [`assets/slides/`](../assets/README.md) are the same beats for a deck.
 
+How someone gets into a hub in the first place is [REGISTRATION.md](REGISTRATION.md), and the two are the
+same argument seen from different ends: admission is strict because calibration measures what admission let in.
 Worked examples of the Card, and the manifest that shows what it deliberately leaves out, are in
 [cards/](cards/README.md). Those files are the reference; where this page and a file disagree, the file wins.
 
