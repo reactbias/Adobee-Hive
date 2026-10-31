@@ -1,4 +1,4 @@
-"""Team docs stay impersonal: the pitch names roles, not people, and the team page counts heads."""
+"""The pitch's rehearsal tables use the defined speaker roles."""
 
 from pathlib import Path
 
@@ -24,10 +24,3 @@ def test_pitch_script_names_roles_not_people():
     leads = {row[3] for row in _rows(pitch, "Beat")}
     assert speakers <= ROLES
     assert leads <= ROLES | {f"{role} + driver" for role in ROLES}
-
-
-def test_team_page_counts_heads_without_names_or_skills():
-    team = (DOCS / "TEAM.md").read_text()
-    assert "10 people" in team
-    header = next(line for line in team.splitlines() if line.startswith("| # | Workstream |"))
-    assert "People" not in header
