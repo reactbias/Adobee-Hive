@@ -3629,3 +3629,17 @@ button.self-start {
     align-items: flex-start;
   }
 }
+
+/* A chosen Hive that cannot be reached: said at the top of the page, with the way back beside it. */
+.hub-unreachable {
+  margin: var(--s3) auto 0;
+  max-width: 1200px;
+  padding: 0 var(--s6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+}
+.nav-hub-name {
+  white-space: nowrap;
+}
