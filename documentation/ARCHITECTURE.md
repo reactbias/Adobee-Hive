@@ -28,6 +28,8 @@ flowchart LR
 | `hive_seed.py` | Six fictional Basel businesses (five hotels, one café) with distances and attestations |
 | `mcp_server.py` | The MCP server agents connect to |
 | `agent.py` | The traveller agent: an OpenAI or Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` until the traveller approves |
+| `injection.py` | The guard on every tool result: text that addresses agents (EN, DE, FR, IT rules) is withheld before the agent reads it and reported in the trace |
+| `mirror.py` | Demo only: an unverified MCP source serving a manipulated copy of Muensterhof's card, for the stress test on `/agent` |
 | `second_opinion.py` | A separate sceptic agent (OpenAI) checks each held booking against the request and the signed card before the traveller is asked; a rule check answers without a key |
 | `owner.py` | Plain-language card edits: proposal, diff, then re-sign and publish. Identity fields are locked |
 | `simulate.py` | Simulated traveller searches for the demand map |
@@ -94,7 +96,10 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
 - **Missed demand.** Every exclusion and every search is logged; owners see what they were turned away for, the
   city sees what nobody offers.
-- **Prompt safety.** Card text is treated as data in the agent's prompt, never as instructions.
+- **Prompt safety.** Card text is treated as data in the agent's prompt, never as instructions. A guard withholds
+  text addressed to agents before the agent reads it, and the agent checks every card's signature itself. Try it with
+  the stress test on `/agent`, or `POST /api/agent` with `"scenario": "injection"` (and `"rules": "off"` for the
+  unguarded counterfactual, which is scripted and never books).
 - **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`).
 - **Abuse limits.** Owner edits can require a token, model calls are rate-limited, all input is bounded.
   Details and known limits: [SECURITY.md](../SECURITY.md).

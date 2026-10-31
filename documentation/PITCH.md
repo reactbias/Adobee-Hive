@@ -104,7 +104,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | Who holds the signing keys? | The server, for the demo. In the real thing the owner, for example in their Adobe account. |
 | Why would a small hotel bother? | One card replaces the website, and it shows demand they lose today without knowing. |
 | What stops a fake hotel? | Third-party attestations, like Content Credentials for business facts, and reviews only from signed receipts. |
-| Prompt injection? | Card text reaches the agent as data, never instructions, and every tool call is shown to the human. |
+| Prompt injection? | Card text reaches the agent as data, never instructions. The agent withholds text addressed to it, checks the owner's signature itself, and the stress test on `/agent` shows it live, next to what an agent without rules would book. |
 | Is the demo real? | Yes: the agent reaches hotels only through MCP tools, and Claude can book through the same URL as a connector. |
 | Where does Adobe fit? | Content Credentials provenance for business facts, and the owner studio as a tool for how a brand is seen by agents. |
 

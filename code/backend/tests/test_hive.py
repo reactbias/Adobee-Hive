@@ -165,7 +165,7 @@ def test_owner_edits_need_the_owner_token_when_set(client, monkeypatch):
 def test_claude_calls_are_rate_limited(client, monkeypatch):
     monkeypatch.setattr(guard, "llm_calls", guard.RateLimiter(per_client=1, total=10))
     monkeypatch.setattr(config, "LLM_ENABLED", True)
-    monkeypatch.setattr(agent, "run", lambda _messages: asyncio.sleep(0, {"reply": "ok"}))
+    monkeypatch.setattr(agent, "run", lambda _messages, *_options: asyncio.sleep(0, {"reply": "ok"}))
     body = {"messages": [{"role": "user", "content": "hi"}]}
     assert client.post("/api/agent", json=body).status_code == 200
     assert client.post("/api/agent", json=body).status_code == 429
