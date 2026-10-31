@@ -38,6 +38,14 @@ CREATE TABLE IF NOT EXISTS hive_cards (
     public_key VARCHAR,
     published_at TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS hive_card_history (
+    card_id VARCHAR,
+    version INTEGER,
+    data JSON,
+    signature VARCHAR,
+    public_key VARCHAR,
+    PRIMARY KEY (card_id, version)
+);
 CREATE TABLE IF NOT EXISTS hive_keys (
     card_id VARCHAR PRIMARY KEY,
     private_key VARCHAR
@@ -229,6 +237,11 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
                 _public_b64(key),
                 db.now(),
             ],
+        )
+        # Every signed version is kept, so a receipt can later prove what the card said when it was booked.
+        cur.execute(
+            "INSERT OR REPLACE INTO hive_card_history VALUES (?, ?, ?, ?, ?)",
+            [card["id"], card["version"], json.dumps(card), signature, _public_b64(key)],
         )
     return get_card(card["id"])
 
@@ -569,6 +582,8 @@ def book(
         "check_out": check_out,
         "guests": guests,
         "total_chf": unit["total_chf"],
+        "card_version": card["version"],
+        "card_digest": card_digest(card),
     }
     receipt = _sign_receipt(card["id"], payload)
     with db.write() as cur:
@@ -722,3 +737,31 @@ def attest(card_id: str, claim: str, attested_by: str) -> None:
 def card_digest(card: dict[str, Any]) -> str:
     """Return a short hash of a card's content, without its trust block."""
     return hashlib.sha256(canonical({k: v for k, v in card.items() if k != "trust"})).hexdigest()[:16]
+
+
+def what_was_promised(receipt: str) -> dict[str, Any]:
+    """Return the signed card version a booking was made against, and which fields changed since.
+
+    The receipt is checked first, so only the business's own signature can open its history. In a dispute the
+    guest's agent can show the owner's signed words from the day of booking, not today's card.
+    """
+    payload = _check_receipt(read_statement(receipt).get("card_id", ""), receipt)
+    if "card_version" not in payload:
+        raise HiveError("This receipt is older than card history and names no card version.")
+    with db.cursor() as cur:
+        row = cur.execute(
+            "SELECT data, signature, public_key FROM hive_card_history WHERE card_id = ? AND version = ?",
+            [payload["card_id"], payload["card_version"]],
+        ).fetchone()
+    if not row:
+        raise HiveError("That card version is not in this Hive's history.")
+    then = json.loads(row[0])
+    now = {k: v for k, v in get_card(payload["card_id"]).items() if k != "trust"}
+    return {
+        "booking_id": payload["booking_id"],
+        "card": {**then, "trust": {"signature": row[1], "public_key": row[2]}},
+        "digest_matches": card_digest(then) == payload["card_digest"],
+        "changed_since": sorted(
+            k for k in set(then) | set(now) if k not in ("version", "published_at") and then.get(k) != now.get(k)
+        ),
+    }

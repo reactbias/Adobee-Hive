@@ -167,6 +167,7 @@ TABLES = (
     "hive_reviews",
     "hive_bookings",
     "hive_attestations",
+    "hive_card_history",
     "hive_keys",
     "hive_cards",
 )

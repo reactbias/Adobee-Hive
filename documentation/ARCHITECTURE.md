@@ -76,6 +76,7 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `hive_get_card` | The full signed card with trust information |
 | `hive_check_availability` | Free units and totals for given dates |
 | `hive_book` | Book a unit; returns a signed receipt |
+| `hive_what_was_promised` | With a receipt: the signed card version the booking was made against, and which fields changed since |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
 | `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
@@ -100,7 +101,8 @@ The contract lives in `code/backend/app/main.py`; change an endpoint in one PR s
 - **Signatures.** Each card version is signed over canonical JSON (sorted keys, compact separators) with the
   owner's Ed25519 key. Agents verify client-side; the card page has a live tamper test.
 - **Attestations.** Third parties sign single claims, shown as "dog-friendly verified".
-- **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once.
+- **Receipts.** A booking returns `base64url(body).signature`. A review needs one, once. The receipt pins the card
+  version and its digest; every signed version is kept, so the receipt can later show what was promised.
 - **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks
   it against the pinned key. It holds no room: the agent still asks its human before `hive_book`.
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
