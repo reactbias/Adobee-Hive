@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, OFFLINE } from "./api";
+import { api, ApiError, HealthError, OFFLINE } from "./api";
 
 describe("api", () => {
   it("tells the backend the app's language, so the agent answers in it", async () => {
@@ -83,12 +83,9 @@ describe("calling the backend", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("retries once when the backend is waking up", async () => {
-    const fetch = vi
-      .fn()
-      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
-      .mockResolvedValueOnce(ok({ status: "ok" }));
+    const fetch = vi.fn().mockRejectedValueOnce(new TypeError("Failed to fetch")).mockResolvedValueOnce(ok([]));
     vi.stubGlobal("fetch", fetch);
-    await expect(api.health()).resolves.toEqual({ status: "ok" });
+    await expect(api.cards()).resolves.toEqual([]);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
@@ -96,14 +93,14 @@ describe("calling the backend", () => {
     const fetch = vi
       .fn()
       .mockResolvedValueOnce({ ok: false, status: 503, statusText: "", json: async () => ({}) } as Response)
-      .mockResolvedValueOnce(ok({ status: "ok" }));
+      .mockResolvedValueOnce(ok([]));
     vi.stubGlobal("fetch", fetch);
-    await expect(api.health()).resolves.toEqual({ status: "ok" });
+    await expect(api.cards()).resolves.toEqual([]);
   });
 
   it("gives up with a message the page can translate", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
-    await expect(api.health()).rejects.toThrow(OFFLINE);
+    await expect(api.cards()).rejects.toThrow(OFFLINE);
   });
 
   it("does not retry a request the backend refused", async () => {
@@ -111,7 +108,64 @@ describe("calling the backend", () => {
       .fn()
       .mockResolvedValue({ ok: false, status: 400, statusText: "", json: async () => ({ detail: "Ask a question." }) });
     vi.stubGlobal("fetch", fetch);
-    await expect(api.health()).rejects.toThrow("Ask a question.");
+    await expect(api.cards()).rejects.toThrow("Ask a question.");
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("bounded health checks", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("reports network or browser-policy failures without retrying or calling them CORS", async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetch);
+    await expect(api.health()).rejects.toMatchObject({ name: "HealthError", kind: "network" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves HTTP failures, including gateway failures, without retrying", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response("{}", { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(api.health()).rejects.toBeInstanceOf(ApiError);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("times out health checks in five seconds, independently of general requests", async () => {
+    vi.useFakeTimers();
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) => {
+        signal = init.signal as AbortSignal;
+        return new Promise((_resolve, reject) =>
+          signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+        );
+      }),
+    );
+    const request = expect(api.health()).rejects.toEqual(new HealthError("timeout"));
+    await vi.advanceTimersByTimeAsync(5_000);
+    await request;
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("aborts an obsolete health check when the caller cancels it", async () => {
+    const caller = new AbortController();
+    let signal: AbortSignal | undefined;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) => {
+        signal = init.signal as AbortSignal;
+        return new Promise((_resolve, reject) =>
+          signal!.addEventListener("abort", () => reject(signal!.reason), { once: true }),
+        );
+      }),
+    );
+    const request = expect(api.health({ signal: caller.signal })).rejects.toMatchObject({ name: "AbortError" });
+    caller.abort();
+    await request;
+    expect(signal?.aborted).toBe(true);
   });
 });

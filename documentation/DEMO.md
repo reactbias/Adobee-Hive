@@ -2,13 +2,13 @@
 
 Short version for the stage: [PITCH.md](PITCH.md).
 
-The app is one page in two chapters: 1 the agent network (a room or any business, one chat), 2 the business's
-side (the owner studio, with the demand map as a second tab). The header jumps between them. Three further
-screens — the instance finder, the node view and the admin panel — sit beside that story and are only for
-questions; see [If the questions go to federation](#if-the-questions-go-to-federation). Everything below runs
-live. Without an API key the agent switches to a scripted planner that walks the same MCP
-tools, so the demo cannot die on stage. The header shows **AI live** or **Offline mode**, and each run says on
-the agent stage whether OpenAI, Claude or the offline planner answered.
+The app has separate **Find and book** and **For businesses** screens, plus the hub network for questions.
+Switching screens preserves the traveller's booking. The instance finder opens from **Change Hive** in the
+footer; administration remains at `?admin`. Without an API key the agent uses the scripted planner over the same
+MCP tools. The status strip separates **Backend reachable** from **Offline planner** or **Live model configured**,
+shows the selected Hive/address, and offers **Retry now** on failure. It refreshes while visible, every 15 seconds
+after a check finishes, with a five-second deadline. A configured model is not a successful provider/billing probe;
+each agent run separately says whether OpenAI, Claude or the offline planner answered.
 
 ## Pitch beats
 
@@ -23,11 +23,12 @@ the agent stage whether OpenAI, Claude or the offline planner answered.
 
 ## Click by click
 
-1. **Traveller agent** (chapter 1). Click the first example; it goes straight to your agent:
+1. **Find and book**. Submit the first example:
    *"Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, 2026-11-13 to 2026-11-15.
    My name is Mara Keller."*
-   The right side shows the group chat: your agent asks, the Hive and Hotel Rheinblick answer
-   (`hive_discover`, `hive_get_card`, `hive_check_availability`), with the signature check and round-trip times.
+   **Search** shows the fitting hotel; the declared guest name does not influence ranking. Open **Details** to
+   run the group chat (`hive_discover`, `hive_get_card`, `hive_check_availability`), with signatures and timings.
+   The search toolbar unpins once results arrive so it cannot cover Details or approval.
    Your agent stops and asks, on a paper card, whether to book the room it chose. Click **Approve booking**: only now does it send `hive_book`, and the
    hotel answers with a signed receipt. "The human states the intent and says yes. The agents do the rest."
 2. **The hotel's side** (chapter 2). Tap **Show the hotel's side** under the receipt. The page turns to the business:
@@ -65,7 +66,7 @@ one question from the floor in about twenty seconds.
 
 | Question | Where | What to show |
 | --- | --- | --- |
-| "Which Hive am I even on?" | the first load, or **Change Hive** in the header | The instance finder: each Hive with what it carries, whether it is taking members, its admission policy, how many entities, and how honest its ratings turned out to be. It says on screen that it is a plain first pass, and that this build talks to one backend whatever you pick |
+| "Which Hive am I even on?" | the status strip, or **Change Hive** in the footer | Selected Hive/address and independent backend/planner status. The finder shows each Hive's contents, admission policy and calibration; picking one changes the backend the page calls |
 | "Show me the network" | `#network`, below chapter 2, open to anyone | This hub in the centre of a honeycomb, each peer a cell, each edge coloured by that peer's calibration, a blocked peer still drawn and visibly cut. Four counts above, the same hubs as rows below |
 | "Who runs a Hive, and who gets in?" | `?admin` | The hub's password, then the overview, the signup queue (admit, or refuse with a reason the applicant is told), the entity list with each card's signature and sharing flags, the blocklist, and the neighbours with their calibration |
 
@@ -77,12 +78,13 @@ endpoint, reachable from any phone on the wifi
 
 ## Before going on stage
 
-- Open the app with `?hub=local&demo` (https://reactbias.github.io/Adobee-Hive/?hub=local&demo). `?hub=` skips
-  the instance finder, so the app opens straight into chapter 1 and nothing stands between you and the booking
-  run; without it the first load asks which Hive to use, once, and then remembers it for the tab. Visitors never
-  see the presenter tools; `?demo` adds **Stress test**, **Simulate 40 traveller searches**, the tamper test, the
-  raw MCP exchange and the **Live activity** feed (`?demo#activity`), worth a second screen while the agent works.
-- `curl <backend>/api/health` says `"llm": "openai"` if the key is set.
+- Open the app with `?hub=local&demo` (https://reactbias.github.io/Adobee-Hive/?hub=local&demo).
+  It opens the traveller screen; **Change Hive** opens the finder when needed. `?demo` adds the stress test,
+  demand simulation, tamper test, raw MCP exchange and live activity feed.
+- Check **Backend reachable** independently of the planner mode. On failure, inspect the reported HTTP/timeout/
+  network category and use **Retry now** after recovery; do not reload and lose the pending journey.
+- `curl <backend>/api/health` reports the configured provider, not its available quota. Rehearse the no-key
+  fallback too; a configured provider can still be out of credit.
 - On the deployed demo, open the owner studio in chapter 2 once and enter the owner token, so the edit at beat 4 doesn't stop for it.
 - Reset to a clean Basel after the warm-up run (Gare Central back to not dog-friendly, no bookings, no demand):
   `curl -X POST -H "X-Demo-Token: $DEMO_RESET_TOKEN" <backend>/api/demo/reset`. Locally no token is needed.

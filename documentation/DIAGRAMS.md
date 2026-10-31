@@ -65,6 +65,11 @@ flowchart LR
 Inside the backend, one Hive core sits under both doors. The REST endpoints call the agents; the agents reach the
 Hive only as MCP clients, the same way an outside agent would.
 
+The browser's `BackendStatus.tsx` checks the health door separately from model configuration, with a short
+deadline, visible-tab refresh and retry. Explicit hotel prose at the REST discovery door reuses `agent.py`'s
+stay parser; structured parameters override inferred constraints, and generic business searches stay generic.
+
+
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
 flowchart TB
@@ -180,8 +185,8 @@ flowchart TB
 ## 2. A booking, from question to receipt
 
 What happens when a guest types "a quiet room near SBB for two nights" in chapter 1. Nothing is booked until the
-guest presses Approve; the agent holds the `hive_book` call on the server, and the button sends exactly that call,
-once.
+guest presses Approve; the agent holds the `hive_book` call and its selected MCP source on the server. Approval
+reopens that source only, once; removing it from configuration refuses the action instead of retargeting it.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
@@ -205,7 +210,7 @@ sequenceDiagram
   Note over AG: checks the signature against the owner's pinned key
   AG->>MCP: hive_check_availability
   MCP-->>AG: free units and total
-  Note over AG: holds hive_book, does not send it
+  Note over AG: holds hive_book and its source, does not send it
   AG->>V: check the hold against the request and the card
   AG->>C: argue for the strongest alternative
   V-->>API: agree or object
@@ -215,7 +220,7 @@ sequenceDiagram
   rect rgba(162, 79, 44, 0.18)
     Guest->>UI: Approve
     UI->>API: POST /api/agent/approve
-    API->>MCP: hive_book, exactly as held
+    API->>MCP: hive_book at the original held source
     MCP-->>API: signed receipt, pins the card version
   end
   API-->>UI: booking
@@ -421,6 +426,10 @@ cycles in the peer graph cannot loop, and spending what is left of the time budg
 verified here, against the key pinned in *its own* hub's registry — never against the carrier's word — so a
 relaying hub can withhold or delay a card but never forge one. Details: [federation.py](../code/backend/app/federation.py)
 and [reputation.py](../code/backend/app/reputation.py).
+
+Registry outcomes are memoized per search, including empty/unavailable startup answers. The same origin is
+not fetched again per returned card, while a later search can retry and recover without a restart.
+
 
 Four modules carry the hub's own side of that. [sharing.py](../code/backend/app/sharing.py) decides per item what may
 leave at all — `public`, `confirm`, `push` (held, but never searchable) or `never` — and the stricter of the item's flag

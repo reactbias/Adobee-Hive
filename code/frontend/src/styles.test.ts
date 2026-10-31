@@ -81,7 +81,8 @@ describe("styles", () => {
     expect(css).not.toMatch(/\.hero \{|\.principles \{/);
   });
 
-  it("keeps only the status dot in a phone's header, so four languages fit beside it", () => {
-    expect(css).toMatch(/@media \(max-width: 480px\) \{\s*\.nav-end \.status \{\s*font-size: 0;/);
-  });
+  // The phone rule this used to pin (`.nav-end .status { font-size: 0 }`) described markup that the
+  // backend-status component replaced, so the assertion was describing something that no longer exists.
+  // The concern itself is NOT covered any more: at 480px the header carries four language buttons and
+  // the new status component, and nothing hides the status text. See the note in the PR.
 });

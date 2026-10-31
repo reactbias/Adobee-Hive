@@ -336,6 +336,26 @@ def test_a_held_booking_is_approved_once_and_as_held(client):
     assert again.status_code == 400 and "already approved" in again.json()["detail"]
 
 
+def test_approval_refuses_a_source_that_was_removed_instead_of_retargeting(client, monkeypatch):
+    """A held action belongs to the Hive that proposed it, not whichever one is configured at approval."""
+    ask = "Book a quiet dog-friendly hotel under CHF 200, 2027-02-10 to 2027-02-12. " "My name is Fictional Guest."
+    out = client.post("/api/agent", json={"messages": [{"role": "user", "content": ask}]}).json()
+    pending = out["pending"]
+    assert pending is not None
+    monkeypatch.setattr(config, "HIVE_MCP_URLS", ["http://127.0.0.1:1/mcp/"])
+
+    changed = pending | {"source": "http://127.0.0.1:1/mcp/", "input": pending["input"] | {"_source": "other"}}
+    response = client.post("/api/agent/approve", json={"pending": changed})
+
+    assert response.status_code == 400
+    assert "no longer configured" in response.json()["detail"]
+    with db.cursor() as cur:
+        assert (
+            cur.execute("SELECT count(*) FROM hive_bookings WHERE guest_name = ?", ["Fictional Guest"]).fetchone()[0]
+            == 0
+        )
+
+
 def test_rule_edit_keeps_the_pets_policy_in_line():
     card = {"features": ["wifi"], "policies": {"pets": "No pets"}}
     added, _ = owner.mock_edit(card, "add dog-friendly")

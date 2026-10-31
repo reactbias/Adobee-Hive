@@ -30,6 +30,12 @@ is written in. `hive.STOPWORDS` is 21 words to `semantic.STOPWORDS`' several hun
 filler words like *where* and *someone* are scoring query terms and earn offer points off any card whose prose
 happens to contain them.
 
+**Room intent is conservative.** The REST discovery door recognises explicit hotel/room language and reuses
+the stay parser for stated constraints, excluding a declared guest name from ranking. Explicit parameters win;
+absent dates are not filled with the planner's default weekend. Generic transport, service and needs requests
+stay generic. This is a lexical intent boundary, not a general parser; API/MCP callers should supply structured
+constraints when available.
+
 **Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
 reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on
 review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint

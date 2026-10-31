@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub, type Health } from "./api";
+import { chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
@@ -8,6 +8,7 @@ import Onboarding from "./panels/Onboarding";
 import OwnerPanel from "./panels/OwnerPanel";
 import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
+import BackendStatus from "./components/BackendStatus";
 import { SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
@@ -36,8 +37,7 @@ function forgetHub() {
   rewrite(without(here(), "hub"));
 }
 
-// Two screens, one for each person the Hive serves. The header switches between them, says whether the AI is
-// live, and switches the language.
+// Separate travel, business and network screens share the language switch and backend troubleshooting.
 function Header({
   screen,
   onLeaveAdmin,
@@ -47,77 +47,56 @@ function Header({
   screen?: ScreenId;
   onLeaveAdmin?: () => void;
   hub?: string;
-  onHealth?: (reached: boolean) => void;
+  onHealth?: (reached: boolean | undefined) => void;
 }) {
   const { t, locale, setLocale } = useI18n();
-  const [health, setHealth] = useState<Health | null | undefined>(undefined);
-  useEffect(() => {
-    let live = true;
-    api
-      .health()
-      .then((h) => live && (setHealth(h), onHealth?.(true)))
-      .catch(() => live && (setHealth(null), onHealth?.(false)));
-    return () => {
-      live = false;
-    };
-    // Re-asked whenever the app is pointed at a different Hive: the answer is about that hub, not about the page.
-  }, [hub, onHealth]);
-  const mode =
-    health === undefined ? null : health === null ? (
-      <span className="status no">{t("nav.down")}</span>
-    ) : (
-      <span
-        className={`status ${health.llm !== "mock" ? "ok" : "warm"}`}
-        title={`${health.model} / ${health.fast_model}`}
-      >
-        {health.llm !== "mock" ? t("nav.live") : t("nav.offline")}
-      </span>
-    );
   return (
-    <header className="nav">
-      <div className="nav-inner">
-        <a
-          className="brand"
-          href="#top"
-          aria-label="Adobee Hive"
-          onClick={(e) => {
-            e.preventDefault();
-            const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-            window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
-            // The brand is a link home, so from the hub's own panel it leaves the panel like any other link.
-            if (onLeaveAdmin) onLeaveAdmin();
-            else rewrite(window.location.pathname + window.location.search);
-          }}
-        >
-          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
-          <span>Adobee Hive</span>
-        </a>
-        <nav className="nav-links" aria-label={t("nav.chapters")}>
-          {SCREENS.map((c) => (
-            <a key={c} className="link" href={`#${c}`} aria-current={screen === c ? "page" : undefined}>
-              {t(`chapter.${c}` as Key)}
-            </a>
-          ))}
-        </nav>
-        <div className="nav-end">
-          {mode}
-          <div className="locales" role="group" aria-label={t("nav.language")}>
-            {LOCALES.map((l: Locale) => (
-              <button
-                key={l}
-                className={l === locale ? "on" : ""}
-                aria-pressed={l === locale}
-                title={LOCALE_NAMES[l]}
-                lang={l}
-                onClick={() => setLocale(l)}
-              >
-                {l.toUpperCase()}
-              </button>
+    <>
+      <header className="nav">
+        <div className="nav-inner">
+          <a
+            className="brand"
+            href="#top"
+            aria-label="Adobee Hive"
+            onClick={(e) => {
+              e.preventDefault();
+              const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+              window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
+              // The brand is a link home, so from the hub's own panel it leaves the panel like any other link.
+              if (onLeaveAdmin) onLeaveAdmin();
+              else rewrite(window.location.pathname + window.location.search);
+            }}
+          >
+            <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
+            <span>Adobee Hive</span>
+          </a>
+          <nav className="nav-links" aria-label={t("nav.chapters")}>
+            {SCREENS.map((c) => (
+              <a key={c} className="link" href={`#${c}`} aria-current={screen === c ? "page" : undefined}>
+                {t(`chapter.${c}` as Key)}
+              </a>
             ))}
+          </nav>
+          <div className="nav-end">
+            <div className="locales" role="group" aria-label={t("nav.language")}>
+              {LOCALES.map((l: Locale) => (
+                <button
+                  key={l}
+                  className={l === locale ? "on" : ""}
+                  aria-pressed={l === locale}
+                  title={LOCALE_NAMES[l]}
+                  lang={l}
+                  onClick={() => setLocale(l)}
+                >
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+      <BackendStatus hub={hub} onHealth={onHealth} />
+    </>
   );
 }
 
@@ -132,8 +111,8 @@ export default function App() {
   const [screen, setScreen] = useState<ScreenId>(screenFromHash);
   // The business the owner's screen opens on: the one just booked, when the traveller turns the page to it.
   const [business, setBusiness] = useState<string | undefined>(undefined);
-  // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
-  const [reached, setReached] = useState(true);
+  // Unknown until the selected backend answers; planner mode is tracked separately in the status display.
+  const [reached, setReached] = useState<boolean | undefined>(undefined);
   // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
   const [joining, setJoining] = useState<DirectoryHub | null>(null);
   const { t } = useI18n();
@@ -181,7 +160,7 @@ export default function App() {
   if (admin)
     return (
       <>
-        <Header onLeaveAdmin={() => leaveAdmin(false)} />
+        <Header hub={hub} onHealth={setReached} onLeaveAdmin={() => leaveAdmin(false)} />
         <main>
           <AdminPanel onLeave={() => leaveAdmin(false)} />
         </main>
@@ -191,7 +170,7 @@ export default function App() {
   if (choosing)
     return (
       <>
-        <Header />
+        <Header hub={hub} onHealth={setReached} />
         <main>
           {joining ? (
             <Onboarding
@@ -210,7 +189,7 @@ export default function App() {
               onPick={(picked) => {
                 setHub(picked);
                 setChoosing(false);
-                setReached(true);
+                setReached(undefined);
               }}
               onJoin={setJoining}
             />
@@ -223,7 +202,7 @@ export default function App() {
   const changeHub = () => {
     forgetHub();
     setHub("");
-    setReached(true);
+    setReached(undefined);
     setChoosing(true);
   };
 
@@ -239,7 +218,7 @@ export default function App() {
       <Header screen={screen} hub={hub} onHealth={setReached} />
       <main>
         {/* A chosen Hive that cannot be reached says so and offers the way back, rather than a dead page. */}
-        {!reached && (
+        {reached === false && (
           <p className="error hub-unreachable" role="status">
             {t("app.hubUnreachable")}{" "}
             <button className="quiet" onClick={changeHub}>
