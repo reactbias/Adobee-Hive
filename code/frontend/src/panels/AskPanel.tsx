@@ -52,11 +52,6 @@ export default function AskPanel() {
   return (
     <div className="grid split ask">
       <section className="stack loose">
-        <header className="stack">
-          <h3>{t("ask.title")}</h3>
-          <p className="lead">{t("ask.lead")}</p>
-        </header>
-
         <form
           className="composer"
           onSubmit={(e) => {

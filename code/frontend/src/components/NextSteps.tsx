@@ -4,9 +4,8 @@ import { metres, stay } from "../lib/format";
 import { icsEvent } from "../lib/next";
 import Icon from "./Icon";
 
-// What the agent offers once the stay is booked. Every tile does one visible thing on the guest's side (a calendar
-// file, a signed card further down the page, a map) and none of them books or pays, so the only consent on the page
-// stays the Approve.
+// What the agent offers once the stay is booked: a calendar file, a nearby place from the Hive, the walk, and the
+// hotel's side of the booking further down the page. None of them books or pays, so the only consent stays Approve.
 
 const STATION = "basel sbb";
 
@@ -23,14 +22,14 @@ export default function NextSteps({
   booking,
   hotel,
   nearby,
-  onOpenCard,
+  onOpenBusiness,
 }: {
   booking: Booking;
   /** The booked business's signed card, for its address and distances. */
   hotel?: Card | null;
   nearby?: { card: Card; shared?: string } | null;
-  /** Show a card on this page, under the chat. */
-  onOpenCard: (slug: string) => void;
+  /** Turn the page to the hotel's side of this booking. */
+  onOpenBusiness: () => void;
 }) {
   const { t, intl } = useI18n();
   const walk = hotel?.distances_m?.[STATION];
@@ -65,9 +64,6 @@ export default function NextSteps({
                 {nearby.card.policies?.reservations ? `. ${nearby.card.policies.reservations}.` : ""}
               </span>
             </div>
-            <button className="quiet" onClick={() => onOpenCard(nearby.card.slug)}>
-              {t("next.coffee.cta")}
-            </button>
           </li>
         )}
         {route && (
@@ -87,6 +83,16 @@ export default function NextSteps({
             </a>
           </li>
         )}
+        <li style={{ animationDelay: "0.55s" }}>
+          <Icon name="seal" />
+          <div>
+            <b>{t("next.business.title", { name: booking.business })}</b>
+            <span>{t("next.business.body")}</span>
+          </div>
+          <button className="quiet" onClick={onOpenBusiness}>
+            {t("next.business.cta")}
+          </button>
+        </li>
       </ul>
       <p className="fine">{t("next.fine")}</p>
     </div>

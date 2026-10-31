@@ -53,11 +53,6 @@ export interface Unit {
   price_chf: number;
   quantity: number;
 }
-export interface FreeUnit extends Unit {
-  left: number;
-  nights: number;
-  total_chf: number;
-}
 export interface Trust {
   signature_valid: boolean;
   signature: string;
@@ -300,14 +295,6 @@ export const api = {
   health: () => call<Health>("/api/health"),
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),
   card: (id: string) => call<Card>(`/api/hive/cards/${id}`),
-  availability: (id: string, checkIn: string, checkOut: string, guests: number) =>
-    call<{ available_units: FreeUnit[] }>(
-      `/api/hive/cards/${id}/availability?check_in=${checkIn}&check_out=${checkOut}&guests=${guests}`,
-    ),
-  bookAsHuman: (
-    id: string,
-    body: { unit_id: string; check_in: string; check_out: string; guest_name: string; guests: number },
-  ) => post<Booking>(`/api/hive/cards/${id}/book`, body),
   review: (receipt: string, rating: number, text: string) =>
     post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
   agent: (messages: { role: string; content: string }[], options: AgentOptions = {}) =>

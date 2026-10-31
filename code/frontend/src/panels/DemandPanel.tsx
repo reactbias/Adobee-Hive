@@ -27,7 +27,7 @@ export default function DemandPanel() {
   const max = Math.max(1, ...(demand?.features.map((f) => f.asked) ?? []));
   return (
     <div className="stack loose">
-      <header className="stack">
+      <div className="stack">
         <h3>
           <Display text={t("demand.title")} />
         </h3>
@@ -38,7 +38,7 @@ export default function DemandPanel() {
           </button>
           {simulated > 0 && <span className="muted">{t("demand.simulated", { n: simulated })}</span>}
         </div>
-      </header>
+      </div>
 
       {demand && (
         <>

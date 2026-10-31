@@ -3,8 +3,10 @@ import { api, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import B6Bee from "./components/B6Bee";
+import { CHAPTERS } from "./components/Chapter";
+import type { Key } from "./i18n/en";
 
-// One page: the brand, whether the AI is live, the language. Everything else happens in the traveller's chat.
+// One page in three chapters. The header names them, says whether the AI is live, and switches the language.
 function Header() {
   const { t, locale, setLocale } = useI18n();
   const [health, setHealth] = useState<Health | null | undefined>(undefined);
@@ -26,12 +28,19 @@ function Header() {
       </span>
     );
   return (
-    <nav className="nav">
+    <header className="nav">
       <div className="nav-inner">
         <span className="brand">
           <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
           <span>Adobee Hive</span>
         </span>
+        <nav className="nav-links" aria-label={t("nav.chapters")}>
+          {CHAPTERS.map((c, i) => (
+            <a key={c} className="link" href={`#${c}`}>
+              <span className="num">{i + 1}</span> {t(`chapter.${c}` as Key)}
+            </a>
+          ))}
+        </nav>
         <div className="nav-end">
           {mode}
           <div className="locales" role="group" aria-label={t("nav.language")}>
@@ -50,7 +59,7 @@ function Header() {
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
 

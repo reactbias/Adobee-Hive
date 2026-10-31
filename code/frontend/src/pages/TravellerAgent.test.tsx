@@ -86,26 +86,15 @@ async function skipAhead(user: ReturnType<typeof userEvent.setup>) {
   if (skip) await user.click(skip);
 }
 
-const CAFE = {
-  id: "cafe-bienli",
-  slug: "cafe-bienli",
-  kind: "cafe",
-  name: "Café Bienli",
-  tagline: "Coffee by the river",
-  version: 3,
-  features: ["dog-friendly"],
-  units: [],
-  published_at: "2026-10-30T10:00:00Z",
-  trust: { signature_valid: true, attestations: [], verified_reviews: { count: 0, average: null, recent: [] } },
-} as never;
-
 describe("traveller agent", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
-    // Behind the door, the card tab reads a card as soon as the page opens.
+    // The business chapter reads the owner's view and the demand map as soon as the page opens.
     vi.spyOn(api, "cards").mockResolvedValue([]);
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
   });
 
   it("asks the agent and stops at the gate without booking", async () => {
@@ -161,7 +150,7 @@ describe("traveller agent", () => {
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
 
     expect(await screen.findByText("Too many requests. Try again later.")).toBeInTheDocument();
-    expect(screen.getByRole("textbox")).toHaveValue(en["agent.example.1"]);
+    expect(screen.getByLabelText(en["agent.intent"])).toHaveValue(en["agent.example.1"]);
   });
 
   it("sends the stress test with rules off, then reruns with rules on", async () => {
@@ -263,35 +252,32 @@ describe("traveller agent", () => {
     expect(approve).toHaveBeenCalledTimes(1);
   });
 
-  it("opens the nearby place's signed card on the same page", async () => {
-    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
-    vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
-    vi.spyOn(api, "card").mockImplementation(async (id) => (id === "cafe-bienli" ? CAFE : ({} as never)));
-    vi.spyOn(api, "cards").mockResolvedValue([CAFE]);
-    const user = setup();
-
-    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    await skipAhead(user);
-    await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
-    await skipAhead(user);
-    await user.click(await screen.findByRole("button", { name: en["next.coffee.cta"] }));
-
-    expect(screen.getByRole("tab", { name: en["door.tab.card"] })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByRole("heading", { name: "Café Bienli" })).toBeInTheDocument();
-  });
-
-  it("shows the city's missed demand behind the same door", async () => {
+  it("shows the city's missed demand under the chat, without a click", async () => {
     vi.spyOn(api, "demand").mockResolvedValue({
       days: 7,
       searches: 40,
       unserved_searches: 12,
       features: [{ feature: "pool", asked: 9, unserved: 9 }],
     } as never);
+    setup();
+
+    expect(await screen.findAllByText("pool")).not.toHaveLength(0);
+  });
+
+  it("turns to the hotel's side after the booking, with the booking reloaded", async () => {
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    vi.spyOn(api, "approve").mockResolvedValue(APPROVAL);
+    vi.spyOn(api, "card").mockResolvedValue({ id: "hotel-rheinblick", slug: "rheinblick" } as never);
+    const owner = vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     const user = setup();
 
-    await user.click(screen.getByRole("tab", { name: en["door.tab.city"] }));
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await skipAhead(user);
+    owner.mockClear();
+    await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
+    await skipAhead(user);
 
-    expect(await screen.findByText("pool")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: en["next.business.cta"] })).toBeInTheDocument();
+    expect(owner).toHaveBeenCalledWith("hotel-rheinblick");
   });
 });

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
 import App from "./App";
@@ -14,6 +14,8 @@ describe("the app", () => {
     vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
     vi.spyOn(api, "cards").mockResolvedValue([]);
     vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
   });
 
   it("opens on the traveller agent and links to no other page", async () => {
@@ -25,18 +27,21 @@ describe("the app", () => {
 
     expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
     expect(await screen.findByText(en["nav.offline"])).toBeInTheDocument();
-    const inside = screen.queryAllByRole("link").filter((a) => !/^https?:/.test(a.getAttribute("href") ?? ""));
-    expect(inside.map((a) => a.getAttribute("href"))).toEqual([]);
+    const hrefs = screen.queryAllByRole("link").map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
-  it("keeps the card, the owner, the city and the other businesses one tab away", () => {
+  it("tells one story in three chapters: the traveller, any business, then the business's side", () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
 
-    const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(tabs).toEqual([en["door.tab.card"], en["door.tab.owner"], en["door.tab.city"], en["door.tab.ask"]]);
+    const chapters = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
+    expect(chapters.getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual(["#travel", "#ask", "#business"]);
+    expect(screen.getByRole("heading", { name: en["owner.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: en["demand.title"].replace(/\*/g, "") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["ask.mood.stressed"] })).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
+import { api, mcpUrl, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
 import TrustBadge from "../components/TrustBadge";
 import Display from "../components/Display";
 import { useI18n, useSample } from "../i18n";
@@ -104,8 +104,9 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
 
   return (
     <div className="stack loose">
-      <header className="panel-head">
+      <div className="panel-head">
         <div className="stack">
+          <span className="eyebrow">{t("owner.role", { name: card?.name ?? "" })}</span>
           <h3>
             <Display text={t("owner.title")} />
           </h3>
@@ -121,7 +122,7 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
             ))}
           </select>
         </div>
-      </header>
+      </div>
 
       {error && <p className="error">{needsToken ? t("owner.tokenNeeded") : error}</p>}
       {needsToken && (
@@ -154,6 +155,37 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
           ))}
         </dl>
       )}
+
+      <section className="panel stack" aria-live="polite">
+        <h3>{t("owner.bookings.title")}</h3>
+        {overview?.bookings.length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>{t("owner.bookings.guest")}</th>
+                <th>{t("owner.bookings.dates")}</th>
+                <th className="end">CHF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {overview.bookings.map((b) => (
+                <tr key={b.id}>
+                  <td>
+                    {b.guest_name}
+                    <div className="muted">
+                      {b.unit_id} · {b.status} · {b.agent}
+                    </div>
+                  </td>
+                  <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
+                  <td className="end">{b.total_chf}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">{t("owner.bookings.empty")}</p>
+        )}
+      </section>
 
       <div className="grid split">
         <div className="stack loose">
@@ -277,39 +309,64 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
             </div>
             <TrustBadge trust={card.trust} />
             <pre>{JSON.stringify({ ...card, trust: undefined }, null, 2)}</pre>
+            <p className="muted small">
+              {t("owner.agents.mcp")} <code className="inline-code">{mcpUrl()}</code>
+            </p>
           </section>
-          <section className="panel stack">
-            <h3>{t("owner.bookings.title")}</h3>
-            {overview?.bookings.length ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t("owner.bookings.guest")}</th>
-                    <th>{t("owner.bookings.dates")}</th>
-                    <th className="end">CHF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {overview.bookings.map((b) => (
-                    <tr key={b.id}>
-                      <td>
-                        {b.guest_name}
-                        <div className="muted">
-                          {b.unit_id} · {b.status} · {b.agent}
-                        </div>
-                      </td>
-                      <td className="nowrap">{stay(b.check_in, b.check_out, intl)}</td>
-                      <td className="end">{b.total_chf}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p className="muted">{t("owner.bookings.empty")}</p>
-            )}
-          </section>
+          <TamperTest card={card} />
         </div>
       )}
     </div>
+  );
+}
+
+/** What an agent does with every card it reads: re-check the owner's signature. Here the owner sees it fail on a copy. */
+function TamperTest({ card }: { card: Card }) {
+  const { t } = useI18n();
+  const [verdict, setVerdict] = useState<{ original: boolean; tampered: boolean; stranger: boolean } | null>(null);
+
+  async function run() {
+    const forged: Card = JSON.parse(JSON.stringify(card));
+    if (forged.units.length) forged.units[0].price_chf = 1;
+    else forged.features = [...forged.features, "free breakfast"];
+    // A smarter forger re-signs the changed copy with their own key; only the owner's pinned key catches that.
+    const resigned = await api.forge(card.id);
+    const [original, tampered, stranger] = await Promise.all([
+      api.verify(card),
+      api.verify(forged),
+      api.verify(resigned),
+    ]);
+    setVerdict({
+      original: original.signature_valid,
+      tampered: tampered.signature_valid,
+      stranger: stranger.signature_valid,
+    });
+  }
+
+  return (
+    <section className="panel stack tamper">
+      <span className="eyebrow">{t("card.tamper.eyebrow")}</span>
+      <h3>{t("card.tamper.title")}</h3>
+      <p className="muted">{t("card.tamper.body")}</p>
+      <button className="ghost self-start" onClick={run}>
+        {card.units.length ? t("card.tamper.price") : t("card.tamper.perk")}
+      </button>
+      {verdict && (
+        <dl className="verdicts reveal">
+          <div className={verdict.original ? "ok" : "no"}>
+            <dt>{t("card.tamper.original")}</dt>
+            <dd>{verdict.original ? t("card.tamper.valid") : t("card.tamper.invalid")}</dd>
+          </div>
+          <div className={verdict.tampered ? "ok" : "no"}>
+            <dt>{t("card.tamper.forged")}</dt>
+            <dd>{verdict.tampered ? t("card.tamper.valid") : t("card.tamper.rejected")}</dd>
+          </div>
+          <div className={verdict.stranger ? "ok" : "no"}>
+            <dt>{t("card.tamper.stranger")}</dt>
+            <dd>{verdict.stranger ? t("card.tamper.valid") : t("card.tamper.rejected")}</dd>
+          </div>
+        </dl>
+      )}
+    </section>
   );
 }
