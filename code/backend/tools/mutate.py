@@ -129,14 +129,20 @@ CURATED: list[Mutant] = [
     Mutant(
         "hive.py",
         "being close to the ask stops counting, so a haircut search misses 'cut, wash and finish' again",
-        '"semantic": round(SEMANTIC_POINTS * close[1].score, 1) if close else 0,',
+        '"semantic": close[2] if close else 0,',
         '"semantic": 0,',
     ),
     Mutant(
         "hive.py",
         "a merely similar entity is paid like one that really offers the thing, so literal stops winning",
         "SEMANTIC_POINTS = 8",
-        "SEMANTIC_POINTS = 30",
+        "SEMANTIC_POINTS = 10",
+    ),
+    Mutant(
+        "hive.py",
+        "prose is paid like a structured claim, so saying it is worth as much as offering it",
+        "SEMANTIC_TEXT_POINTS = 4",
+        "SEMANTIC_TEXT_POINTS = 10",
     ),
     Mutant(
         "hive.py",
@@ -177,7 +183,7 @@ CURATED: list[Mutant] = [
     Mutant(
         "semantic.py",
         "the concept table stops being consulted, so semantic search is substring search again",
-        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in _concept_index().get(root, ())]',
+        'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in concepts]',
         "bag += []",
     ),
     Mutant(

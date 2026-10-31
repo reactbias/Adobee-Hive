@@ -11,8 +11,9 @@ numbers side by side.
     python tools/eval_search.py --floor           # the similarity of every pair, expected and not
     python tools/eval_search.py --sweep           # precision at each candidate floor: how the floor was chosen
 
-The pairs come from `testdata/README.md` when it carries a query-to-expected table, so the people writing the
-corpus own the scoring set; the built-in list below is the fallback, and `--pairs` says which was used.
+The pairs come from the answer-key block in `testdata/README.md`, so the people writing the corpus own the
+scoring set; the built-in list below is the fallback, and the first lines of the output say which was used and
+over how many entities.
 
 Exit code is 1 when the semantic run scores *worse* than the literal one, so this can gate a change that makes
 search worse. It is not part of the test suite: it is a measurement, and measurements belong in a report.
@@ -83,6 +84,11 @@ PAIRS: list[tuple[str, str, tuple[str, ...]]] = [
     ("interface designer", "needs", ("grid-ops",)),
 ]
 
+#: Where the corpus keeps its answer key: everything between these two markers in `testdata/README.md`. Only
+#: that block is read, because the same file holds a table of cards that must rank *below* a query, and taking
+#: a row from there would score the search against the wrong answer on purpose.
+KEY_BLOCK = re.compile(r"<!--\s*answer-key\s*-->(?P<body>.*?)<!--\s*/answer-key\s*-->", re.S)
+
 #: `- "a haircut" → schnittwerk-bern, velowerk-bern` or a markdown table row with the same two columns.
 #: Liberal on purpose: the corpus is written by someone else, and a scoring set the graders cannot edit is a
 #: scoring set that drifts away from the data.
@@ -131,6 +137,8 @@ def pairs(known: set[str]) -> tuple[list[tuple[str, str, tuple[str, ...]]], str]
     found: list[tuple[str, str, tuple[str, ...]]] = []
     if CORPUS_README.exists():
         text = CORPUS_README.read_text(encoding="utf-8")
+        block = KEY_BLOCK.search(text)
+        text = block.group("body") if block else text
         for match in [*_BULLET.finditer(text), *_ROW.finditer(text)]:
             query = match.group("query").strip()
             ids = tuple(i.strip().strip("`'\"") for i in match.group("ids").split(",") if i.strip())
@@ -213,11 +221,13 @@ def floors(pair_list: list[tuple[str, str, tuple[str, ...]]]) -> None:
 def sweep(pair_list: list[tuple[str, str, tuple[str, ...]]]) -> None:
     """Precision at each candidate floor, which is how the floor stops being a matter of taste."""
     print("\n floor   p@1    p@3   (0.00 is no floor at all)")
-    for floor in (0.0, 0.05, 0.10, 0.15, 0.20, 0.22, 0.25, 0.30, 0.35, 0.40, 0.50):
+    in_use = semantic.SIMILARITY_FLOOR
+    for floor in sorted({0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, in_use}):
         semantic.SIMILARITY_FLOOR = floor
         out = run(pair_list, semantics=True)
-        mark = "  <- in use" if abs(floor - 0.25) < 1e-9 else ""
+        mark = "  <- in use" if abs(floor - semantic.SIMILARITY_FLOOR) < 1e-9 else ""
         print(f"  {floor:.2f}  {out['p1']:.3f}  {out['p3']:.3f}{mark}")
+    semantic.SIMILARITY_FLOOR = in_use
 
 
 def main() -> int:

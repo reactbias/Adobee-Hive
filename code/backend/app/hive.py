@@ -425,11 +425,30 @@ NOT_DISCOVERABLE: set[str] = set()
 #: who offers a dataviz sprint and earned 20 for it honestly.
 CONSTRAINT_POINTS = 50
 
-#: What being *close* to the ask is worth, at most, and why it is less than ten: one literal hit on what an
-#: entity offers or needs is worth ten, so a card that really has the thing always outranks a card that merely
-#: has something like it. Paid out in proportion to the similarity above `semantic.SIMILARITY_FLOOR`, so a near
-#: match is worth more than a distant one and nothing is paid for a distant one at all.
+#: What being *close* to the ask is worth, per query word the close match covers, and why it is eight rather
+#: than ten: a literal hit on what an entity offers or needs is worth ten per word, so word for word, having
+#: the thing beats having something like it, and `_close_hit` does not pay at all for a side the words already
+#: matched. Counted per word and not in proportion to the similarity, because the rest of the scoring is
+#: counted that way too — a term either appears or it does not, and repeating it earns nothing. A similarity
+#: of 0.4 is not "40% of a match"; it is a match, found in a card written in another language.
 SEMANTIC_POINTS = 8
+#: And the ceiling, three words' worth: under the thirty a literal match can reach, so an entity that really
+#: offers the thing still comes first when both match on the same breadth of the question.
+SEMANTIC_CAP = 24
+
+#: The same thing for the entity's own prose — its name, tagline, description and features — at half the rate,
+#: because `offers` and `needs` are claims an entity can be held to and rated against while a description is
+#: the entity's own words about itself. That is the only reason prose is worth less: not suspicion. Writing a
+#: description an agent can find is the business doing its job, and it is how a hub reaches a *Gästehaus* whose
+#: rooms are listed as "Zimmer". The four rates together are the whole ranking argument, per word of the ask:
+#:
+#:     really offers it 10  >  offers something close 8  >  says it 5  >  says something close 4
+#:
+#: so having the thing beats being near it, and a structured claim beats prose, at both ends. The prose is read
+#: last as well as lowest: an entity whose `offers` answered the question, exactly or closely, is not also paid
+#: for what it says about itself, so one card never collects twice for one question.
+SEMANTIC_TEXT_POINTS = 4
+SEMANTIC_TEXT_CAP = 12
 
 #: Which side of the market a search is on. "offers" finds someone who provides the thing,
 #: "needs" finds someone who wants what you provide, "any" both.
@@ -521,40 +540,72 @@ def _side_hits(card: dict[str, Any], side: str, terms: list[str]) -> list[str]:
     return [term for term in terms if term in text]
 
 
-def _close_hit(card: dict[str, Any], query: str, sides: dict[str, list[str]]) -> tuple[str, semantic.Hit] | None:
-    """The closest thing this entity offers or needs to what was asked for, or None below the floor.
+#: How a match on each side is worth, and how it reads in a reason. `offers` and `needs` are what the entity
+#: says it will do, `describes` is what it says it is.
+SEMANTIC_SIDES = {
+    "offers": (SEMANTIC_POINTS, SEMANTIC_CAP, "offers something close to"),
+    "needs": (SEMANTIC_POINTS, SEMANTIC_CAP, "needs something close to"),
+    "describes": (SEMANTIC_TEXT_POINTS, SEMANTIC_TEXT_CAP, "describes something close to"),
+}
 
-    This is the whole answer to "a search for haircut misses a card that says cut, wash and finish".
-    It reads the same two sides `_side_hits` reads, and `sides` carries the literal hits found on each,
-    because a side that already matched literally is not scored again: one side's evidence is counted
-    once, at its strongest form. That keeps the component doing the job it was added for — finding what
-    the words missed — and keeps a wording difference between two entities that both really offer the
-    thing from deciding which of them comes first.
+
+def _prose_texts(card: dict[str, Any]) -> list[str]:
+    """What the entity says about itself, one sentence at a time.
+
+    Sentence by sentence rather than as one blob, for the same reason the offers are read one entry at a
+    time: a reason quotes the sentence it matched, and a whole description read at once dilutes the one
+    sentence that answers the question with the five that do not.
     """
-    best: tuple[str, semantic.Hit] | None = None
+    prose = [card.get("name", ""), card.get("tagline") or "", " ".join(card.get("features", []))]
+    prose += re.split(r"(?<=[.!?])\s+", card.get("description") or "")
+    return [text.strip() for text in prose if text and text.strip()]
+
+
+def _close_hit(card: dict[str, Any], query: str, sides: dict[str, list[str]]) -> tuple[str, semantic.Hit, int] | None:
+    """The closest thing this entity offers, needs or says it is, with what that is worth. None below the floor.
+
+    This is the whole answer to "a search for haircut misses a card that says cut, wash and finish". It reads
+    the sides `_side_hits` and the text relevance read, and `sides` carries the literal hits found on each,
+    because a side that already matched literally is not scored again: one side's evidence is counted once, at
+    its strongest form. That keeps the component doing the job it was added for — finding what the words
+    missed — and keeps a wording difference between two entities that both really offer the thing from
+    deciding which of them comes first.
+
+    The best side wins rather than the sides adding up, and ties on points go to the closer match, so an
+    entity is paid for the strongest thing it has to say about the question and not for repeating it.
+    """
+    best: tuple[str, semantic.Hit, int] | None = None
     for side, literal in sides.items():
         if literal:
             continue
-        hit = semantic.best(query, _side_texts(card, side))
-        if hit is not None and (best is None or hit.score > best[1].score):
-            best = (side, hit)
+        rate, cap, _ = SEMANTIC_SIDES[side]
+        texts = _prose_texts(card) if side == "describes" else _side_texts(card, side)
+        hit = semantic.best(query, texts)
+        if hit is None:
+            continue
+        points = min(cap, rate * len(hit.terms))
+        if best is None or (points, hit.score) > (best[2], best[1].score):
+            best = (side, hit, points)
     return best
 
 
-def _close_reason(close: tuple[str, semantic.Hit] | None, literal: list[str]) -> list[str]:
+def _close_reason(close: tuple[str, semantic.Hit, int] | None) -> list[str]:
     """Put a semantic hit into words: *offers something close to 'haircut': Cut, wash and finish*.
 
-    "Open ranking" means every result explains itself, and a bare similarity number explains nothing. The
-    reason quotes the entity's own line back, so a person can judge the match instead of trusting it. It is
-    left out when the literal reason already names the same words, which would only say it twice.
+    "Open ranking" means every result explains itself, and a bare similarity number explains nothing, so the
+    reason names the words of the question it answered and quotes the entity's own line back — a person can
+    then judge the match instead of trusting it.
+
+    There is no case where the points are paid and the reason is left out. There was: the reason used to be
+    dropped when the literal reason already named the same words, which after `_close_hit` started reading the
+    prose side meant a card could collect the points silently. A component nobody can see is not an open
+    ranking, and `_close_hit` already refuses to score a side the words matched, so there is nothing to
+    de-duplicate here.
     """
     if close is None:
         return []
-    side, hit = close
-    terms = [term for term in hit.terms if term not in literal]
-    if not terms:
-        return []
-    return [f"{side} something close to '{', '.join(terms)}': {hit.snippet}"]
+    side, hit, _ = close
+    return [f"{SEMANTIC_SIDES[side][2]} '{', '.join(hit.terms)}': {hit.snippet}"]
 
 
 def fit(
@@ -732,6 +783,11 @@ def discover(
         # hairdresser findable by "haircut". `looking_for` gates it exactly as it gates the literal hits.
         sides = {"offers": offer_hits, "needs": need_hits} if looking_for == "any" else {looking_for: side_hits}
         close = _close_hit(card, query, sides) if semantic_search else None
+        if semantic_search and close is None and not side_hits:
+            # Nothing on the market side, exactly or closely. Only then is what the entity says about itself
+            # worth reading, at half the rate: last resort, lowest rate, and never on top of a side that
+            # already answered.
+            close = _close_hit(card, query, {"describes": hits})
 
         trust = card["trust"]
         score = {
@@ -743,8 +799,9 @@ def discover(
             # An entity that literally offers (or needs) the thing asked for beats one that merely
             # mentions it in its prose, so this outweighs text relevance.
             "offers_needs": min(30, 10 * len(side_hits)),
-            # Close, in proportion to how close, and never more than a literal hit on the same side is worth.
-            "semantic": round(SEMANTIC_POINTS * close[1].score, 1) if close else 0,
+            # Close, counted per word of the question it covers, and worth less per word than really
+            # having the thing. `semantic.SIMILARITY_FLOOR` decides what counts as close at all.
+            "semantic": close[2] if close else 0,
             "proximity": 0 if dist is None else max(0, 15 - dist // 150),
             # What this one business earned: verified reviews, attestations, a valid signature (reputation.py).
             **reputation.business_points(trust),
@@ -777,7 +834,7 @@ def discover(
             "why": reasons
             + ([f"offers {', '.join(offer_hits)}"] if offer_hits else [])
             + ([f"needs {', '.join(need_hits)}"] if need_hits else [])
-            + _close_reason(close, offer_hits + need_hits)
+            + _close_reason(close)
             + ([f"mentions {', '.join(hits)}"] if hits else [])
             + ([] if trust["claimed"] else ["unclaimed: compiled from public information, hand-off only"]),
             "signature_valid": trust["signature_valid"],

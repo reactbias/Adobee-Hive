@@ -101,7 +101,7 @@ flowchart TB
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
   FED[federation.py<br/>hop-limited search over peer Hives]:::mod
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
-  SEM[semantic.py<br/>offline similarity · optional embeddings]:::mod
+  SEM[semantic.py<br/>offline similarity · stems · compounds · concepts<br/>optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod

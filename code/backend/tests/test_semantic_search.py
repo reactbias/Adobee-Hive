@@ -104,8 +104,9 @@ def test_a_literal_hit_still_beats_a_merely_similar_one(client):
 
     quinn, salon = _match(found, "person-quinn"), _match(found, "service-schnittwerk")
     assert quinn["score_breakdown"]["offers_needs"] > 0
-    assert hive.SEMANTIC_POINTS < 10, "one literal offers/needs hit is worth 10; the whole component is worth less"
-    assert salon["score_breakdown"]["semantic"] <= hive.SEMANTIC_POINTS
+    assert hive.SEMANTIC_POINTS < 10, "a literal hit is worth 10 a word; a close one has to be worth less"
+    assert hive.SEMANTIC_CAP < 30, "and the ceiling stays under the one a literal match can reach"
+    assert salon["score_breakdown"]["semantic"] <= hive.SEMANTIC_CAP
 
 
 def test_a_side_that_already_matched_literally_is_not_scored_twice(client):
@@ -116,14 +117,60 @@ def test_a_side_that_already_matched_literally_is_not_scored_twice(client):
     a literal hit let exactly that happen. So the semantic read of a side is skipped when the words already
     found something there, which also makes "a literal hit beats a merely similar one" true by construction.
     """
-    quinn = _match(hive.discover(query="haircut"), "person-quinn")
+    found = hive.discover(query="haircut")
+    quinn, salon = _match(found, "person-quinn"), _match(found, "service-schnittwerk")
     assert quinn["score_breakdown"]["offers_needs"] > 0
     assert quinn["score_breakdown"]["semantic"] == 0, "the word is really there; that is what it is paid for"
     assert not any("close to" in why for why in quinn["why"])
+    assert quinn["score"] > salon["score"], "and really offering it still outranks being close to it"
 
-    # The other side is still read, because nothing was found there: they offer cutting, they need a cutter.
+    # His card also *says* "barber", which is close to the question, and that is not paid either: the prose is
+    # read only when the market side had nothing to say, so one card never collects twice for one question.
+    assert any("close to" in why for why in salon["why"]), "the salon, whose offers did not contain the word"
+
+
+def test_nothing_is_ever_paid_for_a_closeness_it_does_not_explain(client):
+    """The open ranking promise, as an invariant rather than a sentence: points imply a reason.
+
+    This failed once, quietly. The reason used to be dropped when the literal reason already named the same
+    words; once the prose side was read too, a card could be paid for being close and say nothing about it.
+    """
+    for query in ("haircut", "web developer", "hairdressing work", "a quiet room", "payments"):
+        for side in ("offers", "needs", "any"):
+            for match in hive.discover(query=query, looking_for=side)["matches"]:
+                close = [why for why in match["why"] if "close to" in why]
+                if match["score_breakdown"]["semantic"] > 0:
+                    assert close, (query, side, match["id"], match["why"])
+                else:
+                    assert not close, (query, side, match["id"], match["why"])
+
+    # And the side a search is on is read whole: they offer cutting, and they need a cutter.
     both = _match(hive.discover(query="hairdressing", looking_for="any"), "service-schnittwerk")
     assert both["score_breakdown"]["semantic"] > 0
+
+
+def test_what_an_entity_says_about_itself_is_read_last_and_counts_least(client):
+    """A description is a pitch to an agent, and worth reading — under what the entity will actually do.
+
+    `offers` and `needs` are claims an entity can be held to and rated against, so they are read first and
+    paid at twice the rate. The prose answers when they had nothing to say, which is how a hub reaches a
+    Gästehaus whose rooms are listed as "Zimmer", and it is where most of the four-language corpus is found.
+    """
+    hive.publish(
+        {
+            "id": "stay-sonnenhof",
+            "slug": "sonnenhof",
+            "kind": "hotel",
+            "name": "Gästehaus Sonnenhof (fictional)",
+            "description": "Neun Zimmer in Riehen. Frühstück im Garten, solange es warm ist.",
+            "offers": [{"title": "Gartenzimmer", "summary": "Zwei Personen."}],
+        }
+    )
+    guesthouse = _match(hive.discover(query="bed and breakfast with a garden"), "stay-sonnenhof")
+    assert guesthouse["score_breakdown"]["semantic"] > 0
+    assert 0 < hive.SEMANTIC_TEXT_POINTS < hive.SEMANTIC_POINTS, "prose counts, and counts for less"
+    assert hive.SEMANTIC_TEXT_CAP < hive.SEMANTIC_CAP
+    assert any("close to" in why for why in guesthouse["why"])
 
 
 def test_a_semantic_hit_says_why_in_words_a_person_can_read(client):

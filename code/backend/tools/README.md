@@ -2,12 +2,26 @@
 
 ## eval_search.py — is the search actually better?
 
+> The hub's own answer key lives in `testdata/README.md` and `eval_answer_key.py` scores it. Run that one for
+> the headline number (`19/41 first, 30/41 in the top three`, against `0/41` for literal matching). This script
+> answers the neighbouring question — *what did the change do?* — by running the same key twice, once with the
+> semantic component switched off, and adding the seeded hotels and example cards as extra distractors.
+
 Semantic search is easy to believe in and hard to be sure about: a synonym table that reads well in a
 docstring can quietly make every card similar to every query. `eval_search.py` builds a hub out of
 `testdata/vaults/`, runs a list of query-to-expected pairs through `hive.discover()` twice — once with the
 semantic component off, which is the literal substring search we started from, and once with it on — and
 prints **precision at 1 and at 3** for both, plus the share of queries where the hub had any reason at all to
-return the right entity rather than returning it by the luck of a tie-break.
+return the right entity rather than returning it by the luck of a tie-break:
+
+```
+                            literal only    with semantics
+  precision at 1                 0.000            0.415
+  precision at 3                 0.000            0.707
+  queries with any evidence      0.000            0.805
+```
+
+Seventeen queries fixed, none broken.
 
 ```bash
 cd code/backend && source .venv/bin/activate
