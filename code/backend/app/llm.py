@@ -31,7 +31,7 @@ def client() -> anthropic.Anthropic:
     """Return the shared Anthropic client, created on first use."""
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY)
+        _client = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
     return _client
 
 
@@ -95,7 +95,7 @@ _openai: openai.OpenAI | None = None
 def _structured_openai(system: str, user: str | list, schema: dict[str, Any], max_tokens: int) -> dict[str, Any]:
     global _openai
     if _openai is None:
-        _openai = openai.OpenAI(api_key=config.OPENAI_API_KEY)
+        _openai = openai.OpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
     response = _openai.responses.create(
         model=config.OPENAI_MODEL,
         instructions=system,

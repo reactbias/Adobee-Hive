@@ -65,7 +65,7 @@ def rule_check(
 
 
 async def _ask_openai(text: str, booking: dict[str, Any], card: dict[str, Any], locale: str) -> dict[str, str]:
-    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
     response = await client.responses.create(
         model=config.OPENAI_MODEL,
         instructions=INSTRUCTIONS + language_line(locale),

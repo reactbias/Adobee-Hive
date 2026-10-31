@@ -13,6 +13,7 @@ unverified mirror (app/mirror.py) to show both at work; its rules-off run shows,
 guard would do, and never sends that booking.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -227,12 +228,13 @@ async def run(
             return await _run_unguarded(hives, text, locale) | {"scenario": scenario}
         try:
             if config.LLM_PROVIDER == "openai":
-                result = await _run_openai(hives, messages, locale)
+                result = await asyncio.wait_for(_run_openai(hives, messages, locale), config.AGENT_TIMEOUT_S)
             elif config.LLM_PROVIDER == "claude":
-                result = await _run_claude(hives, messages, locale)
+                result = await asyncio.wait_for(_run_claude(hives, messages, locale), config.AGENT_TIMEOUT_S)
             else:
                 result = await _run_scripted(hives, text, locale)
-        except (openai.OpenAIError, anthropic.APIError):  # out of credit, rate limit, outage: the demo goes on
+        # Out of credit, rate limit, outage, a hang or an unreadable answer: the demo goes on offline.
+        except (*llm.FAILURES, TimeoutError):
             vendor = "OpenAI" if config.LLM_PROVIDER == "openai" else "Claude"
             log.exception("%s unavailable, falling back to the scripted planner", vendor)
             result = await _run_scripted(hives, text, locale) | {"fallback": f"{vendor} unavailable"}
@@ -311,7 +313,7 @@ HELD = {"status": "held_for_approval", "note": "The traveller confirms this book
 
 
 async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
-    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+    client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
     tools = [
         {
             "type": "function",
@@ -361,7 +363,7 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], lo
 
 
 async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]], locale: str) -> dict[str, Any]:
-    aclient = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY)
+    aclient = anthropic.AsyncAnthropic(api_key=config.ANTHROPIC_API_KEY, timeout=config.LLM_TIMEOUT_S, max_retries=1)
     tools = [dict(t) for t in hives.tools]
     tools[-1]["cache_control"] = {"type": "ephemeral"}  # cache system + tool definitions across turns
     convo: list[dict[str, Any]] = [{"role": m["role"], "content": m["content"]} for m in messages]
