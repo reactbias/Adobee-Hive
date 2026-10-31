@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db, reputation
+from . import db, limits, reputation
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -226,9 +226,17 @@ def _check_receipt(card_id: str, receipt: str) -> dict[str, Any]:
 
 
 def publish(card: dict[str, Any]) -> dict[str, Any]:
-    """Sign and publish a new version of a card. `card` must carry id, slug, kind."""
+    """Sign and publish a new version of a card. `card` must carry id, slug, kind.
+
+    The second door for `limits.py`: signup bounds what an entity may join with, and this bounds
+    every version after it, or an entity registers politely and grows unbounded on its next update.
+    """
     card = json.loads(json.dumps(card, default=str))
     card.pop("trust", None)
+    try:
+        card = limits.vet(card)
+    except limits.LimitError as err:
+        raise HiveError(str(err)) from err
     # Fill the standard contact channels before signing, so the guarantee is part of what the
     # owner signed rather than something added on the way out. Doing it after signing would
     # change the card's canonical form and break every signature check.

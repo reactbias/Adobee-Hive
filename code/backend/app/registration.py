@@ -57,7 +57,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from . import blocklist, config, db, hive
+from . import blocklist, config, db, hive, limits
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hub_applications (
@@ -135,6 +135,16 @@ def _check_shape(app: dict[str, Any], _: dict) -> tuple[bool, str]:
     return True, "well formed"
 
 
+def _check_size(app: dict[str, Any], _: dict) -> tuple[bool, str]:
+    """Refuse an application that carries more than this hub accepts, naming the limit and the size.
+
+    Before the signature on purpose: verifying a 20 MB document is exactly the work not worth doing,
+    and the limits are published (`documentation/cards/README.md`) so this is never a surprise.
+    """
+    reason = limits.application_refusal(app)
+    return (False, reason) if reason else (True, "within the sizes this hub publishes")
+
+
 def _check_signature(app: dict[str, Any], _: dict) -> tuple[bool, str]:
     """Prove the applicant holds the key they are registering. Skipped when the hub will hold it."""
     public_key = str(app.get("public_key") or "").strip()
@@ -185,9 +195,11 @@ def _check_invite(app: dict[str, Any], _: dict) -> tuple[bool, str]:
 
 
 #: Run in order; the first failure stops the application. Order is deliberate — shape before
-#: signature so a malformed document gets a useful answer, and blocklist before anything expensive.
+#: signature so a malformed document gets a useful answer, size before the signature so nobody
+#: pays Ed25519 for a 20 MB document, and blocklist before anything expensive.
 CHECKS = (
     ("shape", _check_shape),
+    ("size", _check_size),
     ("signature", _check_signature),
     ("blocklist", _check_not_blocked),
     ("availability", _check_not_taken),
@@ -273,7 +285,9 @@ def _store(app_id, application, entity_id, state, custody, verification, checks,
                 custody,
                 verification,
                 json.dumps(application.get("proofs") or []),
-                json.dumps(entity),
+                # An oversized application is recorded as its size, never its text: a refusal that
+                # has to be kept must not itself be the way the database gets filled.
+                json.dumps(limits.storable(entity)),
                 json.dumps(checks),
                 now if state != PENDING else None,
                 decided_by if state != PENDING else None,
@@ -408,6 +422,9 @@ def policy() -> dict[str, Any]:
             CLOSED: "this hub is not accepting registrations",
         }[config.ADMISSION_POLICY],
         "checks": [name for name, _ in CHECKS],
+        # Published so an applicant reads what will be accepted before writing it, rather than
+        # finding out from a refusal. The prose version is documentation/cards/README.md.
+        "limits": [limit._asdict() for limit in limits.LIMITS],
         "verification_offered": config.HIVE_VERIFICATION,
         "verification_ladder": list(LADDER),
         "proof_types": list(PROOF_TYPES),
