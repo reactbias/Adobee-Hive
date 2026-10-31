@@ -1,108 +1,196 @@
 import type { Step } from "../api";
+import { useI18n } from "../i18n";
+import { chf, metres, stay } from "../lib/format";
 
 // The agent-to-agent conversation: what the traveller's agent asked over MCP, and what the Hive answered.
 // Every line comes from a real tool call; the raw JSON is one click away.
 
 type Rec = Record<string, unknown>;
 const list = (v: unknown) => (Array.isArray(v) ? (v as Rec[]) : []);
+export const STAGGER_MS = 520;
 
-function ask(step: Step): string {
+/** Business names as the agent learns them, so later turns can say "Hotel Rheinblick" instead of an id. */
+export function namesFrom(steps: Step[]): Record<string, string> {
+  const names: Record<string, string> = {};
+  for (const s of steps) {
+    for (const m of [...list(s.output.matches), ...list(s.output.excluded)]) names[String(m.id)] = String(m.name);
+    if (s.output.id && s.output.name) names[String(s.output.id)] = String(s.output.name);
+  }
+  return names;
+}
+
+function Ask({ step, names }: { step: Step; names: Record<string, string> }) {
+  const { t, intl } = useI18n();
   const i = step.input as Rec;
+  const name = names[String(i.card_id)] ?? String(i.card_id ?? "");
   switch (step.tool) {
     case "hive_discover": {
-      const parts = [
-        String(i.kind ?? "anything"),
+      const wants = [
         ...(list(i.features) as unknown as string[]),
-        i.near ? `near ${i.near}` : "",
-        i.max_price_chf ? `max CHF ${i.max_price_chf}/night` : "",
-        i.check_in ? `${i.check_in} to ${i.check_out}` : "",
-        i.guests ? `${i.guests} guest${Number(i.guests) > 1 ? "s" : ""}` : "",
-      ];
-      return `Who can host this? ${parts.filter(Boolean).join(" · ")}`;
+        i.near ? t("trace.near", { place: String(i.near) }) : "",
+        i.max_price_chf ? t("trace.under", { price: chf(i.max_price_chf, intl) }) : "",
+        i.check_in ? stay(i.check_in, i.check_out, intl) : "",
+      ].filter(Boolean);
+      return (
+        <p>
+          {t("trace.ask.discover", { kind: String(i.kind ?? "") })} <span className="wants">{wants.join(" · ")}</span>
+        </p>
+      );
     }
     case "hive_get_card":
-      return `Send me ${i.card_id}'s signed card.`;
+      return <p>{t("trace.ask.card", { name })}</p>;
     case "hive_check_availability":
-      return `Is anything free at ${i.card_id}, ${i.check_in} to ${i.check_out}?`;
+      return <p>{t("trace.ask.availability", { name, dates: stay(i.check_in, i.check_out, intl) })}</p>;
     case "hive_book":
-      return `Book ${i.unit_id} at ${i.card_id} for ${i.guest_name}, ${i.check_in} to ${i.check_out}.`;
+      return (
+        <p>
+          {t("trace.ask.book", {
+            name,
+            guest: String(i.guest_name ?? ""),
+            dates: stay(i.check_in, i.check_out, intl),
+          })}
+        </p>
+      );
     default:
-      return `${step.tool}(${Object.keys(i).join(", ")})`;
+      return <p>{step.tool}</p>;
   }
 }
 
-function answer(step: Step, names: Record<string, string>): { who: string; text: string; ok: boolean } {
-  const o = step.output as Rec;
-  if ("error" in o) return { who: "Hive", text: String(o.error), ok: false };
-  switch (step.tool) {
-    case "hive_discover": {
-      const m = list(o.matches);
-      const x = list(o.excluded);
-      const top = m[0] ? `Best fit ${m[0].name} (score ${m[0].score}). ` : "";
-      return {
-        who: "Hive",
-        text: `${m.length} ${m.length === 1 ? "match" : "matches"}, ${x.length} ruled out, each with a reason. ${top}No paid placement.`,
-        ok: m.length > 0,
-      };
-    }
-    case "hive_get_card": {
-      const t = (o.trust ?? {}) as Rec;
-      const att = list(t.attestations).map((a) => `${a.claim} (${a.attested_by})`);
-      return {
-        who: String(o.name ?? "Business"),
-        text: `Card v${o.version}, signed by the owner${att.length ? `. Attested: ${att.join(", ")}` : ""}.`,
-        ok: Boolean(t.signature_valid),
-      };
-    }
-    case "hive_check_availability": {
-      const u = list(o.available_units);
-      return {
-        who: names[String((step.input as Rec).card_id)] ?? "Business",
-        text: u.length
-          ? u.map((x) => `${x.name}: CHF ${x.total_chf} total, ${x.left} left`).join(" · ")
-          : "Fully booked.",
-        ok: u.length > 0,
-      };
-    }
-    case "hive_book":
-      return {
-        who: String(o.business ?? "Business"),
-        text: `Confirmed ${o.booking_id}. Signed receipt issued.`,
-        ok: o.status === "confirmed",
-      };
-    default:
-      return { who: "Hive", text: "Done.", ok: true };
-  }
-}
-
-export default function AgentTrace({ steps }: { steps: Step[] }) {
-  const names: Record<string, string> = {};
-  for (const s of steps)
-    if (s.tool === "hive_get_card" && s.output.id) names[String(s.output.id)] = String(s.output.name);
+function Discover({ o }: { o: Rec }) {
+  const { t, intl } = useI18n();
+  const matches = list(o.matches);
+  const excluded = list(o.excluded);
   return (
-    <ol className="a2a">
+    <>
+      <p>{t("trace.reply.discover", { fit: matches.length, total: matches.length + excluded.length })}</p>
+      <ol className="ledger">
+        {matches.map((m, n) => (
+          <li key={String(m.id)}>
+            <span className="ledger-rank num">{n + 1}</span>
+            <span className="ledger-name">{String(m.name)}</span>
+            <span className="ledger-why">
+              {chf(m.from_price_chf, intl)} · {metres(m.distance_m, intl)}
+            </span>
+            <span className="ledger-score num">{String(m.score)}</span>
+          </li>
+        ))}
+        {excluded.map((x) => (
+          <li key={String(x.id)} className="out">
+            <span className="ledger-rank">–</span>
+            <span className="ledger-name">{String(x.name)}</span>
+            <span className="ledger-why">{(x.why_not as string[] | undefined)?.join("; ")}</span>
+            <span className="ledger-score num">{String(x.score)}</span>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+function SignedCard({ o }: { o: Rec }) {
+  const { t } = useI18n();
+  const trust = (o.trust ?? {}) as Rec;
+  const att = list(trust.attestations);
+  return (
+    <>
+      <p>{t("trace.reply.card", { version: String(o.version) })}</p>
+      <dl className="seal">
+        <dt>{t("trace.key")}</dt>
+        <dd className="mono">{String(trust.public_key ?? "").slice(0, 16)}…</dd>
+        {att.map((a) => (
+          <div key={String(a.claim)} className="seal-row">
+            <dt>{String(a.claim)}</dt>
+            <dd>{t("trace.attestedBy", { who: String(a.attested_by) })}</dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  );
+}
+
+function Availability({ o, chosen }: { o: Rec; chosen?: string }) {
+  const { t, intl } = useI18n();
+  const units = list(o.available_units);
+  if (!units.length) return <p>{t("trace.reply.full")}</p>;
+  return (
+    <ol className="ledger units">
+      {units.map((u) => (
+        <li key={String(u.id)} className={u.id === chosen ? "chosen" : ""}>
+          <span className="ledger-name">{String(u.name)}</span>
+          <span className="ledger-why num">
+            {t("trace.perNight", { price: chf(u.price_chf, intl) })} · {t("trace.left", { n: String(u.left) })}
+          </span>
+          <span className="ledger-score num">{chf(u.total_chf, intl)}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Reply({ step, chosen }: { step: Step; chosen?: string }) {
+  const { t } = useI18n();
+  const o = step.output as Rec;
+  if ("error" in o) return <p>{String(o.error)}</p>;
+  switch (step.tool) {
+    case "hive_discover":
+      return <Discover o={o} />;
+    case "hive_get_card":
+      return <SignedCard o={o} />;
+    case "hive_check_availability":
+      return <Availability o={o} chosen={chosen} />;
+    case "hive_book":
+      return <p>{t("trace.reply.book", { id: String(o.booking_id ?? "") })}</p>;
+    default:
+      return <p>{t("trace.reply.done")}</p>;
+  }
+}
+
+function speaker(step: Step, names: Record<string, string>, hive: string): string {
+  if (step.tool === "hive_discover") return hive;
+  const id = String((step.input as Rec).card_id ?? "");
+  return names[id] ?? String(step.output.business ?? step.output.name ?? hive);
+}
+
+export default function AgentTrace({
+  steps,
+  chosen,
+  batchStart = 0,
+}: {
+  steps: Step[];
+  /** The unit the agent wants to book, highlighted in the availability answer. */
+  chosen?: string;
+  /** Index of the first step of the latest batch; only those animate in. */
+  batchStart?: number;
+}) {
+  const { t } = useI18n();
+  const names = namesFrom(steps);
+  return (
+    <ol className="turns">
       {steps.map((s, n) => {
-        const a = answer(s, names);
+        const failed = "error" in s.output;
+        const sig = s.tool === "hive_get_card" ? Boolean((s.output.trust as Rec | undefined)?.signature_valid) : null;
         return (
-          <li key={n} style={{ animationDelay: `${n * 350}ms` }}>
-            {s.tool === "hive_book" && <div className="a2a-human">You approved the booking</div>}
-            <div className="a2a-msg mine">
-              <span className="a2a-who">
-                Your agent · <code>{s.tool}</code>
-              </span>
-              {ask(s)}
+          <li key={n} className="turn" style={{ animationDelay: `${Math.max(0, n - batchStart) * STAGGER_MS}ms` }}>
+            {s.tool === "hive_book" && <div className="consent">{t("trace.approved")}</div>}
+            <span className="turn-idx num">{String(n + 1).padStart(2, "0")}</span>
+            <div className="utter mine">
+              <div className="utter-head">
+                <span>{t("trace.you")}</span>
+                <code>{s.tool}</code>
+              </div>
+              <Ask step={s} names={names} />
             </div>
-            <div className={`a2a-msg theirs ${a.ok ? "" : "bad"}`}>
-              <span className="a2a-who">
-                {a.who}
-                {s.tool === "hive_get_card" && (
-                  <span className={`chip ${a.ok ? "ok" : "no"}`}>{a.ok ? "signature valid" : "signature invalid"}</span>
+            <div className={`utter theirs${failed ? " failed" : ""}`}>
+              <div className="utter-head">
+                <span>{speaker(s, names, t("trace.hive"))}</span>
+                {sig !== null && (
+                  <span className={`status ${sig ? "ok" : "no"}`}>{sig ? t("trace.sig.ok") : t("trace.sig.bad")}</span>
                 )}
-                {s.ms !== undefined && <span className="muted"> · {s.ms} ms</span>}
-              </span>
-              {a.text}
+                {s.ms !== undefined && <span className="num ms">{s.ms} ms</span>}
+              </div>
+              <Reply step={s} chosen={chosen} />
               <details>
-                <summary className="muted">raw MCP exchange</summary>
+                <summary>{t("trace.raw")}</summary>
                 <pre>{JSON.stringify({ input: s.input, output: s.output }, null, 2)}</pre>
               </details>
             </div>

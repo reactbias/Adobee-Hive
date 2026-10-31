@@ -103,12 +103,21 @@ export interface Pending {
   tool: "hive_book";
   input: Record<string, unknown>;
 }
+/** A second agent, on another vendor when a key is set, checks the held booking before the human is asked. */
+export interface SecondOpinion {
+  verdict: "agree" | "concern";
+  note: string;
+  by: string;
+  ms: number;
+  fallback?: string;
+}
 export interface AgentResult {
   reply: string;
   steps: Step[];
   pending: Pending | null;
   mode: string;
   fallback?: string;
+  second_opinion?: SecondOpinion;
 }
 export interface Approval {
   reply: string;

@@ -37,11 +37,14 @@ flowchart LR
 | File | Responsibility |
 | --- | --- |
 | `api.ts` | Typed client for the REST API |
-| `pages/TravellerAgent.tsx`, `components/AgentTrace.tsx` | The traveller's chat, the agent-to-agent trace and the approval step |
+| `pages/TravellerAgent.tsx`, `components/AgentTrace.tsx` | The traveller's brief, the agent-to-agent stage, the approval step and the signed receipt |
 | `pages/OwnerStudio.tsx` | Plain-language edits, diff, sign and publish, missed demand |
 | `pages/CardPage.tsx` | The human view of a card, direct booking and the tamper test |
 | `pages/DemandMap.tsx` | What Basel asked for that nobody offers |
-| `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust chips; the footer easter egg |
+| `components/TrustBadge.tsx`, `components/B6Bee.tsx` | Trust status lines; the footer easter egg |
+| `i18n/` | English, German, French and Italian strings, the language switch and browser-language detection |
+| `lib/format.ts` | Swiss date, CHF and distance formatting per language |
+| `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
 ## MCP tools (`/mcp/`, Streamable HTTP)
 
