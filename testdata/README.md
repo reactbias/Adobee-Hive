@@ -14,13 +14,68 @@ Three hubs, mixed on purpose — a hub is what it mostly carries, never a rule i
 
 ## What is in it
 
-61 entities: 20 on `basel`, 21 on `zurich`, 20 on `bern`. 11 of them take bookings (the stays, parsed
-out of `rooms.md`), 43 carry a real `## What I need`, and between them they publish 178 offers and 47
-needs. Contact sharing is mixed on purpose: 20 folders gate a channel behind `ask first` and 13 keep
+61 entities and 416 files: 20 on `basel`, 21 on `zurich`, 20 on `bern`. 11 of them take bookings (the
+stays, parsed out of `rooms.md`), 43 carry a real `## What I need`, and between them they publish 178
+offers and 47 needs. Contact sharing is mixed on purpose: 20 folders gate a channel behind `ask first` and 13 keep
 one off the card entirely. Prose is in English, German, French and Italian.
 
 41 query-to-entity pairs in the answer key below, plus four near-misses and twelve cross-hub
 need-to-offer matches.
+
+## What is in a folder
+
+A vault is not three tidy markdown files. 51 of them hold what the owner would really keep — and
+every file is a real file of the type its name claims, because a `.pdf` that is not a PDF makes its
+size and its digest a lie:
+
+| | |
+| --- | --- |
+| people | `cv.pdf`, `portfolio.pdf`, `honorar-2026.csv`, `portraet.png`, `referenzen.md` |
+| stays | room photos, `hausordnung.pdf`, `zimmerplan.pdf`, `preise-2026.csv`, `gaeste/anreisen-2026.csv` |
+| services | `preisliste.pdf`, a certificate that certifies nothing, before-and-after photos, `touren.csv` |
+
+Varied per entity: six files for some, one for others, none at all for a couple. 416 files in all —
+241 markdown, 65 PDF, 62 CSV, 47 PNG, one `.txt` — **122 KB**, largest file 1.2 KB, and a test fails
+if the corpus grows past 400 KB. The ten hand-written folders stay pure markdown on purpose: they
+are the parser's reference, and they double as the control that shows the change is backwards
+compatible.
+
+Everything is written by `tools/make_corpus.py` with the standard library only — no new dependency,
+which rules out `.xlsx` (a zip of XML nobody should hand-roll) and `.jpg` (Huffman tables), so a
+spreadsheet is a `.csv` and a photograph is a `.png`. Deterministic: PNG colours come from a
+checksum of the path, the PDFs carry no creation date, so re-running changes nothing.
+
+## Shape, never contents
+
+This is where the central claim stops being an assertion. The seeder lists **every** file in
+`structure` — path, size, media type, digest — and *reads* only the markdown. `visibility.md` in each
+folder sets how much the Card admits to, using the five values from
+[documentation/cards/README.md](../documentation/cards/README.md):
+
+| Value | What the Card shows |
+| --- | --- |
+| `public` | path, size, media type, digest |
+| `public-summary` | the same, and the default for anything unlisted |
+| `private` | the folder and a file **count**. No digest, no names |
+| `shared` | nothing. The row is absent |
+| `hidden` | nothing. The row is absent |
+
+`shared` and `hidden` are absent rather than flagged, because listing a folder in order to say it is
+secret still leaks that it exists. Here is `treuhand-kehrli` as the hub actually serves it:
+
+```
+about.md        177 B  public-summary  text/markdown
+contact.md       78 B  public-summary  text/markdown
+tarife.pdf      876 B  public          application/pdf
+visibility.md    80 B  public-summary  text/markdown
+work.md         256 B  public-summary  text/markdown
+mandanten/     3 files private
+```
+
+Three client files are admitted to and not named. The `buchhaltung/` folder, which exists on disk,
+appears nowhere at all. And a draft in a `shared` folder cannot reach the index: contents are read
+only where the Card already says the file exists.
+
 
 ## Why this corpus exists
 
@@ -170,5 +225,5 @@ into `seed_vaults.py`. A test fails until the two agree, so the paste cannot be 
 ## Seeding time
 
 All 61, signed and posted one at a time through the real `POST /api/hub/register` on three hubs:
-**1.4 seconds** cold, three interpreter starts included (0.37 s basel, 0.45 s zurich, 0.48 s bern).
-A restart is not a reason to shrink the corpus.
+**1.4 seconds** cold, three interpreter starts included. Unchanged by the 165 non-markdown files —
+digesting 122 KB costs nothing measurable. A restart is not a reason to shrink the corpus.
