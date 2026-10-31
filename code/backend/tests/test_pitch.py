@@ -5,7 +5,9 @@ any more — `offers` and `needs` are the index and `kind` is only a filter — 
 query actually returns on the seeded hub, including the one case where something that is not a hotel wins.
 """
 
-from app import hive
+import pytest
+
+from app import db, hive
 
 REQUEST = (
     "Book me a quiet, dog-friendly hotel near Basel SBB under CHF 200 with late check-in, "
@@ -86,3 +88,129 @@ def test_an_undated_room_query_can_be_won_by_a_cafe_and_that_is_the_model(client
     )
     assert "cafe-stiller" not in {m["id"] for m in with_dates["matches"]}
     assert with_dates["matches"][0]["kind"] == "hotel"
+
+
+@pytest.mark.parametrize("guest_name", ["Mara Keller", "Quiet Station", "Ada Software"])
+def test_browser_pitch_query_ranks_the_fitting_hotel(client, guest_name):
+    """The browser sends only prose: its constraints, not the guest's name, determine the winner."""
+    query = REQUEST.replace("Mara Keller", guest_name)
+    response = client.get("/api/hive/discover", params={"query": query})
+    assert response.status_code == 200
+    found = response.json()
+    assert found["matches"][0]["id"] == "hotel-rheinblick"
+    assert all(m["kind"] == "hotel" for m in found["matches"])
+    baseline = client.get("/api/hive/discover", params={"query": REQUEST}).json()
+    assert [(m["id"], m["score"]) for m in found["matches"]] == [(m["id"], m["score"]) for m in baseline["matches"]]
+
+
+@pytest.fixture
+def browser_search_cards(client):
+    """Publish fictional edge-case offers and remove their index/history/key/event state afterwards."""
+    cards = [
+        {
+            "id": "pitch-probe-unlisted",
+            "slug": "pitch-probe-unlisted",
+            "kind": "hotel",
+            "name": "Quiet House (fictional)",
+            "features": ["quiet"],
+            "offers": [{"title": "Quiet hotel room", "summary": "Contact us for room availability."}],
+        },
+        *[
+            {
+                "id": f"pitch-probe-{suffix}",
+                "slug": f"pitch-probe-{suffix}",
+                "kind": "hotel",
+                "name": f"Parking House {suffix} (fictional)",
+                "features": ["parking"],
+                "distances_m": {"basel sbb": 5000, "messe basel": 0},
+                "units": [{"id": "single", "name": "Single room", "max_guests": 1, "price_chf": price, "quantity": 1}],
+            }
+            for suffix, price in (("free", 0), ("paid", 50))
+        ],
+        {
+            "id": "pitch-probe-service",
+            "slug": "pitch-probe-service",
+            "kind": "service",
+            "name": "Local Support (fictional)",
+            "offers": [
+                {"title": "Taxi to your hotel", "summary": "Taxi transfers from Basel SBB."},
+                {"title": "Website design services", "summary": "Websites for local hotels."},
+            ],
+            "needs": [{"title": "Quiet hotel room", "summary": "A room near Basel SBB for visiting colleagues."}],
+        },
+    ]
+    try:
+        for card in cards:
+            hive.publish(card)
+        yield
+    finally:
+        with db.write() as cur:
+            for table, column in (
+                ("hive_cards", "id"),
+                ("hive_card_history", "card_id"),
+                ("hive_keys", "card_id"),
+                ("hive_events", "card_id"),
+            ):
+                cur.execute(f"DELETE FROM {table} WHERE {column} LIKE 'pitch-probe-%'")
+
+
+@pytest.mark.parametrize("date_text", ["", "2027-04-01"])
+def test_browser_incomplete_dates_do_not_exclude_a_hotel_without_online_inventory(
+    client, browser_search_cards, date_text
+):
+    """Browsing with no complete stay keeps a hotel findable without inventing an availability check."""
+    response = client.get("/api/hive/discover", params={"query": f"A quiet hotel room near Basel SBB {date_text}"})
+    assert response.status_code == 200
+    assert "pitch-probe-unlisted" in {m["id"] for m in response.json()["matches"]}
+
+    dated = client.get(
+        "/api/hive/discover",
+        params={"query": "A quiet hotel room near Basel SBB 2027-04-01 to 2027-04-03"},
+    )
+    assert dated.status_code == 200
+    excluded = {m["id"]: m["why_not"] for m in dated.json()["excluded"]}
+    assert "takes no stay bookings" in excluded["pitch-probe-unlisted"]
+
+
+def test_browser_explicit_constraints_override_prose_even_at_default_values(client, browser_search_cards):
+    """The explicit free single room is eligible despite contradictory features, guests and dates in prose."""
+    query = REQUEST.replace("2026-11-13 to 2026-11-15", "2027-04-10 to 2027-04-10") + " for 3 guests"
+    response = client.get(
+        "/api/hive/discover",
+        params={
+            "query": query,
+            "features": ["parking"],
+            "near": "messe basel",
+            "max_price_chf": 0,
+            "check_in": "2027-04-01",
+            "check_out": "2027-04-02",
+            "guests": 1,
+        },
+    )
+    assert response.status_code == 200
+    found = response.json()
+    matches = {m["id"]: m for m in found["matches"]}
+    assert matches["pitch-probe-free"]["from_price_chf"] == 0
+    assert matches["pitch-probe-free"]["distance_m"] == 0
+    excluded = {m["id"]: m["why_not"] for m in found["excluded"]}
+    assert any("budget CHF 0" in reason for reason in excluded["pitch-probe-paid"])
+
+
+@pytest.mark.parametrize(
+    ("query", "extra"),
+    [
+        ("Book a taxi to a hotel near Basel SBB under CHF 50 for 2 people", {}),
+        ("Website design services for a hotel", {}),
+        ("A quiet hotel room near Basel SBB", {"kind": "service"}),
+        ("A quiet hotel room near Basel SBB under CHF 200", {"looking_for": "needs"}),
+        ("", {}),
+    ],
+)
+def test_browser_generic_searches_keep_matching_services_eligible(client, browser_search_cards, query, extra):
+    """Transport, services, needs and empty browsing must not acquire hotel-only constraints."""
+    response = client.get("/api/hive/discover", params={"query": query, **extra})
+    assert response.status_code == 200
+    matches = {m["id"]: m for m in response.json()["matches"]}
+    assert matches["pitch-probe-service"]["kind"] == "service"
+    if extra.get("looking_for") == "needs":
+        assert matches["pitch-probe-service"]["score_breakdown"]["offers_needs"] > 0
