@@ -561,7 +561,7 @@ Every Hive this hub knows of, for a person — or an agent — choosing which on
 {
   "hubs": [
     { "hub": "basel",  "url": "",                          "home": true,  "entities": 32, "admission": "open", "accepting": true, "verification": "signed", "verdict": "unproven", "why": "no introductions through this hub yet", "evidence": 0, "error_stars": null, "apply_at": "/api/hub/register", "blocked": false, "stale": false },
-    { "hub": "zurich", "url": "http://192.168.21.123:8521", "home": false, "entities": 21, "admission": "open", "accepting": true, "verification": "signed", "verdict": "unproven", "why": "no introductions through this hub yet", "evidence": 0, "error_stars": null, "apply_at": "http://192.168.21.123:8521/api/hub/register", "last_asked": "2026-10-31T19:47:17+00:00", "last_asked_ok": true, "known": true },
+    { "hub": "zurich", "url": "http://192.168.21.123:8521", "home": false, "entities": 21, "admission": "open", "accepting": true, "verification": "signed", "verdict": "unproven", "why": "no introductions through this hub yet", "evidence": 0, "error_stars": null, "apply_at": "http://192.168.21.123:8521/api/hub/register", "last_asked": "2026-10-31T19:47:17+00:00", "last_asked_ok": true, "last_answered": "2026-10-31T19:47:17+00:00", "stale": false, "known": true },
     { "hub": "bern",   "url": "http://192.168.21.123:8522", "home": false, "entities": 20, "…": "…" }
   ]
 }
