@@ -12,12 +12,11 @@ NOV = date(2026, 11, 2)
 
 # Requests no card in the Hive covers, in four languages, with typos, places and nonsense.
 UNCOVERED = [
-    "I need a taxi from Basel SBB to Aesch",
-    "taxi from ssb to aesch",
-    "book me a taxi",
-    "Ich brauche ein Taxi vom Bahnhof SBB nach Aesch",
-    "Un taxi de la gare de Bâle à Aesch, s'il vous plaît",
-    "Mi serve un taxi dalla stazione di Basilea ad Aesch",
+    "I need a taxi from Basel SBB to Aesch at 17:00",
+    "taxi from ssb to aesch now",
+    "Ich brauche jetzt ein Taxi vom Bahnhof SBB nach Aesch",
+    "Un taxi de la gare de Bâle à Aesch demain, s'il vous plaît",
+    "Mi serve un taxi dalla stazione di Basilea ad Aesch alle 9:30",
     "Find me a dentist in Basel",
     "Where can I get my car repaired?",
     "Two concert tickets for Saturday",
@@ -65,7 +64,7 @@ def test_named_businesses_and_their_topics_still_match(client):
 
 def test_unserved_requests_reach_the_demand_map_without_the_question(client):
     before = hive.demand_map()["unserved_searches"]
-    explore.ask("I need a taxi from Basel SBB to Aesch", today=NOV)
+    explore.ask("I need a taxi from Basel SBB to Aesch at 17:00", today=NOV)
     after = hive.demand_map()
     assert after["unserved_searches"] == before + 1
     taxi = next(f for f in after["features"] if f["feature"] == "taxi")
@@ -116,7 +115,7 @@ def test_the_model_cannot_invent_a_card(client, monkeypatch):
 
 
 def test_the_api_answers_an_uncovered_request_honestly(client):
-    r = client.post("/api/ask", json={"question": "taxi from ssb to aesch"})
+    r = client.post("/api/ask", json={"question": "taxi from ssb to aesch now"})
     assert r.status_code == 200
     body = r.json()
     assert body["replies"] == [] and body["unserved"] is True

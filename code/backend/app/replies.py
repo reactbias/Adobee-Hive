@@ -11,6 +11,9 @@ LOCALES = ("en", "de", "fr", "it")
 
 TEXT: dict[str, dict[str, str]] = {
     "en": {
+        "clarify.dates_name": "Happy to book it. Which dates, and whose name should the booking be in?",
+        "clarify.dates": "Happy to book it. Which dates, from and to?",
+        "clarify.name": "Happy to book it. Whose name should the booking be in?",
         "none_fit": "No business fits all your constraints. Closest: {why}.",
         "none_passed": "No listing I found passed my checks, so I did not book.",
         "set_aside": " I set aside {business} from {source}: {reasons}.",
@@ -46,6 +49,9 @@ TEXT: dict[str, dict[str, str]] = {
         "critic.unranked": "The Hive never ranked this pick, so I can't weigh it against anything.",
     },
     "de": {
+        "clarify.dates_name": "Gerne buche ich das. Für welche Daten, und auf welchen Namen?",
+        "clarify.dates": "Gerne buche ich das. Von wann bis wann?",
+        "clarify.name": "Gerne buche ich das. Auf welchen Namen soll die Buchung laufen?",
         "none_fit": "Kein Betrieb erfüllt alle Ihre Wünsche. Am nächsten: {why}.",
         "none_passed": "Kein gefundenes Angebot hat meine Prüfung bestanden, darum habe ich nicht gebucht.",
         "set_aside": " {business} von {source} habe ich beiseitegelegt: {reasons}.",
@@ -81,6 +87,9 @@ TEXT: dict[str, dict[str, str]] = {
         "critic.unranked": "Der Hive hat diese Wahl nie gerankt, also kann ich sie mit nichts vergleichen.",
     },
     "fr": {
+        "clarify.dates_name": "Volontiers. Pour quelles dates, et à quel nom ?",
+        "clarify.dates": "Volontiers. De quelle date à quelle date ?",
+        "clarify.name": "Volontiers. À quel nom dois-je réserver ?",
         "none_fit": "Aucun établissement ne remplit toutes vos conditions. Le plus proche : {why}.",
         "none_passed": "Aucune offre trouvée n'a passé mes contrôles, je n'ai donc rien réservé.",
         "set_aside": " J'ai écarté {business} de {source} : {reasons}.",
@@ -117,6 +126,9 @@ TEXT: dict[str, dict[str, str]] = {
         "critic.unranked": "Le Hive n'a jamais classé ce choix, je ne peux donc le comparer à rien.",
     },
     "it": {
+        "clarify.dates_name": "Volentieri. Per quali date, e a che nome?",
+        "clarify.dates": "Volentieri. Da quando a quando?",
+        "clarify.name": "Volentieri. A che nome devo prenotare?",
         "none_fit": "Nessuna struttura soddisfa tutte le Sue condizioni. La più vicina: {why}.",
         "none_passed": "Nessuna offerta trovata ha superato i miei controlli, quindi non ho prenotato.",
         "set_aside": " Ho scartato {business} da {source}: {reasons}.",

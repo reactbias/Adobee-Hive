@@ -129,6 +129,17 @@ TOPICS: list[list[str]] = [
 TOPIC_OF = {w: t for t, words in enumerate(TOPICS) for w in words}
 WORD = re.compile(r"[a-zäöüéèêàâçîïôûù+']+")
 
+# What a request on a topic must say before anyone can act on it. Missing, the agent asks one short question.
+NEEDS = {"taxi": ("route", "time")}
+ROUTE = re.compile(
+    r"\b(?:from|von|vom|ab|de|du|depuis|da|dal|dalla|dallo)\s+(?:the |der |dem |la |le |l'|il |lo )?[a-zäöüéèàç]"
+    r".*\b(?:to|nach|zum|zur|bis|à|au|vers|a|ad|al|alla|allo|per)\s+(?:the |la |le |l'|il )?[a-zäöüéèàç]"
+)
+WHEN = re.compile(
+    r"\b\d{1,2}(?:[:.h]\d{2}|\s?(?:am|pm|uhr|h)\b)|\b(?:now|asap|today|tonight|tomorrow|jetzt|sofort|heute|"
+    r"morgen|maintenant|demain|ce soir|aujourd|subito|adesso|oggi|domani|stasera)\b"
+)
+
 
 def _norm(word: str) -> str:
     return word.strip("'")
@@ -234,6 +245,7 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
     places = _places(cards)
     words = _content(q, places)
     named = [c for c in cards if any(a in q for a in c.get("aliases", []))]
+    clarify = _clarify(q, words)
     vocabs = {c["id"]: _vocab(c, places) for c in cards}
     covering = [c for c in cards if _covers_all(words, vocabs[c["id"]])]
     relevance: dict[str, Any] = {"by": "offline", "reason": None}
@@ -243,9 +255,10 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
             ids = set(verdict["covering"])
             covering = [c for c in cards if c["id"] in ids]
             relevance = {"by": "model", "reason": verdict["reason"][:300]}
+    said = [w for w in _words(q) if len(w) > 2 and w not in STOP]
     if named:
         scope = named
-    elif not WORD.search(q):  # "???": nothing to answer
+    elif not WORD.search(q) or (said and not words):  # "???", or only places ("from SBB to Aesch")
         scope = []
     elif words:  # a topic was asked: only cards whose own text covers it
         scope = covering
@@ -347,7 +360,7 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
     hive.record_event(
         "*", "explore_ask", json.dumps({"mood": mood, "cards": [c["id"] for c in scope], "answered": len(picked)})
     )
-    unserved = not picked and not excluded
+    unserved = not picked and not excluded and not clarify  # an incomplete request is not counted as demand yet
     if unserved:
         on_unserved(words)
     return {
@@ -363,7 +376,16 @@ def ask(question: str, mood: str | None = None, today: date | None = None, judge
         "mode": "offline",
         "unserved": unserved,
         "relevance": relevance,
+        "clarify": clarify,
     }
+
+
+def _clarify(q: str, words: list[str]) -> list[str]:
+    """What the request still has to say (NEEDS for its topic), e.g. ["route", "time"] for a bare "book me a taxi"."""
+    topics = {TOPICS[t][0] for w in words if (t := _topic(w)) is not None}
+    needs = [n for topic in sorted(topics) for n in NEEDS.get(topic, ())]
+    have = {"route": bool(ROUTE.search(q)), "time": bool(WHEN.search(q))}
+    return [n for n in dict.fromkeys(needs) if not have[n]]
 
 
 def on_unserved(words: list[str]) -> None:
