@@ -48,10 +48,10 @@ function Switcher() {
   return <button onClick={() => setLocale("de")}>to german</button>;
 }
 
-const show = (onPick = vi.fn()) =>
+const show = (onPick = vi.fn(), onJoin = vi.fn()) =>
   render(
     <I18nProvider>
-      <InstanceFinder onPick={onPick} />
+      <InstanceFinder onPick={onPick} onJoin={onJoin} />
     </I18nProvider>,
   );
 
@@ -235,10 +235,11 @@ describe("the instance finder", () => {
     expect(await screen.findByText(en["finder.cal.explain"])).toBeInTheDocument();
   });
 
-  it("says on screen that it is a first pass, not a finished design", async () => {
+  it("is no longer labelled a first pass", async () => {
     vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub()] });
     show();
-    expect(await screen.findByText(en["finder.draft"])).toBeInTheDocument();
+    await screen.findAllByRole("listitem");
+    expect(screen.queryByText(/First pass/)).toBeNull();
   });
 
   it("falls back to this hub, and says so, when the directory is not deployed", async () => {
@@ -366,10 +367,105 @@ describe("the instance finder", () => {
     });
   });
 
-  it("offers no way to use a hub this one has blocked", async () => {
-    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub({ blocked: true })] });
+  it("offers no way to use or join a hub this one has blocked", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub({ blocked: true, apply_at: "/api/hub/register" })] });
     show();
     expect(await screen.findByRole("button", { name: en["finder.use"] })).toBeDisabled();
+    expect(screen.getByRole("button", { name: en["finder.join"] })).toBeDisabled();
+    expect(screen.getByText(en["finder.blocked"])).toBeInTheDocument();
+  });
+});
+
+// What a person is deciding between, not the field list: what it carries, will it have me, can I trust it.
+describe("choosing between hives", () => {
+  const rows = () => screen.findAllByRole("listitem");
+  const names = async () => (await rows()).map((r) => within(r).getByRole("heading").textContent);
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.setItem("adobee-locale", "en");
+    sessionStorage.clear();
+  });
+
+  it("groups each hive under the three questions", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub()] });
+    show();
+
+    const [row] = await rows();
+    for (const q of ["finder.q.carries", "finder.q.admits", "finder.q.trust"] as const)
+      expect(within(row).getByText(en[q])).toBeInTheDocument();
+  });
+
+  it("says a hive's admission rules are unknown when nobody has asked it", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [unasked()] });
+    show();
+    expect(await screen.findByText(en["finder.admission.unknown"])).toBeInTheDocument();
+  });
+
+  it("offers no application to a closed door, and says why", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [hub({ accepting: false, admission: "closed", apply_at: "/api/hub/register" })],
+    });
+    show();
+    expect(await screen.findByRole("button", { name: en["finder.join"] })).toBeDisabled();
+    expect(screen.getByText(en["finder.joinClosed"])).toBeInTheDocument();
+  });
+
+  it("hands a hive to the application when Join is pressed", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({ hubs: [hub({ apply_at: "/api/hub/register" })] });
+    const onJoin = vi.fn();
+    show(vi.fn(), onJoin);
+
+    await userEvent.click(await screen.findByRole("button", { name: en["finder.join"] }));
+    expect(onJoin).toHaveBeenCalledWith(expect.objectContaining({ hub: "basel.example" }));
+  });
+
+  it("marks the hive you are on without putting it first", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [hub({ name: "Zeta" }), unasked({ hub: "alpha.example", name: "Alpha" })],
+    });
+    show();
+
+    expect(await names()).toEqual(["Alpha", "Zeta"]);
+    const [alpha, zeta] = await rows();
+    expect(within(zeta).getByText(en["finder.home"])).toBeInTheDocument();
+    expect(within(alpha).queryByText(en["finder.home"])).toBeNull();
+  });
+
+  it("searches across name, address and what a hive carries", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [hub(), unasked({ name: "Hive Zürich", description: "Cafés" })],
+    });
+    show();
+    await rows();
+
+    await userEvent.type(screen.getByRole("searchbox", { name: en["finder.search"] }), "cafés");
+    expect(await names()).toEqual(["Hive Zürich"]);
+
+    await userEvent.clear(screen.getByRole("searchbox"));
+    await userEvent.type(screen.getByRole("searchbox"), "nothing like it");
+    expect(await screen.findByText(en["finder.noMatch"])).toBeInTheDocument();
+  });
+
+  it("filters to hives that will take you, and to hives with a track record", async () => {
+    vi.spyOn(api, "directory").mockResolvedValue({
+      hubs: [
+        hub({ name: "Open", hub: "a", error: 2, verdict: "good", evidence: 9 }),
+        hub({ name: "Closed", hub: "b", accepting: false, admission: "closed" }),
+        unasked({ name: "Unknown", hub: "c" }),
+      ],
+    });
+    show();
+    await rows();
+
+    const taking = screen.getByRole("button", { name: en["finder.filter.accepting"] });
+    await userEvent.click(taking);
+    expect(await names()).toEqual(["Open"]);
+    expect(taking).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(taking);
+    await userEvent.click(screen.getByRole("button", { name: en["finder.filter.proven"] }));
+    expect(await names()).toEqual(["Open"]);
   });
 });
 
@@ -469,7 +565,7 @@ describe("the finder always renders something", () => {
     render(
       <I18nProvider>
         <Switcher />
-        <InstanceFinder onPick={vi.fn()} />
+        <InstanceFinder onPick={vi.fn()} onJoin={vi.fn()} />
       </I18nProvider>,
     );
 

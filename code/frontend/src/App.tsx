@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, chosenHub, chosenHubUrl, setChosenHub, type Health } from "./api";
+import { api, chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub, type Health } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
+import Onboarding from "./panels/Onboarding";
 import B6Bee from "./components/B6Bee";
 import { CHAPTERS } from "./components/Chapter";
 import type { Key } from "./i18n/en";
@@ -129,6 +130,8 @@ export default function App() {
   const [admin, setAdmin] = useState(adminMode);
   // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
   const [reached, setReached] = useState(true);
+  // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
+  const [joining, setJoining] = useState<DirectoryHub | null>(null);
   const { t } = useI18n();
 
   /** Leave the hub's own panel and show the app, taking `?admin` out of the address with it. */
@@ -175,7 +178,20 @@ export default function App() {
       <>
         <Header />
         <main>
-          <InstanceFinder onPick={setHub} />
+          {joining ? (
+            <Onboarding
+              hub={joining}
+              onBack={() => setJoining(null)}
+              onUse={(picked) => {
+                const row = joining;
+                setChosenHub(picked, row && !row.home ? row.url || "" : "");
+                setJoining(null);
+                setHub(picked);
+              }}
+            />
+          ) : (
+            <InstanceFinder onPick={setHub} onJoin={setJoining} />
+          )}
         </main>
       </>
     );

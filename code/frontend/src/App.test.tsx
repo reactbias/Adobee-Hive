@@ -184,6 +184,41 @@ describe("the first screen", () => {
     expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
   });
 
+  it("opens the application for a hive from Join, and goes back to the list from it", async () => {
+    vi.mocked(api.directory).mockResolvedValue({
+      hubs: [
+        {
+          hub: "local",
+          url: "",
+          home: true,
+          blocked: false,
+          name: "Hive Basel",
+          description: "",
+          admission: "open",
+          accepting: true,
+          entities: 1,
+          apply_at: "/api/hub/register",
+          error: null,
+          error_stars: null,
+          evidence: 0,
+          verdict: "unproven",
+          why: "",
+        },
+      ],
+    });
+    vi.spyOn(api, "registrationPolicy").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: en["finder.join"] }));
+    expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: en["onboard.back"] }));
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+  });
+
   it("is skipped once a hub has been chosen in this tab", () => {
     sessionStorage.setItem("adobee-hub", "local");
     vi.spyOn(api, "cards").mockResolvedValue([]);

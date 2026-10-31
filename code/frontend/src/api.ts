@@ -42,7 +42,9 @@ async function call<T>(path: string, init?: RequestInit, retry = true): Promise<
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res: Response;
   try {
-    res = await fetch(`${apiBase()}${path}`, {
+    // A peer hub's `apply_at` is a full address; everything else is a path on the Hive this tab is pointed at.
+    const target = /^https?:\/\//.test(path) ? path : `${apiBase()}${path}`;
+    res = await fetch(target, {
       ...init,
       signal: abort.signal,
       headers:
@@ -653,6 +655,44 @@ export interface Directory {
   min_evidence?: number;
 }
 
+/** What a hub asks of someone who wants to join, published so they can read it before applying. */
+export interface RegistrationPolicy {
+  policy: string;
+  means: string;
+  checks: string[];
+  proof_types: string[];
+  key_custody: string;
+}
+
+export interface Proof {
+  type: string;
+  subject: string;
+}
+
+/**
+ * The document sent to join. Every key is always present: the hub checks the signature over the body after
+ * filling in its defaults, so a missing `invite` or `proofs` would change the bytes and break it.
+ */
+export interface JoinApplication {
+  entity: Record<string, unknown>;
+  public_key: string;
+  proofs: Proof[];
+  invite: string;
+  signature?: string;
+}
+
+/** The hub's answer. A refusal is `state: "rejected"` with the checks, the reason and a next step, not an error. */
+export interface ApplicationOutcome {
+  id: string;
+  state: "admitted" | "pending" | "rejected" | "withdrawn";
+  entity_id: string;
+  custody: "owner" | "hub";
+  verification: string;
+  checks: { check: string; ok: boolean; detail: string }[];
+  reason: string;
+  next: string;
+}
+
 /** A peer and how closely its published ratings matched what our people found. Lower `error` is better. */
 export interface Peer {
   hub: string;
@@ -813,6 +853,11 @@ export const api = {
 
   /** The Hives to choose between. Not on `main` yet (PR #71): the finder falls back to this hub on a 404. */
   directory: () => call<Directory>("/api/hub/directory"),
+  /** `applyAt` is the directory row's address: a path for this hub, a full URL for a peer. */
+  registrationPolicy: (applyAt = "/api/hub/register") =>
+    call<RegistrationPolicy>(applyAt.replace(/\/api\/hub\/register$/, "/api/hub/registration")),
+  register: (application: JoinApplication, applyAt = "/api/hub/register") =>
+    call<ApplicationOutcome>(applyAt, { method: "POST", body: JSON.stringify(application) }),
 
   /** Ask to be introduced. A public entry comes back `open`; a `confirm` one comes back `requested`. */
   connect: (request: ConnectRequest) => post<Connection>("/api/hub/connect", request),
