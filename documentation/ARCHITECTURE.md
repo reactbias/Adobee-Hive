@@ -121,11 +121,13 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
 | `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
+| `POST /api/admin/login` | Exchange the hub's `ADMIN_PASSWORD` for a short-lived session token, so a person can administer the hub from a browser. A refusal says nothing about the password; a lockout says when to try again | rate limit per client IP **and** in total, fails closed |
+| `POST /api/admin/logout` | End this session token | `X-Admin-Token` |
 | `GET /api/admin/overview` | The three stores counted, plus peer standing, for an admin front page | — |
 | `GET /api/admin/settings` | Hub settings as renderable fields: value, help, options | — |
 | `GET /api/admin/neighbours` | The peer list with each one's calibration | — |
 | `GET /api/admin/blocklist` | Everything this hub has shut out; readable without a token on purpose | — |
-| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token`, fails closed |
+| `POST /api/admin/blocklist` | Block a peer hub or an entity, in both directions | `X-Admin-Token` (static or a session token), declared so `/docs` shows a box, fails closed |
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |

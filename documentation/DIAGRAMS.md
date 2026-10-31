@@ -313,11 +313,13 @@ flowchart LR
   end
 
   ADMN([Hub operator]) --> ADMD
-  subgraph ADMD["Administration · GUI-ready, no interface yet"]
+  subgraph ADMD["Administration · the admin panel, or curl"]
     direction TB
+    D0["POST /api/admin/login · POST /api/admin/logout"]:::held
     D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
+    D0 -. "X-Admin-Token" .-> D3
   end
 
   APP([React app]) --> AGR & ASK & CRD & OWN & OPS
