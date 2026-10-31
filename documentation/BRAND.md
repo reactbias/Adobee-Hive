@@ -64,34 +64,35 @@ spelling (ss, not ß), CHF and Swiss date formats. How to add a string: [CONTRIB
 
 ## Colour and type
 
-The page is paper and ink with **one accent, clay**. On paper it is `--clay`; on the dark agent stage the same clay
-is lifted to `--clay-glow` so it reads at night. It marks what matters: eyebrows, the italic turn in a headline, the
-chosen row, a valid seal, the moment you approve. Status is always a dot and a word, never a pill.
+The page is **honey on white**: white surfaces, slate ink, one accent, honey. The agents talk on a dark stage,
+where the same honey is lifted to `--accent-bright` so it reads at night. The accent marks what matters: eyebrows,
+the italic turn in a headline, the chosen row, the moment you approve. Status is always a dot and a word, never a
+pill. The logo and the bee keep their clay and yellow; they are drawings, not interface.
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--paper` | `#f6f3ed` | Page background, warm limestone |
-| `--surface` | `#fffefb` | Panels, the approval card, the receipt |
-| `--ink` | `#17140f` | Text, primary buttons, the agent stage |
-| `--ink-2` / `--ink-3` | `#4b443a` / `#857c6f` | Secondary and quiet text |
-| `--line` | `#e4ded3` | Hairlines |
-| `--clay` | `#a24f2c` | The accent on paper; the logo bricks stay `#b85c34` |
-| `--clay-glow` | `#d98b5f` | The same clay on dark grounds: the stage, the hero, focus rings, review stars |
-| `--clay-dark` | `#5a2e1a` | Ink on clay |
-| `--bad` | `#a3321f` | Rejected, only ever with the word that says so |
+| `--bg` / `--surface` | `#ffffff` | Page and panels |
+| `--surface-2` | `#f7f7f5` | Quiet tiles, hover on a row |
+| `--ink` | `#16181d` | Text, primary buttons |
+| `--ink-2` / `--ink-3` | `#5b606b` / `#6b7079` | Secondary and quiet text |
+| `--line` | `#e6e7e3` | Hairlines |
+| `--accent` | `#d99a1e` | Honey on white: focus rings, the chosen row, the diff |
+| `--accent-ink` | `#8a5f0a` | Honey as text on white: eyebrows, prices |
+| `--accent-bright` | `#f2b63c` | Honey on the dark stage and the hero: the italic phrase, Send, the pinned question |
+| `--stage` | `#15171c` | The hero and the agent stage |
+| `--good` / `--bad` | `#1f7a4d` / `#b3261e` | A valid seal; rejected, only ever with the word that says so |
 
-Type, all bundled with their licence texts in `code/frontend/public/fonts/`:
+Type, bundled with their licence texts in `code/frontend/public/fonts/`:
 
-- **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in clay*
+- **Instrument Serif** for display: headlines at regular weight, tight leading, and one *italic phrase in honey*
   (write it as `*text*` in a string; `components/Display.tsx` sets it).
-- **Mannin** for text, UI and the brand name in the nav and wordmark: the font from the whiteboard, a humanist sans
-  that stays readable small. Bundled under the Ubuntu Font Licence 1.0 as *Mannin derivative Adobee*, a Latin subset
-  of the variable font (weights 300 to 700), renamed as that licence asks; see `code/frontend/public/fonts/README.md`.
+- The system sans (Inter where installed, else the platform's own) for text, UI and the brand name: no download,
+  readable small. The whiteboard font Mannin stays in the fonts folder for the wordmark and slides.
 - **Geist Mono** for tool names, signatures and the run's mode line.
 
 Icons are our own (`components/Icon.tsx`): 24 px, 1.5 px stroke, drawn on the logo's hexagon. No icon font.
 
-Imagery: lit clay honeycomb for slides (`assets/brand/hero-clay.svg`). The app itself has no photographs. No stock
+Imagery: lit honeycomb for slides (`assets/brand/hero-clay.svg`). The app itself has no photographs. No stock
 photos, no people.
 
 Personas on the agent stage are abstract hexagon avatars (`public/personas/`), one per voice: the guest, *Your agent*,
@@ -103,6 +104,5 @@ thinking* (before a tool call or a judgement) or *is typing* (before a line), ea
 its length (`lib/pace.ts`), the seal's tick draws itself on a valid signature, the approval question rises and stays
 pinned, and the receipt lands like a stamp. Nothing moves with `prefers-reduced-motion`.
 
-Readability: text and small labels meet WCAG AA contrast on paper and on the dark stage (`--ink-3` and the stage's
-quiet grey were darkened for it), nothing is set below 12 px, and the display serif is only used at headline sizes.
+Readability: text and small labels meet WCAG AA contrast on white and on the dark stage, nothing is set below 12 px, and the display serif is only used at headline sizes.
 On touch screens every control has a 44 px target, and the page links scroll sideways on one line.

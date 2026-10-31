@@ -288,10 +288,26 @@ const fr: Record<Key, string> = {
   "next.business.body": "La même réservation du côté de l'hôtel, et ce que les agents demandent encore.",
   "next.business.cta": "Voir le côté de l'hôtel",
   "nav.chapters": "Parcours",
-  "chapter.travel": "Recherche",
-  "chapter.business": "Opportunités",
-  "chapter.business.lead": "Vous tenez {name}. Dites ce qui a changé ; les agents voient la nouvelle version signée.",
-  "chapter.business.title": "Ce que les agents ont demandé, *et la réponse de la propriétaire.*",
+  "chapter.travel": "Trouver et réserver",
+  "chapter.business": "Pour les commerces",
+  "chapter.business.lead":
+    "{name} : dites ce qui a changé, avec vos mots. Les agents lisent la nouvelle version signée.",
+  "hero.eyebrow": "La porte d'entrée, signée.",
+  "hero.title": "Le prochain client est *un agent.*",
+  "hero.lead":
+    "Dites ce dont vous avez besoin. Votre agent trouve les commerces de Bâle, vérifie chaque signature et ne réserve que sur votre oui.",
+  "principles.label": "Quatre promesses",
+  "principles.signed.title": "Des faits signés",
+  "principles.signed.body":
+    "Chaque carte porte la signature du propriétaire. Les agents la vérifient et écartent toute copie altérée.",
+  "principles.ranking.title": "Un classement ouvert",
+  "principles.ranking.body":
+    "Chaque résultat explique pourquoi il l'emporte et pourquoi les autres ont été écartés. La place ne s'achète pas.",
+  "principles.stay.title": "La preuve du séjour",
+  "principles.stay.body": "Seul un reçu de réservation signé permet de laisser un avis. Pas de séjour, pas d'avis.",
+  "principles.yes.title": "Votre oui",
+  "principles.yes.body": "Les agents négocient. Les personnes décident. Rien n'est réservé sans votre accord.",
+  "chapter.business.title": "Votre carte, *signée par vous.*",
   "business.tab.owner": "Studio du propriétaire",
   "business.tab.demand": "Carte de la demande",
   "owner.change": "Qu'est-ce qui a changé ?",
@@ -397,6 +413,7 @@ const fr: Record<Key, string> = {
   "card.count.one": "1 résultat",
   "card.count.other": "{n} résultats",
   "card.more": "Plus sur {name}",
+  "card.from": "dès {price}",
   // The instance finder (the first screen) and the hub admin panel
   "finder.title": "Choisir un Hive",
   "finder.lead":
@@ -691,7 +708,6 @@ const fr: Record<Key, string> = {
   "score.thanks": "Merci. Votre note est enregistrée.",
   "score.standing": "Où cela place {hub} :",
   "requests.title": "En attente de votre accord",
-  "requests.empty": "Personne n'attend de mise en relation.",
   "requests.from": "{who} demande une mise en relation",
   "requests.accept": "Accepter",
   "requests.decline": "Refuser",

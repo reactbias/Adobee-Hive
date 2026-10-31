@@ -13,7 +13,7 @@ describe("styles", () => {
   it("keeps a Try example readable on hover, over the dark hover of every other button", () => {
     // button:hover:not(:disabled) paints buttons dark; an example has to win that with its own light background.
     const hover = rule(".example:hover:not(:disabled)");
-    expect(hover).toMatch(/background:\s*var\(--paper-2\)/);
+    expect(hover).toMatch(/background:\s*var\(--surface-2\)/);
     expect(hover).toMatch(/color:\s*var\(--ink\)/);
   });
 
@@ -44,7 +44,7 @@ describe("styles", () => {
     expect(rule(".search-top .examples")).toMatch(/display:\s*flex/);
     expect(rule(".search-top .examples .example")).toMatch(/border:\s*1px solid/);
     expect(rule(".search-top .examples .example")).toMatch(/border-radius:\s*999px/);
-    expect(rule(".search-top .examples .example:hover:not(:disabled)")).toMatch(/border-color:\s*var\(--clay\)/);
+    expect(rule(".search-top .examples .example:hover:not(:disabled)")).toMatch(/border-color:\s*var\(--accent\)/);
   });
 
   it("keeps the question in full and locks the count and Details on that row", () => {
@@ -60,12 +60,25 @@ describe("styles", () => {
   });
 
   it("rings the search bar while you type in it", () => {
-    expect(rule(".search-top .composer.bar:focus-within")).toMatch(/border-color:\s*var\(--clay\)/);
+    expect(rule(".search-top .composer.bar:focus-within")).toMatch(/border-color:\s*var\(--accent\)/);
   });
 
   it("wraps the composer's buttons, and their labels, on a narrow screen", () => {
     expect(rule(".composer-actions")).toMatch(/flex-wrap:\s*wrap/);
     expect(rule(".composer-actions button")).toMatch(/white-space:\s*normal/);
+  });
+
+  // Honey on white: one accent, named for what it is, and a dark stage that lifts it rather than a second accent.
+  it("has honey as its one accent, with no trace of the old clay", () => {
+    expect(rule(":root")).toMatch(/--accent:\s*#d99a1e/);
+    expect(rule(":root")).toMatch(/--accent-bright:\s*#f2b63c/);
+    expect(rule(":root")).toMatch(/--stage:\s*#15171c/);
+    expect(css).not.toMatch(/--clay|--paper\b|#a24f2c|#d98b5f/);
+  });
+
+  it("opens on a dark hero that holds the headline and the search bar", () => {
+    expect(rule(".hero")).toMatch(/background:[^;]*var\(--stage\)/);
+    expect(rule(".search-top")).toMatch(/background:[^;]*var\(--stage\)/);
   });
 
   it("keeps only the status dot in a phone's header, so four languages fit beside it", () => {

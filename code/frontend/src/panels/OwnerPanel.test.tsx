@@ -110,6 +110,20 @@ describe("the business chapter", () => {
     expect(within(kpis).getByText(en["owner.week.booked"]).previousSibling).toHaveTextContent("2");
   });
 
+  it("shows no counters while every count is zero: a fresh card reads as fresh, not as failing", async () => {
+    localStorage.setItem("adobee-locale", "en");
+    vi.spyOn(api, "cards").mockResolvedValue([CARD]);
+    vi.spyOn(api, "owner").mockResolvedValue({ ...OVERVIEW, last_7_days: {} });
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <OwnerPanel />
+      </I18nProvider>,
+    );
+    await screen.findByText("Mara Keller");
+    expect(screen.queryByRole("group", { name: en["owner.week.title"] })).not.toBeInTheDocument();
+  });
+
   it("lists every business in the Hive, unclaimed ones too, and shows the one picked", async () => {
     const user = setup("en");
     await screen.findByText("Mara Keller");

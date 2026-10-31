@@ -287,11 +287,27 @@ const de: Record<Key, string> = {
   "next.business.body": "Dieselbe Buchung aus Sicht des Hotels, und wonach Agenten noch fragen.",
   "next.business.cta": "Seite des Hotels zeigen",
   "nav.chapters": "Weg",
-  "chapter.travel": "Suche",
-  "chapter.business": "Chancen",
+  "chapter.travel": "Finden und buchen",
+  "chapter.business": "Für Betriebe",
   "chapter.business.lead":
-    "Sie führen {name}. Sagen Sie, was sich geändert hat; Agenten sehen die neue, signierte Version.",
-  "chapter.business.title": "Wonach Agenten fragten, *und die Antwort der Inhaberin.*",
+    "{name}: Sagen Sie in eigenen Worten, was sich geändert hat. Agenten lesen die signierte neue Version.",
+  "hero.eyebrow": "Die Haustür, signiert.",
+  "hero.title": "Der nächste Gast ist *ein Agent.*",
+  "hero.lead":
+    "Sagen Sie, was Sie brauchen. Ihr Agent findet Basels Betriebe, prüft jede Signatur und bucht erst, wenn Sie Ja sagen.",
+  "principles.label": "Vier Versprechen",
+  "principles.signed.title": "Signierte Fakten",
+  "principles.signed.body":
+    "Jede Karte trägt die Signatur des Inhabers. Agenten prüfen sie und weisen jede veränderte Kopie ab.",
+  "principles.ranking.title": "Offenes Ranking",
+  "principles.ranking.body":
+    "Jedes Ergebnis sagt, warum es vorne liegt und warum die anderen ausschieden. Platzierung ist nicht käuflich.",
+  "principles.stay.title": "Belegter Aufenthalt",
+  "principles.stay.body":
+    "Nur eine signierte Buchungsquittung berechtigt zur Bewertung. Kein Aufenthalt, keine Bewertung.",
+  "principles.yes.title": "Ihr Ja",
+  "principles.yes.body": "Agenten verhandeln. Menschen entscheiden. Nichts wird ohne Ihre Zustimmung gebucht.",
+  "chapter.business.title": "Ihre Karte, *von Ihnen signiert.*",
   "business.tab.owner": "Inhaber-Studio",
   "business.tab.demand": "Nachfragekarte",
   "owner.change": "Was hat sich geändert?",
@@ -397,6 +413,7 @@ const de: Record<Key, string> = {
   "card.count.one": "1 Ergebnis",
   "card.count.other": "{n} Ergebnisse",
   "card.more": "Mehr zu {name}",
+  "card.from": "ab {price}",
   // The instance finder (the first screen) and the hub admin panel
   "finder.title": "Hive wählen",
   "finder.lead":
@@ -700,7 +717,6 @@ const de: Record<Key, string> = {
   "score.thanks": "Danke. Ihre Bewertung ist gespeichert.",
   "score.standing": "Damit steht {hub} so da:",
   "requests.title": "Wartet auf Ihre Zustimmung",
-  "requests.empty": "Niemand wartet auf eine Vermittlung.",
   "requests.from": "{who} möchte vermittelt werden",
   "requests.accept": "Annehmen",
   "requests.decline": "Ablehnen",

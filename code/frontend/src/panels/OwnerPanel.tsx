@@ -299,7 +299,7 @@ export default function OwnerPanel({
                 )}
               </div>
 
-              {week.length > 0 && (
+              {week.some(([, n]) => n > 0) && (
                 <dl className="kpis" role="group" aria-label={t("owner.week.title")}>
                   {week.map(([label, n]) => (
                     <div key={label}>

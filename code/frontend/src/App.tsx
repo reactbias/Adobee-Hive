@@ -14,8 +14,8 @@ const here = () => new URL(typeof window === "undefined" ? "http://localhost/" :
 /** `?admin` opens the hub's own panel instead of the app. Nothing on the public page links to it. */
 const adminMode = () => viewIn(here().search) === "admin";
 /**
- * `?hub=<id>` picks a Hive and skips the instance finder, so the pitch runbook can open straight into a booking
- * run. `?hub` on its own means the same thing for whatever this backend serves.
+ * `?hub=<id>` points the app at a Hive, as the pitch runbook does. `?hub` on its own means whatever this backend
+ * serves. Without it the app runs on the Hive this build was deployed against, until a person picks another.
  */
 const hubFromUrl = () => hubIn(here().search);
 
@@ -23,23 +23,20 @@ const hubFromUrl = () => hubIn(here().search);
 const rewrite = (to: string) => history.replaceState(null, "", to);
 
 /**
- * Forget the hub and go back to the finder with nothing selected. `?hub=` has to come out of the address too:
- * left in, a reload would re-apply it and bounce straight past the finder, which is exactly what it looked like
- * when Change Hive seemed to do nothing.
+ * Forget the chosen hub and go back to the build's own. `?hub=` has to come out of the address too: left in, a
+ * reload would re-apply it, which is exactly what it looked like when Change Hive seemed to do nothing.
  */
 function forgetHub() {
   setChosenHub("");
   rewrite(without(here(), "hub"));
 }
 
-// One page in three chapters. The header names them, says whether the AI is live, and switches the language.
+// One page in two chapters. The header names them, says whether the AI is live, and switches the language.
 function Header({
-  onChangeHub,
   onLeaveAdmin,
   hub,
   onHealth,
 }: {
-  onChangeHub?: () => void;
   onLeaveAdmin?: () => void;
   hub?: string;
   onHealth?: (reached: boolean) => void;
@@ -84,24 +81,17 @@ function Header({
             else rewrite(window.location.pathname + window.location.search);
           }}
         >
-          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={30} height={30} />
+          <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
           <span>Adobee Hive</span>
         </a>
         <nav className="nav-links" aria-label={t("nav.chapters")}>
-          {CHAPTERS.map((c, i) => (
+          {CHAPTERS.map((c) => (
             <a key={c} className="link" href={`#${c}`}>
-              <span className="num">{i + 1}</span> {t(`chapter.${c}` as Key)}
+              {t(`chapter.${c}` as Key)}
             </a>
           ))}
         </nav>
         <div className="nav-end">
-          {/* Which Hive you are on, always visible, so nobody has to guess which one answered. */}
-          {hub && <span className="muted small nav-hub-name">{t("nav.onHub", { hub })}</span>}
-          {onChangeHub && (
-            <button className="quiet nav-hub" onClick={onChangeHub}>
-              {t("finder.change")}
-            </button>
-          )}
           {mode}
           <div className="locales" role="group" aria-label={t("nav.language")}>
             {LOCALES.map((l: Locale) => (
@@ -124,8 +114,10 @@ function Header({
 }
 
 export default function App() {
-  // Which Hive the app runs against. The finder sets it; `?hub=` in the address skips the finder entirely.
+  // Which Hive the app runs against: "" is the build's own. `?hub=` in the address or a pick in this tab sets it.
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
+  // The finder is a view a person opens with Change Hive, never a gate on the way in.
+  const [choosing, setChoosing] = useState(false);
   // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
   const [admin, setAdmin] = useState(adminMode);
   // Whether the Hive the app is pointed at answered at all. Starts true: nothing is wrong until it is.
@@ -173,7 +165,7 @@ export default function App() {
       </>
     );
 
-  if (!hub)
+  if (choosing)
     return (
       <>
         <Header />
@@ -187,30 +179,40 @@ export default function App() {
                 setChosenHub(picked, row && !row.home ? row.url || "" : "");
                 setJoining(null);
                 setHub(picked);
+                setChoosing(false);
               }}
             />
           ) : (
-            <InstanceFinder onPick={setHub} onJoin={setJoining} />
+            <InstanceFinder
+              onPick={(picked) => {
+                setHub(picked);
+                setChoosing(false);
+                setReached(true);
+              }}
+              onJoin={setJoining}
+            />
           )}
         </main>
       </>
     );
 
-  const leaveHub = () => {
+  // Change Hive: drop the current pick, so the finder opens with nothing selected and the build's own backend.
+  const changeHub = () => {
     forgetHub();
     setHub("");
     setReached(true);
+    setChoosing(true);
   };
 
   return (
     <>
-      <Header hub={hub} onChangeHub={leaveHub} onHealth={setReached} />
+      <Header hub={hub} onHealth={setReached} />
       <main>
         {/* A chosen Hive that cannot be reached says so and offers the way back, rather than a dead page. */}
         {!reached && (
           <p className="error hub-unreachable" role="status">
             {t("app.hubUnreachable")}{" "}
-            <button className="quiet" onClick={leaveHub}>
+            <button className="quiet" onClick={changeHub}>
               {t("finder.change")}
             </button>
           </p>
@@ -218,7 +220,13 @@ export default function App() {
         {/* Keyed by the hub and its URL, so picking a different one starts the page over against that backend. */}
         <TravellerAgent key={`${hub}@${chosenHubUrl()}`} />
       </main>
-      <B6Bee />
+      <B6Bee>
+        {/* Which Hive answered, always visible, and the one way to pick another. */}
+        {hub && <span className="nav-hub-name">{t("nav.onHub", { hub })}</span>}
+        <button className="quiet nav-hub" onClick={changeHub}>
+          {t("finder.change")}
+        </button>
+      </B6Bee>
     </>
   );
 }

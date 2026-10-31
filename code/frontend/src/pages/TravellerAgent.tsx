@@ -32,6 +32,7 @@ import JourneyLog, { useActivityLog } from "../components/JourneyLog";
 import { sceneFor, type Scene } from "../lib/cardView";
 import { hubScene } from "../lib/hubScene";
 import Reach from "../components/Reach";
+import Principles from "../components/Principles";
 import { demoMode } from "../lib/demo";
 
 const EXAMPLES: Key[] = ["agent.example.1", "agent.example.2", "agent.example.3"];
@@ -496,6 +497,10 @@ export default function TravellerAgent() {
       <Chapter
         id="travel"
         stack
+        heading="hero.title"
+        headingLevel={1}
+        eyebrow={t("hero.eyebrow")}
+        lead={t("hero.lead")}
         side={
           <div className="search-top">
             <Composer
@@ -650,12 +655,14 @@ export default function TravellerAgent() {
         </div>
       </Chapter>
       <Introductions refresh={introduced} />
+      <Principles />
       <OwnerPanel
         key={`${owner?.id ?? ""}/${booking?.booking_id ?? ""}`}
         initial={owner?.id}
         sectionRef={businessRef}
       />
-      <NetworkPanel />
+      {/* The hub network and the live feed are for presenters and operators; visitors see the product only. */}
+      {demoMode() && <NetworkPanel />}
       {demoMode() && <ActivityPanel />}
     </>
   );

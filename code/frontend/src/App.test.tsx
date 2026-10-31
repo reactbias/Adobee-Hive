@@ -121,6 +121,49 @@ describe("the app", () => {
     window.history.replaceState(null, "", "/");
   });
 
+  it("shows the four principles, in the brand's order, between the two chapters", () => {
+    const { container } = render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    const strip = screen.getByRole("list", { name: en["principles.label"] });
+    expect(
+      within(strip)
+        .getAllByRole("heading")
+        .map((h) => h.textContent),
+    ).toEqual([
+      en["principles.signed.title"],
+      en["principles.ranking.title"],
+      en["principles.stay.title"],
+      en["principles.yes.title"],
+    ]);
+    const travel = container.querySelector("section#travel")!;
+    const business = container.querySelector("section#business")!;
+    expect(travel.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(strip.compareDocumentPosition(business) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps the hub network and the activity feed for presenters only", async () => {
+    window.history.replaceState(null, "", "/");
+    const { unmount } = render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.queryByRole("heading", { name: en["network.title"] })).toBeNull();
+    unmount();
+
+    window.history.replaceState(null, "", "/?demo");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: en["network.title"] })).toBeInTheDocument();
+    window.history.replaceState(null, "", "/");
+  });
+
   it("offers an obvious way back to change hub", () => {
     render(
       <I18nProvider>
@@ -131,8 +174,9 @@ describe("the app", () => {
   });
 });
 
-// Pick a door before you walk through it. The finder must never stand between the pitch driver and a booking run,
-// so a remembered choice and `?hub=` both skip it.
+// The first screen is the search, on the Hive this build was deployed against. Picking another Hive is one tap
+// away (Change Hive), and `?hub=` still points the app at one for the pitch runbook; neither stands between a
+// visitor and a booking run.
 describe("the first screen", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -140,47 +184,49 @@ describe("the first screen", () => {
     sessionStorage.clear();
     window.history.replaceState(null, "", "/");
     vi.spyOn(api, "health").mockResolvedValue({ llm: "mock", model: "", fast_model: "" } as never);
+    vi.spyOn(api, "cards").mockResolvedValue([]);
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "demand").mockRejectedValue(new Error("offline"));
     vi.spyOn(api, "directory").mockResolvedValue({ hubs: [] });
   });
 
-  // A reload is the test a person actually performs when a screen looks wrong, so it must not be the thing that
-  // takes the screen away. Reloading is a fresh mount reading the same sessionStorage and the same address.
-  it("stays on the finder across a reload, however many times", async () => {
+  it("is the search, with the headline and the bar, when no hub has been chosen", async () => {
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en["hero.title"].replace(/\*/g, ""));
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: en["finder.title"] })).toBeNull();
+    // Nothing was chosen on the visitor's behalf: the home Hive is the default, not a remembered pick.
+    expect(sessionStorage.getItem("adobee-hub")).toBeNull();
+  });
+
+  it("stays on the search across a reload, however many times", async () => {
     for (let n = 0; n < 3; n++) {
       const { unmount } = render(
         <I18nProvider>
           <App />
         </I18nProvider>,
       );
-      expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
-      expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
+      expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: en["finder.title"] })).toBeNull();
       unmount();
     }
-    expect(sessionStorage.getItem("adobee-hub")).toBeNull();
   });
 
-  it("stays on the finder across a reload when the directory is broken", async () => {
+  it("opens the finder from Change Hive, and is never blank when the directory is broken", async () => {
     vi.spyOn(api, "directory").mockResolvedValue({ hubs: undefined } as never);
-    for (let n = 0; n < 2; n++) {
-      const { unmount } = render(
-        <I18nProvider>
-          <App />
-        </I18nProvider>,
-      );
-      // The page it must never be: blank. The heading and this hub are both still there.
-      expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
-      expect(screen.getByText(en["finder.thisHub"])).toBeInTheDocument();
-      unmount();
-    }
-  });
-
-  it("is the instance finder when no hub has been chosen", async () => {
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
     expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.getByText(en["finder.thisHub"])).toBeInTheDocument();
     expect(screen.queryByLabelText(en["agent.intent"])).toBeNull();
   });
 
@@ -213,6 +259,7 @@ describe("the first screen", () => {
       </I18nProvider>,
     );
 
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
     await userEvent.click(await screen.findByRole("button", { name: en["finder.join"] }));
     expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: en["onboard.back"] }));
@@ -221,9 +268,6 @@ describe("the first screen", () => {
 
   it("is skipped once a hub has been chosen in this tab", () => {
     sessionStorage.setItem("adobee-hub", "local");
-    vi.spyOn(api, "cards").mockResolvedValue([]);
-    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
-    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     render(
       <I18nProvider>
         <App />
@@ -234,9 +278,6 @@ describe("the first screen", () => {
 
   it("is skipped by ?hub= in the address, which is what the pitch runbook uses", () => {
     window.history.replaceState(null, "", "/?hub=local");
-    vi.spyOn(api, "cards").mockResolvedValue([]);
-    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
-    vi.spyOn(api, "owner").mockRejectedValue(new Error("offline"));
     render(
       <I18nProvider>
         <App />
@@ -313,7 +354,7 @@ describe("changing hive", () => {
     offline();
   });
 
-  it("goes back to the finder with nothing selected, and a reload stays there", async () => {
+  it("goes back to the finder with nothing selected, and a reload is the search on the home Hive", async () => {
     sessionStorage.setItem("adobee-hub", "a");
     window.history.replaceState(null, "", "/?hub=a");
     const { unmount } = render(
@@ -327,14 +368,15 @@ describe("changing hive", () => {
     expect(sessionStorage.getItem("adobee-hub")).toBeNull();
     expect(window.location.search).not.toContain("hub");
 
-    // A reload at that point must not auto-select the hub that was just dropped.
+    // A reload at that point must not re-select the hub that was just dropped: it is the home Hive again.
     unmount();
     render(
       <I18nProvider>
         <App />
       </I18nProvider>,
     );
-    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.getByLabelText(en["agent.intent"])).toBeInTheDocument();
+    expect(screen.queryByText(en["nav.onHub"].replace("{hub}", "a"))).toBeNull();
   });
 
   it("lets the next pick be a different hub, and remembers that one", async () => {
@@ -360,6 +402,7 @@ describe("changing hive", () => {
         <App />
       </I18nProvider>,
     );
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
     expect(await screen.findByText(/Picking a Hive points this page at it/)).toBeInTheDocument();
   });
 });

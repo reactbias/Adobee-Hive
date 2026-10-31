@@ -118,8 +118,11 @@ describe("traveller agent", () => {
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    // The headline is the page's one h1, and the bar sits right under it.
+    const title = screen.getByRole("heading", { level: 1 });
+    expect(title).toHaveTextContent(en["hero.title"].replace(/\*/g, ""));
     const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    expect(title.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const chip = screen.getByRole("button", { name: en["try.coffee"] });
     const send = screen.getByRole("button", { name: en["agent.send"] });
     const reach = screen.getByRole("radio", { name: en["reach.local"] });

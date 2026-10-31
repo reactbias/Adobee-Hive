@@ -25,7 +25,7 @@ export default function Chapter({
   /** Omitted when the chapter is only its working part, as Search is. */
   heading?: Key;
   lead?: string;
-  /** Replaces the numbered chapter name above the heading. */
+  /** Replaces the chapter name above the heading. */
   eyebrow?: string;
   /** The first chapter carries the page's h1. */
   headingLevel?: 1 | 2;
@@ -38,17 +38,10 @@ export default function Chapter({
   children: ReactNode;
 }) {
   const { t } = useI18n();
-  const n = String(CHAPTERS.indexOf(id) + 1).padStart(2, "0");
   const H = headingLevel === 1 ? "h1" : "h2";
   const head = heading ? (
     <div className="page-head">
-      <span className="eyebrow">
-        {eyebrow ?? (
-          <>
-            <span className="num">{n}</span> · {t(`chapter.${id}` as Key)}
-          </>
-        )}
-      </span>
+      <span className="eyebrow">{eyebrow ?? t(`chapter.${id}` as Key)}</span>
       <H id={`${id}-title`}>
         <Display text={t(heading)} />
       </H>
@@ -57,9 +50,11 @@ export default function Chapter({
   ) : null;
   const name = heading ? { "aria-labelledby": `${id}-title` } : { "aria-label": t(`chapter.${id}` as Key) };
   if (stack) {
+    // The hero holds the headline; the working part under it is a sibling, so it can stay on screen while the
+    // results scroll past.
     return (
       <section id={id} className="chapter stack" ref={sectionRef} {...name}>
-        {head}
+        {head && <div className="hero">{head}</div>}
         {side}
         {children}
       </section>
