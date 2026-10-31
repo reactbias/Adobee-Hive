@@ -149,6 +149,8 @@ const it: Record<Key, string> = {
   "chat.role.mirror": "Agente · copia non verificata",
   "chat.ask.call": "Chi può rispondere? {question}",
   "chat.ask.found": "Attività con una risposta sulla propria scheda: {n}.",
+  "chat.ask.handoff_only":
+    "Queste carte non sono rivendicate, quindi non posso prenotare. Me ne indichi una e La porto sul suo sito.",
   "clarify.route_time": "Da dove a dove, e quando?",
   "clarify.route": "Da dove a dove?",
   "clarify.time": "E quando?",
@@ -236,7 +238,7 @@ const it: Record<Key, string> = {
   "trace.sig.unchecked": "Firma non verificata",
 
   // Ask the Hive
-  "trust.unclaimed": "Non rivendicata, dal sito pubblico",
+  "trust.unclaimed": "Non rivendicata · solo inoltro",
   "ask.ex1": "Che novità ci sono da BaselHack questo mese?",
   "ask.ex2": "Pianifichi per me un'avventura sotto 500 CHF",
   "ask.empty": "Nessuna carta risponde ancora. Viene registrato come domanda mancata, senza la Sua domanda.",

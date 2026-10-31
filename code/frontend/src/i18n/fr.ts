@@ -148,6 +148,8 @@ const fr: Record<Key, string> = {
   "chat.role.mirror": "Agent · copie non vérifiée",
   "chat.ask.call": "Qui peut répondre ? {question}",
   "chat.ask.found": "Commerces avec une réponse sur leur carte : {n}.",
+  "chat.ask.handoff_only":
+    "Ces cartes ne sont pas revendiquées, je ne peux donc rien y réserver. Nommez-en une et je vous envoie sur son propre site.",
   "clarify.route_time": "D'où à où, et quand ?",
   "clarify.route": "D'où à où ?",
   "clarify.time": "Et quand ?",
@@ -235,7 +237,7 @@ const fr: Record<Key, string> = {
   "trace.sig.unchecked": "Signature non vérifiée",
 
   // Ask the Hive
-  "trust.unclaimed": "Non revendiquée, d'après le site public",
+  "trust.unclaimed": "Non revendiquée · redirection seulement",
   "ask.ex1": "Quoi de neuf chez BaselHack ce mois-ci ?",
   "ask.ex2": "Planifiez-moi une aventure à moins de 500 CHF",
   "ask.empty": "Aucune carte n'y répond encore. C'est noté comme demande manquée, sans votre question.",

@@ -104,3 +104,18 @@ describe("a request no card covers", () => {
     expect(screen.getByText(en["chat.ask.uncovered"])).toBeInTheDocument();
   });
 });
+
+describe("saying yes to a hand-off", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("reads as going to the business's site, not as a booking", () => {
+    setup([
+      { kind: "guest", text: "Pax please" },
+      { kind: "consent", handoff: true },
+    ]);
+    for (let i = 0; i < 10; i++) act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByText(en["ask.pending.approve"])).toBeInTheDocument();
+    expect(screen.queryByText(en["chat.guest.yes"])).not.toBeInTheDocument();
+  });
+});

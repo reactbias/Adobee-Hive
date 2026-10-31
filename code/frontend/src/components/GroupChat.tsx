@@ -28,7 +28,7 @@ export type Segment =
   | { kind: "opinion"; opinion: SecondOpinion }
   | { kind: "consensus"; agreed: boolean }
   | { kind: "agent"; text: string }
-  | { kind: "consent" }
+  | { kind: "consent"; handoff?: boolean }
   | { kind: "receipt"; booking: Booking }
   | { kind: "next" }
   | { kind: "refused" }
@@ -133,7 +133,12 @@ export default function GroupChat({
           out.push({ ...agent, beat: "say", chars: seg.text.length, body: <p>{seg.text}</p> });
           break;
         case "consent":
-          out.push({ ...guest, consent: true, beat: "instant", body: <p>{t("chat.guest.yes")}</p> });
+          out.push({
+            ...guest,
+            consent: true,
+            beat: "instant",
+            body: <p>{t(seg.handoff ? "ask.pending.approve" : "chat.guest.yes")}</p>,
+          });
           break;
         // Three agents talk it through before the guest is asked: the critic argues for the strongest alternative.
         case "critic": {
@@ -244,6 +249,9 @@ export default function GroupChat({
             });
           }
           if (r.answer) out.push({ ...agent, beat: "say", chars: r.answer.length, body: <p>{r.answer}</p> });
+          // Unclaimed cards can only send the person to the business's site: say so, and let them pick one.
+          if (r.replies.length > 1 && !r.pending && r.replies.every((x) => !x.claimed))
+            out.push({ ...agent, beat: "say", chars: 60, body: <p>{t("chat.ask.handoff_only")}</p> });
           // Something is missing ("book me a taxi"): one short question; the next message completes the request.
           if (clarify) out.push({ ...agent, beat: "say", chars: 30, body: <p>{t(clarify)}</p> });
           break;

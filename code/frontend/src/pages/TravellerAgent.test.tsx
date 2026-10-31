@@ -387,4 +387,49 @@ describe("traveller agent", () => {
     await user.type(box, "from Basel SBB to Aesch at 17:00{Enter}");
     expect(ask).toHaveBeenLastCalledWith("book me a taxi from Basel SBB to Aesch at 17:00", null);
   });
+
+  it("says hand-off cards cannot be booked, and holds the one the traveller names", async () => {
+    const reply = (card_id: string, name: string) => ({
+      card_id,
+      slug: card_id,
+      name,
+      kind: "software",
+      tagline: null,
+      claimed: false,
+      source: null,
+      signature_valid: true,
+      items: [{ id: "careers", type: "offer", title: `Jobs and careers at ${name}`, why: [], action: "See open jobs" }],
+    });
+    const base = {
+      question: "Which companies offer jobs?",
+      preference: { mood: null, effects: [], source: "chosen by you" },
+      excluded: [],
+      budget_chf: null,
+      rate: null,
+      rules: [],
+      answer: null,
+      mode: "offline",
+      unserved: false,
+      clarify: [],
+    };
+    const ask = vi
+      .spyOn(api, "ask")
+      .mockResolvedValueOnce({
+        ...base,
+        replies: [reply("x-adobe", "Adobe"), reply("x-pax", "Pax")],
+        pending: null,
+      } as never)
+      .mockResolvedValueOnce({ ...base, replies: [reply("x-pax", "Pax")], pending: null } as never);
+    const user = setup();
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+
+    await user.clear(box);
+    await user.type(box, "Which companies offer jobs?{Enter}");
+    await skipAhead(user);
+    expect(await screen.findByText(en["chat.ask.handoff_only"])).toBeInTheDocument();
+    expect(screen.getAllByText(en["trust.unclaimed"]).length).toBeGreaterThan(0);
+
+    await user.type(box, "Pax please{Enter}");
+    expect(ask).toHaveBeenLastCalledWith("Which companies offer jobs? Pax please", null, true);
+  });
 });
