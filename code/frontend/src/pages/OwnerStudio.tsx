@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal } from "../api";
+import { api, setOwnerToken, type Card, type OwnerOverview, type Proposal, type SummaryItem } from "../api";
 import TrustBadge from "../components/TrustBadge";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
@@ -19,6 +19,21 @@ const WEEK_LABELS: Record<string, Key> = {
   booked: "owner.week.booked",
   cancelled: "owner.week.cancelled",
 };
+
+type T = ReturnType<typeof useI18n>["t"];
+
+// Offline edits come back as items, so the summary reads in the page's language rather than the backend's English.
+function summarise(p: Proposal, t: T, intl: string): string {
+  if (!p.summary_items) return p.summary;
+  if (!p.summary_items.length) return t("owner.summary.none");
+  return p.summary_items
+    .map((i: SummaryItem) =>
+      i.code === "price"
+        ? t("owner.summary.price", { unit: i.unit, price: chf(i.price_chf, intl) })
+        : t(i.code === "added" ? "owner.summary.added" : "owner.summary.removed", { tag: i.tag }),
+    )
+    .join(" · ");
+}
 
 export default function OwnerStudio() {
   const { t, intl } = useI18n();
@@ -148,7 +163,7 @@ export default function OwnerStudio() {
             <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} />
             <div className="spread">
               <span className="muted">
-                {proposal?.summary ??
+                {(proposal && summarise(proposal, t, intl)) ??
                   (published === null
                     ? ""
                     : published > 0
@@ -207,7 +222,9 @@ export default function OwnerStudio() {
                       {a.missing.length > 0 && !a.cheaper && (
                         <button
                           className="quiet"
-                          onClick={() => setInstruction(a.missing.map((m) => `add ${m}`).join(", "))}
+                          onClick={() =>
+                            setInstruction(a.missing.map((m) => t("owner.waiting.add", { tag: m })).join(", "))
+                          }
                         >
                           {t("owner.waiting.use")}
                         </button>
