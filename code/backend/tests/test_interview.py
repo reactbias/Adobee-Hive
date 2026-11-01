@@ -19,6 +19,7 @@ from mcp import Client
 
 from app import config, db, folders, guard, hive, interview, llm, services, talent
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 BACKEND = Path(__file__).resolve().parents[1]
 ROOT = BACKEND.parents[1]
@@ -303,7 +304,7 @@ def test_an_approved_interview_never_reads_what_the_person_marked_private(people
 def test_the_tools_return_the_same_thing_over_mcp(people):
     async def call(name: str, **args):
         async with Client(server) as c:
-            return (await c.call_tool(name, args)).structured_content
+            return tool_result(await c.call_tool(name, args))
 
     short = asyncio.run(call("hr_shortlist", job=FRONTEND, limit=3))
     assert [m["id"] for m in short["matches"]][0] == "jonas-brun" and len(short["matches"]) == 3
