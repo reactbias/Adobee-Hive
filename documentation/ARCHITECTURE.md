@@ -207,6 +207,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
+| `POST /api/hive/cards/signed` | Store a card version its owner signed on their own node, exactly as signed. The first version pins the key, a later one must verify against it. This hub holds no key for that card, so it cannot edit or book it | `X-Owner-Token` |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
 | `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
 | `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
@@ -234,6 +235,21 @@ All six paths go through `owner.py`, and the read guard is one function (`owner.
 cannot drift into different ideas of what an owner may read. What differs is the write guard, on purpose: a REST
 route with no `OWNER_EDIT_TOKEN` set is open, as it has always been, while the MCP tools refuse — see
 [LIMITS.md](LIMITS.md#running-a-hub).
+
+## Separate nodes
+
+The design keeps the browser, the agent, the business and the hub apart, wherever each one runs. Two of those
+separations can be switched on today, using the same backend code with different settings:
+
+- **The agent as its own service.** Set `HIVE_MCP_URLS` to the hub's `/mcp/`, leave its store empty with
+  `SEED_ON_EMPTY=false`, and build the app with `VITE_AGENT_URL` (`api.agentBase`). Without that variable the app
+  uses the hub's own agent, as before. A person who picks another hub gets that hub's agent.
+- **A hotel's own node.** `tools/hotel_node.py` signs a card into the node's own database with its `contact.mcp`
+  address, then hands the signed card to the hub. The agent checks that card against the hub's registry, then asks
+  the node for availability and sends the held booking there, and accepts only a receipt signed by the pinned key.
+  A card without `contact.mcp` books on the hub as before.
+
+What each one still lacks: [LIMITS.md](LIMITS.md#separate-nodes).
 
 ## Trust by design
 
@@ -288,6 +304,6 @@ backend. Without a key everything still runs offline.
 
 ## Known limits
 
-- The server holds each owner's signing key (the vision is owner-held keys).
+- The hub holds the signing key of every card except one published through `POST /api/hive/cards/signed` from a hotel node (the vision is owner-held keys everywhere).
 - DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
 - No real payments; restaurant table booking is not built yet.

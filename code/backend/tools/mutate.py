@@ -57,6 +57,7 @@ SUITE = [
     "tests/test_pitch.py",
     "tests/test_reputation.py",
     "tests/test_hive.py",
+    "tests/test_signed_cards.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_folders.py",
@@ -78,6 +79,7 @@ SUITE = [
     "tests/test_withdrawal_authority.py",
     "tests/test_introduction_authority.py",
     "tests/test_federated_blocks.py",
+    "tests/test_federated_facts.py",
     "tests/test_sharing_enforced.py",
 ]
 
@@ -199,6 +201,36 @@ CURATED: list[Mutant] = [
         "a peer's own claim about itself becomes its rating, so trust can be self-declared",
         '"rating": trust,  # our own opinion of this peer, not its word for itself',
         '"rating": 1.0,',
+    ),
+    Mutant(
+        "federation.py",
+        "the carrier's own copy of the facts wins again, so a peer can rename what it relays",
+        "**{key: card[key] for key in SIGNED_FACTS if key in card},",
+        "**{key: match[key] for key in SIGNED_FACTS if key in match},",
+    ),
+    Mutant(
+        "federation.py",
+        "the signature verdict is taken from the carrier instead of from our own check",
+        '        "signature_valid": True,\n        "card": card,',
+        '        "signature_valid": match.get("signature_valid", True),\n        "card": card,',
+    ),
+    Mutant(
+        "federation.py",
+        "the allowlist becomes a merge, so a field a carrier invented rides along as fact",
+        "    return {\n        **{key: card[key] for key in SIGNED_FACTS if key in card},",
+        "    return {\n        **match,\n        **{key: card[key] for key in SIGNED_FACTS if key in card},",
+    ),
+    Mutant(
+        "federation.py",
+        "whether a card is claimed comes from the carrier, so a compiled lead relays as a real business",
+        '"claimed": (card.get("provenance") or {}).get("verified_by_owner") is not False,',
+        '"claimed": match.get("claimed", True),',
+    ),
+    Mutant(
+        "federation.py",
+        "a peer's exclusion stops saying whose words it is, so the hub appears to vouch for it",
+        '"asserted_by": carrier["hub_id"],',
+        '"asserted_by": "",',
     ),
     Mutant(
         "hive.py",

@@ -65,6 +65,45 @@ describe("requests waiting on the owner's yes", () => {
     expect(screen.queryByRole("button", { name: en["requests.accept"] })).not.toBeInTheDocument();
   });
 
+  it("asks for the owner token when the hub requires one, then tries again", async () => {
+    vi.spyOn(api, "connections").mockResolvedValue({
+      awaiting_rating: [],
+      awaiting_confirmation: [requested("cx-1", "traveller-ab12")],
+    });
+    const confirm = vi
+      .spyOn(api, "confirmConnection")
+      .mockRejectedValueOnce(new Error("confirm on cx-1 needs authority. This hub accepts: this hub's X-Owner-Token"))
+      .mockResolvedValueOnce({ ...requested("cx-1", "traveller-ab12"), state: "open" });
+    draw();
+
+    fireEvent.click(await screen.findByRole("button", { name: en["requests.accept"] }));
+    expect(await screen.findByText(en["owner.tokenNeeded"])).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(en["owner.token"]), { target: { value: "fictional-token" } });
+    fireEvent.click(screen.getByRole("button", { name: en["owner.useToken"] }));
+    expect(screen.queryByText(en["owner.tokenNeeded"])).not.toBeInTheDocument();
+    expect(sessionStorage.getItem("adobee-owner-token")).toBe("fictional-token");
+
+    fireEvent.click(screen.getByRole("button", { name: en["requests.accept"] }));
+    expect(await screen.findByText(en["requests.accepted"])).toBeInTheDocument();
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not ask for a token the hub's operator never set", async () => {
+    vi.spyOn(api, "connections").mockResolvedValue({
+      awaiting_rating: [],
+      awaiting_confirmation: [requested("cx-1", "traveller-ab12")],
+    });
+    vi.spyOn(api, "confirmConnection").mockRejectedValue(
+      new Error("This hub accepts: this hub's X-Owner-Token, which its operator has not set"),
+    );
+    draw();
+
+    fireEvent.click(await screen.findByRole("button", { name: en["requests.accept"] }));
+    expect(await screen.findByText(/which its operator has not set/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(en["owner.token"])).not.toBeInTheDocument();
+  });
+
   it("draws nothing while nobody is waiting, so the owner's page carries no empty headings", async () => {
     const read = vi.spyOn(api, "connections").mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [] });
     draw();

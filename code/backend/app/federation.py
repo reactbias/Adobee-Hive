@@ -31,6 +31,13 @@ What a peer says about businesses it excluded is carried along as the peer's own
 provenance, and stays data: it is never read as an instruction (the agent's guard in `injection.py` scans it like
 any other tool result).
 
+Verifying the card is not the same as verifying the sentence around it, which is what `_bound` is for. Once a
+relayed card has passed `verify_pinned`, every fact the result asserts about the *entity* — its name, what it
+says it does, how to reach it — is rebuilt from that card, and the carrier's copy is discarded rather than merged
+back over it. What is left is what only the peer can know: how relevant it found the entity, what it has free,
+what its own guests scored. That is kept, and `verified` in each result names which fields are which, so a
+consumer reading `signature_valid: true` is reading it about facts that really were signed.
+
 An **administrative block** (`blocklist.py`) is honoured here, on the path the API actually serves, and not only
 in the `hub.py` façade that nothing on the read path goes through. A blocked peer is dropped before any outbound
 call — the profile fetch included, because that call and the query after it are how a shut-out hub used to learn
@@ -497,6 +504,57 @@ def _dedup(arrivals: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(best.values())
 
 
+#: The fields a result asserts about the entity itself. Every one of them is in the body the owner
+#: signed, so once `hive.verify_pinned` has passed they can be rebuilt from the card and the
+#: carrier's copy of them thrown away. This is the whole of #111: authenticating the embedded card
+#: does not authenticate the prose a peer wrapped around it, and a response that said
+#: `signature_valid: true` beside a name and a contact address the owner never signed was a
+#: response a consumer was right to trust and wrong to believe.
+SIGNED_FACTS = ("id", "slug", "kind", "name", "tagline", "description", "contact", "contact_sharing", "sharing")
+
+#: The fields a peer is genuinely the author of: how relevant *it* found the entity for this ask,
+#: what *it* has free, how far *its* landmark is, what *its* own guests scored. None of it is in any
+#: signed card, none of it can be rebuilt here, and all of it is useful — so it is kept and said to
+#: be the peer's, rather than quietly presented as fact or dropped for not being provable.
+PEER_CLAIMS = ("score", "score_breakdown", "why", "rating", "rating_count", "from_price_chf", "distance_m", "bookable")
+
+
+def _bound(match: dict[str, Any], card: dict[str, Any], origin: str, origin_url: str) -> dict[str, Any]:
+    """A verified arrival whose owner-authored facts come from the card rather than from its carrier.
+
+    Built as an allowlist, not as a merge. The carrier's dictionary is never laid back over the
+    card: a field this hub can authenticate is taken from the card, a field only the peer can know
+    is copied across and named as the peer's, and anything else a carrier invented is dropped —
+    unknown fails closed, because a key a consumer has no way to place is exactly the one it will
+    read as fact.
+
+    `signature_valid` and `verified` are the receiver's own verdict and are set here, never copied.
+    A carrier cannot assert that a card checked out, and cannot assert that one did not either.
+    """
+    return {
+        **{key: card[key] for key in SIGNED_FACTS if key in card},
+        **{key: match[key] for key in PEER_CLAIMS if key in match},
+        # Signed too, in the card's own provenance block: an unclaimed card was compiled from public
+        # information and its subject never published it, which is not a carrier's to redefine.
+        "claimed": (card.get("provenance") or {}).get("verified_by_owner") is not False,
+        "signature_valid": True,
+        "card": card,
+        "provenance": match.get("provenance"),
+        # Said in the answer, so a consumer does not have to know this module to tell the two apart.
+        "verified": {
+            "card": True,
+            "origin": origin,
+            "key_from": origin_url,
+            "how": (
+                "checked against the key this entity's own hub pinned for it, fetched from that hub"
+                " directly rather than through whoever relayed the card"
+            ),
+            "signed_facts": [key for key in SIGNED_FACTS if key in card],
+            "peer_claims": [key for key in PEER_CLAIMS if key in match],
+        },
+    }
+
+
 def _screen(
     arrivals: list[dict[str, Any]], excluded: list[dict[str, Any]], report: dict[str, Any]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -574,7 +632,10 @@ async def _verified(
             reason = "its owner shares it only on their own initiative, by the flag on the card they signed"
             blameless = True
         else:
-            arrivals.append(_arrival(match, path, origin_url))
+            # The carrier's own copy of this hub's verdict is not an input to it, so say what we
+            # found rather than passing on what it claimed.
+            card["trust"] = {**(card.get("trust") or {}), "signature_valid": True}
+            arrivals.append(_arrival(_bound(match, card, claimed[0], origin_url), path, origin_url))
             continue
         report["rejected"].append(
             {"hub": carrier["hub_id"], "card_id": match["id"], "origin": claimed[0], "reason": reason}
@@ -592,6 +653,12 @@ async def _verified(
                 {
                     **{k: v for k, v in left_out.items() if k not in ("card", "provenance")},
                     "provenance": {"path": [*route, hub], "hops": len(route), "origin": route[0]},
+                    # An exclusion carries no card, so there is nothing here to bind to anything the
+                    # owner signed — not the name, not the reason it missed. Where a fact cannot be
+                    # bound it is made visibly the peer's claim instead of the hub's, which is the
+                    # other half of #111: the prose is useful and it is not ours to vouch for.
+                    "asserted_by": carrier["hub_id"],
+                    "verified": {"card": False, "how": "a peer's own account of a business it left out"},
                 }
             )
     return arrivals, excluded

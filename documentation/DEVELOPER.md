@@ -84,6 +84,10 @@ What it does, and why each part is the way it is:
   `basel` hub proxied behind `/api`. An https page cannot call an http hub, and Chrome's Private Network Access
   blocks a private address calling another one, so proxying is the only arrangement that works from a phone on
   the same wifi. The app's port is fixed at 8440 because it is the URL people are given.
+- **One hotel with its own node.** `tools/hotel_node.py` signs `testdata/hotel-node/hotel-lindenhof.json` into its
+  own database and hands the signed card to `basel`. If that fails the script warns and carries on, because every
+  other card still books on its hub. This request picks it, and the booking then lands on the node: *Book a quiet
+  dog-friendly hotel with breakfast near Marktplatz under CHF 120 from 2027-06-22 to 2027-06-24 for Fictional Guest.*
 - **A directory with real rows.** `http://<lan-ip>:8420/api/hub/directory` now answers with three hubs that each
   described themselves, which is what `InstanceFinder` and `NetworkPanel` render.
 - **Nothing it kills belongs to anybody else.** Every pid `down` stops, and the one `up` reclaims the app port
@@ -142,7 +146,8 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `AGENT_MAX_TURNS` | `10` | Caps each agent run |
 | `LLM_CALLS_PER_CLIENT_HOUR`, `LLM_CALLS_TOTAL_HOUR` | `30`, `300` | Cost guard on calls that may reach a model |
 | `OWNER_EDIT_TOKEN`, `DEMO_RESET_TOKEN` | empty | When set, owner edits need `X-Owner-Token` and a reset needs `X-Demo-Token`. Leave empty locally for the owner studio — but the three owner MCP tools below fail closed, so set `OWNER_EDIT_TOKEN` to try an agent editing its own card |
-| `HIVE_MCP_URLS` | empty | Comma-separated MCP URLs of other Hives the agent searches too |
+| `HIVE_MCP_URLS` | empty | Comma-separated MCP URLs of the Hives the agent searches, instead of the one in its own process |
+| `NODE_ALLOW_PRIVATE` | `false` | Let the agent reach a card's own node (`contact.mcp`) on a private address. Off, it dials public addresses only |
 | `DUCKDB_PATH` | `code/backend/data/abh.duckdb` | Where the data lives |
 | `DATABASE_URL` | empty | Optional Postgres: the DuckDB file is restored from it on boot and saved after each write, so data survives redeploys |
 | `HIVE_PEER_URLS` | empty | Peer Hives for hop-limited federated search: comma-separated base URLs. Empty means every search stays local whatever the radius |

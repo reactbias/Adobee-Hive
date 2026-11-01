@@ -36,6 +36,7 @@ jobs:
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_AGENT_URL: ${{ vars.VITE_AGENT_URL }}
         run: npm run build
       # Pages has no rewrites: serving index.html as 404.html sends old links like /agent to the one page.
       - run: cp dist/index.html dist/404.html
