@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
-import { applyTheme, storedTheme, storeTheme, THEMES, type Theme } from "../lib/theme";
+import { applyTheme, storedTheme, storeTheme, THEME_EVENT, THEMES, type Theme } from "../lib/theme";
 
 const LABEL: Record<Theme, Key> = {
   system: "theme.system",
@@ -23,7 +23,10 @@ export default function ThemeToggle() {
 
   const choose = (next: Theme) => {
     storeTheme(next);
+    applyTheme(next);
     setTheme(next);
+    // Last, and after the page has already changed: whatever listens to this is decoration.
+    window.dispatchEvent(new CustomEvent(THEME_EVENT, { detail: next }));
   };
 
   return (

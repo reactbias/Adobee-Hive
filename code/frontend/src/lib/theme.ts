@@ -13,6 +13,9 @@ export const THEMES: Theme[] = ["system", "light", "dark"];
 
 const KEY = "adobee-theme";
 
+/** Fired once the scheme is already applied. Decoration may listen; nothing waits for it. */
+export const THEME_EVENT = "adobee-theme-changed";
+
 /** The stored choice, or `system` when there is none. */
 export function storedTheme(): Theme {
   try {
