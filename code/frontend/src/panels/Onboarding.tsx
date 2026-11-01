@@ -18,6 +18,7 @@ import {
   CONTACT_FLAGS,
   groupsOf,
   KINDS,
+  ROOT_FILES_GROUP,
   slug,
   toEntity,
   VISIBILITIES,
@@ -119,6 +120,7 @@ function FolderStep({
   return (
     <div className="stack">
       <p className="onboard-local">{t("onboard.folder.local")}</p>
+      <p className="muted small">{t("onboard.folder.ignored")}</p>
       <div className="row">
         <button type="button" onClick={pick}>
           {t("onboard.folder.pick")}
@@ -138,27 +140,41 @@ function FolderStep({
       {failed && <p className="error">{t("onboard.folder.failed")}</p>}
       {picked && (
         <div className="stack tight">
-          <p>{t("onboard.folder.picked", { folder: picked.folder, n: picked.files.length })}</p>
+          <p>
+            {t("onboard.folder.picked", {
+              folder: picked.folder,
+              files: t(picked.files.length === 1 ? "onboard.folder.files.one" : "onboard.folder.files.other", {
+                n: picked.files.length,
+              }),
+            })}
+          </p>
           <ul className="rows onboard-groups">
-            {groupsOf(picked.files).map((g) => (
-              <li key={g.path}>
-                <span>
-                  {g.path} <span className="muted small">{t("onboard.folder.files", { n: g.files })}</span>
-                </span>
-                <select
-                  aria-label={g.path}
-                  value={visibility[g.path] ?? "public-summary"}
-                  onChange={(e) => onVisibility(g.path, e.target.value as Visibility)}
-                >
-                  {VISIBILITIES.map((v) => (
-                    <option key={v} value={v}>
-                      {t(`onboard.vis.${v}` as Key)}
-                    </option>
-                  ))}
-                </select>
-              </li>
-            ))}
+            {groupsOf(picked.files).map((g) => {
+              const label = g.path === ROOT_FILES_GROUP ? t("onboard.folder.rootFiles") : g.path;
+              return (
+                <li key={g.path}>
+                  <span>
+                    {label}{" "}
+                    <span className="muted small">
+                      {t(g.files === 1 ? "onboard.folder.files.one" : "onboard.folder.files.other", { n: g.files })}
+                    </span>
+                  </span>
+                  <select
+                    aria-label={label}
+                    value={visibility[g.path] ?? "public-summary"}
+                    onChange={(e) => onVisibility(g.path, e.target.value as Visibility)}
+                  >
+                    {VISIBILITIES.map((v) => (
+                      <option key={v} value={v}>
+                        {t(`onboard.vis.${v}` as Key)}
+                      </option>
+                    ))}
+                  </select>
+                </li>
+              );
+            })}
           </ul>
+          <p className="muted small">{t("onboard.folder.defaultNote")}</p>
           <p className="muted small">{t("onboard.folder.hiddenNote")}</p>
           <button type="button" onClick={onRead}>
             {t("onboard.folder.read")}

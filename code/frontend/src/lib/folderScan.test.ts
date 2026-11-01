@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDraft, groupsOf, toEntity, type VaultFile } from "./folderScan";
+import { buildDraft, groupsOf, ROOT_FILES_GROUP, toEntity, type VaultFile } from "./folderScan";
 
 // The same folders tools/seed_vaults.py registers, read the way a browser hands them over.
 const raw = import.meta.glob<string>("../../../../testdata/vaults/*/*.md", {
@@ -19,12 +19,15 @@ describe("a folder, scanned in the page", () => {
   it("is grouped by what sits at its top, so each can be shared or kept back as a whole", () => {
     const files = [
       { path: "about.md", bytes: new Uint8Array(3) },
+      { path: "contact.md", bytes: new Uint8Array(2) },
+      { path: "top-level-files/a.md", bytes: new Uint8Array(1) },
       { path: "notes/a.md", bytes: new Uint8Array(1) },
       { path: "notes/b.md", bytes: new Uint8Array(1) },
     ];
     expect(groupsOf(files)).toEqual([
-      { path: "about.md", files: 1 },
+      { path: ROOT_FILES_GROUP, files: 2 },
       { path: "notes", files: 2 },
+      { path: "top-level-files", files: 1 },
     ]);
   });
 
@@ -72,21 +75,21 @@ describe("a folder, scanned in the page", () => {
   it("never reads a part the person kept back, and leaves shared and hidden parts out of the Card entirely", async () => {
     const files = [
       { path: "about.md", bytes: new TextEncoder().encode("# Ada\n\nA one-line description.\n") },
-      { path: "work.md", bytes: new TextEncoder().encode("# What I do\n\n- Secret consulting — CHF 900.\n") },
+      { path: "work/details.md", bytes: new TextEncoder().encode("# What I do\n\n- Secret consulting — CHF 900.\n") },
       { path: "diary/1.md", bytes: new TextEncoder().encode("# What I need\n\n- A hidden thing.\n") },
       { path: "clients/a.md", bytes: new TextEncoder().encode("# What I do\n\n- Shared work.\n") },
       { path: "drafts/a.md", bytes: new TextEncoder().encode("x") },
       { path: "drafts/b.md", bytes: new TextEncoder().encode("y") },
     ];
     const draft = await buildDraft("ada", files, {
-      "work.md": "private",
+      work: "private",
       diary: "hidden",
       clients: "shared",
       drafts: "private",
     });
     expect(draft.offers).toEqual([]);
     expect(draft.needs).toEqual([]);
-    expect(draft.structure.map((s) => s.path)).toEqual(["about.md", "drafts", "work.md"]);
+    expect(draft.structure.map((s) => s.path)).toEqual(["about.md", "drafts", "work"]);
     expect(draft.structure.find((s) => s.path === "drafts")).toEqual({
       path: "drafts",
       files: 2,

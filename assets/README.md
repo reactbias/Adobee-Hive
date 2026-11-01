@@ -68,6 +68,7 @@ tenths of a star, where lower is better.
 | --- | --- |
 | [adobee-hive-logo-1024.png](brand/adobee-hive-logo-1024.png) | The mark: a bee in an open hexagon, from the whiteboard sketch |
 | [adobee-hive-wordmark.png](brand/adobee-hive-wordmark.png) | Logo and name |
+| [adobee-hive-wordmark-v2-on-light.png](brand/adobee-hive-wordmark-v2-on-light.png), [-on-dark.png](brand/adobee-hive-wordmark-v2-on-dark.png) | The v2 logos cropped for the readme: `adobee-hive-wordmark-v2.png` for light grounds, `adobee-hive-wordmark-light-v2.png` for dark |
 | [b6-bee-mascot.png](brand/b6-bee-mascot.png) | The B6 bee |
 | [hero-clay.svg](brand/hero-clay.svg) | Lit clay honeycomb, for slides |
 

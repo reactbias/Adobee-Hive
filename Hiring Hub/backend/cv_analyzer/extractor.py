@@ -98,22 +98,27 @@ def get_client() -> OpenAI:
     return _client
 
 
+_PAGE_MARKER = re.compile(r"--- Page \d+ ---")
+
+
 def _offline_extraction(doc: LoadedDocument, custom_fields: list[dict]) -> "ExtractionResult":
     """Create a conservative local profile when no model key is configured."""
-    first_line = next((line.strip() for line in doc.text.splitlines() if line.strip()), "Unknown candidate")
+    # documents.py heads each PDF page with a marker, and that marker is not the candidate's name.
+    lines = [line.strip() for line in doc.text.splitlines() if line.strip() and not _PAGE_MARKER.fullmatch(line.strip())]
+    first_line = lines[0] if lines else "Unknown candidate"
     name = re.split(r"\s+[—-]\s+", first_line, maxsplit=1)[0].strip()
     known_skills = ["Python", "JavaScript", "TypeScript", "SQL", "React", "Docker", "Git"]
     skills = [skill for skill in known_skills if re.search(rf"\b{re.escape(skill)}\b", doc.text, re.I)]
     data = CVExtraction.model_validate({
         "contact": {"full_name": name, "email": None, "phone": None, "location": None,
                     "country": None, "website": None},
-        "social_links": [], "professional_summary": doc.text[:500] or None,
+        "social_links": [], "professional_summary": "\n".join(lines)[:500] or None,
         "current_job_title": None, "career_level": None, "total_years_experience": None,
         "job_categories": [], "industry_sectors": [], "work_experience": [], "education": [],
         "highest_education_level": None, "certifications": [], "technical_skills": skills,
         "soft_skills": [], "software_and_tools": [], "languages": [], "projects": [],
         "publications_or_patents": [], "volunteer_work": [], "awards": [],
-        "continuous_learning": [], "key_takeaways": [first_line] if first_line else [],
+        "continuous_learning": [], "key_takeaways": [first_line],
         "quality": {"generic_phrases": [], "unsubstantiated_skills": [], "notes": "Offline extraction; review manually."},
         "additional_info": [], "custom_fields": [
             {"field_name": field["name"], "value": None, "evidence": None, "confidence": "not_found"}

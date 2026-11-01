@@ -13,11 +13,11 @@ rehearsal links are all below, as they were written.
 | Deck and rehearsal | [Pitch](PITCH.md) · [Demo](DEMO.md) · [Vision](VISION.md) · [Assets](../assets/README.md) |
 
 Everything a visitor needs — the hosted app, the hosted backend, local URLs — is in the
-[readme's link table](../readme.md#links).
+[developer guide's link table](DEVELOPER.md#links).
 
 **This page is the handover for our three-hour focus block, not the jury pitch.** Architecture checked against `main` at [`067d7d8`](https://github.com/reactbias/Adobee-Hive/tree/067d7d8354745876e094d01fb2a64bc653ea9e23). Pending work below is not a shipped capability. The pre-presentation rewrite is tracked in [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
 
-Start with [your lane](#team-focus-block), [local setup](../readme.md#run-it-locally-in-5-minutes), then the [REST/MCP contracts](../readme.md#integration-contracts). Use fictional data throughout.
+Start with [your lane](#team-focus-block), [local setup](DEVELOPER.md#start-it), then the [REST/MCP contracts](DEVELOPER.md#integration-contracts). Use fictional data throughout.
 
 ## Team focus block
 
@@ -27,9 +27,9 @@ These are the current named assignments; they supersede older workstream/next-de
 | --- | --- | --- |
 | **Tobi (`reactbias`)** | UI and the end-to-end browser experience | `code/frontend/src/App.tsx`, `pages/TravellerAgent.tsx`, `panels/`, `components/`, `api.ts`, `i18n/`. Keep selected-hub status, discovery, Details, explicit approval and receipt usable. Coordinate API changes with Ole; pair with Andrey on the hotel-MCP alternative below. |
 | **Andrey (`dodonov-dev`)** | Support fuzzy search over the cards' JSON; **alternatively**, help Tobi handle a hotel that advertises its own booking MCP in a discovered folder | Search: `app/hive.py`, `app/semantic.py`, [Search API](SEARCH_API.md), `tools/eval_answer_key.py`, `tools/eval_search.py`. Work with the existing offline matcher and score breakdown. Hotel-MCP option: [provider handoff](#a-hotel-advertises-its-own-booking-mcp), with Tobi and Ole; agree a real provider contract before changing routing. |
-| **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](../readme.md#architecture) and [journeys](../readme.md#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
+| **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](DEVELOPER.md#architecture) and [journeys](DEVELOPER.md#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
 | **Felix + baker** | Tests, measured performance gains, stability and fixes for existing issues — **nonbreaking changes only** | `code/backend/tests/`, frontend `*.test.ts(x)`, `code/backend/tools/`. Pick a bounded issue with Ole, reproduce on current `main`, add a behavior regression, measure before/after for performance work. Keep public schemas, signatures, consent/approval gates and offline behavior intact; no broad refactor or dependency/DB cutover. See [stability work](#stability-work-without-breaking-the-demo). |
-| **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](../readme.md#mcp-for-an-external-agent), the [Folder API walkthrough](FOLDER_API.md) and [your issue queue](#cv-team). Distinguish card metadata from file bytes. Use fictional data, link credentials and explicit grants; coordinate backend dependencies with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
+| **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](DEVELOPER.md#mcp-for-an-external-agent), the [Folder API walkthrough](FOLDER_API.md) and [your issue queue](#cv-team). Distinguish card metadata from file bytes. Use fictional data, link credentials and explicit grants; coordinate backend dependencies with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
 | **Ole (`busssard`)** | Backend MCP/REST API. Not a gate: the contracts are documented, read them first | `code/backend/app/main.py`, `mcp_server.py`, `domains/`, `config.py`, `guard.py`, storage and folder integration. Own shared-contract decisions, backend availability, integration order and rehearsal. Unblock other lanes without changing their interfaces underneath them. |
 
 `app/...` above means `code/backend/app/...`. Coordinate edits to `main.py`, `mcp_server.py`, `api.ts`, `hive.py`, `config.py`, auth and deployment files; those are shared boundaries, not independent sandboxes.
@@ -62,7 +62,7 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Felix and baker
 
-- **Nonbreaking test/performance focus:** [#149 hardcoded editorial/source-text checks](https://github.com/reactbias/Adobee-Hive/issues/149), [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
+- **Nonbreaking test/performance focus:** [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
 - **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
 - **Contract follow-up, not a silent semantics change:** [#122 booking-backed reviews versus completed stays](https://github.com/reactbias/Adobee-Hive/issues/122). The wording and `verified_stay: false` are done; what is left is deciding what proves a completed stay and who may issue it.
 

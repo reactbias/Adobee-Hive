@@ -496,6 +496,21 @@ Useful once, to pull the corpus into your own index; 32 cards on `basel`.
 you get `offers`, `needs` and `structure` after a local search, since the match summary has none of
 them.
 
+**It works for an id this hub found on a peer.** `?radius=` defaults to 1: the local lookup comes
+first, and only on a miss does the hub ask its live peer list, returning the signed card with
+`trust.federation` saying which hub carried it. `radius=0` is local-only. Before this an entity found at radius 1 — the
+id the search had just handed you — answered `400 No Hive card`, with no hub parameter to ask with,
+so an agent following this hub's own instruction to read the card next had nowhere to go. The card
+also still travels inline on a federated match under `card`, which is cheaper: use that when you have
+it. `hive_get_card` over MCP takes the same `radius` and behaves the same way.
+
+A peer lookup costs this hub outbound calls, so it is charged against the same `guard.federated`
+budget as a federated search.
+The signed body stays unchanged: the owner's own `provenance`, including a compiled card's source,
+is not replaced by routing data. `trust.federation.origin` names the entity's hub and
+`trust.federation.path` ends in the answering hub. Fallback reads retain the federation sharing
+projection: a peer's `push` or `never` card is not returned even when its id is known.
+
 An unknown id is **400**, not 404: `{"detail": "No Hive card 'nope'."}`. Every `HiveError` on this
 app becomes a 400 (`main._hive_call`), so do not branch on 404 — branch on the status being 4xx and
 read `detail`.
