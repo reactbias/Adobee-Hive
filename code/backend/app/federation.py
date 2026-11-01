@@ -216,11 +216,35 @@ def _fresh(record: dict[str, Any]) -> bool:
     return (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
 
 
-async def _profile(base_url: str, transport: Transport, lookups: _ProfileLookups) -> dict[str, Any] | None:
-    """Read each origin once per query, including an empty or unavailable registry."""
+class DeadlineExpired(Exception):
+    """The whole-query deadline passed before a registry lookup finished: our clock, not the peer's fault."""
+
+
+def _ms_left(deadline: float) -> float:
+    """Milliseconds until `deadline`, a `perf_counter()` instant; negative once it has passed."""
+    return (deadline - perf_counter()) * 1000
+
+
+async def _profile(
+    base_url: str, transport: Transport, lookups: _ProfileLookups, deadline: float
+) -> dict[str, Any] | None:
+    """Read each origin once per query, including an empty or unavailable registry, before `deadline`.
+
+    Raises `DeadlineExpired` instead of waiting past it, and starts no lookup once it has passed. A lookup
+    already under way is shielded rather than cancelled, so a later card from the same origin can still
+    reuse it and a late answer still warms the cache for the next query.
+    """
     if base_url not in lookups:
+        record = _peers.get(base_url)
+        if record and _fresh(record):
+            return record["profile"]
+        if _ms_left(deadline) <= 0:
+            raise DeadlineExpired
         lookups[base_url] = asyncio.create_task(_load_profile(base_url, transport))
-    return await lookups[base_url]
+    try:
+        return await asyncio.wait_for(asyncio.shield(lookups[base_url]), timeout=max(0.0, _ms_left(deadline)) / 1000)
+    except TimeoutError:
+        raise DeadlineExpired from None
 
 
 async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
@@ -360,7 +384,7 @@ async def keep_peers_fresh() -> None:
 
 
 async def _choose_peers(
-    seen: list[str], transport: Transport, lookups: _ProfileLookups
+    seen: list[str], transport: Transport, lookups: _ProfileLookups, deadline: float
 ) -> tuple[list[tuple[str, dict[str, Any], float]], list[dict[str, str]]]:
     """The peers worth asking at this hop: not in `seen`, readable, the `PEERS_PER_HOP` most trusted first."""
     # The stored peer list, not the environment: a neighbour an operator added is asked by the very
@@ -382,10 +406,18 @@ async def _choose_peers(
             skipped.append({"hub": known, "reason": "blocked on this hub: not asked, and nothing of ours sent to it"})
         else:
             asking.append(url)
-    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in asking])
+    profiles = await asyncio.gather(
+        *[_profile(url, transport, lookups, deadline) for url in asking], return_exceptions=True
+    )
     peers = []
     for url, profile in zip(asking, profiles, strict=False):
-        if profile is None:
+        if isinstance(profile, DeadlineExpired):
+            skipped.append(
+                {"hub": known_hub_id(url) or url, "reason": "deadline: its discovery document did not arrive in time"}
+            )
+        elif isinstance(profile, BaseException):
+            raise profile
+        elif profile is None:
             # Unknown identity fails closed, and that is the policy rather than an accident: a peer
             # whose discovery document cannot be read has neither a hub id to check against the
             # blocklist nor keys to verify its cards with. Unknown is never treated as trusted.
@@ -597,6 +629,7 @@ async def _verified(
     transport: Transport,
     report: dict,
     lookups: _ProfileLookups,
+    deadline: float,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Take a peer's answer apart: verify every card against its own hub's registry, drop what fails."""
     arrivals, excluded = [], []
@@ -609,10 +642,18 @@ async def _verified(
         blameless = False
         origin_url = str(provenance.get("origin_url") or carrier_url)
         card = match.get("card")
-        origin = await _profile(origin_url, transport, lookups) if isinstance(card, dict) else None
+        expired = False
+        try:
+            origin = await _profile(origin_url, transport, lookups, deadline) if isinstance(card, dict) else None
+        except DeadlineExpired:
+            origin, expired = None, True
         # The carrier's word counts for nothing here: the key comes from the card's own hub, fetched directly.
         if not isinstance(card, dict):
             reason = "no card to check against the owner's key"
+        elif expired:
+            # Our deadline, not anything the carrier did, so nobody is charged for it.
+            reason = f"deadline: the key registry at {origin_url} was not read in time, so this card was not checked"
+            blameless = True
         elif origin is None:
             reason = f"no key registry at {origin_url}"
         elif not origin["owner_keys"]:
@@ -671,6 +712,9 @@ async def search(
     transport = transport or DEFAULT_TRANSPORT
     lookups: _ProfileLookups = {}
     budget = float(budget_ms or DEFAULT_BUDGET_MS)
+    # One absolute deadline for every phase — peer selection, the forwarded search and the origin checks —
+    # so each phase gets what is actually left rather than a figure worked out before the one ahead of it.
+    deadline = started + budget / 1000
     hub = config.HIVE_HUB_ID
     trail = [*(seen or [])]
     if hub not in trail:
@@ -691,14 +735,25 @@ async def search(
 
     local, arrivals = await asyncio.to_thread(_local, ask, hub)
     excluded = list(local["excluded"])
-    left = budget - (perf_counter() - started) * 1000
+    left = _ms_left(deadline)
     if hops >= 1 and left < MIN_FORWARD_MS:
         report["dropped"].append(
             {"hub": "*", "reason": f"budget spent: {left:.0f} ms left, {MIN_FORWARD_MS:.0f} ms needed to forward"}
         )
     elif hops >= 1:
-        peers, skipped = await _choose_peers(trail, transport, lookups)
+        peers, skipped = await _choose_peers(trail, transport, lookups, deadline)
         report["dropped"] += skipped
+        left = _ms_left(deadline)
+        if peers and left < MIN_FORWARD_MS:
+            report["dropped"] += [
+                {
+                    "hub": profile["hub_id"],
+                    "reason": f"budget spent choosing peers: {max(0.0, left):.0f} ms left,"
+                    f" {MIN_FORWARD_MS:.0f} ms needed to forward",
+                }
+                for _, profile, _ in peers
+            ]
+            peers = []
         report["asked"] = [
             {
                 "hub": profile["hub_id"],
@@ -719,7 +774,7 @@ async def search(
                 continue
             out = answer["out"]
             reputation.record_answer(profile["hub_id"], answer["ms"], relayed=len(out.get("matches") or []))
-            found, left_out = await _verified(out, profile, url, hub, transport, report, lookups)
+            found, left_out = await _verified(out, profile, url, hub, transport, report, lookups, deadline)
             arrivals += found
             excluded += left_out
 
