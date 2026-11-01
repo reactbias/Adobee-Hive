@@ -809,10 +809,13 @@ const it: Record<Key, string> = {
   "score.thanks": "Grazie. Il suo voto è registrato.",
   "score.standing": "Dove lascia {hub}:",
   "requests.title": "In attesa del suo sì",
+  "requests.count": "In attesa del suo sì ({n})",
+  "requests.new": "Nuovo",
   "requests.from": "{who} chiede di essere presentato",
   "requests.accept": "Accetta",
   "requests.decline": "Rifiuta",
   "requests.accepted": "Accettato. Ora si potrà valutare com'è andata.",
   "requests.refused": "Rifiutato. Non diventerà mai un voto.",
+  "requests.unreachable": "Non siamo riusciti a chiedere all'hub chi sta aspettando. Non è un no.",
 };
 export default it;

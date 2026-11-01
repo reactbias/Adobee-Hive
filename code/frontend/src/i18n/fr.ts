@@ -806,10 +806,13 @@ const fr: Record<Key, string> = {
   "score.thanks": "Merci. Votre note est enregistrée.",
   "score.standing": "Où cela place {hub} :",
   "requests.title": "En attente de votre accord",
+  "requests.count": "En attente de votre accord ({n})",
+  "requests.new": "Nouveau",
   "requests.from": "{who} demande une mise en relation",
   "requests.accept": "Accepter",
   "requests.decline": "Refuser",
   "requests.accepted": "Accepté. La rencontre pourra maintenant être évaluée.",
   "requests.refused": "Refusé. Cela ne deviendra jamais une note.",
+  "requests.unreachable": "Nous n'avons pas pu demander au hub qui attend. Ce n'est pas un refus.",
 };
 export default fr;

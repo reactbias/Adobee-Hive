@@ -804,11 +804,14 @@ const en = {
   "score.thanks": "Thank you. Your score is recorded.",
   "score.standing": "Where that leaves {hub}:",
   "requests.title": "Waiting for your yes",
+  "requests.count": "Waiting for your yes ({n})",
+  "requests.new": "New",
   "requests.from": "{who} asked to be introduced",
   "requests.accept": "Accept",
   "requests.decline": "Decline",
   "requests.accepted": "Accepted. They can now score how it goes.",
   "requests.refused": "Declined. It will never become a rating.",
+  "requests.unreachable": "We could not ask the hub who is waiting. This is not a no.",
 } as const;
 
 export type Key = keyof typeof en;

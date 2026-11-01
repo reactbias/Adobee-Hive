@@ -815,10 +815,13 @@ const de: Record<Key, string> = {
   "score.thanks": "Danke. Ihre Bewertung ist gespeichert.",
   "score.standing": "Damit steht {hub} so da:",
   "requests.title": "Wartet auf Ihre Zustimmung",
+  "requests.count": "Wartet auf Ihre Zustimmung ({n})",
+  "requests.new": "Neu",
   "requests.from": "{who} möchte vermittelt werden",
   "requests.accept": "Annehmen",
   "requests.decline": "Ablehnen",
   "requests.accepted": "Angenommen. Nun kann bewertet werden, wie es war.",
   "requests.refused": "Abgelehnt. Daraus wird nie eine Bewertung.",
+  "requests.unreachable": "Wir konnten den Hub nicht fragen, wer wartet. Das ist kein Nein.",
 };
 export default de;

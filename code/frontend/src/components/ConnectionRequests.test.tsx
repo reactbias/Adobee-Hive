@@ -72,10 +72,60 @@ describe("requests waiting on the owner's yes", () => {
     expect(screen.queryByRole("heading", { name: en["requests.title"] })).not.toBeInTheDocument();
   });
 
-  it("draws nothing when the hub cannot say", async () => {
+  // Changed from "draws nothing when the hub cannot say": silence read as "nobody wants to meet you", which is
+  // a different and worse claim than "we could not ask". #169.
+  it("says it could not ask, rather than letting a failed read read as nobody waiting", async () => {
     const read = vi.spyOn(api, "connections").mockRejectedValue(new Error("404 Not Found"));
     draw();
-    await vi.waitFor(() => expect(read).toHaveBeenCalled());
-    expect(screen.queryByRole("heading", { name: en["requests.title"] })).not.toBeInTheDocument();
+    expect(await screen.findByText(en["requests.unreachable"])).toBeInTheDocument();
+    expect(read).toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: en["requests.accept"] })).not.toBeInTheDocument();
+  });
+
+  it("counts who is waiting in the heading", async () => {
+    vi.spyOn(api, "connections").mockResolvedValue({
+      awaiting_rating: [],
+      awaiting_confirmation: [requested("cx-1", "traveller-ab12"), requested("cx-2", "traveller-cd34")],
+    });
+    draw();
+    expect(await screen.findByRole("heading", { name: en["requests.count"].replace("{n}", "2") })).toBeInTheDocument();
+  });
+
+  it("asks again on its own and marks a request that was not there before as new", async () => {
+    vi.useFakeTimers();
+    const read = vi
+      .spyOn(api, "connections")
+      .mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [requested("cx-1", "traveller-ab12")] });
+    draw();
+    await vi.waitFor(() => expect(screen.getByText(/traveller-ab12/)).toBeInTheDocument());
+    expect(screen.queryByText(en["requests.new"])).not.toBeInTheDocument();
+
+    read.mockResolvedValue({
+      awaiting_rating: [],
+      awaiting_confirmation: [requested("cx-1", "traveller-ab12"), requested("cx-2", "traveller-cd34")],
+    });
+    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.waitFor(() => expect(screen.getByText(/traveller-cd34/)).toBeInTheDocument());
+    // Only the one that arrived while the owner was looking is new; the one already there is not.
+    expect(screen.getAllByText(en["requests.new"])).toHaveLength(1);
+    expect(screen.getByText(/traveller-cd34/)).toHaveTextContent(en["requests.new"]);
+    vi.useRealTimers();
+  });
+
+  it("keeps an answer on screen after the hub has dropped the row from its waiting list", async () => {
+    vi.useFakeTimers();
+    const read = vi
+      .spyOn(api, "connections")
+      .mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [requested("cx-1", "traveller-ab12")] });
+    vi.spyOn(api, "confirmConnection").mockResolvedValue({ ...requested("cx-1", "traveller-ab12"), state: "open" });
+    draw();
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: en["requests.accept"] })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: en["requests.accept"] }));
+    await vi.waitFor(() => expect(screen.getByText(en["requests.accepted"])).toBeInTheDocument());
+
+    read.mockResolvedValue({ awaiting_rating: [], awaiting_confirmation: [] });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(screen.getByText(en["requests.accepted"])).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });
