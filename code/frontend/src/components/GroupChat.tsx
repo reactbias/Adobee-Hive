@@ -385,21 +385,26 @@ export default function GroupChat({
     return out;
   }, [segments, guestName, receipt, followUp, refused, t]);
 
+  // Replay is the one way to watch a finished conversation unfold; without it, Details jumps to the end.
+  const [replaying, setReplaying] = useState(false);
   // New messages after an approval continue from where the chat was; a new trip starts over.
   useEffect(() => {
     if (full || shown <= messages.length) return;
     setShown(messages.length);
   }, [full, shown, messages.length]);
   useEffect(() => {
-    if (shown >= messages.length) return;
+    if (shown >= messages.length) {
+      setReplaying(false);
+      return;
+    }
     // Details opens onto the finished conversation. The stage itself still plays one line at a time.
-    if (full) {
+    if (full && !replaying) {
       setShown(messages.length);
       return;
     }
     const timer = setTimeout(() => setShown((n) => n + 1), delayFor(messages[shown].beat, messages[shown].chars));
     return () => clearTimeout(timer);
-  }, [shown, messages.length, full]);
+  }, [shown, messages.length, full, replaying]);
 
   const caughtUp = shown >= messages.length;
   const next = caughtUp ? (pending ? "agent" : null) : messages[shown].who;
@@ -472,6 +477,7 @@ export default function GroupChat({
                 className="quiet"
                 onClick={() => {
                   follow.current = true;
+                  setReplaying(true);
                   setShown(0);
                 }}
               >

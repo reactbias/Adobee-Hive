@@ -39,7 +39,7 @@ os.environ.setdefault("DUCKDB_PATH", str(Path(tempfile.mkdtemp(prefix="eval-sear
 os.environ.setdefault("DATABASE_URL", "")
 sys.path.insert(0, str(ROOT))
 
-from app import blocklist, db, hive, hive_seed, semantic  # noqa: E402  (after DUCKDB_PATH, on purpose)
+from app import blocklist, db, hive, hive_seed, removals, semantic  # noqa: E402  (after DUCKDB_PATH, on purpose)
 
 #: The fallback scoring set: query, which side of the market it is on, and the entities that should answer it.
 #: Read off the vault folders as a person would read them — "who here cuts hair?" — and deliberately mixed:
@@ -116,6 +116,10 @@ def corpus() -> list[str]:
     db.init()
     hive.init()
     blocklist.init()
+    # removals.init() too: hive.get_card() asks it whether an entity is withdrawn, so without its table
+    # every publish raises and the measurement cannot run at all. A measurement that only works on the
+    # schema it happened to be written against measures nothing.
+    removals.init()
     hive_seed.seed_if_empty()
     seed = _seed_vaults()
     published = []
@@ -225,7 +229,11 @@ def sweep(pair_list: list[tuple[str, str, tuple[str, ...]]]) -> None:
     for floor in sorted({0.0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.50, in_use}):
         semantic.SIMILARITY_FLOOR = floor
         out = run(pair_list, semantics=True)
-        mark = "  <- in use" if abs(floor - semantic.SIMILARITY_FLOOR) < 1e-9 else ""
+        # Against the saved `in_use`, not against the module constant: the line above has just set the
+        # constant to `floor`, so comparing with it was always true and every row claimed to be the one
+        # in use. A marker that points at everything points at nothing, and this table is the argument
+        # for the floor's value.
+        mark = "  <- in use" if abs(floor - in_use) < 1e-9 else ""
         print(f"  {floor:.2f}  {out['p1']:.3f}  {out['p3']:.3f}{mark}")
     semantic.SIMILARITY_FLOOR = in_use
 

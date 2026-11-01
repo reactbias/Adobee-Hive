@@ -10,6 +10,17 @@ const rule = (selector: string) => {
 };
 
 describe("styles", () => {
+  // The find screen clears every frame's background, and the stage's text is light in both colour schemes.
+  it("keeps the agent stage dark on the find screen, so its light text can be read", () => {
+    expect(rule(".screen-find .chat-stage.frame")).toMatch(/var\(--stage\)/);
+  });
+
+  // At the 125 % zoom the pitch uses, a wrapped roster left the conversation 135 px of the screen.
+  it("keeps the roster beside the results to one line, so the conversation keeps the screen", () => {
+    expect(rule(".journey-side .roster ul")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".journey-side .roster-meta")).toMatch(/flex-wrap:\s*nowrap/);
+  });
+
   it("keeps a Try example readable on hover, over the dark hover of every other button", () => {
     // button:hover:not(:disabled) paints buttons dark; an example has to win that with its own light background.
     const hover = rule(".example:hover:not(:disabled)");
@@ -29,6 +40,21 @@ describe("styles", () => {
   // A phone in German: long labels must never make the page wider than the screen.
   it("lets the business screen collapse to one column, whatever its content", () => {
     expect(css).toMatch(/\.owner-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
+  });
+
+  // A past ask is a whole sentence in a flex item; `min-width: auto` made a 345 px screen scroll sideways.
+  it("lets a long past ask be clipped rather than widen the page", () => {
+    expect(rule(".past-asks .chips > li")).toMatch(/min-width:\s*0/);
+    const chip = rule(".past-asks .chip");
+    expect(chip).toMatch(/max-width:\s*min\(28rem, 100%\)/);
+    expect(chip).toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  // `button:hover:not(:disabled)` paints every button dark; a chip has to win that or its label goes unreadable.
+  it("keeps a past ask readable on hover", () => {
+    const hover = rule(".past-asks .chip:hover:not(:disabled)");
+    expect(hover).toMatch(/background:\s*var\(--surface-2\)/);
+    expect(hover).toMatch(/color:\s*var\(--ink\)/);
   });
 
   it("keeps the search bar on screen, and wraps a long request inside it", () => {

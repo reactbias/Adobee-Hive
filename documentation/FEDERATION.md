@@ -29,8 +29,8 @@ An index that one company owns is an index that one company ranks, prices and cl
 it is what the challenge asks us to replace rather than rebuild. So no Hive may be necessary: a business publishes
 one signed card, any Hive may carry it, and leaving a Hive means republishing one file.
 
-This only works if a relaying Hive cannot change what it relays. It cannot: the card carries the *owner's* Ed25519
-signature, and the agent at the end of the search verifies it against the owner's key, pinned in a key registry it
+This only works if a relaying Hive cannot change what it relays. It cannot: the card carries an Ed25519
+signature, and the agent at the end of the search verifies it against the key pinned for that card, in a key registry it
 fetches itself. A Hive in the middle can withhold a card or delay it. It can never forge one.
 
 ## How far to look: the radius
@@ -60,8 +60,15 @@ What each hop does:
   Otherwise reach two is a broadcast storm. Peers left out are named in `federation.dropped` with the reason.
 - **Deduplicate by digest.** The same card arrives by several routes. It is one card, kept at its shortest hop
   count.
-- **Verify at the end, not along the way.** The searching agent checks the owner's signature itself. Nothing is
+- **Verify at the end, not along the way.** The searching agent checks the card's signature itself. Nothing is
   trusted because a Hive passed it on.
+- **Bind the summary to the card.** Verifying a relayed card does not verify the sentence a peer wrote beside it,
+  so once the card has passed, every fact the result asserts about the *entity* — name, tagline, description,
+  contact, sharing flag, whether it is claimed — is rebuilt from the signed body and the carrier's copy is
+  discarded rather than merged back over it. What only the peer can know (its relevance score, its availability,
+  its own guests' ratings) is kept and named as the peer's in `verified.peer_claims`. A field a carrier invented
+  is dropped: unknown fails closed. `signature_valid` is the receiver's verdict and is never copied from a
+  carrier, in either direction.
 
 Every result carries its **provenance**: the ordered chain of Hives it travelled, and the hop count. A person can
 see that an answer came from two Hives away, and through which.
@@ -145,6 +152,8 @@ Additive only. Nothing was renamed or removed, because the app depends on today'
 | `radius`, `budget_ms`, `seen` | `GET /api/hive/discover`; `radius` on `hive_discover` | absent or `0` is the old behaviour, byte for byte |
 | `provenance`, `hops` on each result | the discover answer above radius 0 | the ordered chain of hubs, its origin, and the other routes the same card arrived by |
 | `local_relevance`, `hub_path_trust`, `hop_decay` | `score_breakdown` | alongside the existing factors |
+| `verified` on each result | the discover answer above radius 0 | which hub's registry the key came from, which fields were rebuilt from the signed card (`signed_facts`) and which are the peer's own (`peer_claims`) |
+| `asserted_by`, `verified` on each exclusion | the discover answer above radius 0 | an exclusion carries no card, so it is marked as the peer's own account rather than this hub's |
 | a `federation` report | the discover answer above radius 0 | which peers were asked, which were dropped and why, which cards were rejected and by whom |
 | `federation` block in `/.well-known/hive.json` | discovery document | `hub_id`, name, description, declared `verification`, `admission`, entity count, `paid_placement`, `max_radius` |
 | `GET /api/hub/standing`, `GET /api/hub/directory`, `hub_standing`, `hub_directory` | REST and MCP | what this hub makes of its neighbours, and the list a person picks a hub from |
@@ -159,7 +168,8 @@ Three lines, if the question comes up:
 
 1. *The person chooses how far to search. One town, a region, or a country.*
 2. *A Hive is rated for how honestly it ranks. A business is rated for what it delivered. The two are separate.*
-3. *A Hive can withhold a card. It can never forge one, so the operator is replaceable.*
+3. *A Hive that relays a card can withhold it. It cannot forge it, so the operator is replaceable.* (The Hive a card
+   was published through holds its key, unless the owner runs their own node: [LIMITS.md](LIMITS.md#trust).)
 
 The jury question this answers is "who owns the Hive?" — nobody alone, and the architecture is what makes that
 true rather than a promise.

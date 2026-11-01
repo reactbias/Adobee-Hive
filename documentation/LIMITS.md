@@ -9,26 +9,32 @@ better than it does.
 
 ## Discovery
 
-**Matching gets you two out of five, not five out of five.** `app/semantic.py` is a score component in
-`hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer key in
-[`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target — that is
-**19/41 first and 30/41 in the top three**, against `0/41` for the substring matching it replaced. Twenty-two
-of the forty-one are still not first. The provider is hand-built (accent-folded stems, a four-language concept
-table, German compound splitting, character trigrams, cosine above a named floor), so a trade nobody has
-written a card for yet matches only by stem or trigram.
+**Matching gets you just over half at first place, not five out of five.** `app/semantic.py` is a score
+component in `hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer
+key in [`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target —
+that is **24/41 first and 33/41 in the top three**, against `0/41` for the substring matching it replaced.
+Seventeen of the forty-one are still not first. The provider is hand-built (accent-folded stems, a
+four-language concept table, German compound splitting, character trigrams, cosine above a named floor), so a
+trade nobody has written a card for yet matches only by stem or trigram.
+
+**The semantic component pays per query word covered, so ties are the normal case.** A match is worth a whole
+number of points per word of the question it covers, up to `SEMANTIC_CAP`, and how *close* it was does not
+enter the score. Nine lodgings cover "hostel, bunk, beds" identically and all collect the cap. Closeness now
+breaks those ties in the sort, which is a weak signal rather than a strong one: for "hostel with bunk beds for
+a school group" it puts the actual hostel at 9th, because `Mehrbettzimmer A` normalises worse than
+`Courtyard single`. A query whose answer is a cap-saturated tie is not really being ranked.
 
 **There is no embedding provider.** `semantic._embedding_provider()` returns `None` on purpose rather than half
 an implementation, so a hub with an API key searches exactly as well as one without, and `GET /api/health`
 reports `semantic: offline` either way. What is built is the seam: a `Provider` subclass with a name, an
 `available()` that reads its key through `config`, and an `encode()` that caches per card version.
 
-**The literal half of the scoring only knows German umlauts.** `hive.discover` tokenises a query with
-`[a-zäöü]+` and keeps terms longer than three characters, so `café` and `crème` tokenise to nothing and a
-French or Italian query scores zero on both `text_relevance` and `offers_needs`. Semantic search answers it
-anyway, because it accent-folds — but the literal components are blind to two of the four languages the corpus
-is written in. `hive.STOPWORDS` is 21 words to `semantic.STOPWORDS`' several hundred, for the same reason:
-filler words like *where* and *someone* are scoring query terms and earn offer points off any card whose prose
-happens to contain them.
+**The stopword list is hand-built, so a filler word nobody listed is still evidence.** Both search paths now
+tokenise with `semantic.content_words` and share the single `semantic.STOPWORDS`, which is folded so that
+"für" and "fuer" are one entry. That closed the cases two user tests found — interrogatives, possessives and
+the inflected forms of light verbs in all four languages — but the list is a list: a filler word in a
+language or register nobody typed at it is a scoring term until somebody adds it. There is no frequency
+analysis over the corpus behind it.
 
 **Room intent is conservative.** The REST discovery door recognises explicit hotel/room language and reuses
 the stay parser for stated constraints, excluding a declared guest name from ranking. Explicit parameters win;
@@ -36,10 +42,19 @@ absent dates are not filled with the planner's default weekend. Generic transpor
 stay generic. This is a lexical intent boundary, not a general parser; API/MCP callers should supply structured
 constraints when available.
 
-**Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
-reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on
-review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint
-component was fixed for the same class of bug (it is now earned, never granted); this one is not.
+**Reputation is still paid without a relevance test; it can no longer pass for an answer.** A match's score
+adds `reputation.business_points` — verified reviews and attestations — whatever the query was, so four Basel
+hotels score 1-2 on every query there is, including a nonsense one. The doors no longer present those rows as
+results: `GET /api/hive/discover` and `hive_discover` filter on `hive.relevance`, the five components the ask
+itself earned, and report `matched` over `considered`. What is **not** fixed is the ranking *among* entities
+that did earn something — a well-reviewed one still gets its points on top, so it can outrank a less-reviewed
+one that offers more of what was asked for. `hive.discover()` in-process is also unfiltered by design: the eval
+tools and `federation.py`'s scorer read the whole ranked list.
+
+**"Nothing matched" only tests the words when nothing else was asked.** Any `near`, date, price or feature that
+earns points counts as an answer, so `asdfghjkl` near Basel SBB still returns three hotels. The agent's own run is
+unfiltered too and still offers a "best fit" for a nonsense request. A query naming only a place is treated as a
+browse without checking that the hub's cards are in that place, so "Basel" on the Bern hub lists Bern.
 
 **Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
 parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya
@@ -64,7 +79,7 @@ signature establishes, and nothing in the hub confirms a proof: a `dns-txt`, `re
 unverified and raises nothing. That is deliberate — a hub that blocks on a DNS lookup falls over when a registrar
 does — but it means the top two rungs of the ladder are unreachable today.
 
-**The hub holds a signing key for every card, including the ones that brought their own.** The onboarding panel
+**The hub holds a signing key for every card that joined through it, including the ones that brought their own.** The only exception is a card published from a hotel's own node ([below](#separate-nodes)). The onboarding panel
 generates an Ed25519 keypair in the browser, offers the private half as a download and signs the application's
 canonical JSON with it (`lib/signing.ts`), so `custody: "owner"` is reachable without a terminal. That proves the
 applicant holds the private half, and it is recorded on the card as `owner_public_key`, which a peer can see. The card version itself is still signed
@@ -198,6 +213,55 @@ fact and nothing more. And the card can only be checked when its hub is on this 
 has already answered — an origin two hops away, or a hub in the first `PEER_ASK_SECONDS` of a fresh
 stack, is refused rather than trusted.
 
+## Separate nodes
+
+**The agent can run as its own service, and the stage demo does not use it.** `render.yaml` defines `adobee-agent`,
+which reaches the hub only over MCP, but `lan.sh` still runs the agent inside each hub. `/api/ask` and the scout
+stay on the hub whichever is used. Activity from agent runs is recorded on the service that ran them, so the hub's
+feed and a card's *shown* and *read* counts miss them.
+
+**A hotel's own node covers one fictional hotel, and only booking.** Hotel Lindenhof keeps its key and bookings on
+its node, and its card is signed there. Three things have not moved with it:
+
+- **The owner's view.** The app's business screen reads the hub, so it shows no bookings for this hotel. They are
+  on the node, at `GET /api/owner/{card_id}`.
+- **Reviews.** `hive_review` works at the node, but a review left there does not reach the hub's rating.
+- **Availability at the hub.** The hub cannot see the node's bookings, so its search can list this hotel for dates
+  that are full. The agent's check at the node has the final word.
+
+The hub's `POST /api/demo/reset` also removes the card, until the node publishes it again. An agent that reaches
+the card over peer search rather than `HIVE_MCP_URLS` is not covered by a test.
+
+**A folder is still not a node.** The folder link runs inside the hub ([above](#the-folder-link)).
+
+**In the app, the owner's yes is the shared token.** The app's Accept and Decline send `X-Owner-Token`, so they work only on a hub that sets `OWNER_EDIT_TOKEN`, and that token covers every card. The hub also takes a per-party proof, but the app does not send one, and a hotel's own node does not answer introductions for its card.
+
+## Item sharing
+
+**What is enforced, and what the flags are not a promise of.** `hive.discover` withholds a `push` or
+`never` entity from the matches and from the near-misses alike, on the path REST and MCP both serve;
+`hive.publish` keeps a contact channel the owner closed out of the body it signs; `hive.public_contact`
+drops one on the way out of an older card; and a held entity a peer relayed is withheld here too. That
+is not a blanket promise that every public API redacts personal data — the index is public by design
+(`GET /api/hive/cards` returns every signed card with no credential, `/.well-known/hive.json` publishes
+every owner key), so these are rules about what the hub asserts about an entity that asked it not to,
+not about secrecy of the cards. Use fictional fixtures, not real CVs.
+
+**A card published before sharing was enforced can still carry a value its owner closed.**
+`hive.publish` now drops a contact channel marked `push` or `never` before it signs, and
+`hive.public_contact` drops one on the way out, so nothing is served from such a card — but the
+value is still in the signed body of the stored version, and `hive.get_card` serves that body byte
+for byte because a signature is checked against it. Redacting it in place would mean publishing a
+card that no longer verifies, which is worse. Republishing the entity is the fix, and the owner
+tools do it (`hive_owner_publish`, `POST /api/owner/{card_id}/publish`). Historical versions in
+`hive_card_history` are kept on purpose, so an existing booking can still show what it was promised.
+
+**A peer's exclusion rows are not checked against a sharing flag.** An exclusion carries no card
+(`federation.MAX_PEER_EXCLUSIONS` rows of the peer's own prose), so there is nothing signed to read
+a flag from. A match is checked after `hive.verify_pinned` and a held entity is withheld; a
+near-miss a peer chose to name is carried as that peer's claim and nothing more. It is marked as
+the peer's rather than presented as this hub's.
+
 ## Running a hub
 
 **A federated search in the first half minute of a fresh `lan.sh up` comes back local-only, and the peers do not
@@ -253,6 +317,13 @@ lockout.
 
 ## Not built
 
+- **The approval click belongs to our agent, not to the protocol.** `hive_book` over MCP books when called, and an
+  outside client has to bring its own approval policy. The critic's or verifier's dissent is shown to the person, and
+  it does not take Approve away.
+- **"Two agents talking" is staged on the demo.** The hotel's agent there is its signed card behind the MCP server
+  plus scripted roles, not a second model negotiating ([#125](https://github.com/reactbias/Adobee-Hive/issues/125)).
+- **`Hiring Hub/` is a separate app, not part of this demo.** It needs an API key and its own Docker stack, has no
+  offline fallback or translations, and CI does not run its tests.
 - **Payments.** A booking says "pay at the property". Nothing is charged.
 - **Restaurant tables.** The café card carries no units, so it is findable and not bookable.
 - **Claiming an unclaimed card.** The scout compiles cards from public websites and marks them unclaimed; there is

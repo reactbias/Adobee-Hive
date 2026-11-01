@@ -1,17 +1,18 @@
 """The promises the demo makes, each pinned by a test: receipts prove a stay, holds are one-time, guards hold."""
 
 import asyncio
-import json
 import time
 from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
 from mcp import Client
+from mcp.server.mcpserver.exceptions import ToolError
 
 from app import agent, guard, hive
 from app.domains import base, hr
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 
 def _book(card: str, unit: str, check_in: str, check_out: str) -> dict:
@@ -146,7 +147,8 @@ def test_safe_turns_a_refusal_into_an_error_result():
     def refuse():
         raise hive.HiveError("No.")
 
-    assert base.safe(refuse) == {"error": "No."}
+    with pytest.raises(ToolError, match="No."):
+        base.safe(refuse)
     with pytest.raises(KeyError):  # real bugs still surface
         base.safe(lambda: {}["missing"])
 
@@ -182,7 +184,7 @@ def test_an_hr_refusal_reaches_the_agent_as_an_error_over_mcp(client):
             res = await c.call_tool(
                 "hr_request_intro", {"card_id": "hotel-rheinblick", "from_org": "O", "message": "Hi"}
             )
-            return json.loads(res.content[0].text)
+            return tool_result(res)
 
     assert "not a person card" in asyncio.run(ask())["error"]
 

@@ -291,7 +291,9 @@ def test_an_entity_no_peer_claims_gets_no_invented_hint(client):
         hub.connect(GUEST, "nobody-carries-this")
 
     said = str(refused.value)
-    assert "is not on this hub" in said
+    # The wording names the hub now (#155: "on this hub" is unreadable when an agent is talking to
+    # three of them). What this test is about is unchanged: no hint is invented.
+    assert "is not carried by" in said
     assert "peer book says" not in said
 
 

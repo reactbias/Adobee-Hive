@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db, limits, removals, reputation, semantic
+from . import db, limits, removals, reputation, semantic, sharing
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -121,6 +121,9 @@ def _key_for(card_id: str) -> Ed25519PrivateKey:
         row = cur.execute("SELECT private_key FROM hive_keys WHERE card_id = ?", [card_id]).fetchone()
     if row:
         return serialization.load_pem_private_key(row[0].encode(), password=None)  # type: ignore[return-value]
+    # A card with no key row was signed by its owner elsewhere. Minting one here would quietly replace the owner.
+    if get_record(card_id) is not None:
+        raise HiveError(f"{card_id} signs its own card, so this hub holds no key for it: use its own node.")
     key = Ed25519PrivateKey.generate()
     pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
     with db.write() as cur:
@@ -159,7 +162,9 @@ def owner_keys() -> dict[str, str]:
     A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
     it is signed by the key pinned here for that card id.
     """
-    return {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
+    with db.cursor() as cur:
+        pinned = dict(cur.execute("SELECT id, public_key FROM hive_cards").fetchall())
+    return pinned | {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
 
 
 def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
@@ -248,6 +253,74 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
     card["valid_until"] = (signed_at + timedelta(days=FRESH_DAYS)).isoformat(timespec="seconds")
     key = _key_for(card["id"])
     signature = base64.b64encode(key.sign(canonical(card))).decode()
+    return _store_version(card, signature, _public_b64(key))
+
+
+def _check_shape(card: dict[str, Any]) -> None:
+    """Refuse a signed card this hub could not serve. A valid signature says who wrote it, not that it is usable."""
+    for field in ("id", "slug", "kind", "name", "valid_until"):
+        if not card.get(field) or not isinstance(card[field], str):
+            raise HiveError(f"A signed card needs {field}, as text.")
+    if not isinstance(card.get("version"), int) or isinstance(card["version"], bool) or card["version"] < 1:
+        raise HiveError("A signed card needs version, as a positive whole number.")
+    for field in ("description", "tagline", "address"):
+        if not isinstance(card.get(field, ""), str):
+            raise HiveError(f"A signed card's {field} must be text.")
+    for field in ("contact", "distances_m", "policies"):
+        if not isinstance(card.get(field, {}), dict):
+            raise HiveError(f"A signed card's {field} must be a map.")
+    features = card.get("features", [])
+    if not isinstance(features, list) or not all(isinstance(f, str) for f in features):
+        raise HiveError("A signed card's features must be a list of text.")
+    units = card.get("units", [])
+    if not isinstance(units, list) or not all(_is_unit(u) for u in units):
+        raise HiveError("A signed card's units each need id, name, max_guests, price_chf and quantity.")
+
+
+def _is_unit(unit: Any) -> bool:
+    """Whether one unit has what availability and booking read from it."""
+    return (
+        isinstance(unit, dict)
+        and all(isinstance(unit.get(field), str) and unit[field] for field in ("id", "name"))
+        and all(
+            isinstance(unit.get(field), int | float) and not isinstance(unit[field], bool)
+            for field in ("max_guests", "price_chf", "quantity")
+        )
+    )
+
+
+def accept_signed(card: dict[str, Any], signature: str, public_key: str) -> dict[str, Any]:
+    """Store a card version its owner signed on their own node, exactly as signed.
+
+    The first version pins the key, and every later version must verify against that key. The hub stores what it
+    was given and holds no private key, so it can neither change this card nor book it.
+    """
+    card = json.loads(json.dumps(card, default=str))
+    _check_shape(card)
+    if not verify(card, signature, public_key):
+        raise HiveError("The signature does not match this card and key.")
+    try:
+        if limits.vet(card) != card:  # normalising would change the signed bytes, so the owner has to do it
+            raise HiveError("This card is not in the hub's normal form; publish it through hive.publish first.")
+    except limits.LimitError as err:
+        raise HiveError(str(err)) from err
+    existing = get_record(card["id"])
+    by_slug = get_record(card["slug"])
+    if by_slug is not None and by_slug["id"] != card["id"]:
+        raise HiveError(f"The slug {card['slug']} belongs to another card.")
+    pinned = existing["public_key"] if existing else signing_keys().get(card["id"])
+    if pinned and pinned != public_key:
+        raise HiveError(f"{card['id']} is pinned to another key.")
+    if existing:
+        if card["version"] == existing["version"] and signature == existing["signature"]:
+            return get_card(card["id"])  # a repeat of what is already stored, say after a restart
+        if card["version"] <= existing["version"]:
+            raise HiveError(f"Version {card['version']} is not newer than version {existing['version']}.")
+    return _store_version(card, signature, public_key)
+
+
+def _store_version(card: dict[str, Any], signature: str, public_key: str) -> dict[str, Any]:
+    """Write one signed version as the current card and into its history."""
     with db.write() as cur:
         cur.execute(
             "INSERT OR REPLACE INTO hive_cards VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -258,14 +331,14 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
                 card["version"],
                 json.dumps(card),
                 signature,
-                _public_b64(key),
+                public_key,
                 db.now(),
             ],
         )
         # Every signed version is kept, so a receipt can later prove what the card said when it was booked.
         cur.execute(
             "INSERT OR REPLACE INTO hive_card_history VALUES (?, ?, ?, ?, ?)",
-            [card["id"], card["version"], json.dumps(card), signature, _public_b64(key)],
+            [card["id"], card["version"], json.dumps(card), signature, public_key],
         )
     return get_card(card["id"])
 
@@ -333,15 +406,64 @@ def with_contact(card: dict[str, Any]) -> dict[str, Any]:
     """Guarantee `contact` exists and carries the standard channels, without inventing values.
 
     An absent channel and an empty one are not the same thing to a reader, so this only fills in
-    the keys; it never fabricates a value. A channel the owner marked `never` stays absent
+    the keys; it never fabricates a value. A channel the owner marked `never` or `push` is absent
     entirely, because listing it in order to say it is private announces that it exists.
+
+    **A closed channel's value is removed, not merely left unfilled.** `publish` runs this before
+    signing, and the signed body is public — `GET /api/hive/cards` serves every card with no
+    credential, and every federated hop carries it — so a number the owner marked `never` that
+    reached the body would be published, and no projection downstream could take it back without
+    breaking the signature it is published under. The only moment a closed value can be kept out of
+    a public card is before the card is signed, which is here. What the owner withheld lives in
+    their folder, where a grant is what opens it (`folders.py`), not in the index.
     """
-    contact = dict(card.get("contact") or {})
+    flags = card.get("contact_sharing") or {}
+    contact = {
+        k: v for k, v in (card.get("contact") or {}).items() if flags.get(k) not in (sharing.PUSH, sharing.NEVER)
+    }
     for channel in CONTACT_CHANNELS:
-        if (card.get("contact_sharing") or {}).get(channel) in ("never", "push"):
+        if flags.get(channel) in (sharing.PUSH, sharing.NEVER):
             continue
         contact.setdefault(channel, "")
     return {**card, "contact": contact}
+
+
+def sharing_default(card: dict[str, Any]) -> str:
+    """The sharing flag an entity applies to everything it holds, unless an item is stricter.
+
+    A business card on a public hub is public. A person is `confirm` unless their card says
+    otherwise (`CONSENT_FIRST_KINDS`): an introduction to a person is theirs to grant.
+
+    Lives here rather than in `hub.py` because `discover` is the path that has to obey it and
+    `hive` cannot import the façade above it. `hub._entity_default` delegates, so there is one
+    answer to this question rather than two that can drift.
+    """
+    fallback = sharing.CONFIRM if card.get("kind") in CONSENT_FIRST_KINDS else sharing.PUBLIC
+    return str(card.get("sharing") or fallback)
+
+
+def public_contact(card: dict[str, Any]) -> dict[str, Any]:
+    """A card's contact block as a searcher may see it: every channel the owner did not close.
+
+    The flag applied is the resolved one — the stricter of the entity's default and the channel's
+    own (`sharing.resolve`) — so loosening a channel cannot open what the entity held back.
+
+    The serving-side half of the same rule `with_contact` applies before signing, and deliberately
+    the same rule twice. `publish` keeps a closed value out of new cards; this keeps one from being
+    served out of a card published before that was true, which cannot be fixed in the body without
+    breaking the signature the card is published under.
+
+    `contact_sharing` is *not* filtered here. It is part of what the owner signed, the index is
+    public, and a result that disagreed with the card it travels with would be the worse answer: the
+    value is gone, and the flag that says why is exactly the owner's own word for it.
+    """
+    default = sharing_default(card)
+    flags = card.get("contact_sharing") or {}
+    return {
+        channel: value
+        for channel, value in (card.get("contact") or {}).items()
+        if sharing.searchable(default, flags.get(str(channel)))
+    }
 
 
 def get_card(card_id_or_slug: str) -> dict[str, Any]:
@@ -501,30 +623,121 @@ RANKING_POLICY = (
     "offers or needs, then relevance, proximity, verified reviews, attestations. No paid placement."
 )
 
+#: The score components the *question* earned, as against what the entity earned over time.
+#:
+#: This split is the whole of "did anything actually match?". `reputation.business_points` pays an entity for
+#: verified reviews and attestations whatever was asked, so the **total** cannot answer that question: four
+#: Basel hotels score 1-2 on *every* query, including `asdfghjkl qwertz` and the empty one, with an empty
+#: `why` — and "threshold on score > 0 yourself", which is what this hub told its callers to do, does not
+#: work because of exactly those rows. These five components are the ones a caller can honestly threshold on.
+RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity")
 
-STOPWORDS = {
-    "book",
-    "basel",
-    "hotel",
-    "near",
-    "under",
-    "with",
-    "from",
-    "that",
-    "this",
-    "please",
-    "find",
-    "name",
-    "night",
-    "nights",
-    "friendly",
-    "check",
-    "late",
-    "room",
-    "rooms",
-    "want",
-    "need",
-}
+
+def relevance(match: dict[str, Any]) -> float:
+    """How much of a match's score the question itself earned. Zero means it answered nothing.
+
+    An entity can score without answering anything — reputation is paid on every query — so this, not
+    `score`, is the test of whether a result is a result.
+    """
+    breakdown = match.get("score_breakdown") or {}
+    return sum(breakdown.get(name) or 0 for name in RELEVANCE_COMPONENTS)
+
+
+def asks_anything(
+    query: str = "",
+    features: list[str] | None = None,
+    near: str | None = None,
+    max_price_chf: float | None = None,
+) -> bool:
+    """Whether the caller gave the hub something to match on at all.
+
+    The difference between a search and a browse, and the reason the threshold is not applied blindly. An
+    empty ask is a legitimate "show me what is on this hub", and the honest answer to it is everything;
+    an ask with words or constraints in it has something to be relevant *to*, and an entity that is
+    relevant to none of it is not an answer to it. Without this distinction a thresholded hub would answer
+    "show me everyone" with nobody.
+
+    Deliberately tested on the raw query rather than on its tokens: a query made only of filler words is
+    still a question somebody asked, and "nothing on this hub answers that" is the honest reply to it, not
+    the whole directory. A place name is the exception: it is a stopword, so it could never earn anything,
+    and a hub that answers "Basel" with "nothing here" is wrong about itself. Naming only a place is a
+    browse. The hub does not check that its cards are in that place; see LIMITS.md.
+    """
+    text = (query or "").strip()
+    names_only_a_place = not semantic.content_words(text) and bool(
+        semantic.PLACE_NAMES.intersection(semantic.LETTERS.findall(semantic.fold(text)))
+    )
+    return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)
+
+
+def only_relevant(found: dict[str, Any], ask_had_content: bool, include_irrelevant: bool = False) -> dict[str, Any]:
+    """Drop the matches the question earned nothing from, and say how many answered out of how many ranked.
+
+    This is what makes "nothing matched" a state this hub can be in. Before it, a nonsense query returned
+    all 73 entities with `matches: 73, excluded: 0` and four Basel hotels at the top on reputation alone
+    with an empty `why` — and no field anywhere said that nothing had matched, so a caller could not tell a
+    hit from a miss. The advice this hub gave instead, "threshold on `score > 0` yourself", does not work:
+    those four hotels score 1-2 on every query there is, including the empty one.
+
+    Hence `relevance` rather than `score`. Reputation is paid on every query, so it cannot be part of the
+    test for whether a query was answered; the five components the ask itself earned can.
+
+    Skipped for a browse (`ask_had_content` false — see `asks_anything`), because everything really is the
+    answer to a question with nothing in it, and `include_irrelevant=True` turns it off for a caller that
+    wants the unfiltered ranking back. It is a parameter rather than a policy for that reason: an open
+    ranking does not get to decide on a caller's behalf what they are allowed to see.
+
+    Applied at the doors, not inside `discover`: `main.py` for REST and `mcp_server.py` for MCP. The core
+    keeps answering with the whole ranked list, because the answer key and `federation.py` read it and a core
+    that returned fewer matches than it found would make every measurement taken over it a different
+    measurement. The same reasoning put `limits.bound_answer`'s ceiling at the MCP door.
+
+    What this is *not* is a response-size cap — that is `limits.bound_answer`. The two compose, and in the
+    right order: the threshold removes the rows that answered nothing, which on a federated search are
+    also the expensive ones, because every match carries a full inline card. Thresholding first means the
+    ceiling spends its budget on matches instead of on filler.
+
+    The inline `card` stays on the matches that survive, because the connect path reads it out of the
+    search result (#146/#172). Fewer rows is what makes that affordable, not dropping the card.
+    """
+    matches = found.get("matches") or []
+    considered = len(matches)
+    if ask_had_content and not include_irrelevant:
+        matches = [m for m in matches if relevance(m) > 0]
+    return {
+        **found,
+        "matches": matches,
+        # How many answered the question. This is the count to show a user, and `matched: 0` is the
+        # "nothing matched" this hub could not say before.
+        "matched": len(matches),
+        # And how many entities were ranked to get them, so the first number has a denominator.
+        "considered": considered,
+    }
+
+
+#: The shortest query word the literal search will look for. Literal containment pays 10 points a word on the
+#: offers side, and a three-letter word is inside some card's prose by accident far more often than on
+#: purpose, so the literal path asks for longer words than the similarity bag does.
+MIN_TERM_LENGTH = 4
+
+#: Filler words are `semantic.STOPWORDS`, and the literal search tokenises with `semantic.content_words`.
+#:
+#: There is no second list here any more. There was: 21 words, against the 323 of `semantic.STOPWORDS`, so
+#: "where", "someone", "jemand", "pour" and "macht" were content words to the literal path and filler to the
+#: semantic one. The literal path is the one that pays 10 points a word, which is how a screen-reader
+#: auditor came second for a Python performance question on *"offers someone"*, and how the only card to
+#: score for *"Ich suche jemanden, der meine Python-Simulation schneller macht"* was a roofer, on "macht".
+#: Keeping a hub-specific list in step with a four-language one by hand is not a thing that stays done.
+STOPWORDS = semantic.STOPWORDS
+
+
+def query_terms(query: str) -> list[str]:
+    """The words of a query the literal search will look for: folded, filler dropped, short words dropped.
+
+    Sorted and de-duplicated, because each is scored once and the order of a caller's sentence is not
+    evidence about a card.
+    """
+    return sorted(set(semantic.content_words(query, MIN_TERM_LENGTH)))
 
 
 def _side_texts(card: dict[str, Any], side: str) -> list[str]:
@@ -562,7 +775,9 @@ def _side_hits(card: dict[str, Any], side: str, terms: list[str]) -> list[str]:
     than one that is merely close. Returns the terms that matched, so a result can say *why* it
     matched rather than only that it did.
     """
-    text = " ".join(_side_texts(card, side)).lower()
+    # Folded, not merely lower-cased: `terms` arrives folded, so an unfolded haystack would make folding
+    # the query a regression — "cafe" is not a substring of "Café". Both sides, or neither.
+    text = semantic.fold(" ".join(_side_texts(card, side)))
     return [term for term in terms if term in text]
 
 
@@ -742,6 +957,13 @@ def discover(
     radius is the hop limit across peer Hives: 0, the default, is this Hive only; 1 adds its direct peers, 2
     theirs, up to federation.MAX_RADIUS. budget_ms is the whole query's time budget and seen lists the hubs it
     has already visited (loop prevention); both only matter above radius 0. See federation.py.
+
+    This returns every entity that failed no *hard* constraint, ranked, including the ones the query earned
+    nothing from — deliberately, because the ranking, the answer key in `testdata/` and the app all want the
+    whole list, and a core that quietly returned fewer matches than it found would make every measurement
+    taken over it a different measurement. Deciding which of them is worth showing is a door's job:
+    `relevance` and `only_relevant` are the test and the filter, and `main.py` and `mcp_server.py` apply
+    them. See `only_relevant` for why `score > 0` is not that test.
     """
     if looking_for not in LOOKING_FOR:
         raise HiveError(f"looking_for must be one of {', '.join(LOOKING_FOR)}, not {looking_for!r}")
@@ -770,8 +992,13 @@ def discover(
         + ([f"under CHF {max_price_chf:g}"] if max_price_chf else [])
         + ([f"{guests} guests"] if guests > 1 else [])
     )
-    terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
+    terms = query_terms(query)
     matches, excluded, events = [], [], []
+    # How close each match's semantic hit actually was, kept beside the matches to break ties with.
+    # The points are a whole number of points per query word covered, so ties are common and the sort
+    # was settling them by the order `list_cards` happened to return — a hairdresser's "Flechtfrisur für
+    # ein Fest" came before a caterer for "catering for a wedding of fifty people" on nothing but that.
+    closeness: dict[str, float] = {}
     # Every entity, whatever it is. A hub carries hotels, developers and hairdressers together,
     # so the search is over what they offer and what they need; `kind` is a filter a caller may
     # apply, not a gate the hub applies for them.
@@ -785,17 +1012,30 @@ def discover(
     for card in cards:
         if card["kind"] in NOT_DISCOVERABLE or card["id"] in blocked:
             continue
+        # The owner's own decision, enforced on the path the API serves and not only in the façade
+        # above it. `push` means the hub holds it and no amount of searching surfaces it; `never`
+        # means it does not leave the hub at all. Before this, a `push` entity was returned by both
+        # REST and MCP discovery, and the façade's check read a `sharing` key that discovery never
+        # put on a result, so it passed everything. `continue` is also why a withheld entity is in
+        # neither list: an exclusion names the business and says why it missed, which is most of
+        # what a match says, so leaving it there would publish what the flag was meant to withhold.
+        entity_sharing = sharing_default(card)
+        if not sharing.searchable(entity_sharing, None):
+            continue
         found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
         reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
-        text = " ".join(
-            [
-                card.get("name", ""),
-                card.get("tagline", ""),
-                card.get("description", ""),
-                " ".join(card.get("features", [])),
-            ]
-        ).lower()
+        # Folded for the same reason `_side_hits` folds: `terms` is folded, so this has to be.
+        text = semantic.fold(
+            " ".join(
+                [
+                    card.get("name", ""),
+                    card.get("tagline", ""),
+                    card.get("description", ""),
+                    " ".join(card.get("features", [])),
+                ]
+            )
+        )
         hits = [t for t in terms if t in text]
 
         # The two sides of the market, and the reason one query can find a room, a developer or a
@@ -846,8 +1086,12 @@ def discover(
             # How to reach them, on the result itself. An agent that found someone should not have
             # to fetch the whole card to know whether there is an address to write to, and a
             # federated result has no cheap way to fetch it at all.
-            "contact": (card.get("contact") or {}),
+            "contact": public_contact(card),
             "contact_sharing": (card.get("contact_sharing") or {}),
+            # The entity's own flag, so the façade and every consumer can resolve it against an
+            # item's flag instead of guessing. `confirm` says asking is worth it; `public` says it
+            # is not needed. A result that carried no flag at all was unreadable either way.
+            "sharing": entity_sharing,
             # An unclaimed card was compiled from public information and the business never
             # published it, so it is a lead, not a presence: findable, never bookable, and a
             # hand-off to the business's own site only after a human says yes (domains/explore.py).
@@ -873,6 +1117,7 @@ def discover(
                 )
         else:
             matches.append(summary)
+            closeness[card["id"]] = close[1].score if close else 0.0
             events.append((card["id"], "shown", asked or "open search"))
     events.append(
         (
@@ -890,7 +1135,11 @@ def discover(
         )
     )
     _log_many(events)
-    matches.sort(key=lambda m: m["score"], reverse=True)
+    # Points first, and a tie on points goes to the closer match. `_close_hit` already prefers the closer
+    # of two sides worth the same; this is the same rule one level up, and for the same reason: when the
+    # points cannot separate two entities, the one that is actually more like the question should win.
+    # Nothing here changes a score — closeness only orders entities the score has already tied.
+    matches.sort(key=lambda m: (m["score"], closeness.get(m["id"], 0.0)), reverse=True)
     if forwarded:
         # A peer asked this, and it will verify every card against our key registry before showing
         # it to anyone. It can only do that if the signed card travels with the match, so attach it.

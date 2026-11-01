@@ -21,6 +21,7 @@ from mcp.client.streamable_http import streamable_http_client
 from app import config, guard, hive, limits, owner
 from app.main import app
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 TOKEN = "owner-token-for-tests"
 CARD = "hotel-gare"
@@ -40,9 +41,7 @@ def _call(tool: str, args: dict, token: str | None = None) -> dict:
         ):
             return await mcp.call_tool(tool, args)
 
-    result = asyncio.run(go())
-    assert not result.is_error, result.content[0].text
-    return json.loads(result.content[0].text)
+    return tool_result(asyncio.run(go()))
 
 
 @pytest.fixture
@@ -296,5 +295,5 @@ def test_a_transport_that_carries_no_headers_cannot_edit(hub_with_token):
         async with Client(server) as mcp:
             return await mcp.call_tool("hive_owner_publish", {"card_id": CARD, "proposed": {"id": CARD}})
 
-    out = json.loads(asyncio.run(go()).content[0].text)
+    out = tool_result(asyncio.run(go()))
     assert owner.TOKEN_HEADER in out["error"]

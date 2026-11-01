@@ -43,11 +43,11 @@ class HubError(ValueError):
 def _entity_default(card: dict[str, Any]) -> str:
     """The sharing flag an entity applies to everything it holds, unless an item is stricter.
 
-    A business card on a public hub is public. A person is `confirm` unless their card says
-    otherwise (hive.CONSENT_FIRST_KINDS): an introduction to a person is theirs to grant.
+    One line, because `hive.sharing_default` is the answer and this is the name the rest of this
+    module and `admin.py` already call it by. It moved there when `discover` had to obey it too: a
+    rule the search path cannot reach is a rule the search path does not follow.
     """
-    fallback = sharing.CONFIRM if card.get("kind") in hive.CONSENT_FIRST_KINDS else sharing.PUBLIC
-    return str(card.get("sharing") or fallback)
+    return hive.sharing_default(card)
 
 
 def _published_rating(card: dict[str, Any]) -> int | None:
@@ -153,9 +153,11 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
 
     if not isinstance(offered, dict) or not offered:
         raise HubError(
-            f"{entity_id} is not on this hub. An introduction to an entity on a peer needs the signed card the"
-            " search returned for it, passed as `card`, plus `target_hub`: this hub verifies it against the key"
-            " that entity's own hub pinned rather than trusting whoever carried it" + _carried_by(entity_id)
+            f"{entity_id} is not carried by {config.HIVE_HUB_ID}, the hub this call reached. An introduction to"
+            " an entity on a peer needs the signed card the search returned for it, passed as `card`, plus"
+            " `target_hub`: this hub verifies it against the key that entity's own hub pinned rather than"
+            " trusting whoever carried it. If you did not search at a radius above 0, search again with one"
+            " and pass the `card` and `provenance.origin` the match carries" + _carried_by(entity_id)
         )
     if str(offered.get("id") or "") != entity_id:
         raise HubError(
@@ -164,8 +166,9 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
         )
     if not target_hub:
         raise HubError(
-            f"{entity_id} is not on this hub, so an introduction to it needs `target_hub`: the hub id the search"
-            " said it came from, which is where its pinned key is read from" + _carried_by(entity_id)
+            f"{entity_id} is not carried by {config.HIVE_HUB_ID}, so an introduction to it needs `target_hub`:"
+            " the hub id the search said it came from (`provenance.origin` on the match), which is where its"
+            " pinned key is read from" + _carried_by(entity_id)
         )
     pins = federation.pinned_keys_of(target_hub)
     if not pins:
@@ -395,7 +398,7 @@ def connect(
     # what it carries here is proof of which side of this introduction the holder is, which is what
     # `hub.score` and a requester's withdrawal need (#107).
     key = folder_keys.mint(link["id"], who, pending_ok=True)
-    out = {**row, "folder": folders.manifest(them, who), "folder_key": key}
+    out = {**row, "folder": folders.manifest(them, who), "folder_key": key, "says": _says(row, entity_id)}
     if remote and forward and FORWARD_INTRODUCTIONS:
         out["forwarded"] = _forward(row, entity_id, target_hub, card)
     if remote:
@@ -405,6 +408,9 @@ def connect(
         # reason again — the entity's folder is on its own hub, not on this disk).
         out["remote"] = True
         out["origin_hub"] = target_hub
+        # Appends rather than replaces: the remote case has its own thing to explain, and the caller
+        # still needs the part every introduction needs — the deadline, and the score afterwards.
+        # Found by running two hubs and reading the answer: the remote sentence had quietly dropped it.
         out["says"] = (
             f"{entity_id} is carried by {target_hub}, not by this hub. Its card was checked against the key"
             f" {target_hub} pinned for it. This hub has recorded the introduction"
@@ -413,8 +419,48 @@ def connect(
                 if flag == sharing.CONFIRM
                 else " and opened it."
             )
+            + f" {_next_step(row)}"
         )
     return out
+
+
+def _says(row: dict[str, Any], entity_id: str) -> str:
+    """One sentence a caller can read to its person: what the state means and what happens next.
+
+    The answer used to be a record and nothing else — `state: "open"` with `target_hub: ""` and a
+    `stale_at` three weeks out — and a user test asked the fair question: open meaning what, is the
+    person notified, and why is target_hub blank when I just connected to somebody. So the record
+    says it. In particular it does not claim a notification: nothing here sends one, and a request
+    waits in this hub's own list until the owner or their agent looks.
+    """
+    if row["state"] == connections.REQUESTED:
+        return (
+            f"{entity_id} is on {config.HIVE_NAME} and shares this only with their say-so, so the introduction is"
+            f" recorded and waiting for it. Nobody is sent a message: it sits in this hub's list until"
+            f" {entity_id} or their agent looks, which you can watch with hub_connections. {_next_step(row)}"
+        )
+    return (
+        f"{entity_id} is on {config.HIVE_NAME}, this hub, which is why target_hub and via_hub are empty — there"
+        f" was no other hub in it. Their card is published as freely connectable, so the introduction is open"
+        f" already and nobody has to agree to anything: contact them with what the card gives you."
+        f" {_next_step(row)}"
+    )
+
+
+def _next_step(row: dict[str, Any]) -> str:
+    """The part every introduction needs, wherever the entity is: the deadline, and the score after.
+
+    Said once and appended to each case, local and remote alike. The remote sentence used to replace
+    the whole of `says` and so dropped it, which two real hubs showed and no fake would have.
+    """
+    left = row.get("stale_in_days")
+    runs_out = f" in {left} days" if isinstance(left, int) else f" on {row.get('stale_at')}"
+    if row["state"] == connections.REQUESTED:
+        return f"It runs out{runs_out}, after which the request is closed unanswered."
+    return (
+        f"It runs out{runs_out}, after which it can no longer be scored — so once the two have actually met, call"
+        " hub_score with this connection's id, which is the only thing that teaches this Hive anything."
+    )
 
 
 # ---------------------------------------------------------------- who may answer for a row
