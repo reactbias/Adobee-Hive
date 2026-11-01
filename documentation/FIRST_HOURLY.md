@@ -44,14 +44,12 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Tobi
 
-- **Focus:** [#139 Details/reach/connect bug list](https://github.com/reactbias/Adobee-Hive/issues/139), [#172 send the signed card when connecting across hubs](https://github.com/reactbias/Adobee-Hive/issues/172), [#171 retain the link credential and browse permitted folder files](https://github.com/reactbias/Adobee-Hive/issues/171).
-- **Auth boundary — the contract is written down:** [SECURITY.md](../SECURITY.md) names every credential and what it does and does not prove.
-- ** [#106 keep saved credentials scoped to the issuing hub](https://github.com/reactbias/Adobee-Hive/issues/106).
+- **Focus:** [#139 Details/reach/connect bug list](https://github.com/reactbias/Adobee-Hive/issues/139) — items 1 and 2 are done (#157); item 3 is partly done and the rest is #182, #173 and #128. [#171 retain the link credential and browse permitted folder files](https://github.com/reactbias/Adobee-Hive/issues/171) — PR open.
+- **Auth boundary — the contract is [SECURITY.md](../SECURITY.md), which names every credential and what it does *not* prove:** [#106 keep saved credentials scoped to the issuing hub](https://github.com/reactbias/Adobee-Hive/issues/106).
 - **Search controls:** [#132 kind and offers/needs selection](https://github.com/reactbias/Adobee-Hive/issues/132), [#133 per-search rulesets](https://github.com/reactbias/Adobee-Hive/issues/133), [#134 standing requests/offers in the browser](https://github.com/reactbias/Adobee-Hive/issues/134).
-- **Introduction/calibration UI follow-up:** [#163 rating flow/data](https://github.com/reactbias/Adobee-Hive/issues/163), [#165 visible hub calibration](https://github.com/reactbias/Adobee-Hive/issues/165).
-- **UI roadmap — the backend contract is [SEARCH_API.md](SEARCH_API.md):** [#166 interaction/search history](https://github.com/reactbias/Adobee-Hive/issues/166), [#167 folder requests and demand visibility](https://github.com/reactbias/Adobee-Hive/issues/167), [#168 owner-visible agent/folder-read history](https://github.com/reactbias/Adobee-Hive/issues/168), [#169 booking/introduction notifications](https://github.com/reactbias/Adobee-Hive/issues/169), [#170 inbox/contact experience](https://github.com/reactbias/Adobee-Hive/issues/170).
+- **Introduction/calibration UI follow-up:** [#165 visible hub calibration](https://github.com/reactbias/Adobee-Hive/issues/165) — PR open.
+- **UI roadmap — the backend contract is [SEARCH_API.md](SEARCH_API.md):** [#166 interaction/search history](https://github.com/reactbias/Adobee-Hive/issues/166) (browser half has a PR), [#167 folder requests and demand visibility](https://github.com/reactbias/Adobee-Hive/issues/167), [#168 owner-visible agent/folder-read history](https://github.com/reactbias/Adobee-Hive/issues/168), [#169 booking/introduction notifications](https://github.com/reactbias/Adobee-Hive/issues/169) (PR open), [#170 inbox/contact experience](https://github.com/reactbias/Adobee-Hive/issues/170). The half of #166 that is left is a person's own past introductions, which needs a `state=` or `include=` filter on `GET /api/hub/connections`.
 - **Owner/onboarding roadmap — see [FOLDERS.md](FOLDERS.md) and the `hive_owner_*` tools in [SEARCH_API.md](SEARCH_API.md):** [#174 rescan a folder and regenerate its Card](https://github.com/reactbias/Adobee-Hive/issues/174), [#175 folder-selection and onboarding clarity](https://github.com/reactbias/Adobee-Hive/issues/175), [#176 sign-in/accounts](https://github.com/reactbias/Adobee-Hive/issues/176), [#178 per-person API-key experience](https://github.com/reactbias/Adobee-Hive/issues/178), [#179 admin settings/read boundaries](https://github.com/reactbias/Adobee-Hive/issues/179), [#180 reporting/moderation decisions](https://github.com/reactbias/Adobee-Hive/issues/180), [#181 index-copying policy and visibility](https://github.com/reactbias/Adobee-Hive/issues/181).
-- **Acceptance review, not a request to rebuild merged work:** [#91 backend/model/hub status](https://github.com/reactbias/Adobee-Hive/issues/91), [#142 exit the onboarding outcome screen](https://github.com/reactbias/Adobee-Hive/issues/142). Check the remaining acceptance criteria, then close with README cleanup if satisfied.
 
 #### Andrey
 
@@ -62,12 +60,12 @@ These are the current named assignments; they supersede older workstream/next-de
 #### Saad and Emily
 
 - **Deck/video:** [#73 presentation structure and video](https://github.com/reactbias/Adobee-Hive/issues/73).
-- **Presentation cutover:** [#147 jury-facing README, final architecture visual and verified try-it path](https://github.com/reactbias/Adobee-Hive/issues/147). Saad/Emily align the story and slides; the public [readme](../readme.md) and [diagrams/](diagrams/) are the current runnable backend and publication.
+- **Presentation cutover:** [#147 jury-facing README, final architecture visual and verified try-it path](https://github.com/reactbias/Adobee-Hive/issues/147). Saad/Emily align the story and slides; Ole coordinates the final runnable backend and publication.
 
 #### Felix and baker
 
 - **Nonbreaking test/performance focus:** [#149 hardcoded editorial/source-text checks](https://github.com/reactbias/Adobee-Hive/issues/149), [#140 slow-peer timing race](https://github.com/reactbias/Adobee-Hive/issues/140), [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
-- **Correctness fixes:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
+- **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
 - **Contract/wording follow-up, not a silent semantics change:** [#122 booking-backed reviews versus completed stays](https://github.com/reactbias/Adobee-Hive/issues/122).
 
 #### CV team
@@ -80,27 +78,24 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Ole (`busssard`)
 
-Most of this block shipped. **Done:** #72 (`lan.sh` now detects an address change, clears stale
-peer stores and refuses to kill another checkout's servers), #105, #109 (budgets enforced on every
-transport, bounded MCP answers), #164 (a local introduction can be calibrated), the folder read
-surface, cross-hub connect, the owner's MCP tools, the public readme.
+Most of this block shipped. **Done:** #72, #105, #109, #164, the folder read surface, cross-hub
+connect, the owner's MCP tools, the public readme.
 
-**In flight, each in its own PR:** #107, #108, #110, #111, #121, #155, #156, #158, #159.
+**In flight, one PR each:** #107, #108, #110, #111, #121, #155, #156, #158, #159.
 
-**Deliberately not promised:** #123, #124, #125, #126, #129, #130, #131 (trust/search roadmap) and
-#135, #136, #137 (production). #170 and #180 are decisions before they are work — an inbox or a TOS
-scanner commits the hub to hosting messages or judging content, and `folders.py` and `waiting.py`
-currently promise the opposite in words a jury could read.
+**Not promised:** #123, #124, #125, #126, #129, #130, #131, #135, #136, #137. #170 and #180 are
+decisions before they are work — an inbox or a TOS scanner commits the hub to hosting messages or
+judging content, and `folders.py` and `waiting.py` promise the opposite in words a jury could read.
 
-**Nothing here is a gate on anyone else.** The contracts are written down — [SEARCH_API.md](SEARCH_API.md),
+**Nothing here gates anyone else.** The contracts are written down: [SEARCH_API.md](SEARCH_API.md),
 [FOLDER_API.md](FOLDER_API.md), [FOLDERS.md](FOLDERS.md), [SECURITY.md](../SECURITY.md),
-[ARCHITECTURE.md](ARCHITECTURE.md), [LIMITS.md](LIMITS.md) for what is honestly missing. Read those
-first; open an issue if one is wrong. Several of them were wrong this week and were corrected by
-people who checked rather than asked.
+[ARCHITECTURE.md](ARCHITECTURE.md), and [LIMITS.md](LIMITS.md) for what is honestly missing. Read
+those first; open an issue if one is wrong. Several were wrong this week and were fixed by people
+who checked rather than asked.
 
 ## Notes for the deck lane
 
-For Saad/Emily: the supplied [architecture diagram](diagrams/05-current-architecture.svg) is generated from `main` and lives in the repo. It was previously a working sketch, only reachable on the team network. Its “browser never passes radius” warning is stale, its calibration/ranking relationship is not implemented, and its folder/API status must be rechecked after merges. Use the version-controlled map above for this handover; refresh the presentation visual under [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
+For Saad/Emily: the supplied [architecture diagram](diagrams/05-current-architecture.svg) is a working sketch, only reachable on the team network. Its “browser never passes radius” warning is stale, its calibration/ranking relationship is not implemented, and its folder/API status must be rechecked after merges. Use the version-controlled map above for this handover; refresh the presentation visual under [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
 
 ## Operating the shared LAN stack
 

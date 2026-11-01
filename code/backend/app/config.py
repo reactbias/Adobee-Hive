@@ -93,6 +93,12 @@ AGENT_MAX_TURNS = int(os.getenv("AGENT_MAX_TURNS", "10"))
 HIVE_PEER_URLS = [u.strip() for u in os.getenv("HIVE_PEER_URLS", "").split(",") if u.strip()]
 # This hub's id: it names this Hive in a result's provenance chain and in a query's loop-prevention list.
 HIVE_HUB_ID = os.getenv("HIVE_HUB_ID", "local")
+# The address other people reach this hub at, if it knows one. A hub's own row in the directory had a blank URL
+# and a relative apply link, so an agent copying the rows to a user could give a working address for every hub
+# except the one it was talking to. Set this behind a proxy or on a LAN, where the address a client used is the
+# one that works and the hostname this process sees is not; left empty, a request's own base URL is used and the
+# MCP surface falls back to the Host header, which is the same address the caller already reached.
+HIVE_PUBLIC_URL = os.getenv("HIVE_PUBLIC_URL", "").rstrip("/")
 # What this hub declares about how it vets its members: "signed" (every card signed by its owner's pinned key),
 # "attested" (plus third-party attestations) or "none". Peers judge the declaration against what they observe.
 HIVE_VERIFICATION = os.getenv("HIVE_VERIFICATION", "signed")

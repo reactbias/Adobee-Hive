@@ -15,8 +15,12 @@ from . import admin, config, connections, domains, guard, hive, hub, limits, own
 server = MCPServer(
     name="Adobee Hive",
     instructions=(
-        "Adobee Hive is a directory of signed, agent-facing business cards for Basel. "
-        "Use hive_discover to find anyone on it by what they offer or need — a hotel, a developer, a café — "
+        "Adobee Hive is a federation of hubs, each carrying signed, agent-facing business cards. This hub is "
+        f"{config.HIVE_HUB_ID}: {config.HIVE_DESCRIPTION} "
+        "It is not the whole Hive. Its peers carry other places and other trades, so a search that finds nothing "
+        "here may still find it one hop out: pass radius 1 (or up to 3) to hive_discover, and use hub_directory "
+        "to see which hubs exist, what each carries and which are taking members. "
+        "Use hive_discover to find anyone by what they offer or need — a hotel, a developer, a café — "
         "with kind as a filter and looking_for to say which side of the market you are on; hive_get_card to read "
         "one card and "
         "verify its Ed25519 signature, hive_check_availability before booking, and hive_book to complete a booking. "
@@ -387,9 +391,21 @@ def hive_owner_publish(card_id: str, proposed: dict[str, Any], ctx: Context) -> 
 
 
 @server.tool()
-def hub_directory() -> dict[str, Any]:
+def hub_directory(ctx: Context) -> dict[str, Any]:
     """List the Hives this one knows of, so a user can choose which to join before applying.
+
+    Every row carries an absolute `url` and an absolute `apply_at`, including this hub's own, so a row can be
+    read out to a person as an address that works. A hub nobody has scored an introduction through reads
+    `verdict: "unproven"` with the count so far; `verdict_meanings` says what each verdict means and `why` says
+    it for that hub, so "unproven" can be passed on as "no evidence either way" rather than as a warning.
 
     Each row says whether it is taking members, what it asks of them, and how closely its published ratings
     have matched what real people found: `error` is published minus realised, and lower is better."""
-    return admin.directory()
+    # This hub's own address, from the headers this call arrived on when nothing is configured: the same
+    # address the caller already reached, which is the one that works for them. Never a guess at a hostname —
+    # and `HIVE_PUBLIC_URL` is the override for a deployment where the scheme or the host is rewritten in front
+    # of this process, because `x-forwarded-proto` is only as good as the proxy that sets it.
+    headers: Mapping[str, str] = {k.lower(): v for k, v in (ctx.headers or {}).items()}
+    host = headers.get("host", "")
+    scheme = headers.get("x-forwarded-proto", "").split(",")[0].strip() or "http"
+    return admin.directory(f"{scheme}://{host}" if host else "")

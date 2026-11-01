@@ -3,11 +3,19 @@
 // `GET /api/admin/overview`   what this hub carries, and how many introductions are open
 // `GET /api/admin/neighbours` one row per configured peer, with its calibration
 // `GET /api/hub/directory`    each hub's name, description and entity count — not on `main` yet (PR #71)
+// `GET /api/hub/standing`     this hub's calibration of its peers, as a fallback for the two above
 //
 // A peer we have not asked carries no entity count and no admission policy. That is drawn as unknown, never as
 // zero: "0 entities" is a claim, and we do not have it.
+//
+// Why `standing` is in that list. This screen is open to anyone — a federated network that only its operator
+// can see the shape of is not a federated network — but the peer rows came from `/api/admin/neighbours`, an
+// operator route a hub is free to lock, and the directory is not on `main` everywhere. `/api/hub/standing` is
+// the one public, always-present endpoint that returns per-peer calibration, so when the other two cannot be
+// read the honeycomb still has its cells instead of showing a hub alone in the world. It carries no address,
+// no entity count and no blocklist, so a peer known only this way is drawn as calibration plus unknowns.
 
-import type { AdminNeighbours, AdminOverview, Directory } from "../api";
+import type { AdminNeighbours, AdminOverview, Directory, Standing } from "../api";
 
 export interface HubNode {
   hub: string;
@@ -26,11 +34,18 @@ export interface HubNode {
   why: string;
 }
 
-/** The home hub plus one node per configured peer, home first. Works with no peers at all. */
+/**
+ * The home hub plus one node per peer, home first. Works with no peers at all.
+ *
+ * `neighbours` null means that read failed, which is not the same as a hub with no peers: then `standing` is
+ * used instead, because a hub that cannot show its neighbours is worse than one that shows them with less
+ * about each. A `neighbours` answer, even an empty one, is the better source and wins.
+ */
 export function buildNetwork(
   overview: AdminOverview | null,
   neighbours: AdminNeighbours | null,
   directory: Directory | null,
+  standing: Standing | null = null,
 ): HubNode[] {
   const described = new Map((directory?.hubs ?? []).map((h) => [h.hub, h]));
   const home: HubNode = {
@@ -45,7 +60,12 @@ export function buildNetwork(
     evidence: 0,
     why: "",
   };
-  const peers = (neighbours?.peers ?? []).map((p) => {
+  // Only when the operator route could not be read at all. An empty peer list from it is an answer.
+  const fallback = (standing?.peers ?? []).filter((p) => p.hub && p.hub !== home.hub);
+  const rows = neighbours
+    ? neighbours.peers
+    : fallback.map((p) => ({ ...p, url: "", blocked: false, error_stars: p.error_stars ?? null }));
+  const peers = rows.map((p) => {
     const seen = described.get(p.hub);
     return {
       hub: p.hub,

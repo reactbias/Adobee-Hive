@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, type AdminNeighbours, type AdminOverview } from "../api";
+import { ApiError, api, type AdminNeighbours, type AdminOverview, type Standing } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
 import NetworkPanel from "./NetworkPanel";
@@ -43,6 +43,21 @@ const PEERS: AdminNeighbours = {
   blocked_hubs: ["spam.example"],
 };
 
+// `/api/hub/standing`: public, always there, and the only one of the three that needs no operator token.
+const STANDING: Standing = {
+  hub: "local",
+  peers: [
+    {
+      hub: "bern",
+      error: -18,
+      error_stars: -1.8,
+      evidence: 3,
+      verdict: "under-promises",
+      why: "under-promised by 1.8 stars on average over 3 introductions",
+    },
+  ],
+};
+
 const show = () =>
   render(
     <I18nProvider>
@@ -62,6 +77,25 @@ describe("the live node view", () => {
     vi.spyOn(api, "adminNeighbours").mockResolvedValue({ peers: [], blocked_hubs: [] });
     // Not on `main` yet, which is how the deployed hub actually answers.
     vi.spyOn(api, "directory").mockRejectedValue(new ApiError("Not Found", 404));
+    vi.spyOn(api, "standing").mockResolvedValue({ hub: "local", peers: [] });
+  });
+
+  // #165: this is the endpoint written for calibration, and nothing in the app called it. The screen is open
+  // to anyone, but its peer rows came from an operator route a hub is free to lock.
+  it("still shows the peers when only the public standing could be read", async () => {
+    vi.spyOn(api, "adminNeighbours").mockRejectedValue(new ApiError("Forbidden", 403));
+    vi.spyOn(api, "standing").mockResolvedValue(STANDING);
+    show();
+    const rows = await vi.waitFor(async () => {
+      const found = await hubRows();
+      expect(found).toHaveLength(2);
+      return found;
+    });
+    expect(rows[1]).toHaveTextContent("bern");
+    expect(rows[1]).toHaveTextContent(en["finder.cal.under"].replace("{stars}", "1.8"));
+    // Standing carries no entity count and no admission policy, so neither is claimed.
+    expect(rows[1]).toHaveTextContent(en["network.entitiesUnknown"]);
+    expect(rows[1]).toHaveTextContent(en["network.admissionUnknown"]);
   });
 
   it("counts what the hub carries and what is open, from the live overview", async () => {

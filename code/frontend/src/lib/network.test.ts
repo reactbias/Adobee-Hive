@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AdminNeighbours, AdminOverview, Directory } from "../api";
+import type { AdminNeighbours, AdminOverview, Directory, Standing } from "../api";
 import { buildNetwork, clip, hexPoints, liveIntroductions, ringPosition, viewBox } from "./network";
 
 // The live hub right now: 22 entities, no peers at all. That is the common case and it must not look broken.
@@ -76,6 +76,30 @@ const DIRECTORY: Directory = {
   ],
 };
 
+// What `/api/hub/standing` returns on the live demo: the two peers this hub has scored introductions through.
+// No address, no entity count, no blocklist — just who they are and how their ratings held up.
+const STANDING: Standing = {
+  hub: "local",
+  peers: [
+    {
+      hub: "bern",
+      error: -18,
+      error_stars: -1.8,
+      evidence: 3,
+      verdict: "under-promises",
+      why: "under-promised by 1.8 stars on average over 3 introductions",
+    },
+    {
+      hub: "zurich",
+      error: 22.3,
+      error_stars: 2.23,
+      evidence: 3,
+      verdict: "over-promises",
+      why: "over-promised by 2.2 stars on average over 3 introductions",
+    },
+  ],
+};
+
 describe("building the network", () => {
   it("draws one node, honestly labelled, when there are no peers at all", () => {
     const nodes = buildNetwork(LIVE, { peers: [], blocked_hubs: [] }, null);
@@ -109,6 +133,25 @@ describe("building the network", () => {
     const [, zurich] = buildNetwork(LIVE, NEIGHBOURS, DIRECTORY);
     expect(zurich.error).toBe(-4);
     expect(zurich.evidence).toBe(6);
+  });
+
+  // #165: /api/hub/standing was the one endpoint written for this and nothing in the app called it.
+  it("falls back to the public standing when the operator route could not be read", () => {
+    const nodes = buildNetwork(LIVE, null, null, STANDING);
+    expect(nodes.map((n) => n.hub)).toEqual(["local", "bern", "zurich"]);
+    expect(nodes[1]).toMatchObject({ error: -18, evidence: 3, verdict: "under-promises" });
+    // It carries none of this, so none of it is claimed.
+    expect(nodes[1]).toMatchObject({ entities: null, admission: "", blocked: false });
+  });
+
+  it("prefers the operator route whenever it answered, even with no peers", () => {
+    expect(buildNetwork(LIVE, { peers: [], blocked_hubs: [] }, null, STANDING)).toHaveLength(1);
+    expect(buildNetwork(LIVE, NEIGHBOURS, null, STANDING).map((n) => n.hub)).toEqual(["local", "zurich", "spam"]);
+  });
+
+  it("never lists the home hub twice, whatever standing says", () => {
+    const standing: Standing = { ...STANDING, peers: [{ ...STANDING.peers[0], hub: "local" }] };
+    expect(buildNetwork(LIVE, null, null, standing)).toHaveLength(1);
   });
 
   it("survives every payload being missing", () => {

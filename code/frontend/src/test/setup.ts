@@ -13,3 +13,7 @@ Element.prototype.scrollTo ??= function scrollTo() {};
 // Nor media queries; the footer bee asks whether the person prefers reduced motion.
 window.matchMedia ??= ((query: string) =>
   ({ matches: false, media: query }) as MediaQueryList) as typeof window.matchMedia;
+
+// Nor object URLs; a granted folder file is handed to the browser as a blob under its own name.
+URL.createObjectURL ??= () => "blob:test";
+URL.revokeObjectURL ??= () => {};
