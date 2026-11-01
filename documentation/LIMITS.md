@@ -236,6 +236,32 @@ the card over peer search rather than `HIVE_MCP_URLS` is not covered by a test.
 
 **In the app, the owner's yes is the shared token.** The app's Accept and Decline send `X-Owner-Token`, so they work only on a hub that sets `OWNER_EDIT_TOKEN`, and that token covers every card. The hub also takes a per-party proof, but the app does not send one, and a hotel's own node does not answer introductions for its card.
 
+## Item sharing
+
+**What is enforced, and what the flags are not a promise of.** `hive.discover` withholds a `push` or
+`never` entity from the matches and from the near-misses alike, on the path REST and MCP both serve;
+`hive.publish` keeps a contact channel the owner closed out of the body it signs; `hive.public_contact`
+drops one on the way out of an older card; and a held entity a peer relayed is withheld here too. That
+is not a blanket promise that every public API redacts personal data — the index is public by design
+(`GET /api/hive/cards` returns every signed card with no credential, `/.well-known/hive.json` publishes
+every owner key), so these are rules about what the hub asserts about an entity that asked it not to,
+not about secrecy of the cards. Use fictional fixtures, not real CVs.
+
+**A card published before sharing was enforced can still carry a value its owner closed.**
+`hive.publish` now drops a contact channel marked `push` or `never` before it signs, and
+`hive.public_contact` drops one on the way out, so nothing is served from such a card — but the
+value is still in the signed body of the stored version, and `hive.get_card` serves that body byte
+for byte because a signature is checked against it. Redacting it in place would mean publishing a
+card that no longer verifies, which is worse. Republishing the entity is the fix, and the owner
+tools do it (`hive_owner_publish`, `POST /api/owner/{card_id}/publish`). Historical versions in
+`hive_card_history` are kept on purpose, so an existing booking can still show what it was promised.
+
+**A peer's exclusion rows are not checked against a sharing flag.** An exclusion carries no card
+(`federation.MAX_PEER_EXCLUSIONS` rows of the peer's own prose), so there is nothing signed to read
+a flag from. A match is checked after `hive.verify_pinned` and a held entity is withheld; a
+near-miss a peer chose to name is carried as that peer's claim and nothing more. It is marked as
+the peer's rather than presented as this hub's.
+
 ## Running a hub
 
 **A federated search in the first half minute of a fresh `lan.sh up` comes back local-only, and the peers do not
