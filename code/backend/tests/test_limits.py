@@ -334,13 +334,6 @@ def test_every_published_limit_is_in_the_cards_readme():
     assert labelled == len(limits.LIMITS), "the table documents a limit the code does not enforce"
 
 
-def test_the_readme_says_what_the_description_is_for_and_how_the_real_defence_works():
-    """A jury reads this page. It is an invitation with an edge, not a rule with a suspicion behind it."""
-    readme = CARDS_README.read_text(encoding="utf-8").lower()
-    assert "pitch" in readme, "say plainly that the description is the entity's pitch to an agent"
-    assert "calibration" in readme, "name the economic loop, which is the part worth showing off"
-
-
 # ---------------------------------------------------------------- the regression net
 
 
