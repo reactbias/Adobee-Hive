@@ -240,6 +240,31 @@ def pinned_keys_of(hub_id: str) -> dict[str, str]:
     return {str(k): str(v) for k, v in ((_by_hub.get((hub_id or "").strip()) or {}).get("owner_keys") or {}).items()}
 
 
+def carriers_of(entity_id: str) -> list[dict[str, str]]:
+    """Which peers this hub has heard pin a key for `entity_id`, with the URL to reach each.
+
+    Read-only and never a fetch, like `pinned_keys_of`. The answer comes from the discovery documents
+    the background asking already collected, so it costs nothing on a request path and cannot be made
+    slow by a peer.
+
+    This exists so a refusal can point somewhere. "No entity 'x' on this hub" is a dead end when the
+    hub has the answer in its own book: it knows which of its peers publishes a key for that id, and
+    it knows that peer's URL, because both came off its own peer list (#159). It is a *hint* and
+    nothing more — a hub that pins a key for an id is a hub claiming that entity, and the claim is
+    only worth acting on because the card still has to survive `_verified` or `hub._verified_remote`
+    at the other end. So this never admits anything; it only says where to look.
+    """
+    entity_id = (entity_id or "").strip()
+    if not entity_id:
+        return []
+    by_url = {str((record.get("profile") or {}).get("hub_id") or ""): url for url, record in _peers.items()}
+    out = []
+    for hub_id, record in _by_hub.items():
+        if entity_id in ((record or {}).get("owner_keys") or {}):
+            out.append({"hub": hub_id, "url": by_url.get(hub_id, "")})
+    return sorted(out, key=lambda row: row["hub"])
+
+
 def peer_row(base_url: str) -> dict[str, Any]:
     """What this hub knows about one peer, as data an interface can render.
 

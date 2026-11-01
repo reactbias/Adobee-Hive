@@ -144,9 +144,13 @@ class SeedError(RuntimeError):
     """A step the hub refused. Carries the hub's own words, which are usually the whole answer."""
 
 
-def _call(url: str, body: dict | None = None, timeout: float = 30) -> dict:
+def _call(url: str, body: dict | None = None, timeout: float = 30, bearer: str = "") -> dict:
     data = None if body is None else json.dumps(body).encode()
     headers = {"content-type": "application/json"} if data else {}
+    if bearer:
+        # The party's own credential for one introduction, which is what scoring takes now (#107).
+        # A header, never a field: it is a bearer secret and a URL ends up in logs.
+        headers["Authorization"] = f"Bearer {bearer}"
     request = urllib.request.Request(url, data=data, headers=headers)  # noqa: S310 - a hub URL the operator passed
     try:
         with urllib.request.urlopen(request, timeout=timeout) as answer:  # noqa: S310
@@ -165,9 +169,9 @@ def get(hub: str, path: str, timeout: float = 30) -> dict:
     return _call(f"{hub.rstrip('/')}{path}", timeout=timeout)
 
 
-def post(hub: str, path: str, body: dict, timeout: float = 30) -> dict:
-    """POST JSON to a hub."""
-    return _call(f"{hub.rstrip('/')}{path}", body, timeout=timeout)
+def post(hub: str, path: str, body: dict, timeout: float = 30, bearer: str = "") -> dict:
+    """POST JSON to a hub, optionally as the holder of one folder link secret."""
+    return _call(f"{hub.rstrip('/')}{path}", body, timeout=timeout, bearer=bearer)
 
 
 # ---------------------------------------------------------------- choosing what to introduce people to
@@ -289,12 +293,28 @@ def introduce(home_url: str, peer_url: str, peer_hub: str, card_id: str, request
             f"the introduction to {card_id} carries no published_rating, so scoring it teaches calibration nothing."
             " The peer's card has no verified-review average: the booking or the review did not take"
         )
+    if not ((row.get("folder_key") or {}).get("secret")):
+        raise SeedError(
+            f"the introduction to {card_id} came back with no requester credential, so it cannot be scored."
+            " `hub.connect` returns one under `folder_key.secret` and scoring needs it (#107)"
+        )
     return row
 
 
-def score(home_url: str, connection_id: str, rating: int, note: str) -> dict:
-    """Score an introduction, once and finally, as the person who asked for it."""
-    return post(home_url, f"/api/hub/connections/{connection_id}/score", {"rating": rating, "note": note})
+def score(home_url: str, connection_id: str, rating: int, note: str, secret: str) -> dict:
+    """Score an introduction, once and finally, as the person who asked for it.
+
+    `secret` is the requester's own link secret, which the connect answer returned under
+    `folder_key.secret`. The score belongs to the one party that asked for the introduction, so the
+    route takes that and nothing hub-wide (#107); passing the connection id alone used to be enough
+    and is exactly what this script must not go back to pretending.
+    """
+    return post(
+        home_url,
+        f"/api/hub/connections/{connection_id}/score",
+        {"rating": rating, "note": note},
+        bearer=secret,
+    )
 
 
 # ---------------------------------------------------------------- one peer, end to end
@@ -330,7 +350,7 @@ def seed_peer(
         claimed = published_rating_of(peer_url, card["id"])
         requester = f"seed-{peer_hub}-{n + 1}"
         row = introduce(home_url, peer_url, peer_hub, card["id"], requester)
-        out = score(home_url, row["id"], found, f"seeded: {profile.why}")
+        out = score(home_url, row["id"], found, f"seeded: {profile.why}", row["folder_key"]["secret"])
         gap = out.get("gap")
         standing = out.get("hub_standing") or {}
         say(

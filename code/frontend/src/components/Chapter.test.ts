@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalHash, screenFor, SCREENS } from "./Chapter";
+import { canonicalHash, joinHash, joinHubIn, namesScreen, screenFor, SCREENS } from "./Chapter";
 
 // The screens are finding and offering, the two sides of every Card. They used to be called travel and
 // business, which named two kinds of person rather than two things a Card does, and read wrongly on a hub
@@ -39,5 +39,31 @@ describe("writing a hash the way the app writes it", () => {
     expect(canonicalHash("#network")).toBe("");
     expect(canonicalHash("")).toBe("");
     expect(canonicalHash("#nothing-here")).toBe("");
+  });
+});
+
+describe("joining a Hive is a route too", () => {
+  it("reads the hub out of the hash, and nothing else out of it", () => {
+    expect(joinHubIn("#join/basel")).toBe("basel");
+    expect(joinHubIn(joinHash("hive.example"))).toBe("hive.example");
+    // Not a join hash: the bare word names no hub, so there is nothing to join.
+    expect(joinHubIn("#join")).toBe("");
+    expect(joinHubIn("#find")).toBe("");
+    expect(joinHubIn("")).toBe("");
+  });
+
+  it("is not one of the screens, so returning to it does not fall through to the traveller's", () => {
+    expect(namesScreen("#find")).toBe(true);
+    expect(namesScreen("#offer")).toBe(true);
+    expect(namesScreen("#network")).toBe(true);
+    expect(namesScreen("#travel")).toBe(true);
+    // An empty hash is where the Hive list sits, and a join hash is its own thing.
+    expect(namesScreen("")).toBe(false);
+    expect(namesScreen("#join/basel")).toBe(false);
+  });
+
+  it("opens on finding for a join hash, which the join view then outranks", () => {
+    expect(screenFor("#join/basel")).toBe("find");
+    expect(canonicalHash("#join/basel")).toBe("");
   });
 });
