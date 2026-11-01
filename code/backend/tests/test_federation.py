@@ -456,11 +456,13 @@ def test_a_peer_already_in_seen_is_never_asked(client, net):
 
 
 def test_a_slow_peer_is_dropped_without_failing_the_query(client, net):
-    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=400)
+    # The local search spends part of the budget first, over 100 ms on a slow CI runner, so the budget
+    # leaves room for it and the slow peer is slower than the whole budget rather than just past it.
+    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=2000)
     quick = FakeHive("quick", cards=[_card("hotel-quick", "Hotel Quick (fictional)")])
     net(slow, quick)
 
-    found = hive.discover(**ASK, radius=1, budget_ms=250)
+    found = hive.discover(**ASK, radius=1, budget_ms=1000)
     assert _ids(hive.discover(**ASK, radius=0)) <= _ids(found), "the local answer survives a dead peer"
     assert "hotel-quick" in _ids(found) and "hotel-slow" not in _ids(found)
     dropped = {d["hub"]: d["reason"] for d in found["federation"]["dropped"]}
