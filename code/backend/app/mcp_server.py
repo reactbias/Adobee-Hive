@@ -162,13 +162,18 @@ def hive_get_card(ctx: Context, card_id: str, radius: int = 1) -> dict[str, Any]
     it, and the answer says in `trust.federation` which Hive it came from. radius 0 looks only at this Hive.
     A federated match from hive_discover already carries the same signed card inline under `card`, so you
     do not have to call this at all for a result you have just been handed — use that and save the hop."""
-    local = _safe(hive.get_card, card_id)
-    if "error" not in local or not radius:
-        return _counted(local, "read")
-    if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
-        return {"error": over}
-    found = hive.card_from_peer(card_id, radius)
-    return _counted(found, "read") if found else local
+    try:
+        local = hive.get_card(card_id)
+    except hive.HiveError as err:
+        if not radius:
+            raise ToolError(str(err)) from err
+        if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
+            raise ToolError(over)
+        found = _safe(hive.card_from_peer, card_id, radius)
+        if found is None:
+            raise ToolError(str(err)) from err
+        return _counted(found, "read")
+    return _counted(local, "read")
 
 
 @server.tool()

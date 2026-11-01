@@ -26,6 +26,7 @@ from mcp import Client
 
 from app import config, guard, hive, peers, sharing
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 from tests.test_federation import FakeHive, net  # noqa: F401  (net is a fixture)
 
 REMOTE = {
@@ -43,7 +44,7 @@ def _mcp(tool: str, args: dict) -> dict:
 
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 
@@ -58,7 +59,7 @@ def zurich(net):  # noqa: F811
 
 def test_the_card_of_an_entity_found_through_a_peer_can_be_read(client, zurich):
     """The whole of #150: the id the search returned is readable from the hub that was searched."""
-    found = hive.discover(query="Rust systems", radius=1)
+    found = hive.discover(query="Rust systems", radius=1, budget_ms=5000)
     assert "svenja-aebi" in {m["id"] for m in found["matches"]}, "the search has to find her first"
 
     card = hive.card_from_peer("svenja-aebi")
@@ -126,6 +127,9 @@ def test_a_remote_compiled_card_keeps_its_signed_provenance(client, net, transpo
     """Reading through either consumer door preserves the bytes checked against the origin's registry."""
     compiled = {**REMOTE, "provenance": {"verified_by_owner": False, "source": "public website"}}
     peer = FakeHive("zurich", cards=[compiled])
+    # FakeHive signs the body correctly but defaults its unsigned trust metadata to claimed.
+    peer.cards[0]["trust"]["claimed"] = False
+    peer.cards[0]["trust"]["provenance"] = compiled["provenance"]
     net(peer)
 
     if transport == "rest":
