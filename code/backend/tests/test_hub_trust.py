@@ -231,6 +231,44 @@ def test_an_unscored_introduction_goes_stale_and_cannot_be_scored_afterwards(cli
     assert connections.awaiting_rating("mara@example.com") == [], "a stale row stops nagging the human"
 
 
+def test_an_open_introduction_says_how_long_it_has_left_not_only_when_it_runs_out(client):
+    """An agent that has to do date arithmetic to find this out is an agent that gets it wrong."""
+    row = _introduce(client)
+    assert row["state"] == connections.OPEN
+    assert row["stale_in_days"] == connections.STALE_AFTER_DAYS - 1, "a whole day short of 30, on day one"
+    assert row["stale_soon"] is False
+
+    soon = datetime.now(UTC).replace(tzinfo=None) + timedelta(days=2)
+    with db.write() as cur:
+        cur.execute("UPDATE hub_connections SET stale_at = ? WHERE id = ?", [soon, row["id"]])
+    nearly = connections.get(row["id"])
+    assert nearly["stale_in_days"] == 1 and nearly["stale_soon"] is True
+
+    with db.write() as cur:  # its last day: no days left, and still scoreable
+        cur.execute(
+            "UPDATE hub_connections SET stale_at = ? WHERE id = ?",
+            [datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1), row["id"]],
+        )
+    last = connections.awaiting_rating("mara@example.com")[0]
+    assert last["stale_in_days"] == 0 and last["stale_soon"] is True
+    assert connections.rate(row["id"], 43)["state"] == connections.RATED
+
+
+def test_only_an_open_row_is_flagged_as_running_out(client):
+    """A rated row is nobody's business any more, and a request's whole window is already a week."""
+    rated = _introduce(client)
+    connections.rate(rated["id"], 43)
+    assert connections.get(rated["id"])["stale_soon"] is False
+
+    _folders_met("mara@example.com", "jonas-brun")
+    asked = connections.request("mara@example.com", "jonas-brun", needs_confirmation=True)
+    assert asked["state"] == connections.REQUESTED
+    # A request expires sooner than a meeting goes unscored, so it carries the days it has left and no
+    # flag: flagging a row whose entire window is CONFIRM_WITHIN_DAYS would flag every one of them.
+    assert asked["stale_in_days"] == connections.CONFIRM_WITHIN_DAYS - 1
+    assert asked["stale_soon"] is False
+
+
 # ---------------------------------------------------------------- hub calibration
 
 
