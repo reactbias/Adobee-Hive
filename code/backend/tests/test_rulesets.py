@@ -7,6 +7,7 @@ from mcp import Client
 
 from app import hive, rulesets
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 STAY = {"check_in": "2027-02-10", "check_out": "2027-02-12"}
 
@@ -14,7 +15,7 @@ STAY = {"check_in": "2027-02-10", "check_out": "2027-02-12"}
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 
