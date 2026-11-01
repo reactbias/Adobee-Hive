@@ -57,6 +57,7 @@ SUITE = [
     "tests/test_pitch.py",
     "tests/test_reputation.py",
     "tests/test_hive.py",
+    "tests/test_signed_cards.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
     "tests/test_folders.py",

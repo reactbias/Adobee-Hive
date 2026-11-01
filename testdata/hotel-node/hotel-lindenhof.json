@@ -1,0 +1,23 @@
+{
+  "id": "hotel-lindenhof",
+  "slug": "lindenhof",
+  "kind": "hotel",
+  "name": "Hotel Lindenhof",
+  "tagline": "A fictional hotel that keeps its own signing key and takes its own bookings",
+  "description": "Fictional 12-room hotel near the Spalentor. Dogs welcome, quiet garden rooms, breakfast from local bakers.",
+  "address": "Lindenweg 7, 4051 Basel",
+  "contact": { "phone": "+41 61 000 00 77", "email": "hello@lindenhof.example" },
+  "features": ["dog-friendly", "quiet", "breakfast", "wifi", "garden"],
+  "distances_m": { "Basel SBB": 1400, "Messe Basel": 2300, "Marktplatz": 650, "Badischer Bahnhof": 2900 },
+  "units": [
+    { "id": "single", "name": "Garden single", "max_guests": 1, "price_chf": 118, "quantity": 2 },
+    { "id": "double", "name": "Garden double", "max_guests": 2, "price_chf": 164, "quantity": 4 }
+  ],
+  "policies": {
+    "check_in": "15:00 to 21:00",
+    "check_out": "11:00",
+    "pets": "Dogs free of charge",
+    "cancellation": "Free until 48 h before arrival",
+    "payment": "Pay at the property"
+  }
+}
