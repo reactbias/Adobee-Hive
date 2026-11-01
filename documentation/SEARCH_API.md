@@ -778,7 +778,13 @@ hop decrements the radius, appends its own hub id to `seen`, forwards only to pe
 and subtracts the time already spent from `budget_ms`; a hop with less than
 `MIN_FORWARD_MS = 150 ms` left is not made. `PEERS_PER_HOP = 4` caps breadth. Peers are asked in
 parallel; one that misses the deadline is **dropped from the answer, named in `federation.dropped`,
-and never fails the query**.
+and never fails the query**. The deadline also bounds the registry reads: a peer whose discovery
+document does not arrive in time is dropped with a `deadline` reason and not asked, the budget a
+peer is sent is what is left when it is asked, and a relayed card whose origin registry is not
+read in time lands in `federation.rejected` with a `deadline` reason, at no cost to the carrier.
+No peer waits for another: each is asked once its own discovery document is in and its cards are
+checked once its own answer is back. Peers whose documents arrive together are taken most trusted
+first, so on a cold cache a quick low-trust peer can take a slot ahead of a slower trusted one.
 
 **Trust is not transitive.** A card that arrives over a relay is verified here, against the key this
 hub fetches directly from the *originating* hub's `/.well-known/hive.json` — not from the relay. A
