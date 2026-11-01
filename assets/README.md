@@ -80,3 +80,7 @@ panel are not captured here yet: [home](screens/phone-375-home.jpg),
 [traveller agent](screens/phone-375-agent.jpg), [ask the Hive](screens/phone-375-ask.jpg),
 [owner studio](screens/phone-375-owner.jpg), [card](screens/phone-375-card.jpg),
 [demand map](screens/phone-375-demand.jpg).
+
+## Pitch uploads
+
+Added on the last morning: decks ([bees](slides/adobee-hive-bees.html), [with photos](slides/adobee-hive-with-photos-upd.html), [presentation update](<slides/Adobee Hive — Presentation Update (2).html>)), [animation](slides/adobee-hive.gif), [bee images, zipped](slides/bees.zip), [network](slides/slide-network.png), [team](slides/slide-team.png).

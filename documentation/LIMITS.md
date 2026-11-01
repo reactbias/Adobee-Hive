@@ -329,6 +329,13 @@ lockout.
 
 ## Not built
 
+- **The approval click belongs to our agent, not to the protocol.** `hive_book` over MCP books when called, and an
+  outside client has to bring its own approval policy. The critic's or verifier's dissent is shown to the person, and
+  it does not take Approve away.
+- **"Two agents talking" is staged on the demo.** The hotel's agent there is its signed card behind the MCP server
+  plus scripted roles, not a second model negotiating ([#125](https://github.com/reactbias/Adobee-Hive/issues/125)).
+- **`Hiring Hub/` is a separate app, not part of this demo.** It needs an API key and its own Docker stack, has no
+  offline fallback or translations, and CI does not run its tests.
 - **Payments.** A booking says "pay at the property". Nothing is charged.
 - **Restaurant tables.** The café card carries no units, so it is findable and not bookable.
 - **Claiming an unclaimed card.** The scout compiles cards from public websites and marks them unclaimed; there is
