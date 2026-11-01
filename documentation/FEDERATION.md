@@ -58,9 +58,10 @@ What each hop does:
   it was dropped. A slow Hive degrades a search; it never fails one. The budget is one deadline for the whole
   hop: reading peers' discovery documents and checking relayed cards against their origin's registry count
   against it too. A card whose origin registry is not read in time is rejected with a `deadline` reason, and
-  the carrier is not charged for it.
-- **Cap the breadth.** At most `federation.PEERS_PER_HOP` peers per hop — four — chosen by hub reputation.
-  Otherwise reach two is a broadcast storm. Peers left out are named in `federation.dropped` with the reason.
+  the carrier is not charged for it. Each peer runs on its own clock: it is asked as soon as its discovery
+  document is in and its answer is checked as soon as it arrives, so one slow peer costs only its own turn.
+- **Cap the breadth.** At most `federation.PEERS_PER_HOP` peers per hop — four — chosen by hub reputation
+  among the peers whose discovery documents are in together (a cached document is in at once). Otherwise reach two is a broadcast storm. Peers left out are named in `federation.dropped` with the reason.
 - **Deduplicate by digest.** The same card arrives by several routes. It is one card, kept at its shortest hop
   count.
 - **Verify at the end, not along the way.** The searching agent checks the owner's signature itself. Nothing is

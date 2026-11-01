@@ -192,8 +192,8 @@ CURATED: list[Mutant] = [
     Mutant(
         "federation.py",
         "breadth is unbounded, so reach 2 becomes a broadcast storm",
-        "return peers[:PEERS_PER_HOP], skipped",
-        "return peers, skipped",
+        "            if len(taken) >= PEERS_PER_HOP:\n                records.append",
+        "            if False:\n                records.append",
     ),
     Mutant(
         "federation.py",

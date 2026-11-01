@@ -534,6 +534,33 @@ def test_a_slow_origin_registry_cannot_stretch_the_query(client, net, monkeypatc
     assert reputation.observed("zurich").invalid == 0, "our deadline is not the carrier's fault"
 
 
+def test_a_slow_registry_does_not_spend_a_healthy_peers_turn(client, net, monkeypatch):
+    """#228 review: the peer whose registry is ready is searched at once, not after the slow one gives up."""
+    stuck = FakeHive("stuck", cards=[_card("hotel-stuck", "Hotel Stuck (fictional)")])
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    _slow_registries(monkeypatch, net, stuck, zurich, peers=[stuck, zurich], delays={stuck.url: 3000})
+
+    found = hive.discover(**ASK, radius=1, budget_ms=500)
+    assert "hotel-limmat" in _ids(found), found["federation"]["dropped"]
+    assert len(zurich.asks) == 1 and zurich.asks[0]["budget_ms"] > 300, "the healthy peer got the whole budget"
+    assert stuck.asks == []
+    assert found["federation"]["elapsed_ms"] < 1300
+
+
+def test_a_slow_peer_does_not_cost_a_healthy_relay_its_verification(client, net, monkeypatch):
+    """#228 review: a relay that answered is verified while a slower peer is still searching."""
+    bern = FakeHive("bern", cards=[_card("hotel-aare", "Hotel Aare (fictional)")])
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")], relays=[bern])
+    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=3000)
+    _slow_registries(monkeypatch, net, zurich, bern, slow, peers=[zurich, slow], delays={bern.url: 200})
+
+    found = hive.discover(**ASK, radius=2, budget_ms=700)
+    assert {"hotel-limmat", "hotel-aare"} <= _ids(found), found["federation"]["rejected"]
+    assert "hotel-slow" not in _ids(found)
+    dropped = {d["hub"]: d["reason"] for d in found["federation"]["dropped"]}
+    assert "deadline" in dropped["slow"]
+
+
 def test_only_the_top_peers_by_trust_are_asked(client, net):
     honest = [FakeHive(f"honest{i}", cards=[_card(f"hotel-h{i}", f"Hotel H{i} (fictional)")]) for i in range(4)]
     sellers = [
