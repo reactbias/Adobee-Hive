@@ -105,6 +105,8 @@ describe("traveller agent", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     localStorage.setItem("adobee-locale", "en");
+    // Past asks are remembered in this browser, so one test's search must not show up in the next one's.
+    localStorage.removeItem("adobee-asks");
     // The business chapter reads the owner's view and the demand map as soon as the page opens.
     vi.spyOn(api, "cards").mockResolvedValue([]);
     vi.spyOn(api, "discover").mockRejectedValue(new Error("offline"));
@@ -133,6 +135,32 @@ describe("traveller agent", () => {
     await user.click(send);
     expect(await screen.findByRole("textbox", { name: en["agent.followUp"] })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en["try.tavern"] })).toBeInTheDocument();
+  });
+
+  it("remembers what was asked and asks it again on one click", async () => {
+    const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    // Nothing to show until something has been asked.
+    expect(screen.queryByText(en["asks.title"])).not.toBeInTheDocument();
+
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    await user.clear(box);
+    await user.type(box, "a quiet room near the Rhine");
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+
+    const again = await screen.findByRole("button", {
+      name: en["asks.again"].replace("{ask}", "a quiet room near the Rhine"),
+    });
+    expect(screen.getByText(en["asks.title"])).toBeInTheDocument();
+    discover.mockClear();
+    await user.click(again);
+    expect(discover).toHaveBeenCalled();
+
+    // And it can be dropped: the list is the person's, kept in their browser and nowhere else.
+    await user.click(screen.getByRole("button", { name: en["asks.forget"] }));
+    expect(screen.queryByText(en["asks.title"])).not.toBeInTheDocument();
   });
 
   it("shows every visitor how far to search, and starts at the neighbours", async () => {

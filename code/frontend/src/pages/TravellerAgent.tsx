@@ -21,6 +21,7 @@ import ActivityPanel from "../panels/ActivityPanel";
 import Introductions from "../panels/Introductions";
 import { useI18n, useSample } from "../i18n";
 import type { Key } from "../i18n/en";
+import { pastAsks, rememberAsk } from "../lib/asks";
 import { chf, nights, stay } from "../lib/format";
 import { pickNearby } from "../lib/next";
 import { routeFor } from "../lib/route";
@@ -28,6 +29,7 @@ import { reasonText } from "../lib/reasons";
 import JourneyLog, { useActivityLog } from "../components/JourneyLog";
 import { sceneFor, type Scene } from "../lib/cardView";
 import { hubScene } from "../lib/hubScene";
+import PastAsks from "../components/PastAsks";
 import Reach from "../components/Reach";
 import { demoMode } from "../lib/demo";
 
@@ -72,6 +74,8 @@ export default function TravellerAgent({
   const [radius, setRadius] = useState(1);
   // Counts introductions asked for from a result, so the "How did it go?" panel reads them again.
   const [introduced, setIntroduced] = useState(0);
+  // What this browser asked before. Read once at mount; the hub cannot answer this (see lib/asks.ts).
+  const [asks, setAsks] = useState<string[]>(pastAsks);
   // The chosen reach holds nothing for this request: an answer, not an error, so the next move is
   // to look further rather than to retry.
   const [reachEmpty, setReachEmpty] = useState(false);
@@ -114,6 +118,9 @@ export default function TravellerAgent({
         ? askResult.replies.find((x) => text.toLowerCase().includes(x.name.toLowerCase()))
         : undefined;
     if (!live && !mirror && named && askResult) return askCards(text, `${askResult.question} ${text}`, true);
+    // A request, rather than an answer to the agent's question or a pick out of the last reply: worth
+    // remembering, so a person can find it again tomorrow. Stays in this browser.
+    if (!live && !mirror) setAsks(rememberAsk(text));
     // The hubs answer first. The folders are only for when that call cannot be made.
     if (!live && !mirror) {
       const drawn = await drawFromHubs(text, radius);
@@ -605,6 +612,7 @@ export default function TravellerAgent({
           )}
           {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
         </div>
+        <PastAsks asks={asks} busy={busy || searching} onAsk={(ask) => void send(ask)} onForget={() => setAsks([])} />
         {searching && !scene && (
           <div className="result-pending" role="status">
             <span className="pulse" aria-hidden />

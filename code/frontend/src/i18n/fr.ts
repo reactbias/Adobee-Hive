@@ -804,6 +804,11 @@ const fr: Record<Key, string> = {
   "score.exact": "Merci. {hub} avait vu juste.",
   "score.thanks": "Merci. Votre note est enregistrée.",
   "score.standing": "Où cela place {hub} :",
+  "asks.title": "Ce que vous avez demandé avant",
+  "asks.again": "Redemander : {ask}",
+  "asks.forget": "Oublier tout cela",
+  "asks.only":
+    "Conservé dans ce navigateur uniquement. Le hub note qu'une recherche a eu lieu, jamais ce que vous avez tapé ni qui vous êtes.",
   "folder.eyebrow": "Leur dossier",
   "folder.title": "Ce que {name} partage avec vous",
   "folder.linked": "Vous avez un lien vers ce dossier : vous voyez donc plus que ce que la carte annonçait.",
