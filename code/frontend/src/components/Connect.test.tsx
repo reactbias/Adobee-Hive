@@ -113,4 +113,54 @@ describe("connecting to a result", () => {
     expect(await screen.findByText("lena-hofmann is blocked on this hub")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en["connect.ask"] })).toBeEnabled();
   });
+  // #171: the introduction already carried the manifest and the bearer for it, and Connect kept only `state`.
+  it("browses the folder the introduction handed over, with the secret it came with", async () => {
+    vi.spyOn(api, "connect").mockResolvedValue({
+      ...row("open"),
+      folder_link: "fl-1",
+      folder: {
+        owner: "lena-hofmann",
+        viewer: "traveller-ab12",
+        linked: true,
+        files: [
+          {
+            path: "cv.pdf",
+            bytes: 182_000,
+            media_type: "application/pdf",
+            digest: "sha256:abc123def456",
+            visibility: "public",
+            ref: "lena-hofmann/cv.pdf",
+            readable: true,
+          },
+        ],
+        withheld: 1,
+      },
+      folder_key: {
+        id: "fk-1",
+        link: "fl-1",
+        handle: "traveller-ab12",
+        peer: "lena-hofmann",
+        secret: "s3cret",
+        scheme: "Bearer",
+      },
+    });
+    const file = vi.spyOn(api, "folderFile").mockResolvedValue(new Blob(["x"]));
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    draw({ mode: "now" });
+    fireEvent.click(screen.getByRole("button", { name: en["connect.now"] }));
+
+    expect(await screen.findByText("cv.pdf")).toBeInTheDocument();
+    expect(screen.getByText(en["folder.title"].replace("{name}", "Lena Hofmann"))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: en["folder.take"] }));
+    await vi.waitFor(() => expect(file).toHaveBeenCalledWith("s3cret", "cv.pdf"));
+  });
+
+  // A remote introduction comes back without a folder: hub.connect fills it on the local branch only.
+  it("draws no folder when the introduction did not carry one", async () => {
+    vi.spyOn(api, "connect").mockResolvedValue(row("open"));
+    draw({ mode: "now" });
+    fireEvent.click(screen.getByRole("button", { name: en["connect.now"] }));
+    expect(await screen.findByText(/You can say how it went/)).toBeInTheDocument();
+    expect(screen.queryByText(en["folder.eyebrow"])).not.toBeInTheDocument();
+  });
 });
