@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db, limits, removals, reputation, semantic
+from . import db, limits, removals, reputation, semantic, sharing
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -333,15 +333,64 @@ def with_contact(card: dict[str, Any]) -> dict[str, Any]:
     """Guarantee `contact` exists and carries the standard channels, without inventing values.
 
     An absent channel and an empty one are not the same thing to a reader, so this only fills in
-    the keys; it never fabricates a value. A channel the owner marked `never` stays absent
+    the keys; it never fabricates a value. A channel the owner marked `never` or `push` is absent
     entirely, because listing it in order to say it is private announces that it exists.
+
+    **A closed channel's value is removed, not merely left unfilled.** `publish` runs this before
+    signing, and the signed body is public — `GET /api/hive/cards` serves every card with no
+    credential, and every federated hop carries it — so a number the owner marked `never` that
+    reached the body would be published, and no projection downstream could take it back without
+    breaking the signature it is published under. The only moment a closed value can be kept out of
+    a public card is before the card is signed, which is here. What the owner withheld lives in
+    their folder, where a grant is what opens it (`folders.py`), not in the index.
     """
-    contact = dict(card.get("contact") or {})
+    flags = card.get("contact_sharing") or {}
+    contact = {
+        k: v for k, v in (card.get("contact") or {}).items() if flags.get(k) not in (sharing.PUSH, sharing.NEVER)
+    }
     for channel in CONTACT_CHANNELS:
-        if (card.get("contact_sharing") or {}).get(channel) in ("never", "push"):
+        if flags.get(channel) in (sharing.PUSH, sharing.NEVER):
             continue
         contact.setdefault(channel, "")
     return {**card, "contact": contact}
+
+
+def sharing_default(card: dict[str, Any]) -> str:
+    """The sharing flag an entity applies to everything it holds, unless an item is stricter.
+
+    A business card on a public hub is public. A person is `confirm` unless their card says
+    otherwise (`CONSENT_FIRST_KINDS`): an introduction to a person is theirs to grant.
+
+    Lives here rather than in `hub.py` because `discover` is the path that has to obey it and
+    `hive` cannot import the façade above it. `hub._entity_default` delegates, so there is one
+    answer to this question rather than two that can drift.
+    """
+    fallback = sharing.CONFIRM if card.get("kind") in CONSENT_FIRST_KINDS else sharing.PUBLIC
+    return str(card.get("sharing") or fallback)
+
+
+def public_contact(card: dict[str, Any]) -> dict[str, Any]:
+    """A card's contact block as a searcher may see it: every channel the owner did not close.
+
+    The flag applied is the resolved one — the stricter of the entity's default and the channel's
+    own (`sharing.resolve`) — so loosening a channel cannot open what the entity held back.
+
+    The serving-side half of the same rule `with_contact` applies before signing, and deliberately
+    the same rule twice. `publish` keeps a closed value out of new cards; this keeps one from being
+    served out of a card published before that was true, which cannot be fixed in the body without
+    breaking the signature the card is published under.
+
+    `contact_sharing` is *not* filtered here. It is part of what the owner signed, the index is
+    public, and a result that disagreed with the card it travels with would be the worse answer: the
+    value is gone, and the flag that says why is exactly the owner's own word for it.
+    """
+    default = sharing_default(card)
+    flags = card.get("contact_sharing") or {}
+    return {
+        channel: value
+        for channel, value in (card.get("contact") or {}).items()
+        if sharing.searchable(default, flags.get(str(channel)))
+    }
 
 
 def get_card(card_id_or_slug: str) -> dict[str, Any]:
@@ -785,6 +834,16 @@ def discover(
     for card in cards:
         if card["kind"] in NOT_DISCOVERABLE or card["id"] in blocked:
             continue
+        # The owner's own decision, enforced on the path the API serves and not only in the façade
+        # above it. `push` means the hub holds it and no amount of searching surfaces it; `never`
+        # means it does not leave the hub at all. Before this, a `push` entity was returned by both
+        # REST and MCP discovery, and the façade's check read a `sharing` key that discovery never
+        # put on a result, so it passed everything. `continue` is also why a withheld entity is in
+        # neither list: an exclusion names the business and says why it missed, which is most of
+        # what a match says, so leaving it there would publish what the flag was meant to withhold.
+        entity_sharing = sharing_default(card)
+        if not sharing.searchable(entity_sharing, None):
+            continue
         found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
         reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
@@ -846,8 +905,12 @@ def discover(
             # How to reach them, on the result itself. An agent that found someone should not have
             # to fetch the whole card to know whether there is an address to write to, and a
             # federated result has no cheap way to fetch it at all.
-            "contact": (card.get("contact") or {}),
+            "contact": public_contact(card),
             "contact_sharing": (card.get("contact_sharing") or {}),
+            # The entity's own flag, so the façade and every consumer can resolve it against an
+            # item's flag instead of guessing. `confirm` says asking is worth it; `public` says it
+            # is not needed. A result that carried no flag at all was unreadable either way.
+            "sharing": entity_sharing,
             # An unclaimed card was compiled from public information and the business never
             # published it, so it is a lead, not a presence: findable, never bookable, and a
             # hand-off to the business's own site only after a human says yes (domains/explore.py).

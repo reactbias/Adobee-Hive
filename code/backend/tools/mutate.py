@@ -69,6 +69,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
+    "tests/test_sharing_enforced.py",
 ]
 
 
@@ -405,6 +406,36 @@ CURATED: list[Mutant] = [
         "a grant may name a pattern again, so one write opens a folder the owner listed one file of",
         'if not path or "*" in path or "?" in path:',
         "if not path:",
+    ),
+    Mutant(
+        "hive.py",
+        "discovery stops reading the owner's sharing flag, so a held entity is searchable again",
+        "if not sharing.searchable(entity_sharing, None):",
+        "if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "a closed channel's value is signed into the public card after all",
+        'k: v for k, v in (card.get("contact") or {}).items() if flags.get(k) not in (sharing.PUSH, sharing.NEVER)',
+        'k: v for k, v in (card.get("contact") or {}).items()',
+    ),
+    Mutant(
+        "hive.py",
+        "the served contact block stops redacting, so an older card hands out what it closed",
+        "if sharing.searchable(default, flags.get(str(channel)))",
+        "if True",
+    ),
+    Mutant(
+        "hive.py",
+        "a person card defaults to public, so an introduction stops being theirs to grant",
+        'fallback = sharing.CONFIRM if card.get("kind") in CONSENT_FIRST_KINDS else sharing.PUBLIC',
+        "fallback = sharing.PUBLIC",
+    ),
+    Mutant(
+        "federation.py",
+        "a held entity relayed by a peer is served here, so the owner's flag stops at the hub boundary",
+        "elif not sharing.searchable(hive.sharing_default(card), None):",
+        "elif False:",
     ),
     Mutant(
         "sharing.py",

@@ -115,6 +115,23 @@ fact and nothing more. And the card can only be checked when its hub is on this 
 has already answered — an origin two hops away, or a hub in the first `PEER_ASK_SECONDS` of a fresh
 stack, is refused rather than trusted.
 
+## Item sharing
+
+**A card published before sharing was enforced can still carry a value its owner closed.**
+`hive.publish` now drops a contact channel marked `push` or `never` before it signs, and
+`hive.public_contact` drops one on the way out, so nothing is served from such a card — but the
+value is still in the signed body of the stored version, and `hive.get_card` serves that body byte
+for byte because a signature is checked against it. Redacting it in place would mean publishing a
+card that no longer verifies, which is worse. Republishing the entity is the fix, and the owner
+tools do it (`hive_owner_publish`, `POST /api/owner/{card_id}/publish`). Historical versions in
+`hive_card_history` are kept on purpose, so an existing booking can still show what it was promised.
+
+**A peer's exclusion rows are not checked against a sharing flag.** An exclusion carries no card
+(`federation.MAX_PEER_EXCLUSIONS` rows of the peer's own prose), so there is nothing signed to read
+a flag from. A match is checked after `hive.verify_pinned` and a held entity is withheld; a
+near-miss a peer chose to name is carried as that peer's claim and nothing more. It is marked as
+the peer's rather than presented as this hub's.
+
 ## Running a hub
 
 **A federated search in the first half minute of a fresh `lan.sh up` comes back local-only, and the peers do not
