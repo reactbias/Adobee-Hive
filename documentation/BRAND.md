@@ -82,6 +82,27 @@ pill. The logo and the bee keep their clay and yellow; they are drawings, not in
 | `--stage` | `#15171c` | The agent stage, where the agents talk |
 | `--good` / `--bad` | `#1f7a4d` / `#b3261e` | A valid seal; rejected, only ever with the word that says so |
 
+**At night the page becomes the stage.** There is no second palette: on a dark page the whole app takes the
+agent stage's colours, and the stage itself lifts one step so the agents still talk on a surface above
+everything else. Measured in L\*, the stage stands 7.4 above the page and 3.1 above a card, where about 3 is the
+smallest step the eye reads as a separate plane. Honey needs no second value — `--accent`, `--accent-ink` and
+`--accent-bright` are one colour, `#f2b63c`, which is what "lifted so it reads at night" already meant. The
+header mark swaps to `logo-light.svg`, the lit-clay copy. Every pair was checked: the quietest text on the
+busiest surface is 4.78:1, and nothing is below WCAG AA.
+
+| Token | Light | Dark |
+| --- | --- | --- |
+| `--bg` | `#ffffff` | `#0d0f13` |
+| `--surface` / `--surface-2` | `#ffffff` / `#f7f7f5` | `#15191f` / `#1e232c` |
+| `--ink` / `--ink-2` / `--ink-3` | `#16181d` / `#5b606b` / `#6b7079` | `#f3f4f6` / `#b4b9c4` / `#8f95a1` |
+| `--line` / `--line-strong` | `#e6e7e3` / `#cfd1cc` | `#2b303a` / `#3c424e` |
+| `--accent` | `#d99a1e` | `#f2b63c` |
+| `--stage` | `#15171c` | `#1b1f27` |
+| `--on-ink` | `#ffffff` | `#0d0f13` |
+
+The scheme follows the reader's operating system, guarded as the pitch deck guards its own
+(`:root:not([data-theme="light"])`), so an explicit light choice still wins.
+
 Type, bundled with their licence texts in `code/frontend/public/fonts/`:
 
 - One face for everything in the app: the system sans (Inter where installed, else the platform's own), semibold

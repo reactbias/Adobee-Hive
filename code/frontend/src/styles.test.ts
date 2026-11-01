@@ -144,6 +144,18 @@ describe("styles", () => {
     expect(dark.slice(0, dark.indexOf("\n  }"))).toMatch(/color-scheme:\s*dark/);
   });
 
+  it("gives every footer control a thumb-sized target on a touch screen, as the brand promises", () => {
+    // Measured at 360px before this: the two Hive controls were 32px tall and the bee 15px, against
+    // BRAND.md's "on touch screens every control has a 44 px target".
+    const coarse = css.slice(css.indexOf("@media (pointer: coarse) {\n  .nav-hub"));
+    expect(coarse).toMatch(/\.footer-hive a\.nav-hub,[\s\S]*?min-height:\s*44px/);
+    expect(coarse).toMatch(/\.b6-perch \{[\s\S]*?min-height:\s*44px/);
+    // It has to come after the rules that pin them to 32px, or it loses on source order.
+    expect(css.indexOf("@media (pointer: coarse) {\n  .nav-hub")).toBeGreaterThan(
+      css.indexOf(".footer-hive a.nav-hub {"),
+    );
+  });
+
   it("gives the phone header room: the chapters take their own row and the language buttons shrink", () => {
     expect(css).toMatch(
       /@media \(max-width: 900px\) \{[\s\S]*?\.nav-links \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?overflow-x: auto;/,

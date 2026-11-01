@@ -4193,3 +4193,26 @@ button.onboard-back {
   background: transparent;
   padding: var(--s6) 0 var(--s8);
 }
+
+/* Touch targets.
+ *
+ * BRAND.md promises that "on touch screens every control has a 44 px target". The footer's chrome did not
+ * keep it: the two Hive controls sat at 32 px and the B6 bee at 15 px, measured in Chrome at 360 px. The
+ * marks stay exactly the size they are — only the area a thumb can hit grows. Last in the file so it wins
+ * on source order over the three rules that pin these to 32 px.
+ */
+@media (pointer: coarse) {
+  .nav-hub,
+  .footer-hive .nav-hub,
+  .footer-hive a.nav-hub,
+  .footer-hive button.nav-hub {
+    min-height: 44px;
+  }
+  .b6-perch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
