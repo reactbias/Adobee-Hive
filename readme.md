@@ -96,8 +96,9 @@ recorded, so you see that twelve agents asked for a dog-friendly room this week 
 Edit in plain words — "add sauna, the courtyard double is 165 francs" — read the diff, sign, and the change is
 live for every agent at once.
 
-**If you are building an agent**, you get a directory you do not have to scrape. One MCP endpoint, 24 tools,
-structured answers: search, fetch a signed Card, check availability, hold a booking, ask for an introduction. Your
+**If you are building an agent**, you get a directory you do not have to scrape. One MCP endpoint, 29 tools,
+structured answers: search, fetch a signed Card, check availability, hold a booking, ask for an introduction,
+and exchange a consented CV. Your
 agent verifies every fact itself against a key published by the Card's own hub, so you are not trusting our
 server — and every result carries its score breakdown and the reason each other candidate lost, which is
 something a search box has never given you. No key, no contract and no sign-up to try it: point a client at
@@ -394,8 +395,8 @@ asyncio.run(main())
 
 Call `list_tools()` for the live schemas; the groups are `hive_discover`/`hive_get_card`,
 `hive_check_availability`/`hive_book`/`hive_cancel`/`hive_review`, `hub_directory`,
-`hub_connect`/`hub_connections`/`hub_standing`, `hub_registration`/`hub_register`, `hive_owner_*`, and the domain
-tools `hr_find_people`/`hr_request_intro`, `explore_ask` and `hive_scout`.
+`hub_connect`/`hub_connections`/`hub_standing`, `hub_registration`/`hub_register`, `hive_owner_*`, and the domain tools `hr_find_people`/`hr_request_intro`/`hr_decide_intro`/`hr_grant_cv`/`hr_read_cv`,
+`explore_ask` and `hive_scout`.
 
 <details>
 <summary>Two rules that are not obvious</summary>
@@ -403,9 +404,9 @@ tools `hr_find_people`/`hr_request_intro`, `explore_ask` and `hive_scout`.
 <br>
 
 - **A tool refusal can be a structured `error` result.** Do not assume a completed MCP call succeeded.
-- **Folder reads and grants are REST calls, not MCP tools.** `hub_connect` can return an inline manifest and a
-  link credential; use that credential against the [Folder API](documentation/FOLDER_API.md) and obtain the
-  per-path grant before reading non-public bytes. `hr_request_intro` records a request and returns
+- **CV reads and grants require consent.** `hub_connect` can return an inline manifest and a link credential;
+  `hr_decide_intro` accepts or declines the introduction, `hr_grant_cv` grants one candidate file, and
+  `hr_read_cv` returns its bytes and folder metadata. `hr_request_intro` records a request and returns
   `pending_consent` — it does not release a CV.
 
 </details>

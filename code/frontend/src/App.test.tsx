@@ -58,7 +58,7 @@ describe("the app", () => {
     expect(document.querySelectorAll("header.nav .themes button")).toHaveLength(3);
   });
 
-  it("is two screens, one per person, switched in the header by hash", async () => {
+  it("shows the user journeys in the header, switched by hash", async () => {
     render(
       <I18nProvider>
         <App />
@@ -67,9 +67,9 @@ describe("the app", () => {
 
     const tabs = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
     const links = tabs.getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#offer"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#hr", "#offer"]);
     expect(links[0]).toHaveTextContent(en["chapter.find"]);
-    expect(links[1]).toHaveTextContent(en["chapter.offer"]);
+    expect(links[1]).toHaveTextContent(en["chapter.hr"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
 
     // The finding screen first; the offering one is there but not on show.
@@ -89,7 +89,7 @@ describe("the app", () => {
     // The screen opens at its top, not at the anchor the browser jumped to under the header.
     expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }));
     expect(screen.queryByRole("heading", { name: en["find.title"] })).toBeNull();
-    expect(links[1]).toHaveAttribute("aria-current", "page");
+    expect(links[2]).toHaveAttribute("aria-current", "page");
     window.location.hash = "";
   });
 
