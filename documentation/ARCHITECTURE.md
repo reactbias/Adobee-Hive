@@ -77,6 +77,11 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 | `**/*.test.ts(x)` | Vitest unit and component tests in jsdom, `api.ts` mocked (`npm test`) |
 | `styles.css` | Design tokens and every component style; see [BRAND.md](BRAND.md) |
 
+Traveller Details reuses a loaded answer, allows closing/reopening while it is in flight, and allows an
+explicit retry after failure without consuming an unsent composer draft. Changing search reach reruns
+the last submitted discovery query, clears the old answer and held approval, and preserves that draft.
+A live empty refresh stays empty; an unreachable refresh shows the failure rather than fixture cards.
+
 ## The page
 
 The app is one page (`App.tsx`, no router) that tells one story in two chapters, each with an anchor the header

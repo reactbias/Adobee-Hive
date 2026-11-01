@@ -63,6 +63,7 @@ export default function TravellerAgent({
   const [segments, setSegments] = useState<Segment[]>([]);
   // A Card covered the request: draw it. The agent chat opens only from Details.
   const [scene, setScene] = useState<Scene | null>(null);
+  const [submittedQuery, setSubmittedQuery] = useState("");
   const [details, setDetails] = useState(false);
   const [guestName, setGuestName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -100,10 +101,22 @@ export default function TravellerAgent({
   // After the booking, the business's side of it is the other screen.
   const openBusiness = () => onOpenBusiness?.(hotel?.id ?? String(booking?.booking_id ?? ""));
 
+  function clearAnswer() {
+    setDetails(false);
+    setResult(null);
+    setAskResult(null);
+    setSegments([]);
+    setGuestName("");
+    setBooking(null);
+    setHotel(null);
+    setNearby(null);
+    setReviewed("");
+  }
+
   // One tap on an example sends it: the page asks for clicks only where a person has to decide.
   async function send(raw = input, base = history, off = rulesOff, live = false) {
     const text = raw.trim();
-    if (!text) return;
+    if (!text || busy || searching) return;
     // The log is read alongside the search, so Details opens on lines that are already here.
     void pullLog();
     // An answer to the agent's question ("From where to where?") completes the request it asked about.
@@ -116,21 +129,29 @@ export default function TravellerAgent({
     if (!live && !mirror && named && askResult) return askCards(text, `${askResult.question} ${text}`, true);
     // A request, rather than an answer to the agent's question or a pick out of the last reply: worth
     // remembering, so a person can find it again tomorrow. Stays in this browser.
+    const inStayConversation = Boolean(result);
+    if (!live) {
+      setSubmittedQuery(text);
+      setScene(null);
+      clearAnswer();
+    }
     if (!live && !mirror) setAsks(rememberAsk(text));
     // The hubs answer first. The folders are only for when that call cannot be made.
     if (!live && !mirror) {
-      const drawn = await drawFromHubs(text, radius);
+      const drawn = await drawFromHubs(text, radius, true);
       if (drawn) {
         setScene(drawn);
         setDetails(false);
         setError("");
         setInput("");
-        setHistory([...base, { role: "user", content: text }]);
+        setHistory([{ role: "user", content: text }]);
         return;
       }
     }
     if (!live) setScene(null);
-    if (!mirror && routeFor(text, Boolean(result)) === "ask") return askCards(text);
+    if (!mirror && routeFor(text, live ? false : inStayConversation) === "ask") {
+      return askCards(text, text, false, live);
+    }
     setAskResult(null);
     const messages = [...base, { role: "user", content: text }];
     const options: AgentOptions = mirror ? { scenario: "injection", rules: off ? "off" : "on" } : {};
@@ -139,8 +160,8 @@ export default function TravellerAgent({
     setReviewed("");
     setBooking(null);
     setHistory(messages);
-    setInput("");
-    const before = base.length ? segments : [];
+    if (!live) setInput("");
+    const before = !live && base.length ? segments : [];
     setSegments([...before, { kind: "guest", text }]);
     try {
       const out = await api.agent(messages, options);
@@ -161,10 +182,11 @@ export default function TravellerAgent({
       ]);
     } catch (e) {
       setError(shownError((e as Error).message));
-      // Details is optional. A dead backend leaves the card on screen, without the raw status
-      // and without putting the request back into the search bar.
+      // A failed Details run stays retryable, without consuming the draft or duplicating its prompt.
       if (live) {
         setDetails(false);
+        setHistory([{ role: "user", content: text }]);
+        setSegments([]);
         return;
       }
       setHistory(base);
@@ -176,14 +198,17 @@ export default function TravellerAgent({
   }
 
   // Any business: one call to the Hive's cards. Nothing is done until the person says yes to a hand-off.
-  async function askCards(text: string, query = text, pick = false) {
-    const before = history.length ? segments : [];
+  async function askCards(text: string, query = text, pick = false, live = false) {
+    const base = live ? [] : history;
+    const before = !live && history.length ? segments : [];
+    setSubmittedQuery(query);
+    setAskResult(null);
     setBusy(true);
     setError("");
-    setInput("");
+    if (!live) setInput("");
     setResult(null);
     setBooking(null);
-    setHistory([...history, { role: "user", content: text }]);
+    setHistory([...base, { role: "user", content: text }]);
     setSegments([...before, { kind: "guest", text }]);
     try {
       const r = pick ? await api.ask(query, null, true) : await api.ask(query, null);
@@ -207,9 +232,15 @@ export default function TravellerAgent({
       }
     } catch (e) {
       setError(shownError((e as Error).message));
-      setHistory(history);
-      setSegments(segments);
-      setInput(text);
+      if (live) {
+        setDetails(false);
+        setHistory([{ role: "user", content: text }]);
+        setSegments([]);
+      } else {
+        setHistory(history);
+        setSegments(segments);
+        setInput(text);
+      }
     } finally {
       setBusy(false);
     }
@@ -286,24 +317,29 @@ export default function TravellerAgent({
     send(lastAsk.content, [], false);
   }
 
-  // The drawn request has been handed to the agent: its run is what both the cards and Details show.
-  const asked = Boolean(scene && segments.some((s) => s.kind === "guest" && s.text === scene.query));
+  // Guest segments also exist during failed runs; only a loaded answer should suppress a retry.
+  const asked = Boolean(scene && (result || askResult));
 
   /** Hand the drawn request to the agent once; the cards' yes and Details share that one run. */
   function askAgent() {
-    if (!scene || busy || asked) return;
-    void send(scene.query, history.slice(0, -1), rulesOff, true);
+    if (!scene || busy || searching || asked) return;
+    void send(scene.query, [], rulesOff, true);
   }
 
-  /** What the hubs answer for this request at this reach, or the folders when the call cannot be made. */
-  async function drawFromHubs(text: string, reach: number): Promise<Scene | null> {
+  /** Live discovery stays empty when empty; only an initial unreachable search may use offline folders. */
+  async function drawFromHubs(text: string, reach: number, offlineFallback = false): Promise<Scene | null | undefined> {
     setSearching(true);
     setError("");
     setReachEmpty(false);
-    return hubScene(text, reach)
-      .catch(() => null)
-      .then((found) => found ?? sceneFor(text))
-      .finally(() => setSearching(false));
+    try {
+      return await hubScene(text, reach);
+    } catch (e) {
+      if (offlineFallback) return sceneFor(text);
+      setError(shownError((e as Error).message));
+      return undefined;
+    } finally {
+      setSearching(false);
+    }
   }
 
   /**
@@ -314,14 +350,14 @@ export default function TravellerAgent({
   async function changeReach(next: number) {
     if (next === radius || busy || searching) return;
     setRadius(next);
-    // Whatever is being asked about: the drawn request, or the last thing said to the agent.
-    const query = scene?.query ?? [...history].reverse().find((m) => m.role === "user")?.content ?? "";
-    if (!query) return;
-    const drawn = await drawFromHubs(query, next);
-    setScene(drawn);
-    setDetails(false);
-    // Stale results from the old reach are worse than none: say that this reach holds nothing.
-    setReachEmpty(!drawn);
+    // The draft belongs to the composer, not this request. Keep its submitted query even after an empty refresh.
+    if (!submittedQuery) return;
+    setScene(null);
+    clearAnswer();
+    setHistory([{ role: "user", content: submittedQuery }]);
+    const drawn = await drawFromHubs(submittedQuery, next);
+    setScene(drawn ?? null);
+    setReachEmpty(drawn === null);
   }
 
   function openDetails() {
@@ -341,6 +377,7 @@ export default function TravellerAgent({
   function reset() {
     setHistory([]);
     setScene(null);
+    setSubmittedQuery("");
     setDetails(false);
     setResult(null);
     setAskResult(null);
@@ -443,8 +480,10 @@ export default function TravellerAgent({
         </div>
       )}
       <div className="row gate-actions">
-        <button onClick={approve}>{t("agent.approve")}</button>
-        <button className="quiet" onClick={decline}>
+        <button onClick={approve} disabled={busy || searching}>
+          {t("agent.approve")}
+        </button>
+        <button className="quiet" onClick={decline} disabled={busy || searching}>
           {t("agent.decline")}
         </button>
       </div>
@@ -528,7 +567,7 @@ export default function TravellerAgent({
         working: busy,
         onAsk: askAgent,
       }
-    : { working: false, onAsk: askAgent };
+    : { working: busy, onAsk: askAgent };
 
   return (
     <>
@@ -560,7 +599,7 @@ export default function TravellerAgent({
                     reset();
                     box.current?.focus();
                   }}
-                  disabled={busy}
+                  disabled={busy || searching}
                 >
                   {t("agent.newTrip")}
                 </button>
@@ -583,7 +622,7 @@ export default function TravellerAgent({
                   <input
                     type="checkbox"
                     checked={mirror}
-                    disabled={busy}
+                    disabled={busy || searching}
                     onChange={(e) => {
                       setMirror(e.target.checked);
                       if (!e.target.checked) setRulesOff(false);
@@ -595,7 +634,7 @@ export default function TravellerAgent({
                   <input
                     type="checkbox"
                     checked={rulesOff}
-                    disabled={busy || !mirror}
+                    disabled={busy || searching || !mirror}
                     onChange={(e) => setRulesOff(e.target.checked)}
                   />
                   <span>{t("agent.test.rulesOff")}</span>
@@ -626,7 +665,7 @@ export default function TravellerAgent({
               onConnected={() => setIntroduced((n) => n + 1)}
             />
           )}
-          {(details || (!scene && history.length > 0)) && (
+          {(details || (!scene && !searching && !reachEmpty && segments.length > 0)) && (
             <div className="journey-side" ref={sideRef}>
               <GroupChat
                 full={Boolean(scene && details)}
@@ -672,10 +711,10 @@ export default function TravellerAgent({
                         {t("ask.pending.body", { business: askResult.pending.business, item: askResult.pending.item })}
                       </p>
                       <div className="row gate-actions">
-                        <button onClick={approveAsk} disabled={busy}>
+                        <button onClick={approveAsk} disabled={busy || searching}>
                           {t("ask.pending.approve")}
                         </button>
-                        <button className="quiet" onClick={declineAsk}>
+                        <button className="quiet" onClick={declineAsk} disabled={busy || searching}>
                           {t("ask.pending.decline")}
                         </button>
                       </div>
