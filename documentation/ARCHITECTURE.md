@@ -80,11 +80,13 @@ Each domain module has a `register(server)` function and is listed in `domains.D
 ## The page
 
 The app is one page (`App.tsx`, no router) that tells one story in two chapters, each with an anchor the header
-jumps to: `#travel`, the agent network (a room or any business, one chat); `#business`, the business's
-side of the same booking. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
+jumps to: `#find`, the agent network (a room or any business, one chat); `#offer`, the business's
+side of the same booking. They are the two sides of every Card rather than two kinds of person, which is why
+they are not named for a traveller and a business. `#travel` and `#business`, the names they used to carry, are
+still read and are rewritten to the new ones in the address bar. Old links such as `/agent` load the same page. `tests/test_docs.py` fails when a second
 page appears or when a panel in `code/frontend/src/panels` has no row here.
 
-Two screens sit beside that story rather than inside it, because neither belongs to the traveller:
+Two screens sit beside that story rather than inside it, because neither belongs to the person searching:
 
 - **The instance finder** is what a first visit lands on, and **Join** on any of its hives opens the
   application to it (`Onboarding.tsx`). You pick a Hive before you use one, which is what a

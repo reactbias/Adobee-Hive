@@ -301,8 +301,8 @@ const fr: Record<Key, string> = {
   "next.business.cta": "Voir le côté de l'hôtel",
   "nav.chapters": "Parcours",
   "nav.network": "Réseau de hubs",
-  "chapter.travel": "Trouver et réserver",
-  "chapter.business": "Pour les commerces",
+  "chapter.find": "Trouver et réserver",
+  "chapter.offer": "Pour les commerces",
   "chapter.business.lead":
     "{name} : dites ce qui a changé, avec vos mots. La nouvelle version est signée et en ligne aussitôt.",
   "find.title": "De quoi avez-vous besoin ?",

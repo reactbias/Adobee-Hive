@@ -299,8 +299,8 @@ const de: Record<Key, string> = {
   "next.business.cta": "Seite des Hotels zeigen",
   "nav.chapters": "Weg",
   "nav.network": "Hub-Netzwerk",
-  "chapter.travel": "Finden und buchen",
-  "chapter.business": "Für Betriebe",
+  "chapter.find": "Finden und buchen",
+  "chapter.offer": "Für Betriebe",
   "chapter.business.lead":
     "{name}: Sagen Sie in eigenen Worten, was sich geändert hat. Die neue Version ist sofort signiert und live.",
   "find.title": "Was brauchen Sie?",

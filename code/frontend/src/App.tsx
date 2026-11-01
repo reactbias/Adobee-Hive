@@ -9,7 +9,7 @@ import OwnerPanel from "./panels/OwnerPanel";
 import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
 import BackendStatus from "./components/BackendStatus";
-import { SCREENS, type ScreenId } from "./components/Chapter";
+import { canonicalHash, screenFor, SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
 
@@ -21,9 +21,8 @@ const adminMode = () => viewIn(here().search) === "admin";
  * serves. Without it the app runs on the Hive this build was deployed against, until a person picks another.
  */
 const hubFromUrl = () => hubIn(here().search);
-/** Which screen the address asks for: the owner's, the live hub network, else the traveller's. */
-const screenFromHash = (): ScreenId =>
-  here().hash === "#business" ? "business" : here().hash === "#network" ? "network" : "travel";
+/** Which screen the address asks for: offering, the live hub network, else finding. Old names still read. */
+const screenFromHash = (): ScreenId => screenFor(here().hash);
 
 /** Rewrite the address without reloading. Used only to make it agree with what is on screen. */
 const rewrite = (to: string) => history.replaceState(null, "", to);
@@ -37,7 +36,7 @@ function forgetHub() {
   rewrite(without(here(), "hub"));
 }
 
-// Separate travel, business and network screens share the language switch and backend troubleshooting.
+// The find, offer and network screens share the language switch and backend troubleshooting.
 function Header({
   screen,
   onLeaveAdmin,
@@ -124,6 +123,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    // An address carrying a name the screens used to have opens the right screen, and is then written the way
+    // the app writes it, so a link copied back out of the browser carries the name that is staying. Only on
+    // arrival: `?admin` resolves its own hash, and replaceState fires no hashchange, so nothing loops.
+    if (adminMode()) return;
+    const canonical = canonicalHash(here().hash);
+    if (canonical) rewrite(here().pathname + here().search + canonical);
+  }, []);
+
+  useEffect(() => {
     // The address is the one source of truth for the view, so back and forward change what is on screen.
     const sync = () => {
       setAdmin(adminMode());
@@ -147,10 +155,10 @@ export default function App() {
   useEffect(() => {
     if (!admin) return;
     // A hash is one of the app's two screens and the panel has none of its own, so any hash while the panel is
-    // open is in-app navigation: `#travel` means "show me the traveller's screen", and now it does.
+    // open is in-app navigation: `#find` means "show me the finding screen", and now it does.
     const navigated = () => window.location.hash.length > 1 && leaveAdmin(true);
     window.addEventListener("hashchange", navigated);
-    // A pasted `?admin#travel` claims two views at once. It resolves to the panel, with the stray anchor dropped,
+    // A pasted `?admin#find` claims two views at once. It resolves to the panel, with the stray anchor dropped,
     // rather than rendering a hybrid nobody asked for.
     if (isHybrid(window.location.search, window.location.hash))
       rewrite(window.location.pathname + window.location.search);
@@ -206,10 +214,10 @@ export default function App() {
     setChoosing(true);
   };
 
-  // The traveller turns the page to the business just booked: its owner sees the booking arrive.
+  // The finder turns the page to the business just booked: its owner sees the booking arrive.
   const openBusiness = (cardId: string) => {
     setBusiness(cardId);
-    window.location.hash = "business";
+    window.location.hash = "offer";
     window.scrollTo?.({ top: 0 });
   };
 
@@ -227,10 +235,10 @@ export default function App() {
           </p>
         )}
         {/* Keyed by the hub and its URL, so picking a different one starts the page over against that backend. */}
-        <div hidden={screen !== "travel"}>
+        <div hidden={screen !== "find"}>
           <TravellerAgent key={`${hub}@${chosenHubUrl()}`} onOpenBusiness={openBusiness} />
         </div>
-        <div hidden={screen !== "business"}>
+        <div hidden={screen !== "offer"}>
           <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
         </div>
         {/* The hub network, live: its own screen, reached from the footer, so the two tabs stay for people. */}

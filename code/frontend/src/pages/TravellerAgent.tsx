@@ -525,7 +525,7 @@ export default function TravellerAgent({
 
   return (
     <>
-      <section id="travel" className="screen screen-find" aria-labelledby="find-title">
+      <section id="find" className="screen screen-find" aria-labelledby="find-title">
         <div className="screen-head">
           <h1 id="find-title">{t("find.title")}</h1>
           <p className="lead">{t("find.lead")}</p>

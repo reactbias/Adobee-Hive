@@ -4,9 +4,9 @@
 //
 //   **The address decides the view, and a view never shares the address with a parameter belonging to another.**
 //
-// Both parameters are sticky, because the page navigates by hash (`#travel`, `#business`, `#network`) and a hash
+// Both parameters are sticky, because the page navigates by hash (`#find`, `#offer`, `#network`) and a hash
 // change does not touch the query. So `?admin` survived every click and you ended up in the hub's own panel on a
-// travel anchor: `http://host/?admin#travel`, a URL that claims two views at once and renders a hybrid. `?hub=`
+// screen anchor: `http://host/?admin#find`, a URL that claims two views at once and renders a hybrid. `?hub=`
 // had the same fault on the way out of the finder, which is what "change hive does nothing" was.
 //
 // The fix is this module plus two listeners in App: the view is read from the address rather than frozen at
@@ -44,7 +44,7 @@ export function hubUrlIn(search: string): string {
  * An address with one query parameter removed, and optionally the hash too.
  *
  * The hash goes when the parameter being dropped decided the view: a hash is an anchor on a page, and keeping an
- * anchor from a page nobody is looking at is how `?admin#travel` happened in the first place.
+ * anchor from a page nobody is looking at is how `?admin#find` happened in the first place.
  */
 export function without(url: URL, name: string, keepHash = true): string {
   // Edited as text, not through URLSearchParams: its toString writes a valueless `?demo` back as `?demo=`, and
