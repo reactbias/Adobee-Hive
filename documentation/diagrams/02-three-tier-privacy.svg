@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 740" width="1060" height="740" font-family="Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5a7083"/></marker>
+    <marker id="gb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563a8"/></marker>
+  </defs>
+  <rect width="1060" height="740" fill="#f7f6f3"/>
+
+  <text x="44" y="52" font-size="26" font-weight="700" fill="#0f2230">One folder, three tiers</text>
+  <text x="44" y="78" font-size="14.5" fill="#5a7083">ClaudeConnect encrypts everything and makes exactly one exception: <tspan font-family="ui-monospace, Menlo, monospace" font-size="13">authz</tspan>. The Card is the second.</text>
+
+  <!-- VAULT -->
+  <g>
+    <rect x="44" y="110" width="420" height="230" rx="12" fill="#ffffff" stroke="#0f2230" stroke-width="2"/>
+    <text x="64" y="138" font-size="15" font-weight="700" fill="#0f2230">The vault</text>
+    <text x="64" y="158" font-size="11.5" fill="#5a7083">~/hotel — the folder the agent lives in</text>
+    <g font-size="11.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#0f2230">
+      <text x="64" y="186">rooms/      26 files   per-room notes, noise, quirks</text>
+      <text x="64" y="208">rates/       8 files   seasonal rate cards</text>
+      <text x="64" y="230">house/       5 files   rules, breakfast, access</text>
+      <text x="64" y="252" fill="#a83232">guests/    211 files   returning-guest prefs</text>
+      <text x="64" y="274" fill="#a83232">finance/    41 files   books, payroll</text>
+    </g>
+    <rect x="64" y="292" width="380" height="1" fill="#c6d3dc"/>
+    <text x="64" y="314" font-size="11.5" fill="#5a7083">No HTML. No CMS. No profile wizard.</text>
+    <text x="64" y="330" font-size="11.5" fill="#5a7083">The owner writes notes; the agent does the rest.</text>
+  </g>
+
+  <!-- build pipeline -->
+  <g>
+    <path d="M464,225 L548,225" stroke="#5a7083" stroke-width="2" marker-end="url(#g)"/>
+    <rect x="548" y="110" width="468" height="230" rx="12" fill="#ffffff" stroke="#c6d3dc" stroke-width="1.6"/>
+    <text x="570" y="138" font-size="15" font-weight="700" fill="#0f2230">card build</text>
+    <text x="996" y="138" font-size="11" fill="#5a7083" text-anchor="end">an agent pass, not a form</text>
+    <g font-size="12">
+      <circle cx="578" cy="166" r="9" fill="#ece6f8"/><text x="578" y="170" font-size="10" font-weight="700" fill="#4b3486" text-anchor="middle">1</text>
+      <text x="598" y="170" fill="#0f2230">Apply the privacy policy already in <tspan font-family="ui-monospace, Menlo, monospace" font-size="11">SKILL.md</tspan></text>
+      <text x="598" y="187" font-size="11" fill="#5a7083">always-share / ask-first / never-share, with a sharing log</text>
+
+      <circle cx="578" cy="213" r="9" fill="#ece6f8"/><text x="578" y="217" font-size="10" font-weight="700" fill="#4b3486" text-anchor="middle">2</text>
+      <text x="598" y="217" fill="#0f2230">Emit structure: paths, summaries, counts, digests</text>
+      <text x="598" y="234" font-size="11" fill="#5a7083">the shape of the folder — never its contents</text>
+
+      <circle cx="578" cy="260" r="9" fill="#ece6f8"/><text x="578" y="264" font-size="10" font-weight="700" fill="#4b3486" text-anchor="middle">3</text>
+      <text x="598" y="264" fill="#0f2230">Extract skills, offers and needs</text>
+      <text x="598" y="281" font-size="11" fill="#5a7083">both sides of the market from one source</text>
+
+      <circle cx="578" cy="307" r="9" fill="#ece6f8"/><text x="578" y="311" font-size="10" font-weight="700" fill="#4b3486" text-anchor="middle">4</text>
+      <text x="598" y="311" fill="#0f2230">Sign with Ed25519, bump <tspan font-family="ui-monospace, Menlo, monospace" font-size="11">seq</tspan>, record provenance</text>
+    </g>
+  </g>
+
+  <path d="M530,340 L530,386" stroke="#5a7083" stroke-width="2" marker-end="url(#g)"/>
+
+  <!-- TIER 0 -->
+  <g>
+    <rect x="44" y="394" width="972" height="118" rx="12" fill="#e4eef8" stroke="#2563a8" stroke-width="2"/>
+    <rect x="44" y="394" width="8" height="118" rx="4" fill="#2563a8"/>
+    <text x="72" y="424" font-size="15" font-weight="700" fill="#17436f">TIER 0 · the Card</text>
+    <text x="72" y="446" font-size="12.5" fill="#17436f">plaintext · signed · world-readable · crawled and replicated by hubs</text>
+    <text x="996" y="424" font-size="11.5" fill="#2563a8" text-anchor="end" font-family="ui-monospace, Menlo, monospace">.fedyworth/card.json</text>
+    <rect x="72" y="460" width="152" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="80" y="476" font-size="10.5" fill="#17436f">identity + proven links</text>
+    <rect x="230" y="460" width="120" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="238" y="476" font-size="10.5" fill="#17436f">skills</text>
+    <rect x="356" y="460" width="152" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="364" y="476" font-size="10.5" fill="#17436f">offers + needs</text>
+    <rect x="514" y="460" width="178" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="522" y="476" font-size="10.5" fill="#17436f">folder structure (no contents)</text>
+    <rect x="698" y="460" width="134" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="706" y="476" font-size="10.5" fill="#17436f">MCP endpoints</text>
+    <rect x="838" y="460" width="158" height="24" rx="5" fill="#ffffff" stroke="#9cc0e4"/><text x="846" y="476" font-size="10.5" fill="#17436f">policy + attestations</text>
+    <text x="72" y="502" font-size="11" fill="#2563a8">This is how you get found. It is the whole of your public presence, and you own the file.</text>
+  </g>
+
+  <!-- TIER 1 -->
+  <g>
+    <rect x="44" y="526" width="972" height="100" rx="12" fill="#ece6f8" stroke="#6d4bb0" stroke-width="2"/>
+    <rect x="44" y="526" width="8" height="100" rx="4" fill="#6d4bb0"/>
+    <text x="72" y="556" font-size="15" font-weight="700" fill="#4b3486">TIER 1 · connected folders</text>
+    <text x="72" y="578" font-size="12.5" fill="#4b3486">AES-256-GCM, a master key wrapped per peer via X25519 — opens only after a handshake</text>
+    <text x="996" y="556" font-size="11.5" fill="#6d4bb0" text-anchor="end" font-family="ui-monospace, Menlo, monospace">claudeconnect/with-&lt;peer&gt;/</text>
+    <text x="72" y="604" font-size="11" fill="#6d4bb0">Negotiation, deal rooms, transcripts. Adding a peer wraps one key — it never re-encrypts your content.</text>
+  </g>
+
+  <!-- TIER 2 -->
+  <g>
+    <rect x="44" y="640" width="972" height="76" rx="12" fill="#f8e4e4" stroke="#a83232" stroke-width="2"/>
+    <rect x="44" y="640" width="8" height="76" rx="4" fill="#a83232"/>
+    <text x="72" y="670" font-size="15" font-weight="700" fill="#8a2626">TIER 2 · private</text>
+    <text x="72" y="692" font-size="12.5" fill="#8a2626">Never synced, never indexed, never leaves the machine. <tspan font-family="ui-monospace, Menlo, monospace" font-size="11.5">guests/ · finance/</tspan></text>
+    <text x="996" y="670" font-size="11.5" fill="#a83232" text-anchor="end">the default</text>
+  </g>
+</svg>
