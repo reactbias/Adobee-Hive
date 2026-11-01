@@ -67,6 +67,7 @@ SUITE = [
     "tests/test_admin_peers.py",
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
+    "tests/test_get_card_peer.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
@@ -258,6 +259,18 @@ CURATED: list[Mutant] = [
         "an unclaimed card reports itself as bookable, so a lead passes for a business that agreed",
         '"bookable": bool(card.get("units")) and trust["claimed"],',
         '"bookable": True,',
+    ),
+    Mutant(
+        "hive.py",
+        "a card a peer carries is unreadable again, so a federated search's own id dead-ends",
+        "    if not config.HIVE_PEER_URLS:\n        return None",
+        "    if True:\n        return None",
+    ),
+    Mutant(
+        "hive.py",
+        "the peer lookup answers with whatever card came back first, not the one that was asked for",
+        'if wanted in (match.get("id"), match.get("slug"), card.get("id"), card.get("slug")):',
+        "if True:",
     ),
     Mutant(
         "semantic.py",

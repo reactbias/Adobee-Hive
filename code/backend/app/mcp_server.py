@@ -66,22 +66,25 @@ def hive_discover(
 ) -> dict[str, Any]:
     """Find anyone in the Hive by what they offer or what they need: a hotel, a developer, a café.
 
-    looking_for: which side of the market you are on. "offers" (the default) finds whoever provides the thing,
-    "needs" finds whoever wants what you provide, "any" finds both. Every result says whether it is claimed by
-    its subject and whether it is bookable: an unclaimed card was compiled from public information, so it can
-    only be handed off to the business's own site after the user says yes, and nothing on it can be booked.
-    kind: a filter, not a gate — hotel | cafe | person | event and whatever else this hub holds.
-    near: a landmark such as 'basel sbb', 'messe basel', 'marktplatz', 'badischer bahnhof'.
-    features: exact tags such as 'dog-friendly', 'late check-in', 'quiet', 'breakfast', 'parking'.
-    Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
-    businesses with why_not, so you can explain the choice to the user.
-    ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
-    radius: how far to look. 0 (the default) is this Hive only. 1 also asks its peer Hives, 2 their peers, up to 3.
-    Above 0 each match says in provenance which hubs it travelled and how many hops, and its score_breakdown adds
-    local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive. A radius
-    above 0 makes this hub call its peers, so it is rate-limited: a refusal names the budget and when to retry.
-    limit: how many matches to answer with, up to 50. The answer says `truncated` and `total_matches` when there
-    were more, so narrow the query or raise this rather than assuming you saw the whole Hive.
+     looking_for: which side of the market you are on. "offers" (the default) finds whoever provides the thing,
+     "needs" finds whoever wants what you provide, "any" finds both. Every result says whether it is claimed by
+     its subject and whether it is bookable: an unclaimed card was compiled from public information, so it can
+     only be handed off to the business's own site after the user says yes, and nothing on it can be booked.
+     kind: a filter, not a gate — hotel | cafe | person | event and whatever else this hub holds.
+     near: a landmark such as 'basel sbb', 'messe basel', 'marktplatz', 'badischer bahnhof'.
+     features: exact tags such as 'dog-friendly', 'late check-in', 'quiet', 'breakfast', 'parking'.
+     Dates are ISO (YYYY-MM-DD). Returns ranked matches with score_breakdown and why, plus excluded
+     businesses with why_not, so you can explain the choice to the user.
+     ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
+     radius: how far to look. 0 (the default) is this Hive only. 1 also asks its peer Hives, 2 their peers, up to 3.
+     Above 0 each match says in provenance which hubs it travelled and how many hops, and its score_breakdown adds
+     local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive. A radius
+     above 0 makes this hub call its peers, so it is rate-limited: a refusal names the budget and when to retry.
+     limit: how many matches to answer with, up to 50. The answer says `truncated` and `total_matches` when there
+     were more, so narrow the query or raise this rather than assuming you saw the whole Hive.
+    A match from another Hive carries that business's full signed card inline under `card`, already verified
+     against its owner's key: read it from there rather than calling hive_get_card again, and pass it to
+     hub_connect when you connect. hive_get_card also works for such an id, by asking the peer.
     """
     if radius and (over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True)):
         return {"error": over}  # the budget the REST route spends, before this hub calls any peer
@@ -118,10 +121,19 @@ def hive_rulesets() -> dict[str, Any]:
 
 
 @server.tool()
-def hive_get_card(card_id: str) -> dict[str, Any]:
+def hive_get_card(card_id: str, radius: int = 1) -> dict[str, Any]:
     """Read one business's full Hive card: offering, units and prices, policies, contact, and trust
-    (signature, public key, third-party attestations, proof-of-stay reviews)."""
-    return _counted(_safe(hive.get_card, card_id), "read")
+    (signature, public key, third-party attestations, proof-of-stay reviews).
+
+    Works for an id this Hive found on a peer: if it does not carry the card itself it asks its peers for
+    it, and the answer says in `provenance` which Hive it came from. radius 0 looks only at this Hive.
+    A federated match from hive_discover already carries the same signed card inline under `card`, so you
+    do not have to call this at all for a result you have just been handed — use that and save the hop."""
+    local = _safe(hive.get_card, card_id)
+    if "error" not in local or not radius:
+        return _counted(local, "read")
+    found = hive.card_from_peer(card_id, radius)
+    return _counted(found, "read") if found else local
 
 
 @server.tool()
