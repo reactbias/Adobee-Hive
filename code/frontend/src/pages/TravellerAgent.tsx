@@ -246,7 +246,13 @@ export default function TravellerAgent({
     setError("");
     try {
       const done = await api.approve(result.pending);
-      setResult({ ...result, steps: [...result.steps, ...done.steps], pending: null });
+      setResult({
+        ...result,
+        steps: [...result.steps, ...done.steps],
+        pending: done.pending ?? null,
+        // Changed terms come back as a new hold. The two opinions weighed the old terms, so they go with them.
+        ...(done.pending ? { second_opinion: undefined, critic: undefined, consensus: undefined } : {}),
+      });
       setBooking(done.booking);
       // Context for the next steps, from the Hive itself. If it is out of reach the tiles simply shrink.
       const [card, cafes] = await Promise.all([
@@ -373,11 +379,15 @@ export default function TravellerAgent({
   const counterpartId = String(pending?.card_id ?? lastOutput(steps, "hive_get_card")?.id ?? "");
   const counterpart = names[counterpartId] ?? t("trace.hive");
 
-  // What the gate needs to say, taken from what the business itself answered.
+  // What the gate says is what the hold is bound to, so a yes here is a yes to these terms and no others. The last
+  // availability read is only for a hold that came without them.
+  const quote = result?.pending?.quote;
   const unit = list(lastOutput(steps, "hive_check_availability")?.available_units).find(
     (u) => u.id === pending?.unit_id,
   );
-  const policies = (lastOutput(steps, "hive_check_availability")?.policies ?? {}) as Record<string, string>;
+  const total = quote?.total_chf ?? unit?.total_chf;
+  const policies =
+    quote?.policies ?? ((lastOutput(steps, "hive_check_availability")?.policies ?? {}) as Record<string, string>);
   const why = (list(lastOutput(steps, "hive_discover")?.matches).find((m) => m.id === pending?.card_id)?.why ??
     []) as string[];
 
@@ -392,7 +402,7 @@ export default function TravellerAgent({
       )}
       <h3>
         {t("agent.gate.question", {
-          unit: String(unit?.name ?? pending.unit_id),
+          unit: String(quote?.unit_name ?? unit?.name ?? pending.unit_id),
           name: counterpart,
         })}
       </h3>
@@ -409,10 +419,10 @@ export default function TravellerAgent({
           <dt>{t("agent.fact.guest")}</dt>
           <dd>{String(pending.guest_name)}</dd>
         </div>
-        {unit && (
+        {total !== undefined && (
           <div>
             <dt>{t("agent.fact.total")}</dt>
-            <dd>{chf(unit.total_chf, intl)}</dd>
+            <dd>{chf(total, intl)}</dd>
           </div>
         )}
       </dl>

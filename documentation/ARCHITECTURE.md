@@ -118,8 +118,8 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hive_discover` | Search **everything on the hub** by what it offers and what it needs: hotels, people, cafés, unclaimed example cards. `looking_for` says which side of the market the caller is on — `offers` (the default) finds whoever provides the thing, `needs` whoever wants what the caller provides, `any` both. `kind` is a filter the caller may apply, not a gate the hub applies for them. Hard constraints as before (features, max price, near, dates, guests), optionally under a ruleset the user chose, and optionally with a `radius` of 1 to 3 hops over peer Hives (0, the default, is this Hive only). Returns ranked matches with a score breakdown (`constraints`, `offers_needs`, `text_relevance`, `proximity`, reputation) and every excluded entity with why. `constraints` is earned, not granted: it is paid for the constraints the ask actually carried and the entity met, so an ask with no dates, no budget and no features pays nobody and relevance decides. Every entity carries `name`, `description`, `rating` (null until a signed receipt earns one), `contact`, `claimed` and `bookable`: an unclaimed card is a lead compiled from public information, never bookable. A federated match adds `provenance`, `hops` and the three federated rank factors. A `radius` above 0 spends the same per-caller-and-total budget `GET /api/hive/discover` spends, charged to the address the transport reports; `limit` bounds the answer at 50 matches, and a cut answer says `truncated` and `total_matches` rather than looking whole |
 | `hive_rulesets` | The rulesets a user can choose, each signed by its author |
 | `hive_get_card` | The full signed card with trust information |
-| `hive_check_availability` | Free units and totals for given dates |
-| `hive_book` | Book a unit; returns a signed receipt |
+| `hive_check_availability` | Free units and totals for given dates, each with a `terms` hash of its total and the card's policies |
+| `hive_book` | Book a unit; returns a signed receipt. An optional `expected_terms` refuses the booking if the terms have changed |
 | `hive_what_was_promised` | With a receipt: the signed card version the booking was made against, and which fields changed since |
 | `hive_cancel` | Cancel with the receipt |
 | `hive_review` | Leave a review; only valid with an unused booking receipt |
@@ -286,7 +286,9 @@ What each one still lacks: [LIMITS.md](LIMITS.md#separate-nodes).
   text addressed to agents before the agent reads it, and the agent checks every card's signature itself. Try it with
   the stress test in chapter 1, or `POST /api/agent` with `"scenario": "injection"` (and `"rules": "off"` for the
   unguarded counterfactual, which is scripted and never books).
-- **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`).
+- **Human in the loop.** The agent holds `hive_book` until the traveller approves (`POST /api/agent/approve`). The
+  hold binds the terms the traveller is shown, so a changed price or policy comes back as a new hold for a new yes.
+  An edit to anything else, such as the description, does not change the terms and still books.
 - **Unclaimed cards.** A card with `provenance.verified_by_owner: false` was compiled from a public website and is
   signed by the Hive as compiler. `trust.claimed` is false, the UI and every answer say so, owner edits refuse it,
   and an approved action only hands the person off to the business's own site.

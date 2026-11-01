@@ -179,11 +179,18 @@ def test_a_booking_through_the_agent_service_is_made_by_the_hotel(stack):
     assert hive.verify_statement(done["booking"]["receipt"], pinned), "the receipt must verify against the pinned key"
 
 
+def _hold_at_node(stay: dict, node: str, pin: str) -> dict:
+    """A hold as the agent makes one: on the terms the node itself quoted for this stay."""
+    asked = {key: stay[key] for key in ("card_id", "check_in", "check_out", "guests")}
+    available = asyncio.run(agent._ask_source(node, pin, "hive_check_availability", asked, []))
+    return agent._hold(stay, node, pin, agent._quote_from(available, stay["unit_id"]))
+
+
 def test_a_receipt_that_fails_the_pinned_key_is_not_reported_as_a_booking(client, stack, monkeypatch):
     monkeypatch.setattr(config, "NODE_ALLOW_PRIVATE", True)
     key = Ed25519PrivateKey.generate().public_key()
     stranger = base64.b64encode(key.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
-    pending = agent._hold(
+    pending = _hold_at_node(
         {
             "card_id": CARD_ID,
             "unit_id": "double",
@@ -194,7 +201,7 @@ def test_a_receipt_that_fails_the_pinned_key_is_not_reported_as_a_booking(client
             "agent": "test",
         },
         f"{stack['node']}/mcp/",
-        pin=stranger,
+        stranger,
     )
 
     done = asyncio.run(agent.approve(pending))
@@ -235,7 +242,7 @@ def test_a_signed_receipt_must_be_for_the_booking_that_was_approved():
 def test_an_approval_reaches_the_hotel_even_when_the_hub_has_gone_away(client, stack, monkeypatch):
     monkeypatch.setattr(config, "NODE_ALLOW_PRIVATE", True)
     pinned = _get(f"{stack['hub']}/.well-known/hive.json")["owner_keys"][CARD_ID]
-    pending = agent._hold(
+    pending = _hold_at_node(
         {
             "card_id": CARD_ID,
             "unit_id": "double",
@@ -246,7 +253,7 @@ def test_an_approval_reaches_the_hotel_even_when_the_hub_has_gone_away(client, s
             "agent": "test",
         },
         f"{stack['node']}/mcp/",
-        pin=pinned,
+        pinned,
     )
     monkeypatch.setattr(config, "HIVE_MCP_URLS", [f"http://127.0.0.1:{_free_port()}/mcp/"])
 
@@ -284,10 +291,12 @@ def test_a_hotel_node_that_is_down_is_an_answer_not_a_crash(client, monkeypatch)
         },
         closed,
         pin="irrelevant",
+        quote={"business": "Gone", "unit_name": "Double", "total_chf": 200.0, "policies": {}, "terms": "t"},
     )
 
     done = asyncio.run(agent.approve(pending))
     assert done["booking"] is None
+    assert agent.NODE_UNREACHABLE in done["reply"]
 
     async def ask() -> dict:
         async with agent.HiveConnections() as hives:
@@ -358,11 +367,19 @@ def test_a_model_agents_hold_goes_to_the_node_with_the_pinned_key():
     hives.direct["hotel-on-node"] = "https://node.example/mcp/"
     hives.pins["hotel-on-node"] = "pinned-key"
 
-    pending, args = agent._call_tool("hive_book", {"card_id": "hotel-on-node"}, hives)
-    stored = agent._HELD[pending["id"]][1]
-    assert (stored["_source"], stored["_pin"], args) == ("https://node.example/mcp/", "pinned-key", {})
+    async def quoted(steps, name, args):
+        return {"name": "A hotel", "available_units": [{"id": "double", "name": "Double", "total_chf": 200.0}]}
 
-    pending, _ = agent._call_tool("hive_book", {"card_id": "hotel-on-hub"}, hives)
+    hives.step = quoted
+
+    def hold(card_id: str) -> tuple[dict, dict]:
+        return asyncio.run(agent._call_tool("hive_book", {"card_id": card_id, "unit_id": "double"}, hives, []))
+
+    pending, output = hold("hotel-on-node")
+    stored = agent._HELD[pending["id"]][1]
+    assert (stored["_source"], stored["_pin"], output) == ("https://node.example/mcp/", "pinned-key", agent.HELD)
+
+    pending, _ = hold("hotel-on-hub")
     stored = agent._HELD[pending["id"]][1]
     assert stored["_source"] == "hub"
     assert "_pin" not in stored, "a card without its own node must still book on the hub"

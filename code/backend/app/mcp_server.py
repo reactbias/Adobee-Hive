@@ -154,10 +154,13 @@ def hive_book(
     guests: int = 1,
     notes: str = "",
     agent: str = "MCP agent",
+    expected_terms: str | None = None,
 ) -> dict[str, Any]:
     """Book a unit. Only call this after the user has agreed to the business, room, dates and price.
+    Pass the unit's `terms` from hive_check_availability as expected_terms: if the price or policies have
+    changed since, the booking is refused rather than made, and you can ask the user again.
     Returns a confirmation with a signed receipt (keep it for cancel and review)."""
-    return _safe(hive.book, card_id, unit_id, check_in, check_out, guest_name, guests, notes, agent)
+    return _safe(hive.book, card_id, unit_id, check_in, check_out, guest_name, guests, notes, agent, expected_terms)
 
 
 @server.tool()

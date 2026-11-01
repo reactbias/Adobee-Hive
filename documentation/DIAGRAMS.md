@@ -193,8 +193,10 @@ flowchart TB
 ## 2. A booking, from question to receipt
 
 What happens when a guest types "a quiet room near SBB for two nights" in chapter 1. Nothing is booked until the
-guest presses Approve; the agent holds the `hive_book` call and its selected MCP source on the server. Approval
-reopens that source only, once; removing it from configuration refuses the action instead of retargeting it.
+guest presses Approve; the agent holds the `hive_book` call, its selected MCP source and the terms the guest is
+shown on the server. Approval reopens that source only, once; removing it from configuration refuses the action
+instead of retargeting it. If the terms have changed by then, the source refuses, nothing is booked, and the guest
+gets a new hold on the new terms.
 
 ```mermaid
 %%{init: {"theme": "base", "themeVariables": {"primaryColor": "#fffefb", "primaryBorderColor": "#857c6f", "primaryTextColor": "#17140f", "lineColor": "#857c6f", "clusterBkg": "#f6f3ed", "clusterBorder": "#e4ded3", "noteBkgColor": "#f6f3ed", "noteBorderColor": "#e4ded3", "actorBkg": "#fffefb", "actorBorder": "#857c6f", "signalColor": "#4b443a", "signalTextColor": "#17140f", "fontFamily": "Helvetica, Arial, sans-serif"}}}%%
@@ -218,7 +220,7 @@ sequenceDiagram
   Note over AG: checks the signature against the owner's pinned key
   AG->>MCP: hive_check_availability
   MCP-->>AG: free units and total
-  Note over AG: holds hive_book and its source, does not send it
+  Note over AG: holds hive_book, its source and the terms shown, does not send it
   AG->>V: check the hold against the request and the card
   AG->>C: argue for the strongest alternative
   V-->>API: agree or object
@@ -228,7 +230,7 @@ sequenceDiagram
   rect rgba(162, 79, 44, 0.18)
     Guest->>UI: Approve
     UI->>API: POST /api/agent/approve
-    API->>MCP: hive_book at the original held source
+    API->>MCP: hive_book at the original held source, with the approved terms
     MCP-->>API: signed receipt, pins the card version
   end
   API-->>UI: booking

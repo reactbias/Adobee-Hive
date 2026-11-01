@@ -318,20 +318,32 @@ async def run(
 
 
 async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]:
-    """The traveller said yes: send the held hive_book call, unchanged, over MCP. Each hold can be approved once."""
+    """The traveller said yes to the terms they saw: book the held call on those terms, once, or ask them again.
+
+    The source checks the terms where it books, which is the only place that cannot lose a race. If it refuses, the
+    agent looks again: changed terms come back as a new hold for a new yes, and anything else as the failure it was.
+    """
     if pending.get("tool") != "hive_book":
         raise ValueError("Only a held hive_book call can be approved.")
     args = _take(str(pending.get("id", "")))
     source = args.pop("_source", None)
     pin = args.pop("_pin", None)
+    quote = args.pop("_quote", None)
     steps: list[dict[str, Any]] = []
+    if not quote:  # nothing the traveller was shown means nothing they can have agreed to
+        return {"reply": say(locale, "book_failed", error=NO_TERMS), "steps": steps, "booking": None}
+    sent = args | ({"expected_terms": quote["terms"]} if quote.get("terms") else {})
     if pin:
-        booking = await _book_at_node(source, pin, args, steps)
+        booking = await _book_at_node(source, pin, sent, steps)
     else:
-        async with HiveConnections(source=source) as hives:
-            booking = await hives.step(steps, "hive_book", args)
+        booking = await _ask_source(source, None, "hive_book", sent, steps)
     if booking.get("status") != "confirmed":
+        current = await _new_terms(source, pin, args, quote, steps)
+        if current:
+            return _ask_again(args, source, pin, quote, current, steps, locale)
         return {"reply": say(locale, "book_failed", error=booking.get("error")), "steps": steps, "booking": None}
+    if not _as_quoted(booking, quote):
+        return await _undo_unapproved(booking, args, source, pin, quote, steps, locale)
     return {
         "reply": say(
             locale,
@@ -348,15 +360,7 @@ async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]
 
 async def _book_at_node(node: str, pin: str, args: dict[str, Any], steps: list[dict[str, Any]]) -> dict[str, Any]:
     """Send a held booking to the business's own node, and accept only a receipt signed by the pinned key."""
-    if not _may_dial(node):
-        return {"error": NODE_UNREACHABLE}
-    try:
-        async with HiveConnections(node=node) as hives:  # only the node: a hub being down must not cost this booking
-            hives.direct[str(args.get("card_id"))] = node
-            booking = await hives.step(steps, "hive_book", args)
-    except Exception:  # noqa: BLE001 - a business's node is someone else's machine, and any failure means the same
-        log.warning("Could not reach the business's own node at %s", node, exc_info=True)
-        return {"error": NODE_UNREACHABLE}
+    booking = await _ask_source(node, pin, "hive_book", args, steps)
     if booking.get("status") == "confirmed" and not _receipt_matches(booking, args, pin):
         return {"error": "The receipt was not signed by this business's key for this booking."}
     return booking
@@ -382,10 +386,127 @@ def _receipt_matches(booking: dict[str, Any], held: dict[str, Any], pin: str) ->
 # enough because the backend runs as one instance; a restart only means asking the agent again.
 _HELD: dict[str, tuple[float, dict[str, Any]]] = {}
 HOLD_TTL_S = 30 * 60
+NO_TERMS = "This booking holds no terms to approve. Ask your agent again."
+UNAPPROVED_UNDONE = "The business booked other terms than you approved, so that booking was cancelled."
 MAX_HELD = 1000
 
 
-def _hold(args: dict[str, Any], source: str | None = None, pin: str | None = None) -> dict[str, Any]:
+def _quote_from(available: dict[str, Any], unit_id: Any) -> dict[str, Any] | None:
+    """The terms a hold binds and the approval shows, from what the source answered. None if the room is not free."""
+    unit = next((u for u in available.get("available_units") or [] if u.get("id") == unit_id), None)
+    if unit is None or "total_chf" not in unit:
+        return None
+    return {
+        "business": available.get("name") or "",
+        "unit_name": unit.get("name") or str(unit_id),
+        "total_chf": unit["total_chf"],
+        "policies": available.get("policies") or {},
+        "terms": unit.get("terms"),  # absent from a source on older software, which `_as_quoted` then covers
+    }
+
+
+def _same_terms(one: dict[str, Any], other: dict[str, Any]) -> bool:
+    """Whether two quotes are the same deal: by the source's own hash if both have one, otherwise by what they say."""
+    if one.get("terms") and other.get("terms"):
+        return one["terms"] == other["terms"]
+    return one["total_chf"] == other["total_chf"] and one["policies"] == other["policies"]
+
+
+def _as_quoted(booking: dict[str, Any], quote: dict[str, Any]) -> bool:
+    """Whether a confirmation matches what was approved. A source that checks `expected_terms` never fails this."""
+    if abs(float(booking.get("total_chf", -1)) - float(quote["total_chf"])) >= 0.005:
+        return False
+    policies = quote["policies"]
+    return all(booking.get(term) == policies[term] for term in ("cancellation", "payment") if term in policies)
+
+
+async def _ask_source(
+    source: str | None, pin: str | None, name: str, args: dict[str, Any], steps: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """One tool call at the source a hold is bound to: the business's own node, or else the Hive that proposed it."""
+    if not pin:
+        async with HiveConnections(source=source) as hives:
+            return await hives.step(steps, name, args)
+    if not _may_dial(source):
+        return {"error": NODE_UNREACHABLE}
+    try:
+        async with HiveConnections(node=source) as hives:  # only the node: a hub being down must not cost this booking
+            hives.direct[str(args.get("card_id"))] = source
+            return await hives.step(steps, name, args)
+    except Exception:  # noqa: BLE001 - a business's node is someone else's machine, and any failure means the same
+        log.warning("Could not reach the business's own node at %s", source, exc_info=True)
+        return {"error": NODE_UNREACHABLE}
+
+
+async def _new_terms(
+    source: str | None, pin: str | None, args: dict[str, Any], quote: dict[str, Any], steps: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """The room's terms now, if they differ from the ones approved. None if they do not, or if it cannot be told."""
+    asked = {key: args.get(key) for key in ("card_id", "check_in", "check_out")} | {"guests": args.get("guests", 1)}
+    try:
+        available = await _ask_source(source, pin, "hive_check_availability", asked, steps)
+    except Exception:  # noqa: BLE001 - the booking already failed: this only decides how to say so
+        log.warning("Could not ask again after a refused booking", exc_info=True)
+        return None
+    current = _quote_from(available, args.get("unit_id"))
+    return current if current and not _same_terms(current, quote) else None
+
+
+def _ask_again(
+    args: dict[str, Any],
+    source: str | None,
+    pin: str | None,
+    approved: dict[str, Any],
+    current: dict[str, Any],
+    steps: list[dict[str, Any]],
+    locale: str,
+) -> dict[str, Any]:
+    """Nothing was booked: hold the same request again on the terms as they are now, for a new yes."""
+    return {
+        "reply": say(
+            locale,
+            "terms_changed",
+            name=current["business"],
+            total=current["total_chf"],
+            approved=approved["total_chf"],
+            cancellation=current["policies"].get("cancellation") or "-",
+        ),
+        "steps": steps,
+        "booking": None,
+        "pending": _hold(args, source, pin, current),
+        "terms_changed": {"approved": approved, "current": current},
+    }
+
+
+async def _undo_unapproved(
+    booking: dict[str, Any],
+    args: dict[str, Any],
+    source: str | None,
+    pin: str | None,
+    quote: dict[str, Any],
+    steps: list[dict[str, Any]],
+    locale: str,
+) -> dict[str, Any]:
+    """A source ignored `expected_terms` and booked other terms. Take it back, or say so and keep the receipt."""
+    held = {"booking_id": booking.get("booking_id"), "receipt": booking.get("receipt")}
+    if (await _ask_source(source, pin, "hive_cancel", held, steps)).get("status") != "cancelled":
+        reply = say(
+            locale,
+            "terms_differ",
+            name=booking.get("business"),
+            total=booking.get("total_chf"),
+            ref=booking.get("booking_id"),
+        )
+        return {"reply": reply, "steps": steps, "booking": booking}
+    current = await _new_terms(source, pin, args, quote, steps)
+    if current:
+        return _ask_again(args, source, pin, quote, current, steps, locale)
+    return {"reply": say(locale, "book_failed", error=UNAPPROVED_UNDONE), "steps": steps, "booking": None}
+
+
+def _hold(
+    args: dict[str, Any], source: str | None = None, pin: str | None = None, quote: dict[str, Any] | None = None
+) -> dict[str, Any]:
     now = time.time()
     for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
         del _HELD[key]
@@ -397,8 +518,11 @@ def _hold(args: dict[str, Any], source: str | None = None, pin: str | None = Non
         stored["_source"] = source
     if pin is not None:  # only a booking for a business's own node: its receipt is checked against this key
         stored["_pin"] = pin
-    _HELD[hold_id] = (now, stored)
-    return {"id": hold_id, "tool": "hive_book", "input": args}
+    if quote is None:
+        _HELD[hold_id] = (now, stored)
+        return {"id": hold_id, "tool": "hive_book", "input": args}
+    _HELD[hold_id] = (now, stored | {"_quote": quote})  # the server's copy: what a client sends back counts for nothing
+    return {"id": hold_id, "tool": "hive_book", "input": args, "quote": quote}
 
 
 def _take(hold_id: str) -> dict[str, Any]:
@@ -409,15 +533,26 @@ def _take(hold_id: str) -> dict[str, Any]:
     return held[1]
 
 
-def _call_tool(name: str, args: dict[str, Any], hives: HiveConnections) -> tuple[dict[str, Any] | None, dict[str, Any]]:
-    """Hold hive_book for the traveller's approval; any other tool is called. Returns (pending, args to call)."""
-    if name == "hive_book":
-        card_id = str(args.get("card_id"))
-        if node := hives.direct.get(card_id):
-            return _hold(args | {"agent": AGENT_NAME}, node, hives.pins[card_id]), {}
-        source = hives.origin.get(card_id) or hives.routes[name][0]
-        return _hold(args | {"agent": AGENT_NAME}, source), {}
-    return None, args
+async def _call_tool(
+    name: str, args: dict[str, Any], hives: HiveConnections, steps: list[dict[str, Any]]
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Hold hive_book for the traveller's approval, on terms read just now; call any other tool.
+
+    Returns (pending, the tool's answer). A room that is not free is an answer and no hold: this is the one path a
+    model's hive_book takes, so a refusal here must never fall through to the real call.
+    """
+    if name != "hive_book":
+        return None, await hives.step(steps, name, args)
+    card_id = str(args.get("card_id"))
+    asked = {key: args.get(key) for key in ("card_id", "check_in", "check_out")} | {"guests": args.get("guests", 1)}
+    available = await hives.step(steps, "hive_check_availability", asked)
+    quote = _quote_from(available, args.get("unit_id"))
+    if quote is None:
+        return None, {"error": available.get("error") or f"{args.get('unit_id')} is not available for this stay."}
+    if node := hives.direct.get(card_id):
+        return _hold(args | {"agent": AGENT_NAME}, node, hives.pins[card_id], quote), HELD
+    source = hives.origin.get(card_id) or hives.routes[name][0]
+    return _hold(args | {"agent": AGENT_NAME}, source, None, quote), HELD
 
 
 HELD = {"status": "held_for_approval", "note": "The traveller confirms this booking themselves."}
@@ -464,9 +599,8 @@ async def _run_openai(hives: HiveConnections, messages: list[dict[str, str]], lo
             if not isinstance(args, dict):
                 output: dict[str, Any] = {"error": "arguments must be a JSON object"}
             else:
-                held, args = _call_tool(call.name, args, hives)
+                held, output = await _call_tool(call.name, args, hives, steps)
                 pending = held or pending
-                output = HELD if held else await hives.step(steps, call.name, args)
             convo.append(
                 {"type": "function_call_output", "call_id": call.call_id, "output": json.dumps(output, default=str)}
             )
@@ -508,9 +642,8 @@ async def _run_claude(hives: HiveConnections, messages: list[dict[str, str]], lo
             return {"reply": reply, "steps": steps, "pending": pending, "mode": "claude"}
         results = []
         for call in calls:
-            held, args = _call_tool(call.name, dict(call.input or {}), hives)
+            held, output = await _call_tool(call.name, dict(call.input or {}), hives, steps)
             pending = held or pending
-            output = HELD if held else await hives.step(steps, call.name, args)
             results.append(
                 {
                     "type": "tool_result",
@@ -740,6 +873,7 @@ async def _run_scripted(
         },
         hives.last_source,
         hives.pins.get(best["id"]) if best["id"] in hives.direct else None,
+        _quote_from(avail, unit["id"]),
     )
     reply = (
         say(

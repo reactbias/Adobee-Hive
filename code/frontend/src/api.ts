@@ -323,10 +323,19 @@ export interface Booking {
   payment: string;
   cancellation?: string;
 }
+/** The terms a hold is bound to. The approval shows these; the server keeps its own copy and books against that. */
+export interface Quote {
+  business: string;
+  unit_name: string;
+  total_chf: number;
+  policies: Record<string, string>;
+  terms?: string | null;
+}
 export interface Pending {
   id: string; // one-time: the server books what it held under this id, once
   tool: "hive_book";
   input: Record<string, unknown>;
+  quote?: Quote;
 }
 /** A separate, independent agent checks the held booking before the human is asked; a rule check without a key. */
 export interface SecondOpinion {
@@ -363,6 +372,9 @@ export interface Approval {
   reply: string;
   steps: Step[];
   booking: Booking | null;
+  /** The terms changed before the yes, so nothing was booked: a new hold, on the new terms, for a new yes. */
+  pending?: Pending | null;
+  terms_changed?: { approved: Quote; current: Quote };
 }
 export interface Change {
   field: string;

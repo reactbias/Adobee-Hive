@@ -489,6 +489,16 @@ def stay_nights(check_in: str, check_out: str) -> int:
     return n
 
 
+def _terms(card: dict[str, Any], unit_id: str, total_chf: float) -> str:
+    """A short hash of what a guest agrees to by booking this room for this stay: its total and the card's policies.
+
+    Nothing else is in it, so a new description or photo leaves it alone and a booking approved before that edit still
+    stands. A hash rather than the text, because an agent's guard can withhold card text from what it passes on (#104).
+    """
+    agreed = {"unit_id": unit_id, "total_chf": total_chf, "policies": card.get("policies") or {}}
+    return hashlib.sha256(canonical(agreed)).hexdigest()[:16]
+
+
 def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int) -> list[dict[str, Any]]:
     with db.cursor() as cur:
         booked = dict(
@@ -504,7 +514,9 @@ def _units_free(card: dict[str, Any], check_in: str, check_out: str, guests: int
     for unit in card.get("units", []):
         left = unit["quantity"] - booked.get(unit["id"], 0)
         if left > 0 and unit["max_guests"] >= guests:
-            free.append({**unit, "left": left, "nights": nights, "total_chf": round(unit["price_chf"] * nights, 2)})
+            total = round(unit["price_chf"] * nights, 2)
+            terms = _terms(card, unit["id"], total)
+            free.append({**unit, "left": left, "nights": nights, "total_chf": total, "terms": terms})
     return sorted(free, key=lambda u: u["total_chf"])
 
 
@@ -1020,11 +1032,15 @@ def book(
     guests: int = 1,
     notes: str = "",
     agent: str = "unknown agent",
+    expected_terms: str | None = None,
 ) -> dict[str, Any]:
     """Book a unit and return the confirmation with a signed receipt.
 
+    `expected_terms` is the `terms` the caller was shown for this unit by `check_availability`. Given, the booking
+    is refused if the price or the policies have moved since, so nobody is booked on terms they did not agree to.
+
     Raises HiveError when the dates are invalid, the unit is unknown or sold out, the guest name is
-    missing, or this hub has withdrawn the entity.
+    missing, this hub has withdrawn the entity, or the terms are no longer the expected ones.
     """
     if not guest_name.strip() or len(guest_name) > MAX_NAME:
         raise HiveError(f"guest_name is required, at most {MAX_NAME} characters.")
@@ -1038,6 +1054,10 @@ def book(
     if unit_id not in free:
         raise HiveError(f"{unit_id} is not available for {guests} guest(s) from {check_in} to {check_out}.")
     unit = free[unit_id]
+    if expected_terms is not None and expected_terms != unit["terms"]:
+        # Checked against the same read of the card the booking is then signed from, so what is compared is what is
+        # booked: an edit landing after this line does not change this booking's price or its pinned version.
+        raise HiveError(f"The terms of {unit_id} changed after they were approved, so nothing was booked.")
     booking_id = "bk_" + db.new_id()
     payload = {
         "booking_id": booking_id,

@@ -305,8 +305,11 @@ def test_openai_agent_loop_holds_the_booking(client, monkeypatch):
     monkeypatch.setattr(agent.openai, "AsyncOpenAI", lambda **_: NS(responses=FakeResponses()))
     out = client.post("/api/agent", json={"messages": [{"role": "user", "content": REQUEST}]}).json()
     assert out["mode"] == "openai" and out["reply"] == "Ready to book Hotel Rheinblick."
-    assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card"]  # hive_book was held, not sent
+    # hive_book was held, not sent; the availability read is the terms the traveller is then shown.
+    assert [s["tool"] for s in out["steps"]] == ["hive_discover", "hive_get_card", "hive_check_availability"]
     assert out["pending"]["input"]["card_id"] == "hotel-rheinblick"
+    double = next(u for u in out["steps"][-1]["output"]["available_units"] if u["id"] == "double")
+    assert out["pending"]["quote"]["total_chf"] == double["total_chf"]
     assert all(k["store"] is False for k in seen)
 
 

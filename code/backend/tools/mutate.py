@@ -59,6 +59,7 @@ SUITE = [
     "tests/test_hive.py",
     "tests/test_signed_cards.py",
     "tests/test_hub_trust.py",
+    "tests/test_approved_terms.py",
     "tests/test_hub_api.py",
     "tests/test_folders.py",
     "tests/test_folder_api.py",
@@ -231,6 +232,30 @@ CURATED: list[Mutant] = [
         "a peer's exclusion stops saying whose words it is, so the hub appears to vouch for it",
         '"asserted_by": carrier["hub_id"],',
         '"asserted_by": "",',
+    ),
+    Mutant(
+        "hive.py",
+        "a booking stops checking the terms it was approved on, so a raised price goes straight through",
+        '    if expected_terms is not None and expected_terms != unit["terms"]:',
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "the terms stop covering the policies, so a stricter cancellation books on an old yes",
+        '"policies": card.get("policies") or {}}',
+        '"policies": {}}',
+    ),
+    Mutant(
+        "agent.py",
+        "the agent stops telling the source what was approved, so an old yes books whatever is on the card",
+        'sent = args | ({"expected_terms": quote["terms"]} if quote.get("terms") else {})',
+        "sent = args",
+    ),
+    Mutant(
+        "agent.py",
+        "a hold with no terms can be approved, so a yes to nothing still books",
+        "    if not quote:  # nothing the traveller was shown",
+        "    if False:  # nothing the traveller was shown",
     ),
     Mutant(
         "hive.py",

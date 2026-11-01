@@ -26,6 +26,10 @@ TEXT: dict[str, dict[str, str]] = {
         "booked": "Booked {name}, {unit}, CHF {total} total. Reference {ref}; the signed receipt is your "
         "proof of stay.",
         "book_failed": "Booking failed: {error}",
+        "terms_changed": "{name} changed the terms after you saw them, so nothing was booked. It is now CHF {total}; "
+        "you approved CHF {approved}. Cancellation: {cancellation}. Approve again if that still suits you.",
+        "terms_differ": "{name} confirmed other terms than you approved, CHF {total}, and the booking could not be "
+        "cancelled from here. Reference {ref}: keep the receipt and contact them.",
         "out_of_steps": "I ran out of steps before finishing.",
         "declined": "The model declined this request.",
         "off.nothing": "Rules off: nothing matched, so there was nothing to book.",
@@ -64,6 +68,12 @@ TEXT: dict[str, dict[str, str]] = {
         "booked": "Gebucht: {name}, {unit}, CHF {total} total. Referenz {ref}; die signierte Quittung belegt Ihren "
         "Aufenthalt.",
         "book_failed": "Buchung fehlgeschlagen: {error}",
+        "terms_changed": "{name} hat die Bedingungen geändert, nachdem Sie sie gesehen hatten. Darum wurde nichts "
+        "gebucht. Neu sind es CHF {total}; bestätigt hatten Sie CHF {approved}. Stornierung: {cancellation}. "
+        "Bestätigen Sie erneut, wenn es für Sie noch passt.",
+        "terms_differ": "{name} hat andere Bedingungen bestätigt als die von Ihnen genehmigten, CHF {total}, und die "
+        "Buchung liess sich von hier aus nicht stornieren. Referenz {ref}: Bewahren Sie die Quittung auf und melden "
+        "Sie sich dort.",
         "out_of_steps": "Mir sind die Schritte ausgegangen, bevor ich fertig war.",
         "declined": "Das Modell hat diese Anfrage abgelehnt.",
         "off.nothing": "Regeln aus: Nichts passte, also gab es nichts zu buchen.",
@@ -103,6 +113,11 @@ TEXT: dict[str, dict[str, str]] = {
         "booked": "Réservé : {name}, {unit}, CHF {total} au total. Référence {ref} ; le reçu signé prouve "
         "votre séjour.",
         "book_failed": "La réservation a échoué : {error}",
+        "terms_changed": "{name} a modifié ses conditions après que vous les avez vues : rien n'a donc été réservé. "
+        "C'est désormais CHF {total} ; vous aviez approuvé CHF {approved}. Annulation : {cancellation}. Approuvez à "
+        "nouveau si cela vous convient toujours.",
+        "terms_differ": "{name} a confirmé d'autres conditions que celles que vous aviez approuvées, CHF {total}, et "
+        "la réservation n'a pas pu être annulée d'ici. Référence {ref} : gardez le reçu et contactez l'établissement.",
         "out_of_steps": "Je n'ai plus d'étapes disponibles avant d'avoir terminé.",
         "declined": "Le modèle a refusé cette demande.",
         "off.nothing": "Règles désactivées : rien ne correspondait, il n'y avait donc rien à réserver.",
@@ -142,6 +157,12 @@ TEXT: dict[str, dict[str, str]] = {
         "booked": "Prenotato: {name}, {unit}, CHF {total} in totale. Riferimento {ref}; la ricevuta firmata prova il "
         "Suo soggiorno.",
         "book_failed": "Prenotazione non riuscita: {error}",
+        "terms_changed": "{name} ha cambiato le condizioni dopo che Le ha viste, quindi non è stato prenotato nulla. "
+        "Ora sono CHF {total}; aveva approvato CHF {approved}. Cancellazione: {cancellation}. Approvi di nuovo se Le "
+        "va ancora bene.",
+        "terms_differ": "{name} ha confermato condizioni diverse da quelle che aveva approvato, CHF {total}, e la "
+        "prenotazione non si è potuta annullare da qui. Riferimento {ref}: conservi la ricevuta e contatti la "
+        "struttura.",
         "out_of_steps": "Ho esaurito i passaggi prima di finire.",
         "declined": "Il modello ha rifiutato questa richiesta.",
         "off.nothing": "Regole disattivate: nulla corrispondeva, quindi non c'era niente da prenotare.",

@@ -211,6 +211,14 @@ which reaches the hub only over MCP, but `lan.sh` still runs the agent inside ea
 stay on the hub whichever is used. Activity from agent runs is recorded on the service that ran them, so the hub's
 feed and a card's *shown* and *read* counts miss them.
 
+**The card page's own booking does not check the terms.** The check is on the agent's approval and on any client
+that passes `expected_terms` to `hive_book`. `POST /api/hive/cards/{card_id}/book` takes no terms, so someone
+booking from the card page gets whatever the card says when they press the button, even if it changed after the
+page loaded.
+
+**A hold does not freeze the price.** The approval never books changed terms, but it does not honour the old ones
+either: if the owner raises the price before the yes, the traveller is asked again at the new price.
+
 **A hotel's own node covers one fictional hotel, and only booking.** Hotel Lindenhof keeps its key and bookings on
 its node, and its card is signed there. Three things have not moved with it:
 

@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type AgentResult, type Approval } from "../api";
@@ -277,6 +277,66 @@ describe("traveller agent", () => {
     expect(await screen.findByText(en["agent.receipt.eyebrow"])).toBeInTheDocument();
     expect(screen.getByText("bk_123")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
+  });
+
+  it("shows the terms the hold carries, not whatever was read last", async () => {
+    const held = {
+      ...HELD,
+      quote: {
+        business: "Hotel Rheinblick",
+        unit_name: "River-view double",
+        total_chf: 999,
+        policies: { cancellation: "The held policy" },
+        terms: "abc",
+      },
+    };
+    vi.spyOn(api, "agent").mockResolvedValue({ ...RESULT, pending: held });
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await openDetails(user);
+
+    expect(await screen.findByText(/999/)).toBeInTheDocument();
+    expect(screen.getByText(/The held policy/)).toBeInTheDocument();
+    expect(screen.queryByText(/Free until 24 h before/)).not.toBeInTheDocument();
+  });
+
+  it("asks again, on the new terms, when the terms changed before the approval", async () => {
+    const fresh = {
+      ...HELD,
+      id: "hold-2",
+      quote: {
+        business: "Hotel Rheinblick",
+        unit_name: "River-view double",
+        total_chf: 1800,
+        policies: { cancellation: "No cancellation refund" },
+        terms: "new",
+      },
+    };
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const approve = vi
+      .spyOn(api, "approve")
+      .mockResolvedValueOnce({ reply: "The terms changed.", steps: [], booking: null, pending: fresh })
+      .mockResolvedValueOnce(APPROVAL);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await openDetails(user);
+    await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
+    expect(approve).toHaveBeenLastCalledWith(HELD);
+    await skipAhead(user);
+
+    // Nothing was booked: the same question again, on the new terms. The transcript above keeps what was said about
+    // the old ones, but the gate, where the decision is made, no longer carries an opinion on terms it did not weigh.
+    const gate = (await screen.findByText(/No cancellation refund/)).closest<HTMLElement>(".gate")!;
+    expect(within(gate).getByText(/1.?800/)).toBeInTheDocument();
+    expect(within(gate).queryByText(/Quiet, dog-friendly, under budget/)).not.toBeInTheDocument();
+    expect(screen.queryByText(en["agent.receipt.eyebrow"])).not.toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: en["agent.approve"] }));
+    expect(approve).toHaveBeenLastCalledWith(fresh);
+    await skipAhead(user);
+    expect(await screen.findByText(en["agent.receipt.eyebrow"])).toBeInTheDocument();
   });
 
   it("books nothing when the traveller declines", async () => {
