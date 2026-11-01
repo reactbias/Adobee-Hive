@@ -1,0 +1,26 @@
+# secrets / local config
+.env
+.env.*
+!.env.example
+
+# runtime data (database, uploaded CVs, generated results)
+*.db
+*.db-shm
+*.db-wal
+storage/
+output/
+test_output/
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

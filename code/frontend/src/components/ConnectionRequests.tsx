@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { api, OFFLINE, shownError, type Connection } from "../api";
+import { api, OFFLINE, setOwnerToken, shownError, type Connection } from "../api";
 import { useI18n } from "../i18n";
 
 /**
@@ -22,6 +22,9 @@ export default function ConnectionRequests({ target }: { target: string }) {
   const [unreachable, setUnreachable] = useState(false);
   const [fresh, setFresh] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
+  // The hub refuses a decision without a proof. In a browser that is the owner token, if its operator set one.
+  const needsToken = error.includes("X-Owner-Token") && !error.includes("has not set");
   // The ids the first answer carried. null until it arrives, so the first list is never all-new.
   const known = useRef<Set<string> | null>(null);
 
@@ -97,7 +100,28 @@ export default function ConnectionRequests({ target }: { target: string }) {
           ))}
         </ul>
       )}
-      {error && <p className="error">{error === OFFLINE ? t("error.offline") : error}</p>}
+      {error && (
+        <p className="error">{needsToken ? t("owner.tokenNeeded") : error === OFFLINE ? t("error.offline") : error}</p>
+      )}
+      {needsToken && (
+        <div className="row token">
+          <input
+            type="password"
+            placeholder={t("owner.token")}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <button
+            onClick={() => {
+              setOwnerToken(token);
+              setError("");
+            }}
+            disabled={!token}
+          >
+            {t("owner.useToken")}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
