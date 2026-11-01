@@ -408,6 +408,30 @@ CURATED: list[Mutant] = [
         "if not path:",
     ),
     Mutant(
+        "admin.py",
+        "the hub's own row loses its address again, so an agent cannot pass on a working one",
+        'url = (config.HIVE_PUBLIC_URL or base_url or "").rstrip("/")',
+        'url = ""',
+    ),
+    Mutant(
+        "admin.py",
+        "the apply link goes back to being relative, which is useless to an agent quoting it",
+        'f"{url}/api/hub/register" if url else "/api/hub/register"',
+        '"/api/hub/register"',
+    ),
+    Mutant(
+        "admin.py",
+        "a configured public URL is ignored, so a hub behind a proxy publishes the wrong address",
+        'url = (config.HIVE_PUBLIC_URL or base_url or "").rstrip("/")',
+        'url = (base_url or "").rstrip("/")',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "the scheme is asserted rather than read, so an https hub publishes an http address",
+        'scheme = headers.get("x-forwarded-proto", "").split(",")[0].strip() or "http"',
+        'scheme = "http"',
+    ),
+    Mutant(
         "sharing.py",
         "the looser of the two flags wins, so opening a default unseals closed items",
         "return max(flags, key=strictness)",

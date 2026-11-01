@@ -104,6 +104,7 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `HIVE_PEER_URLS` | empty | Peer Hives for hop-limited federated search: comma-separated base URLs. Empty means every search stays local whatever the radius |
 | `HIVE_HUB_ID` | `local` | How this hub names itself in a result's `provenance` chain and in a query's `seen` list |
 | `HIVE_NAME`, `HIVE_DESCRIPTION` | Basel defaults | What this hub calls itself in `/.well-known/hive.json` and in a peer's directory row |
+| `HIVE_PUBLIC_URL` | empty | The address other people reach this hub at, for its own row in `GET /api/hub/directory`. Empty uses the address the request arrived on (the `Host` header over MCP, with `x-forwarded-proto` if a proxy sets it), so set this only where the scheme or host is rewritten in front of the process |
 | `HIVE_VERIFICATION` | `signed` | What this hub declares it checks before carrying an entity. Peers weigh the claim against what they observe |
 | `PEER_ASK_SECONDS`, `PEER_ASK_TIMEOUT_S`, `PEER_STALE_AFTER_S` | `30`, `2`, `120` | How often peers are asked who they are, how long one may take, and when a cached answer is shown as stale. `0` turns the asking off |
 | `ADMISSION_POLICY` | `vetted` | Who may join: `open`, `vetted`, `invite` or `closed`. With `invite`, `INVITE_TOKENS` holds the accepted tokens ([REGISTRATION.md](REGISTRATION.md)) |
