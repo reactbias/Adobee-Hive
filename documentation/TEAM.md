@@ -3,7 +3,7 @@
 BaselHack 2026, Adobe challenge *The Post-Website Business*. Hands off Sunday 2026-11-01 at 12:00, pitches at 13:00.
 
 The current named assignments, three-hour focus block and handover expectations are in the
-[README team focus block](../readme.md#team-focus-block). That roster supersedes historical next-deliverable lists.
+[team focus block in FIRST_HOURLY.md](FIRST_HOURLY.md#team-focus-block). That roster supersedes historical next-deliverable lists.
 
 ## Workstreams
 
@@ -43,7 +43,7 @@ The full file-to-lane map, which is the one that stops two people editing the sa
    invitation from your GitHub notifications or email.
 2. **Set up.** Clone the repo and follow [Run it locally in 5 minutes](../readme.md#run-it-locally-in-5-minutes).
    Ask a teammate in person for the OpenAI key if you need the live agent; it works offline without one.
-3. **Pick a lane.** Use the [current assignments](../readme.md#team-focus-block), then the file ownership map in
+3. **Pick a lane.** Use the [current assignments](FIRST_HOURLY.md#team-focus-block), then the file ownership map in
    [CONTRIBUTING.md](../CONTRIBUTING.md#find-your-lane). Agree cross-lane changes with Ole and the affected teammate.
 4. **First PR.** Branch from the latest `main` as `<type>/<short-topic>` (`docs/team-guide`, `fix/booking-terms`),
    reproduce a bug before fixing it, keep the change nonbreaking and include behavior-focused verification.

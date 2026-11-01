@@ -221,10 +221,15 @@ def test_a_closed_hub_admits_nobody_but_still_says_why(client, monkeypatch):
 
 
 def test_an_applicant_can_withdraw_before_a_decision(client, monkeypatch):
+    """With the capability `apply` returned: the id alone is a lookup and not authority (#108).
+
+    Proving the withdrawal is tested in tests/test_withdrawal_authority.py; what this keeps is that
+    the applicant's own path still works end to end.
+    """
     monkeypatch.setattr(config, "ADMISSION_POLICY", registration.VETTED)
     out = registration.apply(_application())
 
-    assert registration.withdraw(out["id"])["state"] == registration.WITHDRAWN
+    assert registration.withdraw(out["id"], key=out["withdraw_key"])["state"] == registration.WITHDRAWN
     with pytest.raises(registration.RegistrationError):
         registration.decide(out["id"], True)
 
@@ -324,7 +329,9 @@ def test_the_directory_lists_hubs_the_way_a_person_choosing_one_needs(client):
     assert home["name"] and home["description"]
     assert home["admission"] in registration.POLICIES
     assert home["accepting"] is (config.ADMISSION_POLICY != registration.CLOSED)
-    assert home["apply_at"] == "/api/hub/register"
+    # Absolute, since #156: a person choosing a hub is given this link to use, and the home row used to
+    # be the one row whose link could not be used. tests/test_home_hub_row.py is where that lives.
+    assert home["url"] and home["apply_at"] == f"{home['url']}/api/hub/register"
     assert home["entities"] >= 0
     assert out["admission_meanings"], "a policy name means nothing without its sentence"
 

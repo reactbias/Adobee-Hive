@@ -819,11 +819,27 @@ const de: Record<Key, string> = {
   "asks.forget": "Diese vergessen",
   "asks.only":
     "Nur in diesem Browser gespeichert. Der Hub hält fest, dass gesucht wurde, nie was Sie getippt haben oder wer Sie sind.",
+  "folder.eyebrow": "Ihr Ordner",
+  "folder.title": "Was {name} mit Ihnen teilt",
+  "folder.linked": "Sie haben eine Verbindung zu diesem Ordner und sehen daher mehr, als die Karte sagte.",
+  "folder.unlinked": "Noch keine Verbindung: Das ist nur, was die Karte ohnehin schon sagte.",
+  "folder.away": "Ihr Ordner liegt auf {hub}, nicht hier; dieser Hub kann Ihnen seinen Inhalt nicht zeigen.",
+  "folder.nothing": "In diesem Ordner gibt es für Sie nichts zu sehen.",
+  "folder.look": "Nochmals nachsehen",
+  "folder.take": "Herunterladen",
+  "folder.taking": "Wird geladen…",
+  "folder.listedOnly": "Aufgeführt, nicht ausgeliefert: beim Eigentümer anfragen",
+  "folder.withheld": "{n} weitere Pfade sind gar nicht aufgeführt. Der Hub nennt ihre Anzahl, nie ihre Namen.",
+  "folder.refused":
+    "Diese Datei wurde nicht herausgegeben. Jede Ablehnung sieht gleich aus, mehr ist dazu nicht zu sagen.",
   "requests.title": "Wartet auf Ihre Zustimmung",
+  "requests.count": "Wartet auf Ihre Zustimmung ({n})",
+  "requests.new": "Neu",
   "requests.from": "{who} möchte vermittelt werden",
   "requests.accept": "Annehmen",
   "requests.decline": "Ablehnen",
   "requests.accepted": "Angenommen. Nun kann bewertet werden, wie es war.",
   "requests.refused": "Abgelehnt. Daraus wird nie eine Bewertung.",
+  "requests.unreachable": "Wir konnten den Hub nicht fragen, wer wartet. Das ist kein Nein.",
 };
 export default de;

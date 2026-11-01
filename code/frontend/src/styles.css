@@ -4306,6 +4306,32 @@ button.onboard-back {
 }
 @media (pointer: coarse) {
   .past-asks .chip {
+/* ---------- A peer's folder, browsed without an agent ---------- */
+
+.folder-browse {
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+.folder-browse h4 {
+  margin: 0;
+  font-size: var(--t-sm);
+}
+/* A path is the row's name, so it reads as one line of code and never as prose. It is also the one thing here
+   that can be longer than the column, so it wraps on the separators rather than widening the card. */
+.folder-rows code {
+  overflow-wrap: anywhere;
+  font-size: var(--t-xs);
+}
+.folder-rows > li {
+  gap: var(--s2);
+  align-items: flex-start;
+}
+.folder-rows > li > .stack {
+  min-width: 0;
+}
+@media (pointer: coarse) {
+  .folder-rows button {
     min-height: 44px;
   }
 }
