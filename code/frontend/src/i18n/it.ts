@@ -618,7 +618,6 @@ const it: Record<Key, string> = {
   "admin.signingIn": "Accesso in corso",
   "admin.signOut": "Esci",
   "admin.backToApp": "Torna all'applicazione",
-  "admin.disabled": "Per questo hub non è impostata alcuna password, quindi l'amministrazione è disattivata.",
   "admin.wrongPassword": "Password errata.",
   "admin.lockedOut": "Troppi tentativi. Riprovi tra {s} secondi.",
   "admin.loading": "Caricamento",

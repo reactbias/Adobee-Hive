@@ -111,6 +111,29 @@ describe("calling the backend", () => {
     await expect(api.cards()).rejects.toThrow("Ask a question.");
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+
+  it("preserves a reachable hub's 503 refusal without retrying the sign-in", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "This hub has no ADMIN_PASSWORD set." }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    await expect(api.adminLogin("anything")).rejects.toMatchObject({
+      name: "ApiError",
+      status: 503,
+      message: "This hub has no ADMIN_PASSWORD set.",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not repeat a mutation when a gateway returns no application detail", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response("Bad Gateway", { status: 502 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(api.adminLogin("anything")).rejects.toThrow(OFFLINE);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("bounded health checks", () => {

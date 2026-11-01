@@ -95,6 +95,9 @@ Two screens sit beside that story rather than inside it, because neither belongs
   and the booking run at 0:15.
 - **The admin panel** opens only with `?admin`. Nothing on the public page links to it. It asks for the hub's
   password, and the session token it gets back lives in `sessionStorage` for the tab only.
+  Sign-in shows the backend's actionable refusal detail, including an unconfigured hub's 503. A 403 means
+  wrong password; a 429 with `Retry-After` shows the wait. Only transport failures or gateway responses
+  without an application detail read as unreachable, and mutations are never automatically retried.
 
 | Panel | Chapter | What a person does there |
 | --- | --- | --- |

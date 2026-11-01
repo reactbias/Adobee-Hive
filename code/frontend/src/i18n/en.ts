@@ -615,7 +615,6 @@ const en = {
   "admin.signingIn": "Signing in",
   "admin.signOut": "Sign out",
   "admin.backToApp": "Back to the app",
-  "admin.disabled": "This hub has no password set, so administration is switched off.",
   "admin.wrongPassword": "Wrong password.",
   "admin.lockedOut": "Too many attempts. Try again in {s} seconds.",
   "admin.loading": "Loading",

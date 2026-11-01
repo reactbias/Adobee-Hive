@@ -623,7 +623,6 @@ const de: Record<Key, string> = {
   "admin.signingIn": "Anmeldung läuft",
   "admin.signOut": "Abmelden",
   "admin.backToApp": "Zurück zur App",
-  "admin.disabled": "Für diesen Hub ist kein Passwort gesetzt, die Verwaltung ist daher abgeschaltet.",
   "admin.wrongPassword": "Falsches Passwort.",
   "admin.lockedOut": "Zu viele Versuche. Bitte in {s} Sekunden erneut versuchen.",
   "admin.loading": "Wird geladen",

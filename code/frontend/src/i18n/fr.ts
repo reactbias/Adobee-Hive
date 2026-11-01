@@ -616,7 +616,6 @@ const fr: Record<Key, string> = {
   "admin.signingIn": "Connexion en cours",
   "admin.signOut": "Se déconnecter",
   "admin.backToApp": "Retour à l'application",
-  "admin.disabled": "Aucun mot de passe n'est défini pour ce hub : l'administration est désactivée.",
   "admin.wrongPassword": "Mot de passe incorrect.",
   "admin.lockedOut": "Trop de tentatives. Réessayez dans {s} secondes.",
   "admin.loading": "Chargement",
