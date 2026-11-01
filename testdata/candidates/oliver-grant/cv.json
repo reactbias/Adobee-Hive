@@ -1,0 +1,187 @@
+{
+  "document": {
+    "id": 11,
+    "file": "Oliver Grant - Staff Software Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Oliver Grant",
+      "email": null,
+      "phone": null,
+      "location": "London, United Kingdom",
+      "country": "United Kingdom",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Staff engineer with 13 years of experience leading platform teams, specialising in Python, Go and AWS.",
+    "current_job_title": "Staff Software Engineer",
+    "career_level": "Senior",
+    "total_years_experience": 13.1,
+    "job_categories": [
+      "Software Engineering",
+      "Management"
+    ],
+    "industry_sectors": [
+      "Financial Services",
+      "Technology"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Staff Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "Thames Fintech",
+        "industry": "Financial Services",
+        "location": "London, United Kingdom",
+        "country": "United Kingdom",
+        "employment_type": null,
+        "start_date": "2019-01",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": 93,
+        "team_size_managed": 8,
+        "responsibilities": [
+          "Led a team of 8 engineers building a payments platform on AWS using Python and Go.",
+          "Defined architecture for event-driven microservices with Kafka."
+        ],
+        "achievements": [
+          "Achieved 99.99% uptime for event-driven microservices."
+        ]
+      },
+      {
+        "job_title": "Senior Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "Albion Software",
+        "industry": "Technology",
+        "location": "Manchester, United Kingdom",
+        "country": "United Kingdom",
+        "employment_type": null,
+        "start_date": "2015-06",
+        "end_date": "2018-12",
+        "is_current": false,
+        "duration_months": 43,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Developed REST APIs in Python and Django.",
+          "Introduced Docker and CI/CD."
+        ],
+        "achievements": []
+      },
+      {
+        "job_title": "Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "Northern Data Ltd",
+        "industry": "Technology",
+        "location": "Leeds, United Kingdom",
+        "country": "United Kingdom",
+        "employment_type": null,
+        "start_date": "2013-09",
+        "end_date": "2015-05",
+        "is_current": false,
+        "duration_months": 21,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built internal tools with Python and PostgreSQL."
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "BSc Computer Science",
+        "degree_level": "Bachelor",
+        "field_of_study": "Computer Science",
+        "institution": "University of Manchester",
+        "country": "United Kingdom",
+        "start_date": null,
+        "graduation_date": "2013",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Bachelor",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "Go",
+      "AWS",
+      "Kafka",
+      "Kubernetes",
+      "Terraform",
+      "PostgreSQL",
+      "System design"
+    ],
+    "soft_skills": [
+      "People management"
+    ],
+    "software_and_tools": [],
+    "languages": [],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced staff-level software engineer focused on backend and platform engineering.",
+      "Strong background in Python, Go, AWS and event-driven microservices.",
+      "Proven track record leading and managing engineering teams.",
+      "Experience in fintech and software product companies.",
+      "Delivered highly available systems achieving 99.99% uptime."
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [
+      {
+        "key": "security_clearance",
+        "value": "SC",
+        "section": "Additional"
+      },
+      {
+        "key": "notice_period",
+        "value": "3 months",
+        "section": "Additional"
+      }
+    ],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 3,
+    "companies": [
+      "Thames Fintech",
+      "Albion Software",
+      "Northern Data Ltd"
+    ],
+    "avg_tenure_months": 52.7,
+    "short_tenures": [
+      {
+        "job_title": "Software Engineer",
+        "company": "Northern Data Ltd",
+        "duration_months": 21
+      }
+    ],
+    "num_short_tenures": 1,
+    "employment_gaps": [],
+    "computed_years_experience": 13.2,
+    "countries_worked": [
+      "United Kingdom"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2013,
+    "years_since_graduation": 13,
+    "highest_education_level": "Bachelor",
+    "max_team_size_managed": 8,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4474,
+    "completion_tokens": 699
+  }
+}

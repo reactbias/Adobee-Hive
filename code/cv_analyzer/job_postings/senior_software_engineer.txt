@@ -1,0 +1,10 @@
+﻿Senior Software Engineer (Cloud & Backend)
+
+We are looking for a Senior Software Engineer to design and run cloud-based backend services.
+
+Requirements:
+- 5+ years of professional software engineering experience
+- Strong Python; experience with microservices and REST APIs
+- Hands-on cloud experience (AWS, Azure or GCP), containers (Docker/Kubernetes), CI/CD
+- Experience with SQL/NoSQL databases and data pipelines
+- Nice to have: Terraform / infrastructure as code, mentoring junior engineers

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import HRPanel from "./panels/HRPanel";
 import AdminPanel from "./panels/AdminPanel";
+import HiringPanel from "./panels/HiringPanel";
 import InstanceFinder from "./panels/InstanceFinder";
 import Onboarding from "./panels/Onboarding";
 import OwnerPanel from "./panels/OwnerPanel";
@@ -135,6 +136,9 @@ export default function App() {
   const [joinHub, setJoinHub] = useState(() => joinHubIn(here().hash));
   const [joining, setJoining] = useState<DirectoryHub | null>(null);
   const { t } = useI18n();
+  // The hiring screen asks the Hive nothing until somebody opens it, then stays mounted so a posting survives a look away.
+  const hireOpened = useRef(false);
+  if (screen === "hire") hireOpened.current = true;
 
   /** Leave the hub's own panel and show the app, taking `?admin` out of the address with it. */
   const leaveAdmin = useCallback((keepHash: boolean) => {
@@ -314,6 +318,11 @@ export default function App() {
         <div hidden={screen !== "offer"}>
           <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
         </div>
+        {hireOpened.current && (
+          <div hidden={screen !== "hire"}>
+            <HiringPanel key={`${hub}@${chosenHubUrl()}`} />
+          </div>
+        )}
         {/* The hub network, live: its own screen, reached from the footer, so the two tabs stay for people. */}
         <div hidden={screen !== "network"}>
           <NetworkPanel key={`${hub}@${chosenHubUrl()}`} />

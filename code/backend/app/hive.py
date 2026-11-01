@@ -1398,7 +1398,8 @@ def owner_overview(card_id: str) -> dict[str, Any]:
             "ORDER BY created_at DESC LIMIT 50",
             [card["id"]],
         ).fetchall()
-    titles = {i["id"]: i["title"] for i in card.get("offers", []) + card.get("events", [])}
+    # A card built from a folder lists offers by title alone, so an entry with no id is not a hand-off target.
+    titles = {i["id"]: i.get("title", i["id"]) for i in card.get("offers", []) + card.get("events", []) if "id" in i}
     handoffs = [{"item": titles.get(item_id, item_id), "created_at": at} for item_id, at in handed]
     return {
         "card": card,

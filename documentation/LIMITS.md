@@ -329,6 +329,41 @@ through an in-process transport), but `https://adobee-hive.onrender.com` has no 
 against the live backend stays local whatever the reach control says. Three peered hubs on one machine is
 what [`lan.sh`](../lan.sh) is for; see [DEVELOPER.md](DEVELOPER.md#three-hubs-on-one-machine-lansh).
 
+## Hiring
+
+**Rules read the posting and rank the cards, not a model.** `app/talent.py` splits a posting on its bullets,
+semicolons, commas and "and"/"or", and matches by stem, a few aliases, a hand-built table of what implies what
+(`RELATED`: React implies frontend) and `semantic.py`. It is deterministic and works with no key, and it is wrong
+in the ways a table is wrong: a requirement written as a sentence ("a working eye for UX: you build order flows
+that work on a phone") is matched as one long phrase, and a family the table does not know ("COBOL") is found
+only by its own word. `hr_shortlist` returns what it understood of the posting (`job`) so a person can see that.
+**Nothing has been measured.** There is no labelled set of postings and candidates, so there is no accuracy figure
+to quote and none is quoted; `tests/test_talent.py` pins hand-checked cases on the test corpus.
+
+**Keyword stuffing is not detected.** A line that lists every skill in the posting earns each of them. The CV
+analyzer flags `unsubstantiated_skills` in its extraction, and nothing here reads that flag yet. Text in a folder
+is only ever matched against, never obeyed (`tests/test_interview.py` pins it), but matching is the weakness.
+
+**A candidate's agent quotes; it does not reason.** Offline, an answer is the lines of the shared files that speak
+to the question, in the person's own words, with the file named. It can not infer that five years of Go makes a
+person a backend engineer unless a line or the `RELATED` table says so, and it can not answer a question the
+folder does not phrase anywhere near it ("no line, no claim"). There is no model-written answer.
+
+**A person's yes can only come from their folder.** `agent.md` (`screening: yes`) is the one place a person
+opens their folder to a recruiter's agent; with nothing there the answer is `ask`, which records an
+`intro_request` event and stops. There is no screen where a person sees that request and says yes. The Python
+`approve=` argument exists for tests and demos and is not on any tool.
+
+**The recruiter is an unauthenticated string.** `hr_interview` takes `recruiter` and believes it, the same gap as
+a connection's `requester` ([#158](https://github.com/reactbias/Adobee-Hive/issues/158)). The folder link it
+opens is between that string and the candidate, so anyone can ask for an interview as anyone.
+
+**One hub, people only.** The search covers the person cards on this hub: no `radius`, no federation. A candidate
+whose folder this hub does not hold is ranked on their card and marked `no_folder`.
+
+**PDFs are read only when they carry plain text.** `interview._pdf_text` takes `(…) Tj` strings from plain or
+Flate streams. A scanned résumé, or a font with a custom encoding, reads as empty. The way in for a real résumé is
+`code/cv_analyzer`, which reads the PDF with a model and writes the JSON the interview reads.
 ## The deployed demo
 
 **An https page cannot call an http hub.** Picking a Hive in the finder does now move the app: the hub's base URL

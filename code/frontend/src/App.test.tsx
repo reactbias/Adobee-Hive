@@ -67,9 +67,11 @@ describe("the app", () => {
 
     const tabs = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
     const links = tabs.getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#hr", "#offer"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#hr", "#offer", "#hire"]);
     expect(links[0]).toHaveTextContent(en["chapter.find"]);
     expect(links[1]).toHaveTextContent(en["chapter.hr"]);
+    expect(links[2]).toHaveTextContent(en["chapter.offer"]);
+    expect(links[3]).toHaveTextContent(en["chapter.hire"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
 
     // The finding screen first; the offering one is there but not on show.

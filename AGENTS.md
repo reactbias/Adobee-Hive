@@ -36,10 +36,11 @@ Read `readme.md` for the idea and `documentation/ARCHITECTURE.md` for the module
 code/backend/app/     FastAPI app, Hive core, MCP server, agents (Python 3.12)
 code/backend/app/domains/   one module per use case beyond stays (hr.py first); see CONTRIBUTING.md
 code/backend/tests/   pytest, including an end-to-end booking over MCP
+code/cv_analyzer/     CV PDFs to structured JSON with a model (its own conda env); the JSON is what interviews read
 code/backend/tools/   mutation testing, the test corpus generator, the vault seeder
 code/frontend/src/    React + Vite + TypeScript; api.ts is the typed client
 documentation/        vision, federation, registration, limits, architecture, diagrams, deploy, brand, team
-testdata/             fictional vaults and the answer key search is measured against
+testdata/             fictional vaults and the answer key search is measured against; candidates/ are CV-based vaults for hiring
 assets/               exports for slides
 lan.sh                three peered hubs on this machine, for anything federated
 ```

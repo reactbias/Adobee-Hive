@@ -1,0 +1,183 @@
+{
+  "document": {
+    "id": 4,
+    "file": "Camille Dubois - Software Architect.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Camille Dubois",
+      "email": "camille.dubois@example.com",
+      "phone": "+41 22 555 09 90",
+      "location": "Geneva, Switzerland",
+      "country": "Switzerland",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Software architect with experience across startup, banking and consulting environments, focusing on Python, Azure and GCP cloud-native architectures.",
+    "current_job_title": "Software Architect",
+    "career_level": "Senior",
+    "total_years_experience": 12.0,
+    "job_categories": [
+      "Software Engineering",
+      "Management"
+    ],
+    "industry_sectors": [
+      "Consulting",
+      "Banking",
+      "Technology"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Software Architect",
+        "job_category": "Software Engineering",
+        "company": "Leman Consulting",
+        "industry": "Consulting",
+        "location": "Geneva, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": null,
+        "end_date": null,
+        "is_current": false,
+        "duration_months": 60,
+        "team_size_managed": 6,
+        "responsibilities": [
+          "Designed cloud-native architectures on Azure and GCP for 10+ clients",
+          "Led a team of 6 consultants"
+        ],
+        "achievements": [
+          "Delivered Azure and GCP architectures for 10+ clients"
+        ]
+      },
+      {
+        "job_title": "Senior Developer",
+        "job_category": "Software Engineering",
+        "company": "Banque du Lac",
+        "industry": "Banking",
+        "location": "Geneva, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": null,
+        "end_date": null,
+        "is_current": false,
+        "duration_months": 48,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built Python trading-support services with REST APIs",
+          "Migrated services to Docker and CI/CD"
+        ],
+        "achievements": []
+      },
+      {
+        "job_title": "Developer",
+        "job_category": "Software Engineering",
+        "company": "StartLab SA",
+        "industry": "Technology",
+        "location": "Lausanne, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": null,
+        "end_date": null,
+        "is_current": false,
+        "duration_months": 36,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Full-stack development with Python and PostgreSQL"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "MSc Software Engineering",
+        "degree_level": "Master",
+        "field_of_study": "Software Engineering",
+        "institution": "EPFL",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2013",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Master",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "Azure",
+      "GCP",
+      "Kubernetes",
+      "REST APIs",
+      "PostgreSQL",
+      "Architecture",
+      "Docker",
+      "CI/CD"
+    ],
+    "soft_skills": [],
+    "software_and_tools": [],
+    "languages": [
+      {
+        "language": "French",
+        "proficiency": "native"
+      },
+      {
+        "language": "English",
+        "proficiency": "C1"
+      },
+      {
+        "language": "German",
+        "proficiency": "B1"
+      }
+    ],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced software architect with 12 years in development and architecture",
+      "Background across startup, banking, and consulting sectors",
+      "Strong expertise in Python and cloud platforms Azure and GCP",
+      "Hands-on experience with REST APIs, PostgreSQL, Docker and CI/CD",
+      "Led and managed a consulting team of 6 engineers"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 3,
+    "companies": [
+      "Leman Consulting",
+      "Banque du Lac",
+      "StartLab SA"
+    ],
+    "avg_tenure_months": 48.0,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [],
+    "computed_years_experience": null,
+    "countries_worked": [
+      "Switzerland"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2013,
+    "years_since_graduation": 13,
+    "highest_education_level": "Master",
+    "max_team_size_managed": 6,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4448,
+    "completion_tokens": 690
+  }
+}
