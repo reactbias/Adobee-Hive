@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
-import HRAgent from "./pages/HRAgent";
+import HRPanel from "./panels/HRPanel";
 import AdminPanel from "./panels/AdminPanel";
 import InstanceFinder from "./panels/InstanceFinder";
 import Onboarding from "./panels/Onboarding";
@@ -309,7 +309,7 @@ export default function App() {
           <TravellerAgent key={`${hub}@${chosenHubUrl()}`} onOpenBusiness={openBusiness} />
         </div>
         <div hidden={screen !== "hr"}>
-          <HRAgent key={`${hub}@${chosenHubUrl()}`} />
+          <HRPanel key={`${hub}@${chosenHubUrl()}`} />
         </div>
         <div hidden={screen !== "offer"}>
           <OwnerPanel key={`${hub}@${chosenHubUrl()}/${business ?? ""}`} initial={business} />
