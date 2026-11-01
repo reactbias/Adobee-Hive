@@ -3,6 +3,10 @@ import type { Key } from "./en";
 // Deutsch, Schweizer Schreibweise: ss statt ß.
 const de: Record<Key, string> = {
   "nav.language": "Sprache",
+  "theme.label": "Farbschema",
+  "theme.system": "System folgen",
+  "theme.light": "Hell",
+  "theme.dark": "Dunkel",
   "nav.live": "Live-Modell konfiguriert",
   "nav.offline": "Offline-Planer",
   "nav.down": "Backend nicht erreichbar",

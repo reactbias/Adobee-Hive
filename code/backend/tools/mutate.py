@@ -69,6 +69,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
+    "tests/test_local_calibration.py",
     "tests/test_federated_blocks.py",
 ]
 
@@ -604,6 +605,18 @@ CURATED: list[Mutant] = [
         "an owner edit is answered as published without ever being signed or stored",
         "    card = hive.publish(_strip(proposed))",
         "    card = _strip(proposed)",
+    ),
+    Mutant(
+        "hub.py",
+        "a local introduction reads the signed body again, so its published claim is NULL for ever",
+        "held = _verified_remote(entity_id, card, target_hub) if remote else hive.get_card(entity_id)",
+        'held = _verified_remote(entity_id, card, target_hub) if remote else record["data"]',
+    ),
+    Mutant(
+        "hub.py",
+        "a local introduction is attributed to nobody, so calibration never counts it",
+        "    if not remote and not target_hub:",
+        "    if False:",
     ),
 ]
 

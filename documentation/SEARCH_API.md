@@ -83,10 +83,14 @@ assuming. To run a second stack beside one that is already up, pin all four:
 PORT_APP=8540 PORT_A=8520 PORT_B=8521 PORT_C=8522 ./lan.sh up
 ```
 
-> **Do not run `./lan.sh down` if somebody else's stack is up on this machine.** Its cleanup sweeps
-> *every* listener on ports 8420–8445 whose command line contains `uvicorn` or `vite`, whatever
-> started it, so it will stop a demo you did not start. Kill your own by pid instead
-> (`.lan/*.pid`). Noted as a bug below.
+> **`./lan.sh down` stops only what this checkout started.** Every pid it is about to kill is
+> checked twice — the command line has to be a `uvicorn` or a `vite`, and the process's working
+> directory has to be inside this checkout — so a stack another worktree is running is reported and
+> left alone. It sweeps `8420`–`8445` plus whatever ports `.lan/state` recorded, so a stack pinned
+> outside the default range is reaped too; `SWEEP_FROM` and `SWEEP_TO` move the range.
+>
+> Still worth knowing: the **shared LAN stack is not your sandbox**. Only the host operator should
+> start or stop it, whatever the script now protects.
 
 `lan.sh up` also rebuilds the frontend, which needs `npm install` in `code/frontend` first. The
 build failure is swallowed and the hubs come up anyway, so if you only want the API, ignore it.
@@ -1280,10 +1284,6 @@ what is documented above.
   `semantic.SIMILARITY_FLOOR` *after* assigning the loop variable to it, so the comparison is always
   true. It should compare against the saved `in_use`. The numbers are right; only the marker is
   wrong.
-- **`./lan.sh down` stops other people's servers.** Its cleanup loop sweeps ports 8420–8445 and
-  kills any listener whose command line matches `uvicorn` or `vite`, regardless of which stack
-  started it or which ports this invocation was given. On a machine running two stacks — which
-  `PORT_A`/`PORT_B`/`PORT_C` explicitly support — `down` takes both out.
 - **Filler words earn `offers_needs` points.** `hive.STOPWORDS` has 21 entries where
   `semantic.STOPWORDS` has 323, so `where`, `someone` and `somewhere` are scoring query terms. It
   costs real first places: *"where can I get a haircut"* returns `x-4xor, schnittwerk-bern,

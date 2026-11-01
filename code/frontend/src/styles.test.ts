@@ -128,8 +128,25 @@ describe("styles", () => {
     // The ones that would otherwise paint white on white, or cast a slate shadow onto a black page.
     for (const token of ["--on-ink", "--ink-hover", "--bg-frosted", "--lift"])
       expect([token, block.includes(`${token}:`)]).toEqual([token, true]);
-    // The stage lifts rather than staying put, or the agents dissolve into the page behind them.
-    expect(block).toMatch(/--stage:\s*#1b1f27/);
+    // The stage lifts rather than staying put, or the agents dissolve into the page behind them. The value
+    // now lives once in the palette and the block maps it, so both are checked.
+    expect(rule(":root")).toMatch(/--dk-stage:\s*#1b1f27/);
+    expect(block).toMatch(/--stage:\s*var\(--dk-stage\)/);
+  });
+
+  it("switches the one dark palette on from the OS and from an explicit choice, identically", () => {
+    // Two rules, one palette. If they ever drift, a reader who picks dark gets a different page from a reader
+    // whose laptop is dark, which is the bug this shape exists to make impossible.
+    const mapping = (from: string) => {
+      const at = css.indexOf(from);
+      const body = css.slice(at, css.indexOf("\n}", at));
+      return (body.match(/--[\w-]+:\s*var\(--dk-[\w-]+\);/g) ?? []).join("\n");
+    };
+    const fromOs = mapping("@media (prefers-color-scheme: dark) {");
+    const chosen = mapping(':root[data-theme="dark"] {');
+    expect(chosen).toBe(fromOs);
+    expect(chosen.split("\n").length).toBeGreaterThan(15);
+    expect(rule(':root[data-theme="dark"]')).toMatch(/color-scheme:\s*dark/);
   });
 
   it("paints the page from html as well as body, so a dark OS leaves no white band", () => {
@@ -147,13 +164,13 @@ describe("styles", () => {
   it("gives every footer control a thumb-sized target on a touch screen, as the brand promises", () => {
     // Measured at 360px before this: the two Hive controls were 32px tall and the bee 15px, against
     // BRAND.md's "on touch screens every control has a 44 px target".
-    const coarse = css.slice(css.indexOf("@media (pointer: coarse) {\n  .nav-hub"));
+    const coarse = css.slice(css.lastIndexOf("@media (pointer: coarse) {"));
     expect(coarse).toMatch(/\.footer-hive a\.nav-hub,[\s\S]*?min-height:\s*44px/);
     expect(coarse).toMatch(/\.b6-perch \{[\s\S]*?min-height:\s*44px/);
+    // The scheme buttons joined the same rule rather than growing one of their own.
+    expect(coarse).toMatch(/\.themes button,/);
     // It has to come after the rules that pin them to 32px, or it loses on source order.
-    expect(css.indexOf("@media (pointer: coarse) {\n  .nav-hub")).toBeGreaterThan(
-      css.indexOf(".footer-hive a.nav-hub {"),
-    );
+    expect(css.lastIndexOf("@media (pointer: coarse) {")).toBeGreaterThan(css.indexOf(".footer-hive a.nav-hub {"));
   });
 
   it("gives the phone header room: the chapters take their own row and the language buttons shrink", () => {
