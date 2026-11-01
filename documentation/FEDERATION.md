@@ -168,7 +168,8 @@ Three lines, if the question comes up:
 
 1. *The person chooses how far to search. One town, a region, or a country.*
 2. *A Hive is rated for how honestly it ranks. A business is rated for what it delivered. The two are separate.*
-3. *A Hive can withhold a card. It can never forge one, so the operator is replaceable.*
+3. *A Hive that relays a card can withhold it. It cannot forge it, so the operator is replaceable.* (The Hive a card
+   was published through holds its key, unless the owner runs their own node: [LIMITS.md](LIMITS.md#trust).)
 
 The jury question this answers is "who owns the Hive?" — nobody alone, and the architecture is what makes that
 true rather than a promise.

@@ -84,7 +84,7 @@ Browser only, no local terminal. Every push to `main` redeploys both parts.
 | Backend | Render free web service from `code/backend/Dockerfile` | Render watches `main` | `render.yaml` |
 | LLM key | `OPENAI_API_KEY`, entered in the Render dashboard only | Set once | Never in the repo |
 | Data | Render free Postgres `adobee-hive-db`, `DATABASE_URL` wired in by the Blueprint | Created with the Blueprint | `render.yaml` |
-| Keep-warm | Health ping every 10 minutes | GitHub Actions cron | `.github/workflows/keep-backend-warm.yml` |
+| Keep-warm | Health ping, scheduled every 10 minutes; best-effort, GitHub ran it far less often | GitHub Actions cron | `.github/workflows/keep-backend-warm.yml` |
 
 One-time setup, about 10 minutes:
 
@@ -98,8 +98,8 @@ One-time setup, about 10 minutes:
 Things to know about the free tier:
 
 - **Cold start.** A free Render service sleeps after 15 idle minutes and needs about a minute to wake. The
-  keep-warm workflow pings `/api/health` every 10 minutes while `BACKEND_URL` is set (GitHub may delay scheduled
-  runs by a few minutes). Delete the workflow or the variable after the event.
+  keep-warm workflow pings `/api/health` every 10 minutes while `BACKEND_URL` is set (GitHub delays or skips scheduled
+  runs, so wake it by hand before a demo). Delete the workflow or the variable after the event.
 - **Data persists in Postgres.** The free disk is ephemeral, so with `DATABASE_URL` set the backend keeps the
   DuckDB file as one snapshot row in Postgres: restored on boot, saved in the background after every write (bursts
   coalesce into one save, the last one is flushed on shutdown). Without `DATABASE_URL` each deploy starts from the
