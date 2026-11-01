@@ -2,7 +2,7 @@
 
 ## Locally
 
-Step by step, for macOS, Linux and Windows: [readme](../readme.md#run-it-locally-in-5-minutes).
+Step by step, for macOS, Linux and Windows: [developer guide](DEVELOPER.md#start-it).
 
 ```bash
 # backend
