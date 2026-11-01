@@ -3,6 +3,11 @@ FROM node:18-alpine AS build
 
 WORKDIR /app
 
+ARG VITE_API_KEY
+ARG VITE_ADMIN_TOKEN
+ENV VITE_API_KEY=$VITE_API_KEY
+ENV VITE_ADMIN_TOKEN=$VITE_ADMIN_TOKEN
+
 # Copy package files and install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install

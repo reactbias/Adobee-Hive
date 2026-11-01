@@ -78,6 +78,7 @@ def hive_discover(
     radius: int = 0,
     looking_for: str = "offers",
     limit: int | None = None,
+    include_irrelevant: bool = False,
 ) -> dict[str, Any]:
     """Find anyone in the Hive by what they offer or what they need: a hotel, a developer, a café.
 
@@ -97,6 +98,12 @@ def hive_discover(
     above 0 makes this hub call its peers, so it is rate-limited: a refusal names the budget and when to retry.
     limit: how many matches to answer with, up to 50. The answer says `truncated` and `total_matches` when there
     were more, so narrow the query or raise this rather than assuming you saw the whole Hive.
+    The answer carries `matched` (how many businesses the query actually earned something from) over
+    `considered` (how many were ranked to get them). Only the ones that earned something come back, so
+    `matched: 0` means nothing on this Hive answers the question — say so to the user rather than offering
+    the closest row, and consider hive_wait. Do not threshold on `score > 0` yourself: reputation is paid on
+    every query, so a few well-reviewed businesses score 1-2 on everything, including nonsense.
+    include_irrelevant: ask for the unfiltered ranking too, including businesses that matched nothing.
     """
     if radius and (over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True)):
         raise ToolError(over)  # the budget the REST route spends, before this hub calls any peer
@@ -116,6 +123,16 @@ def hive_discover(
     # `_safe` raises now, so a refusal never reaches here as a body to test for.
     if ruleset:
         found = _safe(rulesets.apply, found, ruleset)
+    if "error" in found:
+        return found
+    # Threshold first, then cap. The other way round the ceiling would spend its 20 slots on businesses
+    # the query earned nothing from and cut the ones it did — and at radius 2 every match carries a full
+    # inline card, so those rows are the expensive ones too (73 matches came to 690 KB, ~65 scoring zero).
+    found = hive.only_relevant(
+        found,
+        hive.asks_anything(query, features, near, max_price_chf),
+        include_irrelevant,
+    )
     return limits.bound_answer(found, limit)
 
 
