@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#a24f2c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Adobee Hive">
+  <!-- The mark from the whiteboard sketch: a bee in an open hexagon, one clay line that reads at 16 px. -->
+  <path d="M36.0 7.3L51.4 16.2M55.4 23.1L55.4 40.9M51.4 47.8L36.0 56.7M28.0 56.7L12.6 47.8M8.6 40.9L8.6 23.1M12.6 16.2L28.0 7.3"/>
+  <ellipse cx="24.5" cy="25.5" rx="6.5" ry="4" transform="rotate(-28 24.5 25.5)"/>
+  <ellipse cx="39.5" cy="25.5" rx="6.5" ry="4" transform="rotate(28 39.5 25.5)"/>
+  <rect x="26" y="27" width="12" height="20" rx="6"/>
+  <path d="M26.5 34h11M26.5 40h11"/>
+</svg>
