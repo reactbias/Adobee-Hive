@@ -25,6 +25,39 @@ export function screenFor(hash: string): ScreenId {
   return screen === "offer" || screen === "network" ? screen : "find";
 }
 
+/**
+ * Joining a Hive is a route too: `#join/<hub>`.
+ *
+ * It was React state and nothing else, so the browser's own back button and a phone's back gesture left the
+ * app entirely instead of returning to the Hive list, and a header link could not get past it. The hub rides
+ * in the hash so a reload comes back to the same application rather than to a blank screen. Nothing that has
+ * been *typed* is in the address: an application starts over on a reload, and a link promising to restore a
+ * half-filled form would be a lie about what it restores.
+ */
+const JOIN = "join";
+
+/** The hub an address asks to join, or "" when it asks for something else. */
+export function joinHubIn(hash: string): string {
+  const [name, ...rest] = hash.replace(/^#/, "").split("/");
+  return name === JOIN && rest.length ? decodeURIComponent(rest.join("/")) : "";
+}
+
+/** The address for joining one Hive. */
+export const joinHash = (hub: string): string => `#${JOIN}/${encodeURIComponent(hub)}`;
+
+/**
+ * True when the hash names one of the app's screens outright.
+ *
+ * An empty hash does not: it is where the finder sits, so coming back to it from `#join/...` has to leave the
+ * Hive list on screen rather than falling through to the traveller's.
+ */
+export function namesScreen(hash: string): boolean {
+  const name = hash.replace(/^#/, "");
+  if (!name) return false;
+  const screen = RENAMED[name] ?? name;
+  return screen === "find" || screen === "offer" || screen === "network";
+}
+
 /** The same hash as the app would write it, or "" when it is already written that way. */
 export function canonicalHash(hash: string): string {
   const renamed = RENAMED[hash.replace(/^#/, "")];

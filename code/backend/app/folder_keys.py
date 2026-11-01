@@ -53,6 +53,11 @@ CREATE TABLE IF NOT EXISTS folder_keys (
 #: anything brute-forceable through a rate-limited HTTP endpoint.
 SECRET_BYTES = 32
 
+#: Looking a secret up: by digest, and never a revoked key. Spelled once because both doors that
+#: take a secret ask it — `resolve` for a read and `party_of` for who is holding it — and a lookup
+#: that forgot `revoked_at` in one of them would leave a revoked key working at the other.
+_LIVE_KEY = "SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ? AND revoked_at IS NULL"
+
 #: The header a read presents it in. Spelled once, so the docs and the routes cannot drift.
 HEADER = "Authorization"
 SCHEME = "Bearer"
@@ -94,15 +99,24 @@ def parties(link: dict[str, Any], handle: str) -> tuple[str, str]:
     raise KeyError_(f"{name} is not a party to folder link {link['id']}")
 
 
-def mint(link_id: str, handle: str) -> dict[str, Any]:
+def mint(link_id: str, handle: str, *, pending_ok: bool = False) -> dict[str, Any]:
     """Mint a key for one party to an established link, and return the secret **once**.
 
     Refused on a link that is not established: a secret for a handshake the other side has not
     accepted would be a capability handed out before consent. The plaintext is in the returned dict
     under `secret` and nowhere else — not in the database, and not in anything this module logs.
+
+    `pending_ok` mints on a link still waiting for the other side, and grants nothing by doing so.
+    `resolve` re-reads the link's state on **every** request, so such a key reads nothing until the
+    other side accepts, and stops reading again the moment the link is revoked — the key is a name
+    for a side of a link, and the link is what decides. One caller needs that: `hub.connect`, which
+    speaks for the requester it names and is the requester's only chance to be handed a credential
+    for the introduction it just made. Without it a `confirm` introduction had no requester-side
+    proof in existence, so the person who asked for the meeting could not prove it was theirs to
+    score (#107). Refusing here would have moved the problem, not solved it.
     """
     link = folders.get_link(link_id)
-    if link["state"] != folders.ESTABLISHED:
+    if link["state"] != folders.ESTABLISHED and not pending_ok:
         raise KeyError_(
             f"folder link {link_id} is {link['state']}, not established; there is nothing to read with a key yet"
         )
@@ -128,7 +142,7 @@ def resolve(secret: str) -> dict[str, Any] | None:
         return None
     with db.cursor() as cur:
         row = cur.execute(
-            "SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ? AND revoked_at IS NULL",
+            _LIVE_KEY,
             [fingerprint(secret)],
         ).fetchone()
     if row is None:
@@ -141,6 +155,40 @@ def resolve(secret: str) -> dict[str, Any] | None:
     if link["state"] != folders.ESTABLISHED:
         return None
     return key
+
+
+def party_of(secret: str) -> dict[str, Any] | None:
+    """Which side of which link holds this secret, or None. **Not** permission to read anything.
+
+    `resolve` is the read door and refuses a link that is not established, because reading what the
+    other side has not yet agreed to share would be a capability ahead of consent. This answers a
+    different question: *who is holding this*. A key names a side of a link from the moment it is
+    minted, and that is a fact about the holder rather than a grant.
+
+    One caller needs the distinction. An introduction waiting for its owner's yes stands on a link
+    that is, by definition, not established yet — so the owner's own credential for the row could
+    never be checked through `resolve`, and the decision would have had nothing per-party behind it
+    at all (#107). Authority over a connection row is not access to a folder, and conflating the two
+    is what made this look impossible.
+
+    A revoked key is nobody, and so is a key on a revoked link: both are read here on every call,
+    with no cache to expire, exactly as `resolve` does it.
+    """
+    if not secret:
+        return None
+    with db.cursor() as cur:
+        row = cur.execute(
+            _LIVE_KEY,
+            [fingerprint(secret)],
+        ).fetchone()
+    if row is None:
+        return None
+    key = {"id": row[0], "link": row[1], "handle": row[2], "peer": row[3]}
+    try:
+        link = folders.get_link(key["link"])
+    except folders.FolderError:
+        return None
+    return None if link["state"] == folders.REVOKED else key
 
 
 def touch(key_id: str) -> None:
