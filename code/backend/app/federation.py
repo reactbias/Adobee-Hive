@@ -54,7 +54,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from . import blocklist, config, hive, reputation
+from . import blocklist, config, hive, reputation, sharing
 
 log = logging.getLogger(__name__)
 
@@ -622,6 +622,15 @@ async def _verified(
             blameless = True
         elif not hive.verify_pinned(card, origin["owner_keys"]):
             reason = "this copy does not match what the owner signed, or no key is pinned for it"
+        elif not sharing.searchable(hive.sharing_default(card), None):
+            # Read only after the card has been verified, so the flag comes from a body its owner
+            # signed rather than from whoever relayed it. A hub is supposed to keep a `push` or
+            # `never` entity out of its own answers; when one arrives anyway it is withheld here
+            # too, because the owner's decision does not stop at a hub boundary. Nobody is charged
+            # for it: the hub that should have enforced it is the origin, and from here the origin
+            # and the carrier are not reliably distinguishable.
+            reason = "its owner shares it only on their own initiative, by the flag on the card they signed"
+            blameless = True
         else:
             # The carrier's own copy of this hub's verdict is not an input to it, so say what we
             # found rather than passing on what it claimed.
