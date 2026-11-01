@@ -20,12 +20,17 @@ services:
       - ./backend/.env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:?set POSTGRES_DB}
+    volumes:
+      - cvstorage:/app/storage
     depends_on:
       - db
 
   frontend:
     build:
       context: ./frontend
+      args:
+        VITE_API_KEY: ${HIRING_HUB_API_KEY:?Set HIRING_HUB_API_KEY in .env}
+        VITE_ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env}
     ports:
       - "3000:80"
     depends_on:
@@ -33,3 +38,4 @@ services:
 
 volumes:
   pgdata:
+  cvstorage:
