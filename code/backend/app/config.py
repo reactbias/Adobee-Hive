@@ -86,6 +86,9 @@ LLM_ENABLED = LLM_PROVIDER != "offline"
 # MCP endpoints the booking agent searches. Empty = this server's own Hive, in-process.
 # Comma-separated URLs federate several Hives, e.g. another team's https://.../mcp/
 HIVE_MCP_URLS = [u.strip() for u in os.getenv("HIVE_MCP_URLS", "").split(",") if u.strip()]
+# A verified card can name its business's own MCP node (`contact.mcp`), and the agent books there. Only public
+# addresses are dialled, so a card cannot point this server at its own network; a LAN demo turns this on.
+NODE_ALLOW_PRIVATE = os.getenv("NODE_ALLOW_PRIVATE", "false").lower() == "true"
 AGENT_MAX_TURNS = int(os.getenv("AGENT_MAX_TURNS", "10"))
 
 # Peer Hives for hop-limited ("node radius") federated search, same shape as HIVE_MCP_URLS: comma-separated base

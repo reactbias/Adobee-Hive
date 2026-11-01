@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, ApiError, HealthError, OFFLINE } from "./api";
+import { api, ApiError, HealthError, OFFLINE, setOwnerToken } from "./api";
 
 describe("api", () => {
   it("tells the backend the app's language, so the agent answers in it", async () => {
@@ -167,5 +167,77 @@ describe("bounded health checks", () => {
     caller.abort();
     await request;
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+describe("the agent has its own address when the build names one", () => {
+  const answer = { reply: "", steps: [], pending: null, mode: "scripted" };
+  const calledUrl = (fetch: ReturnType<typeof vi.fn>) => String(fetch.mock.calls[0][0]);
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    sessionStorage.clear();
+  });
+
+  it("sends agent runs and approvals to the agent service", async () => {
+    vi.stubEnv("VITE_AGENT_URL", "https://agent.example/");
+    const fetch = vi.fn().mockResolvedValue(ok(answer));
+    vi.stubGlobal("fetch", fetch);
+
+    await api.agent([{ role: "user", content: "a room" }]);
+    expect(calledUrl(fetch)).toBe("https://agent.example/api/agent");
+
+    fetch.mockClear();
+    await api.approve({ id: "h1", tool: "hive_book", input: {} } as never);
+    expect(calledUrl(fetch)).toBe("https://agent.example/api/agent/approve");
+  });
+
+  it("keeps everything else on the hub", async () => {
+    vi.stubEnv("VITE_AGENT_URL", "https://agent.example");
+    const fetch = vi.fn().mockResolvedValue(ok([]));
+    vi.stubGlobal("fetch", fetch);
+
+    await api.cards();
+
+    expect(calledUrl(fetch)).not.toContain("agent.example");
+  });
+
+  it("falls back to the hub's own agent when no agent service is named", async () => {
+    const fetch = vi.fn().mockResolvedValue(ok(answer));
+    vi.stubGlobal("fetch", fetch);
+
+    await api.agent([{ role: "user", content: "a room" }]);
+
+    expect(calledUrl(fetch)).toMatch(/\/api\/agent$/);
+    expect(calledUrl(fetch)).not.toContain("agent.example");
+  });
+
+  it("uses the chosen hub's own agent when a person picked another hub", async () => {
+    vi.stubEnv("VITE_AGENT_URL", "https://agent.example");
+    sessionStorage.setItem("adobee-hub-url", "https://zurich.example");
+    const fetch = vi.fn().mockResolvedValue(ok(answer));
+    vi.stubGlobal("fetch", fetch);
+
+    await api.agent([{ role: "user", content: "a room" }]);
+
+    expect(calledUrl(fetch)).toBe("https://zurich.example/api/agent");
+  });
+});
+
+describe("the owner's yes carries the owner token", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
+  });
+
+  it.each(["confirmConnection", "declineConnection"] as const)("%s sends it", async (method) => {
+    setOwnerToken("fictional-token");
+    const fetch = vi.fn().mockResolvedValue(ok({ id: "cx-1", state: "open" }));
+    vi.stubGlobal("fetch", fetch);
+
+    await api[method]("cx-1");
+
+    expect(fetch.mock.calls[0][1].headers["X-Owner-Token"]).toBe("fictional-token");
   });
 });

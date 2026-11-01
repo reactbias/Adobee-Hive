@@ -357,6 +357,21 @@ def hive_availability(card_id: str, check_in: str, check_out: str, guests: int =
     return _hive_call(hive.check_availability, card_id, check_in, check_out, guests)
 
 
+class SignedCard(BaseModel):
+    """A card version its owner signed on their own node."""
+
+    card: dict[str, Any]
+    signature: str = Field(min_length=1, max_length=256)
+    public_key: str = Field(min_length=1, max_length=128)
+
+
+@app.post("/api/hive/cards/signed")
+def hive_accept_signed(body: SignedCard, request: Request) -> dict[str, Any]:
+    """Store a card its owner signed elsewhere, as signed. The hub holds no key for it and cannot book it."""
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
+    return _hive_call(hive.accept_signed, body.card, body.signature, body.public_key)
+
+
 @app.post("/api/hive/cards/{card_id}/book")
 def hive_book(card_id: str, body: BookRequest) -> dict[str, Any]:
     """Human fallback: the same booking a person can make from the card page."""
