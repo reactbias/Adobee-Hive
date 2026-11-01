@@ -24,7 +24,7 @@ export type Who = "guest" | "agent" | "hive" | "business" | "critic" | "sceptic"
 export type Segment =
   | { kind: "guest"; text: string }
   | { kind: "ack" }
-  | { kind: "steps"; steps: Step[] }
+  | { kind: "steps"; steps: Step[]; speaker?: { name: string; role: string } }
   | { kind: "critic"; critic: Critic }
   | { kind: "opinion"; opinion: SecondOpinion }
   | { kind: "consensus"; agreed: boolean }
@@ -335,8 +335,9 @@ export default function GroupChat({
             const sig = genuine(step);
             // Anything not from the configured Hive is a copy nobody vouches for: it speaks as the mirror.
             const foreign = Boolean(step.source && primary && step.source !== primary && step.tool !== "hive_discover");
-            const speaker =
-              step.tool === "hive_discover"
+            const speaker = seg.speaker
+              ? { who: "business" as const, ...seg.speaker }
+              : step.tool === "hive_discover"
                 ? { who: "hive" as const, name: hive, role: t("chat.role.hive") }
                 : sig === false || foreign
                   ? { who: "mirror" as const, name: t("chat.name.mirror"), role: t("chat.role.mirror") }
