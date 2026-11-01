@@ -1,0 +1,228 @@
+{
+  "document": {
+    "id": 1,
+    "file": "Elena Rostova - Senior Software Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Elena Rostova",
+      "email": null,
+      "phone": null,
+      "location": "Seattle, WA",
+      "country": "United States",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Senior Software Engineer with over 8 years of experience designing scalable cloud architectures, microservices, and high-throughput data pipelines, leading cross-functional teams and driving DevOps best practices.",
+    "current_job_title": "Staff Software Engineer",
+    "career_level": "Senior",
+    "total_years_experience": 10.3,
+    "job_categories": [
+      "Software Engineering"
+    ],
+    "industry_sectors": [
+      "Technology"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Staff Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "CloudScale Systems",
+        "industry": "Technology",
+        "location": "Seattle, WA",
+        "country": "United States",
+        "employment_type": "Full-time",
+        "start_date": "2022-03",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": null,
+        "team_size_managed": 6,
+        "responsibilities": [
+          "Spearheaded the redesign of the core payment processing engine using Go and Kafka.",
+          "Mentored a team of 6 junior and mid-level engineers, enforcing strict code quality standards, automated testing, and agile methodologies.",
+          "Architected automated infrastructure provisioning using Terraform and Kubernetes."
+        ],
+        "achievements": [
+          "Increased transaction processing capacity by 150%.",
+          "Cut deployment times from 4 hours to 15 minutes."
+        ]
+      },
+      {
+        "job_title": "Senior Backend Engineer",
+        "job_category": "Software Engineering",
+        "company": "DataMesh Solutions",
+        "industry": "Technology",
+        "location": "Austin, TX",
+        "country": "United States",
+        "employment_type": "Full-time",
+        "start_date": "2018-06",
+        "end_date": "2022-02",
+        "is_current": false,
+        "duration_months": 45,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Developed high-concurrency microservices in Python (FastAPI) handling large-scale traffic.",
+          "Implemented Redis caching layers to reduce database load during peak traffic events.",
+          "Collaborated with product managers and UX designers to define API contracts and deliver feature releases on schedule."
+        ],
+        "achievements": [
+          "Handled over 10M daily active requests with 99.99% uptime.",
+          "Reduced database load by 35% during peak traffic events."
+        ]
+      },
+      {
+        "job_title": "Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "Apex Tech Innovations",
+        "industry": "Technology",
+        "location": "Austin, TX",
+        "country": "United States",
+        "employment_type": "Full-time",
+        "start_date": "2016-07",
+        "end_date": "2018-05",
+        "is_current": false,
+        "duration_months": 23,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built RESTful APIs using Java (Spring Boot) and PostgreSQL for enterprise client management systems.",
+          "Wrote comprehensive unit and integration test suites."
+        ],
+        "achievements": [
+          "Achieved 85%+ code coverage in unit and integration tests."
+        ]
+      }
+    ],
+    "education": [
+      {
+        "degree": "Master of Science in Computer Science",
+        "degree_level": "Master",
+        "field_of_study": "Computer Science",
+        "institution": "University of Washington",
+        "country": "United States",
+        "start_date": null,
+        "graduation_date": "2016",
+        "grade": null,
+        "honors": []
+      },
+      {
+        "degree": "Bachelor of Science in Computer Engineering",
+        "degree_level": "Bachelor",
+        "field_of_study": "Computer Engineering",
+        "institution": "Texas A&M University",
+        "country": "United States",
+        "start_date": null,
+        "graduation_date": "2014",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Master",
+    "certifications": [
+      {
+        "name": "AWS Certified Solutions Architect – Professional",
+        "issuer": null,
+        "date": "2023"
+      },
+      {
+        "name": "Certified Kubernetes Administrator (CKA)",
+        "issuer": null,
+        "date": "2021"
+      }
+    ],
+    "technical_skills": [
+      "Python",
+      "Go",
+      "Java",
+      "TypeScript",
+      "SQL",
+      "PostgreSQL",
+      "MongoDB",
+      "Redis",
+      "FastAPI",
+      "Spring Boot",
+      "React",
+      "Kafka",
+      "PySpark",
+      "Microservices",
+      "CI/CD",
+      "Terraform",
+      "Kubernetes",
+      "Cloud architecture"
+    ],
+    "soft_skills": [
+      "Team leadership",
+      "Mentoring",
+      "Agile methodologies",
+      "Cross-functional collaboration"
+    ],
+    "software_and_tools": [
+      "AWS EC2",
+      "AWS Lambda",
+      "AWS S3",
+      "AWS ECS",
+      "Docker"
+    ],
+    "languages": [],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced backend and cloud-focused software engineer",
+      "Strong background in scalable microservices and high-throughput systems",
+      "Hands-on expertise with AWS, Kubernetes, Terraform, and DevOps practices",
+      "Proven impact on performance, reliability, and deployment efficiency",
+      "Experience mentoring engineers and leading technical initiatives"
+    ],
+    "quality": {
+      "generic_phrases": [
+        "Results-driven Senior Software Engineer"
+      ],
+      "unsubstantiated_skills": [
+        "PySpark"
+      ],
+      "notes": null
+    },
+    "additional_info": [],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 3,
+    "companies": [
+      "CloudScale Systems",
+      "DataMesh Solutions",
+      "Apex Tech Innovations"
+    ],
+    "avg_tenure_months": 41.3,
+    "short_tenures": [
+      {
+        "job_title": "Software Engineer",
+        "company": "Apex Tech Innovations",
+        "duration_months": 23
+      }
+    ],
+    "num_short_tenures": 1,
+    "employment_gaps": [],
+    "computed_years_experience": 10.3,
+    "countries_worked": [
+      "United States"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2016,
+    "years_since_graduation": 10,
+    "highest_education_level": "Master",
+    "max_team_size_managed": 6,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": true,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4738,
+    "completion_tokens": 987
+  }
+}

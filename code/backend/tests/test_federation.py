@@ -500,6 +500,90 @@ def test_a_hop_refuses_to_forward_when_the_budget_is_already_spent(client, net):
     assert _ids(found) == _ids(hive.discover(**ASK, radius=0))
 
 
+class SlowRegistries(FakeNet):
+    """A FakeNet whose discovery documents take `delays[url]` ms to arrive: a cold cache on a slow link."""
+
+    def __init__(self, *hubs: FakeHive, delays: dict[str, float]):
+        super().__init__(*hubs)
+        self.delays = delays
+
+    async def profile(self, base_url: str) -> dict:
+        await asyncio.sleep(self.delays.get(base_url, 0) / 1000)
+        return await super().profile(base_url)
+
+
+def _slow_registries(monkeypatch, net, *hubs: FakeHive, peers: list[FakeHive], delays: dict[str, float]):
+    net(*hubs, peers=peers)
+    transport = SlowRegistries(*hubs, delays=delays)
+    monkeypatch.setattr(federation, "DEFAULT_TRANSPORT", transport)
+    return transport
+
+
+def test_a_peer_whose_registry_misses_the_deadline_is_not_asked(client, net, monkeypatch):
+    """#112: a cold registry lookup is inside the whole-query budget, and no search starts after it."""
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    _slow_registries(monkeypatch, net, zurich, peers=[zurich], delays={zurich.url: 3000})
+
+    found = hive.discover(**ASK, radius=1, budget_ms=400)
+    assert found["federation"]["elapsed_ms"] < 1200, "the query outlived its budget waiting for a registry"
+    assert zurich.asks == [], "a search was forwarded after the deadline"
+    assert _ids(found) == _ids(hive.discover(**ASK, radius=0)), "the local answer survives"
+    reasons = [d["reason"] for d in found["federation"]["dropped"]]
+    assert any("deadline" in r for r in reasons), reasons
+    assert not any("no key registry" in r for r in reasons), "running out of time is not a missing registry"
+
+
+def test_the_hop_budget_is_what_is_left_after_peer_selection(client, net, monkeypatch):
+    """#112: the budget forwarded is recomputed after the registry lookups, not carried over from before."""
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    _slow_registries(monkeypatch, net, zurich, peers=[zurich], delays={zurich.url: 600})
+
+    found = hive.discover(**ASK, radius=1, budget_ms=1500)
+    assert len(zurich.asks) == 1 and "hotel-limmat" in _ids(found)
+    assert zurich.asks[0]["budget_ms"] <= 1500 - 600, "the peer was promised time this hub had already spent"
+
+
+def test_a_slow_origin_registry_cannot_stretch_the_query(client, net, monkeypatch):
+    """#112: verifying a relayed card against its origin's registry is inside the budget too, and blameless."""
+    bern = FakeHive("bern", cards=[_card("hotel-aare", "Hotel Aare (fictional)")])
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")], relays=[bern])
+    _slow_registries(monkeypatch, net, zurich, bern, peers=[zurich], delays={bern.url: 3000})
+
+    found = hive.discover(**ASK, radius=2, budget_ms=500)
+    assert found["federation"]["elapsed_ms"] < 1300, "the query outlived its budget verifying a card"
+    assert "hotel-limmat" in _ids(found) and "hotel-aare" not in _ids(found)
+    rejected = {r["card_id"]: r["reason"] for r in found["federation"]["rejected"]}
+    assert "deadline" in rejected["hotel-aare"], rejected
+    assert reputation.observed("zurich").invalid == 0, "our deadline is not the carrier's fault"
+
+
+def test_a_slow_registry_does_not_spend_a_healthy_peers_turn(client, net, monkeypatch):
+    """#228 review: the peer whose registry is ready is searched at once, not after the slow one gives up."""
+    stuck = FakeHive("stuck", cards=[_card("hotel-stuck", "Hotel Stuck (fictional)")])
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    _slow_registries(monkeypatch, net, stuck, zurich, peers=[stuck, zurich], delays={stuck.url: 3000})
+
+    found = hive.discover(**ASK, radius=1, budget_ms=500)
+    assert "hotel-limmat" in _ids(found), found["federation"]["dropped"]
+    assert len(zurich.asks) == 1 and zurich.asks[0]["budget_ms"] > 300, "the healthy peer got the whole budget"
+    assert stuck.asks == []
+    assert found["federation"]["elapsed_ms"] < 1300
+
+
+def test_a_slow_peer_does_not_cost_a_healthy_relay_its_verification(client, net, monkeypatch):
+    """#228 review: a relay that answered is verified while a slower peer is still searching."""
+    bern = FakeHive("bern", cards=[_card("hotel-aare", "Hotel Aare (fictional)")])
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")], relays=[bern])
+    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=3000)
+    _slow_registries(monkeypatch, net, zurich, bern, slow, peers=[zurich, slow], delays={bern.url: 200})
+
+    found = hive.discover(**ASK, radius=2, budget_ms=700)
+    assert {"hotel-limmat", "hotel-aare"} <= _ids(found), found["federation"]["rejected"]
+    assert "hotel-slow" not in _ids(found)
+    dropped = {d["hub"]: d["reason"] for d in found["federation"]["dropped"]}
+    assert "deadline" in dropped["slow"]
+
+
 def test_only_the_top_peers_by_trust_are_asked(client, net):
     honest = [FakeHive(f"honest{i}", cards=[_card(f"hotel-h{i}", f"Hotel H{i} (fictional)")]) for i in range(4)]
     sellers = [

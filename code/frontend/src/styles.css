@@ -4408,3 +4408,172 @@ button.onboard-back {
     min-height: 44px;
   }
 }
+
+/* ---------- Hiring: a posting, the people it fits, their agents ---------- */
+
+.screen-hire .panel h2 {
+  font-size: var(--t-lg);
+}
+.hire-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s5);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .hire-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.hire-posting {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  resize: vertical;
+}
+.hire-chip small {
+  color: var(--ink-3);
+  margin-left: var(--s1);
+}
+.hire-chip.must {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.hire-chip.nice {
+  border-style: dashed;
+}
+.hire-chip.role {
+  border-color: var(--good);
+}
+.hire-cands {
+  min-width: 0;
+}
+.hire-cand-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+.hire-bar {
+  flex: 1;
+  min-width: 80px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--sunk);
+  overflow: hidden;
+}
+.hire-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.6s var(--ease);
+}
+.hire-score {
+  min-width: 2.2em;
+  text-align: right;
+  font-weight: 600;
+}
+.hire-evidence {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-size: var(--t-sm);
+}
+.hire-how {
+  display: inline-block;
+  padding: 0 var(--s2);
+  border-radius: 4px;
+  font-size: var(--t-xs);
+  background: var(--sunk);
+  color: var(--ink-2);
+}
+.hire-how.literal {
+  background: var(--good);
+  color: var(--on-ink);
+}
+.hire-how.related,
+.hire-how.partial {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.hire-gaps {
+  color: var(--bad);
+}
+.hire-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.hire-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  min-height: 120px;
+  max-height: 560px;
+  overflow-y: auto;
+  padding: var(--s5);
+  border-radius: var(--radius);
+  background: var(--stage);
+  color: var(--stage-ink);
+}
+.hire-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.hire-msg {
+  max-width: min(46em, 92%);
+  padding: var(--s3) var(--s4);
+  border-radius: 14px;
+  background: var(--stage-2);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.hire-msg small {
+  display: block;
+  margin-bottom: 2px;
+  font-size: var(--t-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stage-dim);
+}
+.hire-msg.ask {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.hire-msg.reply {
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  border-left: 3px solid var(--accent-bright);
+}
+.hire-msg.reply.none {
+  border-left-color: var(--stage-bad);
+  color: var(--stage-mute);
+}
+.hire-msg.reply.weak,
+.hire-msg.reply.related {
+  border-left-color: var(--stage-dim);
+}
+.hire-quotes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.hire-quotes cite {
+  font-style: normal;
+  font-size: var(--t-xs);
+  color: var(--stage-dim);
+  margin-left: var(--s1);
+}
+.hire-ranking > li {
+  padding: var(--s3) 0;
+}

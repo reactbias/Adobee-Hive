@@ -619,7 +619,7 @@ key.
 ### The MCP surface
 
 Mounted at `/mcp/`, Streamable HTTP, **stateless** — so plain `curl` works with no session
-handshake. 29 tools. Verified:
+handshake. 31 tools. Verified:
 
 ```bash
 curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
@@ -631,7 +631,7 @@ curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
 hive_discover  hive_what_was_promised  hive_rulesets  hive_get_card  hive_check_availability
 hive_book  hive_cancel  hive_review  hive_wait  hive_check_waiting
 hr_find_people  hr_request_intro  hr_decide_intro  hr_grant_cv  hr_read_cv  hr_create_job  hr_submit_cv
-explore_ask  hive_scout
+hr_shortlist  hr_interview  explore_ask  hive_scout
 hub_connect  hub_score  hub_connections  hub_standing  hub_registration  hub_register  hub_directory
 hive_owner_card  hive_owner_propose  hive_owner_publish
 ```
@@ -778,7 +778,13 @@ hop decrements the radius, appends its own hub id to `seen`, forwards only to pe
 and subtracts the time already spent from `budget_ms`; a hop with less than
 `MIN_FORWARD_MS = 150 ms` left is not made. `PEERS_PER_HOP = 4` caps breadth. Peers are asked in
 parallel; one that misses the deadline is **dropped from the answer, named in `federation.dropped`,
-and never fails the query**.
+and never fails the query**. The deadline also bounds the registry reads: a peer whose discovery
+document does not arrive in time is dropped with a `deadline` reason and not asked, the budget a
+peer is sent is what is left when it is asked, and a relayed card whose origin registry is not
+read in time lands in `federation.rejected` with a `deadline` reason, at no cost to the carrier.
+No peer waits for another: each is asked once its own discovery document is in and its cards are
+checked once its own answer is back. Peers whose documents arrive together are taken most trusted
+first, so on a cold cache a quick low-trust peer can take a slot ahead of a slower trusted one.
 
 **Trust is not transitive.** A card that arrives over a relay is verified here, against the key this
 hub fetches directly from the *originating* hub's `/.well-known/hive.json` — not from the relay. A

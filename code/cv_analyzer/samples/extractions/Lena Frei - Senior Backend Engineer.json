@@ -1,0 +1,178 @@
+{
+  "document": {
+    "id": 8,
+    "file": "Lena Frei - Senior Backend Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Lena Frei",
+      "email": "lena.frei@example.com",
+      "phone": "+41 44 555 01 11",
+      "location": "Zurich, Switzerland",
+      "country": "Switzerland",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Backend engineer building scalable cloud services in Python with a focus on reliability and clean APIs.",
+    "current_job_title": "Senior Backend Engineer",
+    "career_level": "Senior",
+    "total_years_experience": 10.2,
+    "job_categories": [
+      "Software Engineering"
+    ],
+    "industry_sectors": [
+      "Financial Services",
+      "Logistics"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Senior Backend Engineer",
+        "job_category": "Software Engineering",
+        "company": "Helvetia Pay AG",
+        "industry": "Financial Services",
+        "location": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "employment_type": "Full-time",
+        "start_date": "2020-03",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": 79,
+        "team_size_managed": 3,
+        "responsibilities": [
+          "Designed Python microservices on AWS (ECS, Lambda, S3) processing 2M transactions/day",
+          "Introduced CI/CD with GitHub Actions and Terraform",
+          "Mentored 3 junior engineers"
+        ],
+        "achievements": [
+          "Cut deployment time from 40 to 8 minutes by introducing CI/CD with GitHub Actions and Terraform",
+          "Designed microservices handling 2M transactions per day"
+        ]
+      },
+      {
+        "job_title": "Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "Rhine Logistics GmbH",
+        "industry": "Logistics",
+        "location": "Basel, Switzerland",
+        "country": "Switzerland",
+        "employment_type": "Full-time",
+        "start_date": "2016-08",
+        "end_date": "2020-02",
+        "is_current": false,
+        "duration_months": 42,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built REST APIs with Flask and PostgreSQL",
+          "Containerised services with Docker and Kubernetes"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "MSc Computer Science",
+        "degree_level": "Master",
+        "field_of_study": "Computer Science",
+        "institution": "ETH Zurich",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2016",
+        "grade": null,
+        "honors": []
+      },
+      {
+        "degree": "BSc Computer Science",
+        "degree_level": "Bachelor",
+        "field_of_study": "Computer Science",
+        "institution": "University of Bern",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2014",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Master",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "REST APIs",
+      "Microservices",
+      "PostgreSQL",
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "Terraform",
+      "CI/CD"
+    ],
+    "soft_skills": [
+      "Mentoring"
+    ],
+    "software_and_tools": [
+      "AWS ECS",
+      "AWS Lambda",
+      "AWS S3",
+      "GitHub Actions"
+    ],
+    "languages": [
+      {
+        "language": "German",
+        "proficiency": "native"
+      },
+      {
+        "language": "English",
+        "proficiency": "C1"
+      }
+    ],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Senior backend engineer focused on scalable cloud services in Python",
+      "Strong experience with AWS microservices and containerised architectures",
+      "Proven impact improving deployment pipelines and reliability",
+      "Background in financial services and logistics domains",
+      "Master’s degree in Computer Science from ETH Zurich"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 2,
+    "companies": [
+      "Helvetia Pay AG",
+      "Rhine Logistics GmbH"
+    ],
+    "avg_tenure_months": 61.5,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [],
+    "computed_years_experience": 10.2,
+    "countries_worked": [
+      "Switzerland"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2016,
+    "years_since_graduation": 10,
+    "highest_education_level": "Master",
+    "max_team_size_managed": 3,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4464,
+    "completion_tokens": 692
+  }
+}

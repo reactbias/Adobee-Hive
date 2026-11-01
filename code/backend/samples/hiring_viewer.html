@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAMPLE - Hive hiring, step by step</title>
+<style>
+:root{--bg:#f6f3ed;--card:#fffefb;--ink:#17140f;--mute:#6b6254;--line:#e4ded3;--acc:#a24f2c;--ok:#1f7a4d;--warn:#b7791f;--bad:#a3341f;--bub1:#efe9dc;--bub2:#e3efe7}
+@media (prefers-color-scheme:dark){:root{--bg:#17140f;--card:#211d16;--ink:#f1ece2;--mute:#a89f90;--line:#3a3329;--acc:#e08a5e;--ok:#5fc08c;--warn:#e0b25e;--bad:#e07a66;--bub1:#2c261c;--bub2:#1f3328}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,Segoe UI,sans-serif}
+.banner{background:var(--acc);color:#fff;padding:6px 20px;font-size:13px;font-weight:600}
+header{padding:16px 20px 4px}h1{margin:0;font-size:20px}header p{margin:2px 0 0;color:var(--mute)}
+main{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:18px;padding:12px 20px 60px;align-items:start}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.panel,.step{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+textarea{width:100%;min-height:260px;font:13px/1.45 ui-monospace,Consolas,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
+label{display:block;margin:10px 0 4px;font-weight:600;font-size:13px}
+select{width:100%;padding:6px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;font:inherit}
+button.go{margin-top:12px;width:100%;padding:10px;background:var(--acc);color:#fff;border:0;border-radius:8px;font:inherit;font-weight:700;cursor:pointer}
+button.go:disabled{opacity:.5}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px;background:var(--bg)}
+.chip.must{border-color:var(--acc)}.chip.nice{border-style:dashed}.chip.role{border-color:var(--ok)}.chip small{color:var(--mute)}
+.steps{display:grid;gap:14px}.step{animation:in .35s ease both}@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.step h2{margin:0 0 8px;font-size:15px;color:var(--acc)}
+.step h2 span{display:inline-block;background:var(--acc);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:12px;margin-right:6px}
+.note{color:var(--mute);font-size:13px;margin:0 0 10px}
+.cand{border-top:1px solid var(--line);padding:10px 0}.cand:first-of-type{border-top:0}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.name{font-weight:700}.score{font-variant-numeric:tabular-nums;font-weight:700;width:34px}
+.bar{flex:1;min-width:80px;height:8px;background:var(--line);border-radius:5px;overflow:hidden}.bar i{display:block;height:100%;background:var(--acc);transition:width .6s}
+.ev{font-size:13px;margin:2px 0 0 12px;color:var(--mute)}.ev b{color:var(--ink);font-weight:600}
+.how{display:inline-block;min-width:54px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;border-radius:4px;padding:0 5px;margin-right:6px;color:#fff}
+.how.literal{background:var(--ok)}.how.related,.how.partial{background:var(--warn)}.how.similar{background:var(--mute)}
+.gap{color:var(--bad)}.badge{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;color:#fff}
+.badge.granted,.badge.interviewed,.badge.strong{background:var(--ok)}.badge.awaiting_consent,.badge.promising{background:var(--warn)}.badge.declined,.badge.weak{background:var(--bad)}.badge.no_folder,.badge.partial,.badge.n{background:var(--mute)}
+.chat{display:grid;gap:8px;margin-top:8px}.msg{max-width:88%;padding:8px 12px;border-radius:12px;animation:in .3s ease both}
+.msg small{display:block;color:var(--mute);font-size:11px;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em}
+.msg.r{background:var(--bub1);justify-self:start;border-bottom-left-radius:3px}.msg.c{background:var(--bub2);justify-self:end;border-bottom-right-radius:3px}
+.msg q{display:block;margin:3px 0 0;font-style:normal;border-left:3px solid var(--acc);padding-left:8px;font-size:13px}.msg q::before,.msg q::after{content:none}
+.msg q cite{color:var(--mute);font-size:11px}.msg.none{opacity:.75}details{margin-top:6px}summary{cursor:pointer;font-weight:700}
+.err{color:var(--bad);font-weight:600}.mini{font-size:12px;color:var(--mute)}
+.next{display:flex;gap:10px;align-items:center;margin-top:12px}
+</style></head><body>
+<div class="banner">SAMPLE for presenting. The real screen is "Hiring" in the Hive app (documentation/HIRING.md).</div>
+<header><h1>Hive hiring, step by step</h1>
+<p>1. Pick or edit a posting. 2. The people who fit follow it. 3. Choose to let the agents talk. 4. Read the interview. 5. See the ranking.</p></header>
+<main>
+<section class="panel">
+ <label for="sample">Start from a sample posting</label>
+ <select id="sample"></select>
+ <label for="post">Job posting (edit it, the people change)</label>
+ <textarea id="post" spellcheck="false"></textarea>
+ <label for="corpus">People (folders on this hub)</label>
+ <select id="corpus"><option value="candidates">CV-based candidates (8 people)</option><option value="vaults">Original test vaults (18 people, nobody has said yes)</option></select>
+ <div id="people" class="mini"></div>
+ <label for="speed">Pace of the interview</label>
+ <select id="speed"><option value="1">Watch it happen</option><option value="0.4">Faster</option><option value="0">Instant</option></select>
+ <p class="mini" id="msg"></p>
+</section>
+<section class="steps">
+ <div id="live"></div>
+ <div class="step"><h2><span>3</span>Let the agents talk</h2>
+  <p class="note">Nothing has been asked of anyone yet. The recruiter's agent asks each person's agent the posting's questions. A person's agent answers only if its owner said yes, and only from the files that owner shared. Press the button when you want that to happen.</p>
+  <button class="go" id="go" disabled>Start the interviews</button></div>
+ <div id="talk"></div>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+function h(tag,props,...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(props||{})){if(k==='class')e.className=v;else if(k==='style')e.style.cssText=v;else e.setAttribute(k,v)}
+ for(const k of kids.flat()){if(k==null||k===false)continue;e.append(k.nodeType?k:document.createTextNode(String(k)))}return e}
+let speed=1;const sleep=ms=>new Promise(r=>setTimeout(r,ms*speed));
+let OPT=null,seq=0,timer=null;
+const post=(url,body)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());
+
+async function init(){
+ OPT=await (await fetch('/api/options')).json();
+ const s=$('#sample');OPT.postings.forEach((p,i)=>s.append(h('option',{value:i},p.name)));
+ s.onchange=()=>{$('#post').value=OPT.postings[s.value].text;$('#corpus').value=(s.value==OPT.postings.length-1)?'vaults':'candidates';peopleList();live()};
+ $('#corpus').onchange=()=>{peopleList();live()};
+ $('#post').oninput=()=>{clearTimeout(timer);timer=setTimeout(live,450);$('#talk').replaceChildren()};
+ $('#go').onclick=go;s.value=0;s.onchange();
+ if(new URLSearchParams(location.search).has('auto')){$('#speed').value='0';setTimeout(go,1500)}
+}
+function peopleList(){
+ const c=$('#corpus').value,box=$('#people');box.replaceChildren();
+ box.append("Each person's own rule (agent.md). Tick one who says ask to play their yes: ");
+ OPT.corpora[c].forEach(p=>{
+  const cb=h('input',{type:'checkbox',value:p.id});if(p.policy!=='ask')cb.disabled=true;
+  box.append(h('div',{},p.policy==='ask'?cb:'',' ',p.id,' ',h('span',{class:'badge '+(p.policy==='yes'?'granted':p.policy==='no'?'declined':'awaiting_consent')},p.policy)))});
+}
+const evRow=e=>h('div',{class:'ev'},h('span',{class:'how '+e.how},e.how),h('b',{},e.requirement),e.quote?h('span',{},' - "'+e.quote+'"'):null);
+
+async function live(){
+ const me=++seq;$('#msg').textContent='Searching...';$('#go').disabled=true;
+ const d=await post('/api/search',{posting:$('#post').value,corpus:$('#corpus').value});
+ if(me!==seq)return;$('#msg').textContent='';
+ const out=$('#live');out.replaceChildren();
+ if(d.error){out.append(h('div',{class:'step'},h('p',{class:'err'},d.error)));return}
+ const job=d.search.job,found=d.search;
+ const s1=h('div',{class:'step'},h('h2',{},h('span',{},1),'The posting, read into requirements'),
+  h('p',{class:'note'},'"AWS, Azure or GCP" is one requirement with alternatives. Must-have = 3 points, the role in the title = 2, nice-to-have = 1. Dashed = nice to have. Hover a chip for what else counts.'));
+ const chips=h('div',{class:'chips'});s1.append(chips);
+ for(const r of job.requirements)chips.append(h('span',{class:'chip '+r.kind,title:(r.options.length>1?'any of: '+r.options.join(', ')+'. ':'')+(r.related.length?'also counts: '+r.related.join(', '):'')},r.label));
+ const facts=[job.min_years?job.min_years+'+ years':'',job.location||'',...job.languages].filter(Boolean);
+ s1.append(h('p',{class:'mini'},'Checked as facts, not skills: '+(facts.join(', ')||'none')));out.append(s1);
+ const s2=h('div',{class:'step'},h('h2',{},h('span',{},2),'Who fits ('+found.considered+' signed person cards read)'),
+  h('p',{class:'note'},'Reads offers, skills, headline, description and countersigned claims. Never "needs", never contact details. LITERAL: the words are there. RELATED: the card implies it. PARTIAL: part of it. SIMILAR: a close line by meaning.'));
+ for(const m of found.matches){
+  const c=h('div',{class:'cand'},h('div',{class:'row'},h('span',{class:'score'},Math.round(m.score)),h('div',{class:'bar'},h('i',{style:'width:0'})),h('span',{class:'name'},m.name),h('span',{class:'mini'},m.musts_met+' of '+m.musts_total+' must-haves')));
+  for(const e of m.evidence.filter(e=>e.covered))c.append(evRow(e));
+  if(m.gaps.length)c.append(h('div',{class:'ev gap'},'nothing on the card for: '+m.gaps.slice(0,5).join(', ')));
+  s2.append(c);requestAnimationFrame(()=>{c.querySelector('i').style.width=m.score+'%'})}
+ if(!found.matches.length)s2.append(h('p',{class:'note'},'Nobody fits yet. Change the posting.'));
+ if(found.excluded.length)s2.append(h('p',{class:'mini'},'Left out: '+found.excluded.slice(0,8).map(e=>e.name+' ('+e.why_not[0]+')').join('; ')));
+ out.append(s2);$('#go').disabled=!found.matches.length;
+}
+
+async function go(){
+ speed=parseFloat($('#speed').value);$('#go').disabled=true;$('#msg').textContent='The agents are talking...';
+ const approve=[...document.querySelectorAll('#people input:checked')].map(i=>i.value);
+ const d=await post('/api/run',{posting:$('#post').value,corpus:$('#corpus').value,approve});
+ const out=$('#talk');out.replaceChildren();$('#msg').textContent='';
+ if(d.error){out.append(h('div',{class:'step'},h('p',{class:'err'},d.error)));$('#go').disabled=false;return}
+ await play(d.result);$('#go').textContent='Interview again';$('#go').disabled=false;
+}
+function step(n,title,note){const e=h('div',{class:'step'},h('h2',{},h('span',{},n),title),note?h('p',{class:'note'},note):null);$('#talk').append(e);e.scrollIntoView({behavior:speed?'smooth':'auto',block:'nearest'});return e}
+function bubble(a){const m=h('div',{class:'msg c'+(a.support==='none'?' none':'')},h('small',{},"candidate's agent - "+({direct:'found',related:'close',weak:'loose',none:'nothing'})[a.support]));
+ if(a.quotes.length){for(const q of a.quotes)m.append(h('q',{},q.text,' ',h('cite',{},'('+q.source+')')))}else m.append(a.text);return m}
+async function play(res){
+ let s=step(3,'Who said yes',"Each person's agent checks its owner's own rule (agent.md): yes opens a folder link and shares the files the owner admitted; ask records a request and stays closed; no is left alone.");
+ for(const r of res.ranking){const c=r.consent;
+  s.append(h('div',{class:'cand'},h('div',{class:'row'},h('span',{class:'badge '+c.state},c.state==='granted'?'YES':c.state==='awaiting_consent'?'ASK':c.state==='declined'?'NO':'NO FOLDER'),h('span',{class:'name'},r.name),h('span',{class:'mini'},c.why)),
+   c.granted?h('div',{class:'ev'},'folder link opened. Shared: '+c.granted.join(', ')+' (private files and contact details are never shared)'):null));await sleep(350)}
+ const talked=res.ranking.filter(r=>r.status==='interviewed');
+ if(!talked.length)step(4,'Interview',"Nobody could be interviewed: no shortlisted person's folder says yes. Tick someone who says ask, and press the button again.");
+ let first=true;
+ for(const r of talked){
+  s=step(4,"Interview: recruiter's agent and "+r.name+"'s agent",'Opens only: '+r.read.join(', ')+'. It answers by quoting lines from those files; where no line speaks to the question it says so.');
+  const box=h('div',{class:'chat'});
+  if(first){s.append(box);for(const t of r.transcript){await sleep(500);box.append(h('div',{class:'msg r'},h('small',{},"recruiter's agent"),t.question));await sleep(900);box.append(bubble(t.answer))}}
+  else{const dt=h('details',{},h('summary',{},'Show the interview ('+r.transcript.length+' questions)'),box);s.append(dt);for(const t of r.transcript){box.append(h('div',{class:'msg r'},h('small',{},"recruiter's agent"),t.question));box.append(bubble(t.answer))}}
+  s.append(h('p',{class:'mini'},'Rescored with those lines as evidence: card '+r.stage1_score.toFixed(0)+' to '+r.score.toFixed(0)+'. Experience: '+r.years.note));
+  first=false;await sleep(400)}
+ s=step(5,'Ranking',res.summary);
+ for(const r of res.ranking){s.append(h('div',{class:'cand'},h('div',{class:'row'},h('span',{class:'score'},Math.round(r.score)),h('div',{class:'bar'},h('i',{style:'width:'+r.score+'%'})),h('span',{class:'name'},'#'+r.rank+' '+r.name),h('span',{class:'badge '+(['strong','promising','weak','partial'].includes(r.verdict)?r.verdict:'n')},r.verdict),h('span',{class:'badge '+r.status},r.status.replace('_',' '))),
+  r.gaps.length?h('div',{class:'ev gap'},'not shown for: '+r.gaps.slice(0,5).join(', ')):null));await sleep(200)}
+ s.append(h('p',{class:'mini'},res.next_step));
+}
+init();
+</script></body></html>

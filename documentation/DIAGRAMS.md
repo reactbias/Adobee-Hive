@@ -91,6 +91,7 @@ flowchart TB
     EXP[explore.py<br/>any business, relevance]:::mod
     SCT[scout.py<br/>public web to unclaimed cards]:::mod
     HR[hr.py<br/>person cards]:::mod
+    RCT[recruit.py<br/>hr_shortlist · hr_interview]:::mod
     EXM[examples.py<br/>real businesses, unclaimed]:::mod
   end
 
@@ -113,6 +114,8 @@ flowchart TB
   HIVE[Hive core · hive.py<br/>cards · Ed25519 signatures · ranking · receipts · demand]:::core
   FED[federation.py<br/>hop-limited search over peer Hives]:::mod
   REP[reputation.py<br/>peer hub trust · business trust]:::mod
+  TAL[talent.py<br/>a posting read into requirements, person cards ranked against them]:::mod
+  INT[interview.py<br/>recruiter agent asks, candidate agents answer from their folders]:::mod
   SEM[semantic.py<br/>offline similarity · stems · compounds · concepts<br/>optional embeddings]:::mod
   SHR[sharing.py<br/>per-item: public · confirm · push · never]:::mod
   BLK[blocklist.py<br/>manual admin blocks: hubs and entities]:::mod
@@ -182,6 +185,10 @@ flowchart TB
   MCP --> WAIT
   MCP --> HIVE
   DOMAINS --> HIVE
+  RCT --> TAL --> SEM
+  RCT --> INT --> TAL
+  INT -->|link · grant · can_read| FLD
+  INT -->|intro_request, interviewed| HIVE
   REST --> HIVE
   SEED --> HIVE
   HIVE -->|radius > 0| FED --> REP
@@ -343,7 +350,7 @@ flowchart LR
     M1[hive_discover · hive_rulesets · hive_get_card · hive_check_availability]:::door
     M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
     M3[hive_wait · hive_check_waiting]:::door
-    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro · hr_decide_intro · hr_grant_cv · hr_read_cv · hr_create_job · hr_submit_cv]:::door
+    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro · hr_decide_intro · hr_grant_cv · hr_read_cv · hr_create_job · hr_submit_cv · hr_shortlist · hr_interview]:::door
     M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
     M6[hub_registration · hub_register · hub_directory]:::door
     M7[hive_owner_card]:::door
@@ -362,6 +369,13 @@ flowchart LR
   end
 
 
+  AGT --> HRD
+  subgraph HRD["Hiring: a posting, the people, their agents"]
+    direction TB
+    R1["POST /api/hr/shortlist"]:::door
+    R2["POST /api/hr/interview"]:::door
+    R3["POST /api/hr/screening/{card_id}"]:::held
+  end
   subgraph FLDD["A linked folder, read over HTTP"]
     direction TB
     F1["GET /api/folders/status"]:::door
@@ -488,7 +502,7 @@ sequenceDiagram
   AG->>H0: hive_discover(radius 2, budget)
   Note over H0: radius 0 would stop here, byte for byte as before
   H0->>H0: local matches, hops 0
-  Note over H0: top 4 peers by trust, in parallel, seen = [local]
+  Note over H0: up to 4 peers, each on its own clock, seen = [local]<br/>ranked by trust among those whose registries are in together (cold cache: arrival order, see LIMITS.md)
   H0->>P1: GET /api/hive/discover (radius 1, budget left, seen)
   P1->>P2: one hop further (radius 0, seen = [local, A])
   P2-->>P1: its cards, signed by their owners
