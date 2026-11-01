@@ -152,7 +152,7 @@ def test_every_mutant_still_runs_the_whole_suite(trees, monkeypatch):
     cmd, cwd = seen[0]
     assert cwd == trees[0], "the suite has to run in the copy that holds the mutant"
     assert [f for f in mutate.SUITE if f not in cmd] == [], "a suite file was dropped from the run"
-    assert "-x" in cmd, "a mutant killed by the second test should not pay for the other 395"
+    assert "-x" in cmd, "a mutant killed by the second test should not pay for the rest of the suite"
 
 
 def test_results_are_printed_in_the_order_the_mutants_were_listed(trees, monkeypatch, capsys):
@@ -188,7 +188,9 @@ def test_a_survivor_is_still_reported_as_a_survivor(trees, monkeypatch, capsys):
 def test_an_interrupted_run_puts_every_held_file_back(trees):
     """_IN_FLIGHT holds one entry per worker now; the handler has to restore all of them."""
     mutate = _mutate()
-    held = [mutate.CURATED[0].path_in(trees[0]), mutate.CURATED[7].path_in(trees[0])]
+    # Two *different* files, picked by name rather than by index: the order of CURATED changes.
+    pair = [next(m for m in mutate.CURATED if m.file == f) for f in ("hive.py", "federation.py")]
+    held = [m.path_in(trees[0]) for m in pair]
     originals = [p.read_text(encoding="utf-8") for p in held]
     for path, original in zip(held, originals, strict=True):
         path.write_text("# mutated\n", encoding="utf-8")
@@ -235,12 +237,19 @@ def test_the_modules_flag_cannot_silently_select_nothing():
             assert without == [], f"{form!r} was reported as having no mutants"
 
 
+#: A module name no mutant can ever match. Naming a real module here would make these tests depend
+#: on which modules happen to have mutants today, and CURATED grows: `app/main.py` had none when
+#: this was written and has three now, which turned two of these tests red on a merge commit.
+NO_SUCH_MODULE = "app/no_such_module_exists.py"
+
+
 def test_a_module_with_no_mutants_is_named_rather_than_dropped():
     """Passing is right — but silence is not, so the caller gets the names back to print."""
     mutate = _mutate()
-    selected, without = mutate.select_modules(mutate.CURATED, ["app/main.py", "code/frontend/src/api.ts"])
+    tokens = [NO_SUCH_MODULE, "code/frontend/src/api.ts"]
+    selected, without = mutate.select_modules(mutate.CURATED, tokens)
     assert selected == []
-    assert without == ["app/main.py", "code/frontend/src/api.ts"]
+    assert without == tokens
 
 
 def test_selecting_several_modules_keeps_the_curated_order_and_no_duplicates():
@@ -304,19 +313,20 @@ def test_an_empty_module_list_checks_nothing_and_still_passes():
 def test_the_mode_and_the_count_are_always_printed():
     """A green check that quietly ran zero mutants is worse than a slow one, so it says which."""
     done = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "mutate.py"), "--modules", "app/main.py"],
+        [sys.executable, str(ROOT / "tools" / "mutate.py"), "--modules", NO_SUCH_MODULE],
         capture_output=True,
         text=True,
         timeout=60,
         cwd=ROOT,
     )
     assert done.returncode == 0
-    assert "Mode: only the modules named — app/main.py" in done.stdout
-    assert "no mutants aimed at: app/main.py" in done.stdout
+    assert f"Mode: only the modules named — {NO_SUCH_MODULE}" in done.stdout
+    assert f"no mutants aimed at: {NO_SUCH_MODULE}" in done.stdout
+    assert "Nothing to check" in done.stdout
 
 
 def test_a_skipped_mutant_is_not_counted_as_checked(trees, monkeypatch, capsys):
-    """ "Checked 61" over 61 skips is the false all-clear the whole tool exists to avoid."""
+    """ "Checked 71" over 71 skips is the false all-clear the whole tool exists to avoid."""
     mutate = _mutate()
     drifted = mutate.Mutant("hive.py", "a pattern that no longer matches", "nowhere in the file", "x")
     result = mutate.check(drifted, trees[0])

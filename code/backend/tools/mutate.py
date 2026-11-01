@@ -17,8 +17,8 @@ are independent of each other, so they run N at a time. Each worker gets its own
 because a mutant is applied by editing the source in place: two workers in one tree would read each
 other's mutants. The real checkout is never written to at all.
 
-`--modules` is for the pull-request loop: a change to one module does not need the other sixty
-mutants re-proved. CI passes the modules the PR touched and runs the full set on main, so main is
+`--modules` is for the pull-request loop: a change to one module does not need every other
+mutant re-proved. CI passes the modules the PR touched and runs the full set on main, so main is
 never permanently unchecked. It filters *mutants*, never tests: every mutant that runs still runs
 the whole SUITE, so nothing that used to kill a mutant stops being asked.
 
@@ -734,7 +734,7 @@ SUITE_TIMEOUT = 120
 def run_suite(tree: Path, timeout: int = SUITE_TIMEOUT, keep: list[str] | None = None) -> bool:
     """True when the suite is green in `tree`. A timeout counts as caught: the mutant hung it.
 
-    `-x` stays: a mutant that is killed by the second test should not pay for the other 395.
+    `-x` stays: a mutant killed by the second test should not pay for the rest of the suite.
 
     `keep` collects pytest's own output for the one caller that needs it — the pre-flight, which
     reports "the suite is already red" and must be able to say which test. Without that, a red
@@ -901,7 +901,7 @@ def random_mutants(n: int, seed: int, targets: list[str] | None = None) -> list[
 
 
 # --- Choosing which mutants to run ---------------------------------------------------
-# A pull request that touches one module does not need the other sixty mutants re-proved: they
+# A pull request that touches one module does not need every other mutant re-proved: they
 # were proved on main and nothing they touch has changed. CI passes the modules the diff names and
 # runs the whole set on every push to main, so main is never permanently unchecked.
 #
@@ -1026,7 +1026,7 @@ def main() -> int:
 
     # In a copy, not the real tree: a faithful copy is the thing everything below depends on, so
     # the pre-flight proves both at once — the suite is green, and the copy is complete enough to
-    # run it. A copy that lost a file the suite reads shows up here, once, and not as 61 survivors.
+    # run it. A copy that lost a file the suite reads shows up here, once, not as a sea of survivors.
     print("Checking the suite is green before we start...")
     output: list[str] = []
     if not run_suite(trees[0], keep=output):
@@ -1049,7 +1049,7 @@ def main() -> int:
 
     drop_run_dir()
     # The count is of mutants that were really applied, not of mutants planned. A pattern that has
-    # drifted prints SKIP and checks nothing, and "checked 61" over 61 skips is the false all-clear
+    # drifted prints SKIP and checks nothing, and "checked 71" over 71 skips is the false all-clear
     # this whole tool exists to avoid.
     ran = [r for r in results if r.survived is not None]
     survivors = [f"{r.mutant.label}  {r.mutant.why}" if r.mutant.label else r.mutant.why for r in ran if r.survived]

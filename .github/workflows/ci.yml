@@ -42,8 +42,8 @@ jobs:
   #   - four mutants at a time, each in its own copy of the tree;
   #   - on a pull request, only the mutants aimed at the modules the diff touched. A push to main
   #     always runs all of them, so main is never left permanently unchecked.
-  # What it does NOT do is narrow the *tests* per mutant. Every mutant that runs runs all 15 files,
-  # because a mutant only ever killed by a test that got excluded would start surviving quietly.
+  # What it does NOT do is narrow the *tests* per mutant. Every mutant that runs runs every file
+  # in SUITE, because a mutant only ever killed by an excluded test would start surviving quietly.
   mutation:
     runs-on: ubuntu-latest
     needs: backend
