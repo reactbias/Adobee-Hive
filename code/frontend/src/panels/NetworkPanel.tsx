@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, type AdminNeighbours, type AdminOverview, type Directory } from "../api";
+import { api, type AdminNeighbours, type AdminOverview, type Directory, type Standing } from "../api";
 import { useI18n } from "../i18n";
 import type { Key } from "../i18n/en";
 import { readCalibration, stars } from "../lib/calibration";
@@ -139,6 +139,8 @@ export default function NetworkPanel() {
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [neighbours, setNeighbours] = useState<AdminNeighbours | null>(null);
   const [directory, setDirectory] = useState<Directory | null>(null);
+  // Only read for its peer list, and only used when the operator route could not be: see lib/network.ts.
+  const [standing, setStanding] = useState<Standing | null>(null);
   const [reached, setReached] = useState<boolean | null>(null);
   const section = useRef<HTMLElement>(null);
   const onScreen = useRef(true);
@@ -152,14 +154,20 @@ export default function NetworkPanel() {
       })
       .catch(() => setReached(false));
     // A configured peer that does not answer still has a row here; the directory is simply not on `main` yet.
+    // null on a failure, not an empty list: "we could not ask the operator route" is what makes the public
+    // `/api/hub/standing` worth falling back to, and an empty list would hide it.
     api
       .adminNeighbours()
-      .catch(() => ({ peers: [], blocked_hubs: [] }) as AdminNeighbours)
+      .catch(() => null)
       .then(setNeighbours);
     api
       .directory()
       .catch(() => null)
       .then(setDirectory);
+    api
+      .standing()
+      .catch(() => null)
+      .then(setStanding);
   }, []);
 
   useEffect(() => {
@@ -178,7 +186,7 @@ export default function NetworkPanel() {
     };
   }, [load]);
 
-  const nodes = buildNetwork(overview, neighbours, directory);
+  const nodes = buildNetwork(overview, neighbours, directory, standing);
   const counts: [Key, number][] = [
     ["network.count.entities", overview?.index.entities ?? 0],
     ["network.count.peers", nodes.length - 1],
