@@ -59,7 +59,7 @@ every hub is plain HTTP is unaffected: the page is served over HTTP too.
 
 ### What the deployed backend deliberately does not have
 
-`render.yaml` sets five environment variables and no more, so on https://adobee-hive.onrender.com:
+`render.yaml` sets only these environment variables, so on https://adobee-hive.onrender.com:
 
 | Unset | What that means there |
 | --- | --- |

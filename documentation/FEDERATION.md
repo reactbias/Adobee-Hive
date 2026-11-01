@@ -29,8 +29,8 @@ An index that one company owns is an index that one company ranks, prices and cl
 it is what the challenge asks us to replace rather than rebuild. So no Hive may be necessary: a business publishes
 one signed card, any Hive may carry it, and leaving a Hive means republishing one file.
 
-This only works if a relaying Hive cannot change what it relays. It cannot: the card carries the *owner's* Ed25519
-signature, and the agent at the end of the search verifies it against the owner's key, pinned in a key registry it
+This only works if a relaying Hive cannot change what it relays. It cannot: the card carries an Ed25519
+signature, and the agent at the end of the search verifies it against the key pinned for that card, in a key registry it
 fetches itself. A Hive in the middle can withhold a card or delay it. It can never forge one.
 
 ## How far to look: the radius
@@ -60,7 +60,7 @@ What each hop does:
   Otherwise reach two is a broadcast storm. Peers left out are named in `federation.dropped` with the reason.
 - **Deduplicate by digest.** The same card arrives by several routes. It is one card, kept at its shortest hop
   count.
-- **Verify at the end, not along the way.** The searching agent checks the owner's signature itself. Nothing is
+- **Verify at the end, not along the way.** The searching agent checks the card's signature itself. Nothing is
   trusted because a Hive passed it on.
 - **Bind the summary to the card.** Verifying a relayed card does not verify the sentence a peer wrote beside it,
   so once the card has passed, every fact the result asserts about the *entity* — name, tagline, description,
