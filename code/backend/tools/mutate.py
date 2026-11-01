@@ -71,6 +71,7 @@ SUITE = [
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
     "tests/test_local_calibration.py",
+    "tests/test_home_hub_row.py",
     "tests/test_mcp_refusals.py",
 ]
 
@@ -450,6 +451,30 @@ CURATED: list[Mutant] = [
         "a grant may name a pattern again, so one write opens a folder the owner listed one file of",
         'if not path or "*" in path or "?" in path:',
         "if not path:",
+    ),
+    Mutant(
+        "admin.py",
+        "the hub's own row loses its address again, so an agent cannot pass on a working one",
+        'url = (config.HIVE_PUBLIC_URL or base_url or "").rstrip("/")',
+        'url = ""',
+    ),
+    Mutant(
+        "admin.py",
+        "the apply link goes back to being relative, which is useless to an agent quoting it",
+        'f"{url}/api/hub/register" if url else "/api/hub/register"',
+        '"/api/hub/register"',
+    ),
+    Mutant(
+        "admin.py",
+        "a configured public URL is ignored, so a hub behind a proxy publishes the wrong address",
+        'url = (config.HIVE_PUBLIC_URL or base_url or "").rstrip("/")',
+        'url = (base_url or "").rstrip("/")',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "the scheme is asserted rather than read, so an https hub publishes an http address",
+        'scheme = headers.get("x-forwarded-proto", "").split(",")[0].strip() or "http"',
+        'scheme = "http"',
     ),
     Mutant(
         "sharing.py",

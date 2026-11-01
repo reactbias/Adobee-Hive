@@ -325,7 +325,9 @@ def test_the_directory_lists_hubs_the_way_a_person_choosing_one_needs(client):
     assert home["name"] and home["description"]
     assert home["admission"] in registration.POLICIES
     assert home["accepting"] is (config.ADMISSION_POLICY != registration.CLOSED)
-    assert home["apply_at"] == "/api/hub/register"
+    # Absolute, since #156: a person choosing a hub is given this link to use, and the home row used to
+    # be the one row whose link could not be used. tests/test_home_hub_row.py is where that lives.
+    assert home["url"] and home["apply_at"] == f"{home['url']}/api/hub/register"
     assert home["entities"] >= 0
     assert out["admission_meanings"], "a policy name means nothing without its sentence"
 
