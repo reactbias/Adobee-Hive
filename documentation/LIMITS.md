@@ -41,6 +41,16 @@ reviews and attestations — whatever the query was. An entity that fails no har
 review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint
 component was fixed for the same class of bug (it is now earned, never granted); this one is not.
 
+**Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
+parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya
+safari winning a Basel hotel booking because the guest was called Mara (#95). `hive.discover` itself does not:
+it has no notion of a requester, so the words of a name are ordinary query terms to it. **`hive_discover` over
+MCP calls the core directly**, so there the guest's own name still earns points — measured, `x-bekenya` takes 10
+for *"offers mara"* on the Basel hotel request. The right hotel still ranks first, so this is a mis-scored row
+rather than a wrong answer, but the rule belongs in the tokeniser where both doors inherit it.
+`tests/test_discover_identity.py` pins the REST behaviour, including that varying only the fictional guest name
+changes neither which hotels are eligible nor their order.
+
 **The app exposes neither `kind` nor `looking_for`.** Both are real parameters of `GET /api/hive/discover` and
 `hive_discover`, and both matter: `kind` narrows, and `looking_for` chooses which side of the market to search.
 The web app sends neither. On the traveller page the only search controls are the free-text box and the three-step
