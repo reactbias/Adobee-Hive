@@ -140,7 +140,7 @@ const it: Record<Key, string> = {
   "agent.fact.total": "Totale",
   "agent.fact.room": "Camera",
   "agent.receipt.eyebrow": "Confermato · ricevuta firmata",
-  "agent.receipt.signature": "Ricevuta firmata. Prova del soggiorno e unica chiave per una recensione.",
+  "agent.receipt.signature": "Ricevuta firmata. Prova della prenotazione e unica chiave per una recensione.",
   "agent.review.title": "Dopo il soggiorno",
   "agent.review.rating": "Valutazione",
   "agent.review.sample": "Camera tranquilla, il cane ha adorato la passeggiata sul Reno.",
@@ -190,7 +190,7 @@ const it: Record<Key, string> = {
     "Nessuna carta copre questo, quindi non Le mando la più vicina. Se richiesto spesso, mostra a un'attività cosa offrire.",
   "error.offline": "Il server si sta avviando o non è raggiungibile. Riprovi tra un momento.",
   "chat.ask.checked":
-    "Schede verificate: {n}. Con firma verificata: {signed}. Compilate da siti pubblici, segnate come non rivendicate: {unclaimed}.",
+    "Schede verificate: {n}. Schede rivendicate con firma verificata: {signed}. Compilate da siti pubblici, segnate come non rivendicate: {unclaimed}.",
   "chat.role.verifier": "Agente · verifica le firme",
   "chat.role.card": "Scheda · nell'Hive",
   "chat.agent.ack": "Subito. Chiedo all'Hive e verifico io ogni risposta.",

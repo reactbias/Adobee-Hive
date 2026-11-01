@@ -24,7 +24,7 @@ TEXT: dict[str, dict[str, str]] = {
         "verified": " Verified claims: {claims}.",
         "claim_by": "{claim} by {by}",
         "booked": "Booked {name}, {unit}, CHF {total} total. Reference {ref}; the signed receipt is your "
-        "proof of stay.",
+        "proof of booking.",
         "book_failed": "Booking failed: {error}",
         "out_of_steps": "I ran out of steps before finishing.",
         "declined": "The model declined this request.",
@@ -61,8 +61,8 @@ TEXT: dict[str, dict[str, str]] = {
         "ready": "Bereit zur Buchung: {name}, {unit}, {check_in} bis {check_out}, CHF {total} total. Warum: {reasons}.",
         "verified": " Bestätigte Angaben: {claims}.",
         "claim_by": "{claim}, bestätigt von {by}",
-        "booked": "Gebucht: {name}, {unit}, CHF {total} total. Referenz {ref}; die signierte Quittung belegt Ihren "
-        "Aufenthalt.",
+        "booked": "Gebucht: {name}, {unit}, CHF {total} total. Referenz {ref}; die signierte Quittung belegt Ihre "
+        "Buchung.",
         "book_failed": "Buchung fehlgeschlagen: {error}",
         "out_of_steps": "Mir sind die Schritte ausgegangen, bevor ich fertig war.",
         "declined": "Das Modell hat diese Anfrage abgelehnt.",
@@ -101,7 +101,7 @@ TEXT: dict[str, dict[str, str]] = {
         "verified": " Informations attestées : {claims}.",
         "claim_by": "{claim}, attesté par {by}",
         "booked": "Réservé : {name}, {unit}, CHF {total} au total. Référence {ref} ; le reçu signé prouve "
-        "votre séjour.",
+        "votre réservation.",
         "book_failed": "La réservation a échoué : {error}",
         "out_of_steps": "Je n'ai plus d'étapes disponibles avant d'avoir terminé.",
         "declined": "Le modèle a refusé cette demande.",
@@ -139,8 +139,8 @@ TEXT: dict[str, dict[str, str]] = {
         "Perché: {reasons}.",
         "verified": " Dati attestati: {claims}.",
         "claim_by": "{claim}, attestato da {by}",
-        "booked": "Prenotato: {name}, {unit}, CHF {total} in totale. Riferimento {ref}; la ricevuta firmata prova il "
-        "Suo soggiorno.",
+        "booked": "Prenotato: {name}, {unit}, CHF {total} in totale. Riferimento {ref}; la ricevuta firmata prova la "
+        "Sua prenotazione.",
         "book_failed": "Prenotazione non riuscita: {error}",
         "out_of_steps": "Ho esaurito i passaggi prima di finire.",
         "declined": "Il modello ha rifiutato questa richiesta.",

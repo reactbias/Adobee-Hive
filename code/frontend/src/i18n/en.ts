@@ -142,7 +142,7 @@ const en = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Room",
   "agent.receipt.eyebrow": "Confirmed · receipt signed",
-  "agent.receipt.signature": "Signed receipt. Proof of stay, and the only key to a review.",
+  "agent.receipt.signature": "Signed receipt. Proof of booking, and the only key to a review.",
   "agent.review.title": "After your stay",
   "agent.review.rating": "Rating",
   "agent.review.sample": "Quiet room, the dog loved the river walk.",
@@ -192,7 +192,7 @@ const en = {
     "No card covers this, so I won't send you the nearest one. Asked often enough, it shows a business what to offer next.",
   "error.offline": "The backend is waking up or out of reach. Please try again in a moment.",
   "chat.ask.checked":
-    "Cards checked: {n}. With a verified signature: {signed}. Compiled from public websites, marked unclaimed: {unclaimed}.",
+    "Cards checked: {n}. Claimed cards with a verified signature: {signed}. Compiled from public websites, marked unclaimed: {unclaimed}.",
   "chat.role.verifier": "Agent · checks the signatures",
   "chat.role.card": "Card · in the Hive",
   "chat.agent.ack": "On it. I'll ask the Hive and check every answer myself.",

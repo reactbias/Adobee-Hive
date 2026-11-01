@@ -140,7 +140,7 @@ const de: Record<Key, string> = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Zimmer",
   "agent.receipt.eyebrow": "Bestätigt · Quittung signiert",
-  "agent.receipt.signature": "Signierte Quittung. Beleg des Aufenthalts und einziger Schlüssel zu einer Bewertung.",
+  "agent.receipt.signature": "Signierte Quittung. Beleg der Buchung und einziger Schlüssel zu einer Bewertung.",
   "agent.review.title": "Nach Ihrem Aufenthalt",
   "agent.review.rating": "Bewertung",
   "agent.review.sample": "Ruhiges Zimmer, der Hund liebte den Spaziergang am Rhein.",
@@ -190,7 +190,7 @@ const de: Record<Key, string> = {
     "Keine Karte deckt das ab, also schicke ich Ihnen nicht einfach die nächstbeste. Wird es oft gefragt, sieht ein Geschäft, was es als Nächstes anbieten könnte.",
   "error.offline": "Der Server startet gerade oder ist nicht erreichbar. Bitte versuchen Sie es gleich nochmals.",
   "chat.ask.checked":
-    "Geprüfte Karten: {n}. Mit geprüfter Signatur: {signed}. Aus öffentlichen Websites zusammengestellt, als nicht beansprucht markiert: {unclaimed}.",
+    "Geprüfte Karten: {n}. Beanspruchte Karten mit geprüfter Signatur: {signed}. Aus öffentlichen Websites zusammengestellt, als nicht beansprucht markiert: {unclaimed}.",
   "chat.role.verifier": "Agent · prüft die Signaturen",
   "chat.role.card": "Karte · im Hive",
   "chat.agent.ack": "Mache ich. Ich frage den Hive und prüfe jede Antwort selbst.",

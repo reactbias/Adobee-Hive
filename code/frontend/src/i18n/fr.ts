@@ -141,7 +141,7 @@ const fr: Record<Key, string> = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Chambre",
   "agent.receipt.eyebrow": "Confirmé · reçu signé",
-  "agent.receipt.signature": "Reçu signé. La preuve du séjour, et la seule clé d'un avis.",
+  "agent.receipt.signature": "Reçu signé. La preuve de la réservation, et la seule clé d'un avis.",
   "agent.review.title": "Après votre séjour",
   "agent.review.rating": "Note",
   "agent.review.sample": "Chambre calme, le chien a adoré la promenade au bord du Rhin.",
@@ -191,7 +191,7 @@ const fr: Record<Key, string> = {
     "Aucune carte ne couvre cela, je ne vous envoie donc pas la plus proche. Demandé assez souvent, cela montre à un commerce quoi proposer ensuite.",
   "error.offline": "Le serveur démarre ou est injoignable. Réessayez dans un instant.",
   "chat.ask.checked":
-    "Cartes vérifiées : {n}. Avec signature vérifiée : {signed}. Compilées depuis des sites publics, marquées non revendiquées : {unclaimed}.",
+    "Cartes vérifiées : {n}. Cartes revendiquées avec signature vérifiée : {signed}. Compilées depuis des sites publics, marquées non revendiquées : {unclaimed}.",
   "chat.role.verifier": "Agent · vérifie les signatures",
   "chat.role.card": "Carte · dans le Hive",
   "chat.agent.ack": "C'est parti. J'interroge le Hive et je vérifie moi-même chaque réponse.",
