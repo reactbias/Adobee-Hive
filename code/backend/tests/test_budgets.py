@@ -256,13 +256,21 @@ def test_a_discovery_answer_over_mcp_is_bounded_and_says_so(client):
 
 
 def test_a_caller_cannot_ask_for_an_unbounded_answer(client):
-    """`limit` is clamped, so neither a caller asking for everything nor one asking for nothing gets it."""
-    found = {"matches": [{"id": str(n)} for n in range(limits.MAX_ANSWER_MATCHES + 10)]}
+    """`limit` is clamped, so neither a caller asking for everything nor one asking for nothing gets it.
 
-    assert len(limits.bound_answer(found, 10_000)["matches"]) == limits.MAX_ANSWER_MATCHES
+    The ceilings are written out as literals rather than read back off the module. Comparing
+    `bound_answer(found, 10_000)` against `limits.MAX_ANSWER_MATCHES` moves both sides of the
+    assertion together, so raising the ceiling to 10_000 passed it — which is exactly the mutant
+    this is meant to catch. A published number is pinned here, and changing it is a deliberate edit
+    in two places.
+    """
+    found = {"matches": [{"id": str(n)} for n in range(200)]}
+
+    assert (limits.MAX_ANSWER_MATCHES, limits.DEFAULT_ANSWER_MATCHES) == (50, 20)
+    assert len(limits.bound_answer(found, 10_000)["matches"]) == 50
     assert len(limits.bound_answer(found, 0)["matches"]) == 1
     assert len(limits.bound_answer(found, -5)["matches"]) == 1
-    assert len(limits.bound_answer(found, None)["matches"]) == limits.DEFAULT_ANSWER_MATCHES
+    assert len(limits.bound_answer(found, None)["matches"]) == 20
 
 
 def test_bounding_an_answer_leaves_a_refusal_alone():
