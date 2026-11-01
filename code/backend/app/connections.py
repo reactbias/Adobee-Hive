@@ -145,7 +145,11 @@ def _row(r: tuple) -> dict[str, Any]:
 
 
 def _days_left(stale_at: Any) -> int | None:
-    """Whole days until this row can no longer be scored: 0 on its last day, None when it has no deadline."""
+    """Whole days until this row's deadline: 0 on its last day, None when it has none.
+
+    Which deadline depends on the state: the score window for an open introduction, the owner's
+    answer window for one still waiting on their yes. Both are `stale_at`, and both run out.
+    """
     if not isinstance(stale_at, datetime):
         return None
     return max(0, (stale_at - _now()).days)
