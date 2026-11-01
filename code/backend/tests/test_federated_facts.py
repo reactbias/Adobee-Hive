@@ -58,6 +58,37 @@ def _found(net, peer: FakeHive) -> dict:
     return next(m for m in out["matches"] if m["id"] == THEIRS)
 
 
+def _carrier(match: dict) -> FakeHive:
+    """A peer that answers with exactly this match, so the carrier's own words are really under test.
+
+    `FakeHive._match` builds its answer with `"signature_valid": True` written *after* `**self.match`,
+    so `FakeHive(match={"signature_valid": False})` is silently overridden — and a test relying on it
+    asserted something the fake could never falsify. That is how the mutant which takes the verdict
+    from the carrier survived a test written to catch it. Here the answer is built in full, so a claim
+    this hub must ignore is actually made. The card stays genuine and correctly signed.
+    """
+    peer = FakeHive("zurich", cards=[_card(THEIRS, HONEST)])
+    signed = peer.cards[0]
+
+    async def answer(ask, radius, budget_ms, seen):
+        return {
+            "matches": [
+                {
+                    "id": THEIRS,
+                    "score": 60.0,
+                    "card": signed,
+                    "provenance": {"path": [peer.hub_id], "hops": 0, "origin": peer.hub_id, "origin_url": peer.url},
+                    **match,
+                }
+            ],
+            "excluded": [],
+            "ranking_policy": "No paid placement.",
+        }
+
+    peer.search = answer  # type: ignore[method-assign]
+    return peer
+
+
 # ---------------------------------------------------------------- the facts come from the card
 
 
@@ -83,14 +114,58 @@ def test_a_carrier_cannot_redirect_the_contact_details(client, net):
     assert match["contact"] == match["card"]["contact"]
 
 
-def test_the_signature_verdict_is_the_receivers_and_cannot_be_overwritten(client, net):
-    """Both directions. A carrier may not claim a card checked out, nor claim that one did not."""
-    denied = _found(net, _liar(signature_valid=False))
-    assert denied["signature_valid"] is True, "we verified it ourselves; the carrier does not get a vote"
-    assert denied["card"]["trust"]["signature_valid"] is True
+def test_a_carrier_cannot_deny_a_signature_this_hub_checked_itself(client, net):
+    """The verdict is the receiver's. A carrier saying `false` about a good card does not get a vote.
+
+    Built with `_carrier`, not `_liar`: the shared fake writes `signature_valid: True` after its
+    override, so the first version of this test could not actually make the claim it was testing,
+    and the mutant that reads the verdict off the carrier survived it.
+    """
+    denied = _found(net, _carrier({"signature_valid": False}))
+
+    assert denied["signature_valid"] is True, "the carrier's `false` was passed on as our verdict"
+    assert denied["card"]["trust"]["signature_valid"] is True, "and restated on the nested card too"
+    assert denied["verified"]["card"] is True
     assert hive.verify_pinned(
         denied["card"], {THEIRS: denied["card"]["trust"]["public_key"]}
-    ), "and restating the verdict must not have disturbed the signed bytes"
+    ), "restating the verdict must not have disturbed the signed bytes"
+
+
+def test_a_carrier_claiming_a_signature_on_a_card_that_does_not_verify_buys_nothing(client, net):
+    """The other direction, and the stronger one: a tick a carrier asserts is worth nothing here.
+
+    A card that fails `verify_pinned` is not returned with `signature_valid: false` — it is not
+    returned at all, which is the honest shape of "the receiver decides" and the one this hub has
+    always had. So the assertion is absence plus a named rejection, and the carrier pays for it.
+    """
+    peer = _carrier({})
+    signed = peer.cards[0]
+    altered = {**signed, "name": "Not What Was Signed", "trust": dict(signed["trust"])}
+
+    async def answer(ask, radius, budget_ms, seen):
+        return {
+            "matches": [
+                {
+                    "id": THEIRS,
+                    "score": 99.0,
+                    "signature_valid": True,  # the carrier's tick, on a body its owner never signed
+                    "card": altered,
+                    "provenance": {"path": [peer.hub_id], "hops": 0, "origin": peer.hub_id, "origin_url": peer.url},
+                }
+            ],
+            "excluded": [],
+            "ranking_policy": "No paid placement.",
+        }
+
+    peer.search = answer  # type: ignore[method-assign]
+    net(peer)
+
+    out = hive.discover(**ASK, radius=1)
+
+    assert THEIRS not in {m["id"] for m in out["matches"]}, "a carrier's tick admitted a tampered card"
+    rejected = {r["card_id"]: r["reason"] for r in out["federation"]["rejected"]}
+    assert "does not match what the owner signed" in rejected[THEIRS], rejected
+    assert reputation.observed("zurich").invalid == 1, "altering a signed card is the carrier's doing"
 
 
 def test_a_field_the_carrier_invented_is_dropped_rather_than_passed_on(client, net):

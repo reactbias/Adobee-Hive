@@ -558,6 +558,8 @@ def register(server: MCPServer) -> None:
         events). mood: curious | stressed | planning | celebrating, only if the person chose one. Cards marked
         claimed=false are compiled from public websites. Actions are never taken here: a person approves them in
         the Hive app."""
+        # No budget here on purpose, and it is not an oversight: this never passes `judge`, so unlike
+        # `POST /api/ask` it cannot reach a model however the hub is configured. See `guard.py` for the table.
         result = safe(ask, question, mood)
         if result.get("pending"):
             result["pending"] = {k: v for k, v in result["pending"].items() if k != "id"}
