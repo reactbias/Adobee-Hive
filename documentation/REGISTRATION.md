@@ -53,6 +53,17 @@ A refusal comes back as **200 with `state: "rejected"`**, not a 4xx. A refusal i
 transport error, and a client should read one shape either way. Every answer carries the checks
 that ran, the reason, and `next` — what to do now. An answer with no next step is a dead end.
 
+### Browser folder selection
+
+The browser reads the chosen folder locally; only the reviewed Card is submitted. Loose files at the root
+share one visibility selector, while each child directory has its own. Dotfiles and dot-directories are
+ignored. The default is `public-summary`, stated before the Card is filled.
+
+A public root group contributes per-file metadata and extracted content. A private root group contributes
+only a `structure` row with `path: "."`, its Markdown file count and `visibility: "private"`. Shared and
+hidden groups contribute neither content nor metadata to the Card; shared files may be listed to a linked
+peer by the folder service, while hidden files are owner-only. No visibility choice uploads the folder.
+
 ## The checks
 
 In order, stopping at the first failure, so a malformed document gets one useful answer rather
