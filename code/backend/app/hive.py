@@ -502,29 +502,29 @@ RANKING_POLICY = (
 )
 
 
-STOPWORDS = {
-    "book",
-    "basel",
-    "hotel",
-    "near",
-    "under",
-    "with",
-    "from",
-    "that",
-    "this",
-    "please",
-    "find",
-    "name",
-    "night",
-    "nights",
-    "friendly",
-    "check",
-    "late",
-    "room",
-    "rooms",
-    "want",
-    "need",
-}
+#: The shortest query word the literal search will look for. Literal containment pays 10 points a word on the
+#: offers side, and a three-letter word is inside some card's prose by accident far more often than on
+#: purpose, so the literal path asks for longer words than the similarity bag does.
+MIN_TERM_LENGTH = 4
+
+#: Filler words are `semantic.STOPWORDS`, and the literal search tokenises with `semantic.content_words`.
+#:
+#: There is no second list here any more. There was: 21 words, against the 323 of `semantic.STOPWORDS`, so
+#: "where", "someone", "jemand", "pour" and "macht" were content words to the literal path and filler to the
+#: semantic one. The literal path is the one that pays 10 points a word, which is how a screen-reader
+#: auditor came second for a Python performance question on *"offers someone"*, and how the only card to
+#: score for *"Ich suche jemanden, der meine Python-Simulation schneller macht"* was a roofer, on "macht".
+#: Keeping a hub-specific list in step with a four-language one by hand is not a thing that stays done.
+STOPWORDS = semantic.STOPWORDS
+
+
+def query_terms(query: str) -> list[str]:
+    """The words of a query the literal search will look for: folded, filler dropped, short words dropped.
+
+    Sorted and de-duplicated, because each is scored once and the order of a caller's sentence is not
+    evidence about a card.
+    """
+    return sorted(set(semantic.content_words(query, MIN_TERM_LENGTH)))
 
 
 def _side_texts(card: dict[str, Any], side: str) -> list[str]:
@@ -562,7 +562,9 @@ def _side_hits(card: dict[str, Any], side: str, terms: list[str]) -> list[str]:
     than one that is merely close. Returns the terms that matched, so a result can say *why* it
     matched rather than only that it did.
     """
-    text = " ".join(_side_texts(card, side)).lower()
+    # Folded, not merely lower-cased: `terms` arrives folded, so an unfolded haystack would make folding
+    # the query a regression — "cafe" is not a substring of "Café". Both sides, or neither.
+    text = semantic.fold(" ".join(_side_texts(card, side)))
     return [term for term in terms if term in text]
 
 
@@ -770,8 +772,13 @@ def discover(
         + ([f"under CHF {max_price_chf:g}"] if max_price_chf else [])
         + ([f"{guests} guests"] if guests > 1 else [])
     )
-    terms = sorted({t for t in re.findall(r"[a-zäöü]+", query.lower()) if len(t) > 3} - STOPWORDS)
+    terms = query_terms(query)
     matches, excluded, events = [], [], []
+    # How close each match's semantic hit actually was, kept beside the matches to break ties with.
+    # The points are a whole number of points per query word covered, so ties are common and the sort
+    # was settling them by the order `list_cards` happened to return — a hairdresser's "Flechtfrisur für
+    # ein Fest" came before a caterer for "catering for a wedding of fifty people" on nothing but that.
+    closeness: dict[str, float] = {}
     # Every entity, whatever it is. A hub carries hotels, developers and hairdressers together,
     # so the search is over what they offer and what they need; `kind` is a filter a caller may
     # apply, not a gate the hub applies for them.
@@ -788,14 +795,17 @@ def discover(
         found = fit(card, features, near, max_price_chf, check_in, check_out, guests)
         reasons, misses, price, dist = found["reasons"], found["misses"], found["price"], found["distance_m"]
 
-        text = " ".join(
-            [
-                card.get("name", ""),
-                card.get("tagline", ""),
-                card.get("description", ""),
-                " ".join(card.get("features", [])),
-            ]
-        ).lower()
+        # Folded for the same reason `_side_hits` folds: `terms` is folded, so this has to be.
+        text = semantic.fold(
+            " ".join(
+                [
+                    card.get("name", ""),
+                    card.get("tagline", ""),
+                    card.get("description", ""),
+                    " ".join(card.get("features", [])),
+                ]
+            )
+        )
         hits = [t for t in terms if t in text]
 
         # The two sides of the market, and the reason one query can find a room, a developer or a
@@ -873,6 +883,7 @@ def discover(
                 )
         else:
             matches.append(summary)
+            closeness[card["id"]] = close[1].score if close else 0.0
             events.append((card["id"], "shown", asked or "open search"))
     events.append(
         (
@@ -890,7 +901,11 @@ def discover(
         )
     )
     _log_many(events)
-    matches.sort(key=lambda m: m["score"], reverse=True)
+    # Points first, and a tie on points goes to the closer match. `_close_hit` already prefers the closer
+    # of two sides worth the same; this is the same rule one level up, and for the same reason: when the
+    # points cannot separate two entities, the one that is actually more like the question should win.
+    # Nothing here changes a score — closeness only orders entities the score has already tied.
+    matches.sort(key=lambda m: (m["score"], closeness.get(m["id"], 0.0)), reverse=True)
     if forwarded:
         # A peer asked this, and it will verify every card against our key registry before showing
         # it to anyone. It can only do that if the signed card travels with the match, so attach it.

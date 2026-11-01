@@ -9,26 +9,32 @@ better than it does.
 
 ## Discovery
 
-**Matching gets you two out of five, not five out of five.** `app/semantic.py` is a score component in
-`hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer key in
-[`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target — that is
-**19/41 first and 30/41 in the top three**, against `0/41` for the substring matching it replaced. Twenty-two
-of the forty-one are still not first. The provider is hand-built (accent-folded stems, a four-language concept
-table, German compound splitting, character trigrams, cosine above a named floor), so a trade nobody has
-written a card for yet matches only by stem or trigram.
+**Matching gets you just over half at first place, not five out of five.** `app/semantic.py` is a score
+component in `hive.discover` now, so "haircut" does find *"Cut, wash and finish"*. Measured against the answer
+key in [`testdata/`](../testdata/README.md) — 41 queries, none sharing a searchable word with its target —
+that is **24/41 first and 33/41 in the top three**, against `0/41` for the substring matching it replaced.
+Seventeen of the forty-one are still not first. The provider is hand-built (accent-folded stems, a
+four-language concept table, German compound splitting, character trigrams, cosine above a named floor), so a
+trade nobody has written a card for yet matches only by stem or trigram.
+
+**The semantic component pays per query word covered, so ties are the normal case.** A match is worth a whole
+number of points per word of the question it covers, up to `SEMANTIC_CAP`, and how *close* it was does not
+enter the score. Nine lodgings cover "hostel, bunk, beds" identically and all collect the cap. Closeness now
+breaks those ties in the sort, which is a weak signal rather than a strong one: for "hostel with bunk beds for
+a school group" it puts the actual hostel at 9th, because `Mehrbettzimmer A` normalises worse than
+`Courtyard single`. A query whose answer is a cap-saturated tie is not really being ranked.
 
 **There is no embedding provider.** `semantic._embedding_provider()` returns `None` on purpose rather than half
 an implementation, so a hub with an API key searches exactly as well as one without, and `GET /api/health`
 reports `semantic: offline` either way. What is built is the seam: a `Provider` subclass with a name, an
 `available()` that reads its key through `config`, and an `encode()` that caches per card version.
 
-**The literal half of the scoring only knows German umlauts.** `hive.discover` tokenises a query with
-`[a-zäöü]+` and keeps terms longer than three characters, so `café` and `crème` tokenise to nothing and a
-French or Italian query scores zero on both `text_relevance` and `offers_needs`. Semantic search answers it
-anyway, because it accent-folds — but the literal components are blind to two of the four languages the corpus
-is written in. `hive.STOPWORDS` is 21 words to `semantic.STOPWORDS`' several hundred, for the same reason:
-filler words like *where* and *someone* are scoring query terms and earn offer points off any card whose prose
-happens to contain them.
+**The stopword list is hand-built, so a filler word nobody listed is still evidence.** Both search paths now
+tokenise with `semantic.content_words` and share the single `semantic.STOPWORDS`, which is folded so that
+"für" and "fuer" are one entry. That closed the cases two user tests found — interrogatives, possessives and
+the inflected forms of light verbs in all four languages — but the list is a list: a filler word in a
+language or register nobody typed at it is a scoring term until somebody adds it. There is no frequency
+analysis over the corpus behind it.
 
 **Room intent is conservative.** The REST discovery door recognises explicit hotel/room language and reuses
 the stay parser for stated constraints, excluding a declared guest name from ranking. Explicit parameters win;
