@@ -77,3 +77,29 @@ export const moment = (iso: unknown, intl: string): string => {
   if (!then || Number.isNaN(then.getTime())) return "";
   return new Intl.DateTimeFormat(intl, { dateStyle: "medium", timeStyle: "short" }).format(then);
 };
+
+/**
+ * A file size a person can read: whole bytes up to a kilobyte, then kB, MB and GB.
+ *
+ * Decimal units, not 1024s, because they are what a file manager shows and nobody is doing arithmetic with
+ * these. One decimal below a hundred of a unit and none above, so "2.0 kB" keeps its precision and "182 kB"
+ * does not pretend to any. The unit symbols are not language; the number is, so it goes through `Intl`.
+ *
+ * `null` and `undefined` are not zero bytes — `Number(null)` is 0, which would claim an empty file where we
+ * were told nothing — so they answer with an empty string, as anything unreadable does.
+ */
+export const size = (bytes: unknown, intl: string): string => {
+  if (bytes === null || bytes === undefined || bytes === "") return "";
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n < 0) return "";
+  const units = ["B", "kB", "MB", "GB", "TB"];
+  let step = 0;
+  let value = n;
+  while (value >= 1000 && step < units.length - 1) {
+    value /= 1000;
+    step += 1;
+  }
+  const digits = step > 0 && value < 100 ? 1 : 0;
+  const shown = new Intl.NumberFormat(intl, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return `${shown.format(value)} ${units[step]}`;
+};

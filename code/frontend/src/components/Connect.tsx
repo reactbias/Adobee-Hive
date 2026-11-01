@@ -3,6 +3,7 @@ import { api, OFFLINE, shownError, type Card, type Connection } from "../api";
 import { useI18n } from "../i18n";
 import { remember, requesterId, type ConnectMode } from "../lib/connect";
 import { day } from "../lib/format";
+import FolderBrowse from "./FolderBrowse";
 
 /**
  * Ask to be introduced to a result. The label says what it will take before the click: Connect opens at once,
@@ -62,9 +63,17 @@ export default function Connect({
   if (made?.state === "declined") return <p className="status no card-step">{t("connect.declined")}</p>;
   if (made)
     return (
-      <p className="status ok card-step">
-        {t("connect.opened", { date: day(String(made.stale_at ?? "").slice(0, 10), intl) })}
-      </p>
+      <div className="card-step stack tight">
+        <p className="status ok">
+          {t("connect.opened", { date: day(String(made.stale_at ?? "").slice(0, 10), intl) })}
+        </p>
+        {/* The introduction hands over the folder and the bearer for it in the same response. The hub fills
+            them for an entity it carries itself and leaves them out for a remote one, so nothing is drawn
+            where there is nothing to draw. The secret stays in this component's state. */}
+        {made.folder && made.folder_key?.secret && (
+          <FolderBrowse folder={made.folder} secret={made.folder_key.secret} name={name} />
+        )}
+      </div>
     );
   return (
     <div className="connect card-step">
