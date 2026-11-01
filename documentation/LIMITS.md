@@ -272,7 +272,8 @@ too, with the hub proxied same-origin.
 **One instance, in memory.** Rate limits, held bookings, held hand-offs and hub reputation live in the process:
 they reset on a restart and would not be shared between two instances. DuckDB on local disk with a Postgres
 snapshot pins the backend to one instance anyway. Fine for a demo, and the reason a redeploy clears an admin
-lockout.
+lockout. The lock that stops two callers booking the last room is in the process too, so it would not hold across
+two instances either.
 
 ## Not built
 
