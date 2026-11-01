@@ -70,6 +70,7 @@ SUITE = [
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_local_calibration.py",
+    "tests/test_home_hub_row.py",
 ]
 
 
