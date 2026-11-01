@@ -1480,6 +1480,10 @@ th.end {
   border: 0;
   box-shadow: none;
 }
+/* The rule above clears every frame, but the stage's text is light in both colour schemes: it keeps its dark. */
+.screen-find .chat-stage.frame {
+  background: radial-gradient(90% 40% at 100% 0%, rgba(242, 182, 60, 0.14), transparent 70%), var(--stage);
+}
 .screen-find .frame > .frame-head {
   padding: 0 var(--s2) var(--s4);
   border-bottom: 0;
@@ -3245,6 +3249,37 @@ button.self-start {
   color: var(--st-3);
   border-top: 0;
   padding-top: 0;
+}
+
+/* Beside the results the stage is narrow: one line of faces, or the roster takes the conversation's screen. */
+.journey-side {
+  scroll-margin-top: calc(var(--nav-h) + var(--s4));
+}
+.journey-side .roster {
+  padding: var(--s3) var(--s4);
+  gap: var(--s2);
+}
+.journey-side .roster ul {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: var(--s4);
+}
+.journey-side .roster li {
+  flex-shrink: 0;
+}
+.journey-side .roster li:not(.typing) i {
+  display: none;
+}
+.journey-side .roster-meta {
+  flex-wrap: nowrap;
+}
+.journey-side .roster-meta .stage-meta {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: var(--t-xs);
 }
 
 /* On a phone the roster becomes one swipeable line of faces, so the conversation keeps the screen */
