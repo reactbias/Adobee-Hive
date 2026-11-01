@@ -36,6 +36,14 @@ jobs:
   # calibration, connections and sharing on purpose and fails if a break goes unnoticed.
   # Separate from `backend` so a surviving mutant reads as "the tests have a hole", not
   # "the build is broken", and so it can be read at a glance in the checks list.
+  #
+  # Every mutant runs the whole suite, so this job costs (mutants) x (one suite run). Two things
+  # keep it short enough that a reviewer actually waits for it:
+  #   - four mutants at a time, each in its own copy of the tree;
+  #   - on a pull request, only the mutants aimed at the modules the diff touched. A push to main
+  #     always runs all of them, so main is never left permanently unchecked.
+  # What it does NOT do is narrow the *tests* per mutant. Every mutant that runs runs all 15 files,
+  # because a mutant only ever killed by a test that got excluded would start surviving quietly.
   mutation:
     runs-on: ubuntu-latest
     needs: backend
@@ -44,17 +52,71 @@ jobs:
         working-directory: code/backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The pull-request run diffs against the base commit to find the changed modules.
+          # The default shallow clone has nothing to diff against.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt -r requirements-dev.txt
-      # The curated mutants are deterministic and must all die.
-      - run: python tools/mutate.py
+
+      # Which mutants this run checks, said out loud in the log and in the job summary. A green
+      # check that silently ran nothing would be worse than the slow job this replaced.
+      - name: Which mutants this run checks
+        id: pick
+        shell: bash
+        working-directory: .
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE" ]; then
+            note="full set: every curated mutant, every module (push to main)"
+            echo "filter=no" >> "$GITHUB_OUTPUT"
+          else
+            base=$(git merge-base "$BASE" HEAD || echo "$BASE")
+            changed=$(git diff --name-only "$base" HEAD -- code/backend || true)
+            # A change to the harness itself is not a change to one module: check everything
+            # rather than let a new or edited mutant go unproved on the pull request that adds it.
+            if printf '%s\n' "$changed" | grep -qxE 'code/backend/(tools/mutate\.py|tests/test_mutation\.py)'; then
+              note="full set: the mutation harness itself changed"
+              echo "filter=no" >> "$GITHUB_OUTPUT"
+            else
+              modules=$(printf '%s\n' "$changed" | grep -E '^code/backend/app/.*\.py$' | paste -sd, - || true)
+              if [ -z "$modules" ]; then
+                note="nothing to mutate: this pull request changes no backend module"
+              else
+                note="changed modules only: ${modules//,/, }"
+              fi
+              echo "filter=yes" >> "$GITHUB_OUTPUT"
+              echo "modules=$modules" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+          echo "Mutation gate — $note"
+          echo "**Mutation gate** — $note" >> "$GITHUB_STEP_SUMMARY"
+
+      # The curated mutants are deterministic and must all die. The tool prints its mode, its
+      # mutant count and its wall time, so the log says what was checked and what it cost.
+      - name: Curated mutants (every one must die)
+        shell: bash
+        env:
+          FILTER: ${{ steps.pick.outputs.filter }}
+          MODULES: ${{ steps.pick.outputs.modules }}
+        run: |
+          if [ "$FILTER" = yes ]; then
+            python tools/mutate.py --workers 4 --modules "$MODULES"
+          else
+            python tools/mutate.py --workers 4
+          fi
+
       # Plus a seeded random pass, so a different corner is probed on each run without
-      # making the result irreproducible: the seed is printed and in the log.
+      # making the result irreproducible: the seed is printed and in the log. On main only: it is
+      # advisory (continue-on-error), it cannot be scoped to the diff the way the curated set can,
+      # and nobody reads an advisory log on a pull request they are waiting for.
       - name: Random mutants (seeded by run number)
-        run: python tools/mutate.py --random 8 --seed ${{ github.run_number }}
+        if: github.event_name == 'push'
+        run: python tools/mutate.py --random 8 --seed ${{ github.run_number }} --workers 4
         continue-on-error: true
 
   frontend:

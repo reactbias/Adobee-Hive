@@ -166,8 +166,8 @@ def test_results_are_printed_in_the_order_the_mutants_were_listed(trees, monkeyp
         return mutate.Result(mutant, False, [f"killed {mutant.title}"])
 
     monkeypatch.setattr(mutate, "check", fake_check)
-    survivors = mutate.run_mutants(list(listed), mutate.make_trees(3))
-    assert survivors == []
+    results = mutate.run_mutants(list(listed), mutate.make_trees(3))
+    assert [r.mutant for r in results] == list(listed), "the results must come back in listed order"
     printed = capsys.readouterr().out.splitlines()
     assert printed == [f"killed {m.title}" for m in listed]
 
@@ -312,3 +312,12 @@ def test_the_mode_and_the_count_are_always_printed():
     assert done.returncode == 0
     assert "Mode: only the modules named — app/main.py" in done.stdout
     assert "no mutants aimed at: app/main.py" in done.stdout
+
+
+def test_a_skipped_mutant_is_not_counted_as_checked(trees, monkeypatch, capsys):
+    """ "Checked 61" over 61 skips is the false all-clear the whole tool exists to avoid."""
+    mutate = _mutate()
+    drifted = mutate.Mutant("hive.py", "a pattern that no longer matches", "nowhere in the file", "x")
+    result = mutate.check(drifted, trees[0])
+    assert result.survived is None, "a mutant that was never applied neither lived nor died"
+    assert "SKIP" in result.lines[0]

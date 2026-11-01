@@ -769,12 +769,12 @@ def check(mutant: Mutant, tree: Path, timeout: int = SUITE_TIMEOUT) -> Result:
     return Result(mutant, False, [f"  \033[32mkilled\033[0m    {mutant.title}"])
 
 
-def run_mutants(mutants: list[Mutant], trees: list[Path], timeout: int = SUITE_TIMEOUT) -> list[str]:
+def run_mutants(mutants: list[Mutant], trees: list[Path], timeout: int = SUITE_TIMEOUT) -> list[Result]:
     """Check every mutant, one per free worker copy, and print the report in a stable order.
 
-    Returns the survivors' reasons. The results are printed in the order the mutants were listed,
-    not the order the workers happened to finish, so a parallel run reads exactly like a sequential
-    one. A worker is a thread because all it does is wait on a pytest process.
+    The results come back in the order the mutants were listed, not the order the workers happened
+    to finish, and that is also the order they print in, so a parallel run reads exactly like a
+    sequential one. A worker is a thread because all it does is wait on a pytest process.
     """
     free: queue.Queue[Path] = queue.Queue()
     for tree in trees:
@@ -787,15 +787,13 @@ def run_mutants(mutants: list[Mutant], trees: list[Path], timeout: int = SUITE_T
         finally:
             free.put(tree)
 
-    survivors: list[str] = []
+    results: list[Result] = []
     with ThreadPoolExecutor(max_workers=len(trees), thread_name_prefix="mutant") as pool:
         for future in [pool.submit(one, m) for m in mutants]:
             result = future.result()
             print("\n".join(result.lines), flush=True)
-            if result.survived:
-                m = result.mutant
-                survivors.append(f"{m.label}  {m.why}" if m.label else m.why)
-    return survivors
+            results.append(result)
+    return results
 
 
 def random_mutants(n: int, seed: int, targets: list[str] | None = None) -> list[Mutant]:
@@ -975,24 +973,28 @@ def main() -> int:
         return 1
     print("Green.\n")
 
-    survivors = []
-    ran = 0
+    results: list[Result] = []
 
     if want_curated:
         print(f"Curated mutants ({len(curated)}) — the invariants the design rests on")
-        survivors += run_mutants(curated, trees)
-        ran += len(curated)
+        results += run_mutants(curated, trees)
         print()
 
     if randoms:
         print(f"Random mutants ({len(randoms)}, seed {seed})")
-        survivors += run_mutants(randoms, trees)
-        ran += len(randoms)
+        results += run_mutants(randoms, trees)
         print()
 
     drop_run_dir()
+    # The count is of mutants that were really applied, not of mutants planned. A pattern that has
+    # drifted prints SKIP and checks nothing, and "checked 61" over 61 skips is the false all-clear
+    # this whole tool exists to avoid.
+    ran = [r for r in results if r.survived is not None]
+    survivors = [f"{r.mutant.label}  {r.mutant.why}" if r.mutant.label else r.mutant.why for r in ran if r.survived]
     elapsed = time.monotonic() - started
-    print(f"Checked {ran} mutant(s) in {int(elapsed // 60)}m {elapsed % 60:04.1f}s with {workers} worker(s).")
+    print(f"Checked {len(ran)} mutant(s) in {int(elapsed // 60)}m {elapsed % 60:04.1f}s with {workers} worker(s).")
+    if len(ran) < len(results):
+        print(f"  {len(results) - len(ran)} were skipped, so they proved nothing — look at the SKIP lines above.")
 
     if survivors:
         print(f"\033[31m{len(survivors)} mutant(s) survived\033[0m — the tests did not notice:")
