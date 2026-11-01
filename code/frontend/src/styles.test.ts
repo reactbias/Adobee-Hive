@@ -81,8 +81,15 @@ describe("styles", () => {
     expect(css).not.toMatch(/\.hero \{|\.principles \{/);
   });
 
-  // The phone rule this used to pin (`.nav-end .status { font-size: 0 }`) described markup that the
-  // backend-status component replaced, so the assertion was describing something that no longer exists.
-  // The concern itself is NOT covered any more: at 480px the header carries four language buttons and
-  // the new status component, and nothing hides the status text. See the note in the PR.
+  // The phone rule this used to pin (`.nav-end .status { font-size: 0 }`) hid the status text so that
+  // four language buttons still fitted beside it. The backend-status component moved the status out of
+  // the header into a bar of its own below it, so there is no longer any status text in the header to
+  // hide — measured in Chrome at 360px in German, the widest case, the header has 127px to spare. What
+  // still has to hold is the two rules that give the header that room, so those are what is pinned now.
+  it("gives the phone header room: the chapters take their own row and the language buttons shrink", () => {
+    expect(css).toMatch(
+      /@media \(max-width: 900px\) \{[\s\S]*?\.nav-links \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?overflow-x: auto;/,
+    );
+    expect(css).toMatch(/@media \(max-width: 480px\) \{\s*\.nav-end \.locales button \{\s*min-width: 34px;/);
+  });
 });
