@@ -168,7 +168,7 @@ def hive_get_card(ctx: Context, card_id: str, radius: int = 1) -> dict[str, Any]
         if not radius:
             raise ToolError(str(err)) from err
         if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
-            raise ToolError(over)
+            raise ToolError(over) from None
         found = _safe(hive.card_from_peer, card_id, radius)
         if found is None:
             raise ToolError(str(err)) from err
