@@ -199,6 +199,18 @@ on.
 
 ## Reaching an entity on another hub
 
+**Reading a remote card costs a browse, not a lookup.** `hive_get_card` and `GET /api/hive/cards/{id}`
+answer for an id a peer carries, which they did not before — an entity found at radius 1 used to answer
+*"No Hive card"* at the hub that had just returned it. But there is no single-card route in the peer
+protocol: `federation.Transport` can read a profile and forward a *search*, so the lookup is a browse one
+hop out with the wanted card picked off the answer. It is correct and it is verified (`federation._verified`
+checks every arriving card against its own hub's key registry), but one card costs a full peer round trip
+and it only reaches as far as the configured radius. The cheap path is the signed card already inline on a
+federated match, which is what `POST /api/hub/connect` uses.
+Routing metadata is under `trust.federation`, not the signed card's `provenance`, so the returned
+body still verifies and keeps the owner's compiled-source provenance. The fallback uses the same
+live peer list and sharing projection as discovery; it does not make privately held entries readable.
+
 **It works, and the introduction is recorded here, but this hub cannot complete it.** A federated
 search finds an entity on a peer and `POST /api/hub/connect` will now connect to it: the caller
 passes the signed card the search returned, and this hub checks it against the key the entity's

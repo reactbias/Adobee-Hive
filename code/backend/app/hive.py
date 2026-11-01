@@ -25,7 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from . import db, limits, removals, reputation, semantic, sharing
+from . import db, limits, peers, removals, reputation, semantic, sharing
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hive_cards (
@@ -472,6 +472,44 @@ def get_card(card_id_or_slug: str) -> dict[str, Any]:
     if not rec:
         raise HiveError(f"No Hive card '{card_id_or_slug}'.")
     return {**rec["data"], "trust": _trust(rec)}
+
+
+def card_from_peer(card_id_or_slug: str, radius: int = 1, budget_ms: float | None = None) -> dict[str, Any] | None:
+    """The signed card for an entity a peer carries and this hub does not. None when no peer has it.
+
+    Why this exists: a federated search hands back an entity found on another hub, the server's own
+    instructions say the next step is to read its card, and `hive_get_card` then answered *"No Hive card
+    'svenja-aebi'"* — so an agent following the documented journey dead-ended, with no hub parameter to
+    say where to look instead. The card does travel inline on the match (#146/#172), but nothing told a
+    caller to use it, and a tool that is documented as the way to read a card has to work.
+
+    Built on the surface federation already has. `Transport` can read a peer's profile and forward a
+    *search*; there is no single-card route to call, and inventing one would mean a new peer endpoint
+    every hub has to serve. So this asks the question this hub already knows how to ask — a browse one
+    hop out — and keeps the card off the match whose id was wanted. A browse rather than a search for the
+    id: a search would rank, and ranking is the wrong instrument for a lookup, where the answer is either
+    that exact entity or nothing.
+
+    The card is already verified when it gets here: `federation._verified` checks every arriving card
+    against the owner key registry of its own hub and drops the ones that fail or are not searchable,
+    so this cannot smuggle an unsigned or privately held card in through the side door.
+
+    It costs outbound calls, so it is attempted only when this hub has peers at all, and the caller
+    rate-limits it the way it rate-limits any federated request.
+    """
+    if not peers.urls():
+        return None
+    found = discover(query="", radius=max(1, int(radius)), budget_ms=budget_ms)
+    wanted = (card_id_or_slug or "").strip()
+    for match in found.get("matches") or []:
+        card = match.get("card")
+        if not isinstance(card, dict):
+            continue
+        if wanted in (card.get("id"), card.get("slug")):
+            # Routing is not part of the signed body. Keep it in the unsigned trust block rather
+            # than replacing the owner's signed provenance, which would invalidate the card.
+            return {**card, "trust": {**card["trust"], "federation": match.get("provenance")}}
+    return None
 
 
 def list_cards(kind: str | None = None, include_withdrawn: bool = False) -> list[dict[str, Any]]:
