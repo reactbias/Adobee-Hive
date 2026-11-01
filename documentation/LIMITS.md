@@ -51,6 +51,11 @@ that did earn something — a well-reviewed one still gets its points on top, so
 one that offers more of what was asked for. `hive.discover()` in-process is also unfiltered by design: the eval
 tools and `federation.py`'s scorer read the whole ranked list.
 
+**"Nothing matched" only tests the words when nothing else was asked.** Any `near`, date, price or feature that
+earns points counts as an answer, so `asdfghjkl` near Basel SBB still returns three hotels. The agent's own run is
+unfiltered too and still offers a "best fit" for a nonsense request. A query naming only a place is treated as a
+browse without checking that the hub's cards are in that place, so "Basel" on the Bern hub lists Bern.
+
 **Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
 parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya
 safari winning a Basel hotel booking because the guest was called Mara (#95). `hive.discover` itself does not:

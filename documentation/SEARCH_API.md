@@ -456,8 +456,9 @@ curl -s "http://127.0.0.1:8522/api/hive/discover?query=piano%20tuner"
 }
 ```
 
-**`matches` is every entity that failed no hard constraint**, sorted by `score` descending. On
-`bern` that is all 20. `excluded` is everything that failed one, each with `why_not`:
+**`matches` is every entity that failed no hard constraint and earned something from the ask**, sorted by
+`score` descending. An empty query, or one naming only a place, is a browse and returns them all: on `bern`
+that is all 20. `excluded` is everything that failed one, each with `why_not`:
 
 ```bash
 curl -s "http://127.0.0.1:8520/api/hive/discover?query=quiet+room&near=basel+sbb&features=breakfast&max_price_chf=200"
@@ -930,7 +931,7 @@ So having the thing beats being near it, and a structured claim beats prose, at 
 ### How the semantic component works
 
 - `semantic.best(query, texts)` returns the closest of `texts` to the query, or **`None`** when
-  nothing clears `SIMILARITY_FLOOR = 0.25`. `None` rather than the least-bad line, so an honest
+  nothing clears `SIMILARITY_FLOOR = 0.20`. `None` rather than the least-bad line, so an honest
   "nobody offers this" stays possible.
 - The provider is `OfflineProvider`: words accent-folded and stemmed, expanded through a
   hand-built four-language concept table, German compounds split (*Gartenzimmer* is a garden **and**

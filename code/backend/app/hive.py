@@ -610,9 +610,15 @@ def asks_anything(
 
     Deliberately tested on the raw query rather than on its tokens: a query made only of filler words is
     still a question somebody asked, and "nothing on this hub answers that" is the honest reply to it, not
-    the whole directory.
+    the whole directory. A place name is the exception: it is a stopword, so it could never earn anything,
+    and a hub that answers "Basel" with "nothing here" is wrong about itself. Naming only a place is a
+    browse. The hub does not check that its cards are in that place; see LIMITS.md.
     """
-    return bool((query or "").strip() or features or near or max_price_chf is not None)
+    text = (query or "").strip()
+    names_only_a_place = not semantic.content_words(text) and bool(
+        semantic.PLACE_NAMES.intersection(semantic.LETTERS.findall(semantic.fold(text)))
+    )
+    return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)
 
 
 def only_relevant(found: dict[str, Any], ask_had_content: bool, include_irrelevant: bool = False) -> dict[str, Any]:
@@ -633,7 +639,7 @@ def only_relevant(found: dict[str, Any], ask_had_content: bool, include_irreleva
     ranking does not get to decide on a caller's behalf what they are allowed to see.
 
     Applied at the doors, not inside `discover`: `main.py` for REST and `mcp_server.py` for MCP. The core
-    keeps answering with the whole ranked list, because the answer key and the app both read it and a core
+    keeps answering with the whole ranked list, because the answer key and `federation.py` read it and a core
     that returned fewer matches than it found would make every measurement taken over it a different
     measurement. The same reasoning put `limits.bound_answer`'s ceiling at the MCP door.
 

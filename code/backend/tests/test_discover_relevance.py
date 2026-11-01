@@ -217,3 +217,16 @@ def test_nothing_matched_is_reported_identically_at_both_doors(client, query):
     assert rest["matched"] == over_mcp["matched"] == 0
     assert rest["matches"] == over_mcp["matches"] == []
     assert rest["considered"] == over_mcp["considered"]
+
+
+@pytest.mark.parametrize("place", ["Basel", "basel", "in Basel", "Zürich"])
+def test_naming_only_a_place_is_a_browse_not_a_miss(client, place):
+    """A place name is a stopword, so it earns nothing. A hub must not answer its own city with "nothing here"."""
+    answer = _discover(client, query=place)
+    assert answer["matched"] == answer["considered"] > 0
+
+
+@pytest.mark.parametrize("query", ["the", "where can I", "asdfghjkl", "Basel asdfghjkl"])
+def test_filler_and_nonsense_are_still_asks(client, query):
+    """The browse is for a place alone: filler is still a question, and a nonsense word beside a city still is."""
+    assert _discover(client, query=query)["matched"] == 0

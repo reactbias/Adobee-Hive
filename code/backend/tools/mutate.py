@@ -315,7 +315,7 @@ CURATED: list[Mutant] = [
     Mutant(
         "hive.py",
         "a browse is thresholded too, so 'show me what is on this hub' answers with nobody",
-        'return bool((query or "").strip() or features or near or max_price_chf is not None)',
+        "return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)",
         "return True",
     ),
     Mutant(

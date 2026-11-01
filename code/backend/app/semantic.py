@@ -111,6 +111,9 @@ def fold(text: str) -> str:
     return "".join(c for c in folded if not unicodedata.combining(c))
 
 
+#: Stopwords that name a place. `hive.asks_anything` needs them apart: a query of only these is a browse.
+PLACE_NAMES = frozenset("basel bern zurich zuerich luzern geneva genf schweiz switzerland swiss".split())
+
 #: Function words, units and place names: they are in every card, so they say nothing about what it offers.
 #: Place names are dropped for the same reason `domains/explore.py` ignores them — "near Basel" is not a topic.
 #:
