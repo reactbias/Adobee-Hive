@@ -159,9 +159,10 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
 | `GET /api/hive/discover` | Structured constraints and `looking_for`, plus `radius`, `budget_ms` and `seen` for peer forwarding. Explicit hotel/room prose reuses the stay parser for constraints and removes declared guest identity from ranking; explicit query parameters win and absent stay dates are not invented. Generic services/needs searches remain generic | rate limit above radius 0 |
 | `POST /api/hub/connect` | Ask to be introduced to an entity, and log it. Also hands the requester the secret for its side of the folder link the handshake opened, once. For an entity on a **peer**, pass `card` (the signed card the federated search returned) and `target_hub`: this hub verifies it against the key that hub pinned for it and refuses it otherwise, so an introduction is this hub's to record even when the entity is not its own | rate limit |
-| `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
-| `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
-| `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
+| `GET /api/hub/connections/{connection_id}/decision` | The document a target's owner signs to answer this introduction, and its canonical bytes | — |
+| `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once. Needs the **requester's** own link secret in `Authorization: Bearer`, which the connect answer returned. Fails closed | requester proof |
+| `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes. Needs authority over the target: its side of the link, a signature under the key it registered, or this hub's `X-Owner-Token`. Fails closed | target proof |
+| `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating. Same authority, and the requester may withdraw with its own secret | target or requester proof |
 | `GET /api/hub/connections` | Introductions waiting on a yes or on a score, each with the days it has left (`stale_in_days`, `stale_soon`) | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
 | `GET /api/folders/status` | Which folder link is in use, what was asked for, why they differ, what a read costs, and the honest line that on `local` both folders are on one disk. Names no server path | — |
@@ -177,10 +178,13 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hub/registration` | The admission policy and the exact document to send | — |
 | `POST /api/hub/register` | Apply to join. A refusal is 200 with `state: rejected`, not a 4xx | rate limit |
 | `GET /api/hub/register/{application_id}` | Check on an application | — |
-| `POST /api/hub/register/{application_id}/withdraw` | Withdraw before a decision | — |
+| `GET /api/hub/register/{application_id}/withdrawal` | The document to sign to withdraw this application, and its canonical bytes | — |
+| `POST /api/hub/register/{application_id}/withdraw` | Withdraw your own application before a decision. An id is a lookup, not authority: needs a signed action under the key the application registered, or the capability the submission returned once, in `X-Application-Key`. Fails closed | applicant proof |
 | `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
 | `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
 | `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
+| `POST /api/admin/applications/{application_id}/withdraw` | Withdraw an application as the operator. Recorded as the operator's act, never as the applicant's consent | `X-Admin-Token`, fails closed |
+| `POST /api/admin/connections/{connection_id}/{action}` | Confirm, decline or score an introduction as the operator. Recorded as the operator's act, never as the owner's consent or the requester's report | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities` | Every entity this hub carries: id, name, kind, claimed, rating and count, published at | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities/{entity_id}` | One entity in full: the signed card, its offers and needs, contact with the sharing flag that applies to each channel, its trust block, its signature state, and whether it is blocked | `X-Admin-Token`, fails closed |
 | `POST /api/admin/entities/{entity_id}/remove` | Stop carrying an entity: out of discovery, not bookable, signed history kept. A reason is required | `X-Admin-Token`, fails closed |
@@ -203,6 +207,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
+| `POST /api/hive/cards/signed` | Store a card version its owner signed on their own node, exactly as signed. The first version pins the key, a later one must verify against it. This hub holds no key for that card, so it cannot edit or book it | `X-Owner-Token` |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
 | `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
 | `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
@@ -230,6 +235,21 @@ All six paths go through `owner.py`, and the read guard is one function (`owner.
 cannot drift into different ideas of what an owner may read. What differs is the write guard, on purpose: a REST
 route with no `OWNER_EDIT_TOKEN` set is open, as it has always been, while the MCP tools refuse — see
 [LIMITS.md](LIMITS.md#running-a-hub).
+
+## Separate nodes
+
+The design keeps the browser, the agent, the business and the hub apart, wherever each one runs. Two of those
+separations can be switched on today, using the same backend code with different settings:
+
+- **The agent as its own service.** Set `HIVE_MCP_URLS` to the hub's `/mcp/`, leave its store empty with
+  `SEED_ON_EMPTY=false`, and build the app with `VITE_AGENT_URL` (`api.agentBase`). Without that variable the app
+  uses the hub's own agent, as before. A person who picks another hub gets that hub's agent.
+- **A hotel's own node.** `tools/hotel_node.py` signs a card into the node's own database with its `contact.mcp`
+  address, then hands the signed card to the hub. The agent checks that card against the hub's registry, then asks
+  the node for availability and sends the held booking there, and accepts only a receipt signed by the pinned key.
+  A card without `contact.mcp` books on the hub as before.
+
+What each one still lacks: [LIMITS.md](LIMITS.md#separate-nodes).
 
 ## Trust by design
 
@@ -284,6 +304,6 @@ backend. Without a key everything still runs offline.
 
 ## Known limits
 
-- The server holds each owner's signing key (the vision is owner-held keys).
+- The hub holds the signing key of every card except one published through `POST /api/hive/cards/signed` from a hotel node (the vision is owner-held keys everywhere).
 - DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
 - No real payments; restaurant table booking is not built yet.

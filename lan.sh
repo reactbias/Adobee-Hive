@@ -112,6 +112,7 @@ PORT_APP="${PORT_APP:-8440}"
 PORT_A="${PORT_A:-$(free_port 8420)}"
 PORT_B="${PORT_B:-$(free_port $((PORT_A + 1)))}"
 PORT_C="${PORT_C:-$(free_port $((PORT_B + 1)))}"
+PORT_H="${PORT_H:-$(free_port $((PORT_C + 1)))}"
 
 hub_blurb() {
   case "$1" in
@@ -127,6 +128,7 @@ start_hub() {
   HIVE_HUB_ID="$id" \
   HIVE_NAME="Adobee Hive ($id)" \
   HIVE_PEER_URLS="$peer" \
+  NODE_ALLOW_PRIVATE=true \
   ADMISSION_POLICY="${ADMISSION_POLICY:-open}" \
   SEED_ON_EMPTY="$([ "$id" = basel ] && echo true || echo false)" \
   HIVE_DESCRIPTION="$(hub_blurb "$id")" \
@@ -138,6 +140,24 @@ start_hub() {
       > "$RUN/$id.log" 2>&1 &
   echo $! > "$RUN/$id.pid"
   printf "  %-8s http://%s:%s\n" "$id" "$IP" "$port"
+}
+
+# One fictional hotel that keeps its own key and takes its own bookings. A failure here costs the demo nothing:
+# every other card still books on its hub, so this warns and carries on.
+start_hotel_node() {
+  local card="testdata/hotel-node/hotel-lindenhof.json" db="$PWD/$RUN/hotel-lindenhof.duckdb"
+  "$BACKEND/.venv/bin/python" "$BACKEND/tools/hotel_node.py" --card "$card" --db "$db" \
+      --mcp-url "http://$IP:$PORT_H/mcp/" > "$RUN/hotel-lindenhof.log" 2>&1 \
+    || { echo "  hotel node could not be prepared; see $RUN/hotel-lindenhof.log"; return 0; }
+  HIVE_HUB_ID=hotel-lindenhof SEED_ON_EMPTY=false HIVE_PEER_URLS="" DUCKDB_PATH="$db" CORS_ORIGINS='*' \
+  nohup "$BACKEND/.venv/bin/python" -m uvicorn app.main:app \
+      --app-dir "$BACKEND" --host 0.0.0.0 --port "$PORT_H" >> "$RUN/hotel-lindenhof.log" 2>&1 &
+  echo $! > "$RUN/hotel-lindenhof.pid"
+  wait_for "http://127.0.0.1:$PORT_H" \
+    || { echo "  hotel node did not come up; see $RUN/hotel-lindenhof.log"; return 0; }
+  "$BACKEND/.venv/bin/python" "$BACKEND/tools/hotel_node.py" --card "$card" \
+      --from-node "http://127.0.0.1:$PORT_H" --hub "http://127.0.0.1:$PORT_A" \
+    || echo "  the basel hub refused the hotel's card; every other card still books"
 }
 
 wait_for() {
@@ -228,11 +248,15 @@ case "$CMD" in
         --hub "http://127.0.0.1:$PORT_C" --hub-id bern   --keys "$RUN/keys"
 
     echo
+    echo "Starting the hotel's own node..."
+    start_hotel_node
+
+    echo
     echo "Building the app same-origin, proxying /api to 127.0.0.1:$PORT_A ..."
     APPLOG="$PWD/$RUN/app.log"
     APPPID="$PWD/$RUN/app.pid"
     ( cd code/frontend \
-      && VITE_API_URL="" VITE_PREVIEW_BACKEND="http://127.0.0.1:$PORT_A" npm run build >/dev/null 2>&1 \
+      && VITE_API_URL="" VITE_AGENT_URL="" VITE_PREVIEW_BACKEND="http://127.0.0.1:$PORT_A" npm run build >/dev/null 2>&1 \
       && VITE_PREVIEW_BACKEND="http://127.0.0.1:$PORT_A" nohup npx --yes vite preview --host 0.0.0.0 --port "$PORT_APP" --strictPort \
            > "$APPLOG" 2>&1 &
       echo $! > "$APPPID" )
@@ -253,6 +277,7 @@ case "$CMD" in
     echo "  API docs        http://$IP:$PORT_A/docs"
     echo "  zurich hub      http://$IP:$PORT_B   developers and freelance work"
     echo "  bern hub        http://$IP:$PORT_C   local services"
+    echo "  hotel node      http://$IP:$PORT_H   Hotel Lindenhof's own key and bookings"
     echo "  logs            $RUN/*.log"
     echo
     echo "  Tell someone on another device to run:  ./lan.sh check  (or just open the URL)"

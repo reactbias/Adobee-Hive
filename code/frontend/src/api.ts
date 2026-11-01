@@ -196,6 +196,16 @@ export function chosenHubUrl(): string {
 export const apiBase = (): string => chosenHubUrl() || BUILD_BASE;
 
 /**
+ * Where the agent runs: its own service when the build names one, else the hub's own agent. A person who picked
+ * another hub gets that hub's agent, because the agent service only searches the hub it was configured with.
+ */
+export const agentBase = (): string => {
+  const service = (import.meta.env.VITE_AGENT_URL ?? "").replace(/\/$/, "");
+  const chosen = chosenHubUrl().replace(/\/$/, "");
+  return service && (!chosen || chosen === BUILD_BASE) ? service : apiBase();
+};
+
+/**
  * True when this page cannot call that hub at all, whatever the hub allows.
  *
  * A page served over HTTPS may not call an `http://` address: that is mixed content, the browser blocks it
@@ -1081,8 +1091,8 @@ export const api = {
   review: (receipt: string, rating: number, text: string) =>
     post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
   agent: (messages: { role: string; content: string }[], options: AgentOptions = {}) =>
-    post<AgentResult>("/api/agent", { messages, ...options }),
-  approve: (pending: Pending) => post<Approval>("/api/agent/approve", { pending }),
+    post<AgentResult>(`${agentBase()}/api/agent`, { messages, ...options }),
+  approve: (pending: Pending) => post<Approval>(`${agentBase()}/api/agent/approve`, { pending }),
   owner: (id: string) => call<OwnerOverview>(`/api/owner/${id}`, { headers: ownerHeaders() }),
   propose: (id: string, instruction: string) =>
     post<Proposal>(`/api/owner/${id}/propose`, { instruction }, ownerHeaders()),
@@ -1111,8 +1121,10 @@ export const api = {
   /** Score an open introduction once, in tenths of a star (43 is 4.3). */
   score: (id: string, rating: number, note = "") =>
     post<ScoreOutcome>(`/api/hub/connections/${encodeURIComponent(id)}/score`, { rating, note }),
-  confirmConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}),
-  declineConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}),
+  confirmConnection: (id: string) =>
+    post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}, ownerHeaders()),
+  declineConnection: (id: string) =>
+    post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}, ownerHeaders()),
   connections: ({ requester = "", target = "" }: { requester?: string; target?: string } = {}) => {
     const params = new URLSearchParams();
     if (requester) params.set("requester", requester);

@@ -1,0 +1,6 @@
+.env
+*.db
+storage/
+output/
+__pycache__/
+*.py[cod]

@@ -86,11 +86,23 @@ LLM_ENABLED = LLM_PROVIDER != "offline"
 # MCP endpoints the booking agent searches. Empty = this server's own Hive, in-process.
 # Comma-separated URLs federate several Hives, e.g. another team's https://.../mcp/
 HIVE_MCP_URLS = [u.strip() for u in os.getenv("HIVE_MCP_URLS", "").split(",") if u.strip()]
+# A verified card can name its business's own MCP node (`contact.mcp`), and the agent books there. Only public
+# addresses are dialled, so a card cannot point this server at its own network; a LAN demo turns this on.
+NODE_ALLOW_PRIVATE = os.getenv("NODE_ALLOW_PRIVATE", "false").lower() == "true"
 AGENT_MAX_TURNS = int(os.getenv("AGENT_MAX_TURNS", "10"))
 
 # Peer Hives for hop-limited ("node radius") federated search, same shape as HIVE_MCP_URLS: comma-separated base
 # URLs, e.g. https://hive-zurich.example. Empty = no peers, so every search stays local whatever the radius.
 HIVE_PEER_URLS = [u.strip() for u in os.getenv("HIVE_PEER_URLS", "").split(",") if u.strip()]
+# When this hub records an introduction for one of its members to an entity a *peer* carries, does it
+# tell that peer? On by default: the peer learning that a member of another hub asked is the point of
+# asking through your own hub at all, and the row calibration reads stays here, where the search
+# happened. Best effort either way — a peer that cannot be reached never fails the local record. The
+# call is unauthenticated hub to hub, so the peer records the requester's hub as a claim; there is no
+# hub identity key to sign it with (see SECURITY.md).
+FORWARD_INTRODUCTIONS = os.getenv("FORWARD_INTRODUCTIONS", "true").lower() == "true"
+FORWARD_TIMEOUT_S = float(os.getenv("FORWARD_TIMEOUT_S", "2"))  # what one slow peer costs a requester
+
 # This hub's id: it names this Hive in a result's provenance chain and in a query's loop-prevention list.
 HIVE_HUB_ID = os.getenv("HIVE_HUB_ID", "local")
 # The address other people reach this hub at, if it knows one. A hub's own row in the directory had a blank URL

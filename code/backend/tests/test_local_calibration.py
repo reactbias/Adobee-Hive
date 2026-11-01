@@ -26,7 +26,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from app import admin, calibration, config, connections, db, folders, hive, hub, sharing
+from app import admin, calibration, config, connections, db, folder_keys, folders, hive, hub, sharing
 from app.domains import hr
 
 #: A hotel with units to book, so a review can be earned the only way a review can be: with the
@@ -67,6 +67,11 @@ def _reviewed(stars: int, night: date) -> None:
 
 def _connect(entity_id: str = STAYS, requester: str = GUEST, **kw) -> dict:
     return hub.connect(requester, entity_id, **kw)
+
+
+def _secret(row: dict) -> str:
+    """The requester's own credential for this introduction, which scoring takes (#107)."""
+    return row["folder_key"]["secret"]
 
 
 # ---------------------------------------------------------------- the claim is recorded
@@ -118,7 +123,7 @@ def test_scoring_a_local_introduction_reaches_calibration(client):
     _reviewed(4, date(2027, 6, 7))
     row = _connect()
 
-    out = hub.score(row["id"], 25, "not as described")
+    out = hub.score(row["id"], 25, "not as described", secret=_secret(row))
 
     assert out["hub"] == config.HIVE_HUB_ID
     assert out["gap"] == 15, "claimed 4.0, found 2.5"
@@ -137,7 +142,8 @@ def test_this_hubs_own_directory_row_can_finally_carry_a_number(client):
     """
     for n in range(calibration.MIN_EVIDENCE):
         _reviewed(4, date(2027, 7, n + 1))
-        connections.rate(_connect()["id"], 30)
+        row = _connect()
+        hub.score(row["id"], 30, secret=_secret(row))
 
     home = next(r for r in admin.directory()["hubs"] if r["home"])
 
@@ -196,7 +202,11 @@ def test_a_person_this_hub_carries_still_waits_for_their_own_yes(client):
 
     assert row["state"] == connections.REQUESTED, "a person is asked, never assumed"
     assert row["sharing"] == sharing.CONFIRM
-    assert row["folder_key"] is None, "no key before the owner has said anything"
+    # The requester is handed its own credential even here, and it opens nothing: the link is still
+    # `requested`, so `folder_keys.resolve` refuses it until the owner says yes. What it is for is
+    # proving which side of this introduction the holder is, later (#107).
+    assert row["folder_key"]["secret"], "the requester's one chance to be given a credential"
+    assert folder_keys.resolve(_secret(row)) is None, "and it reads nothing while the owner is silent"
 
 
 def test_a_local_public_card_still_opens_at_once(client):

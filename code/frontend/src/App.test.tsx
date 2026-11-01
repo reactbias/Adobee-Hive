@@ -181,6 +181,24 @@ describe("the app", () => {
 // The first screen is the search, on the Hive this build was deployed against. Picking another Hive is one tap
 // away (Change Hive), and `?hub=` still points the app at one for the pitch runbook; neither stands between a
 // visitor and a booking run.
+const hiveRow = {
+  hub: "local",
+  url: "",
+  home: true,
+  blocked: false,
+  name: "Hive Basel",
+  description: "",
+  admission: "open",
+  accepting: true,
+  entities: 1,
+  apply_at: "/api/hub/register",
+  error: null,
+  error_stars: null,
+  evidence: 0,
+  verdict: "unproven",
+  why: "",
+};
+
 describe("the first screen", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -268,6 +286,77 @@ describe("the first screen", () => {
     expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: en["onboard.back"] }));
     expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+  });
+
+  it("puts the application on the address, so the browser's own back button cancels it", async () => {
+    // #(join route): joining was React state and nothing else. Back left the app entirely — about:blank — and
+    // the owner reported "cancelling the join doesn't work" three times while the in-page button was fine.
+    vi.mocked(api.directory).mockResolvedValue({ hubs: [hiveRow] });
+    vi.spyOn(api, "registrationPolicy").mockRejectedValue(new Error("offline"));
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
+    await userEvent.click(await screen.findByRole("button", { name: en["finder.join"] }));
+
+    expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#join/local");
+
+    // What the browser does on back: the entry we pushed is popped and the hash goes with it.
+    window.history.replaceState(null, "", "/");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Join Hive Basel" })).toBeNull();
+  });
+
+  it("opens the application again on a reload of its address", async () => {
+    vi.mocked(api.directory).mockResolvedValue({ hubs: [hiveRow] });
+    vi.spyOn(api, "registrationPolicy").mockRejectedValue(new Error("offline"));
+    window.history.replaceState(null, "", "/#join/local");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
+  });
+
+  it("falls back to the list when the address names a hive the directory no longer has", async () => {
+    vi.mocked(api.directory).mockResolvedValue({ hubs: [hiveRow] });
+    window.history.replaceState(null, "", "/#join/gone-away");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    // Not a blank screen, and not an error page: the Hive list, with the stale hash taken off the address.
+    expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe(""));
+  });
+
+  it("lets a header link leave the application, without a reload", async () => {
+    // The join view used to outrank the router: the hash moved and the view did not.
+    vi.mocked(api.directory).mockResolvedValue({ hubs: [hiveRow] });
+    vi.spyOn(api, "registrationPolicy").mockRejectedValue(new Error("offline"));
+    window.history.replaceState(null, "", "/#join/local");
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "Join Hive Basel" })).toBeInTheDocument();
+
+    window.history.replaceState(null, "", "/#find");
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+
+    expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Join Hive Basel" })).toBeNull();
   });
 
   it("is skipped once a hub has been chosen in this tab", () => {

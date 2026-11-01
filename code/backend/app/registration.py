@@ -51,13 +51,15 @@ the difference, and should.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import re
+import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from . import blocklist, config, db, hive, limits
+from . import blocklist, config, db, guard, hive, limits
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS hub_applications (
@@ -75,7 +77,8 @@ CREATE TABLE IF NOT EXISTS hub_applications (
     checks VARCHAR,
     decided_at TIMESTAMP,
     decided_by VARCHAR,
-    reason VARCHAR
+    reason VARCHAR,
+    withdraw_sha256 VARCHAR
 );
 """
 
@@ -100,9 +103,17 @@ class RegistrationError(ValueError):
 
 
 def init() -> None:
-    """Create the table."""
+    """Create the table, and add `withdraw_sha256` to one that predates it.
+
+    Added rather than assumed, like `connections.folder_link`: the demo hub has a Postgres snapshot
+    of applications written before withdrawal needed proving. Such a row has no capability and
+    `withdraw` says so instead of falling over — see `withdraw`.
+    """
     with db.write() as cur:
         cur.execute(SCHEMA_SQL)
+        held = {r[1] for r in cur.execute("PRAGMA table_info('hub_applications')").fetchall()}
+        if "withdraw_sha256" not in held:
+            cur.execute("ALTER TABLE hub_applications ADD COLUMN withdraw_sha256 VARCHAR")
 
 
 def _now() -> datetime:
@@ -222,6 +233,153 @@ def verification_for(app: dict[str, Any], checks: list[dict[str, Any]]) -> str:
     return "signed" if signed else "none"
 
 
+# ---------------------------------------------------------------- withdrawing it again
+#
+# A pending application is a state transition waiting to happen, and it used to need nothing to make
+# it happen: knowing the application id — which `GET /api/hub/register/{id}` hands to anybody — was
+# enough to withdraw somebody else's application, and the row then said "withdrawn by the applicant"
+# about an act the applicant knew nothing about. The authorized admin could no longer admit it,
+# because it was no longer pending (#108).
+#
+# An id is a lookup, never a credential. So withdrawal takes one of three things, and the row records
+# which of the three it actually was rather than crediting the applicant for all of them:
+#
+# - a **signed action** under the key the applicant registered, for an application that brought one.
+#   The strongest of the three and the only one tied to *this* applicant: nothing the hub holds could
+#   produce it. It binds the application id, the action, a nonce and an expiry, so it authorises one
+#   withdrawal of one application inside a window and cannot be replayed onto anything else.
+# - a **capability**, for an application whose key the hub holds, which has no applicant signature to
+#   check. 32 bytes from `secrets`, returned exactly once by `apply`, stored only as SHA-256, and
+#   absent from every read — `SELECT` does not name the column, so no queue, status or log can leak
+#   it. Same contract as a `folder_keys` link secret, for the same reason.
+# - the **operator**, as an explicitly separate administrative act behind the admin credential.
+#
+# Nothing else. With no proof the application is untouched, which is the opposite of the owner-edit
+# REST route's "an unset secret means the check is off" — there is no secret to be unset here, the
+# applicant's proof either exists or does not, so this fails closed like `guard.require_admin`.
+
+#: How long a signed withdrawal is good for, when the applicant does not say. Short: it authorises a
+#: destructive act, and a window is the only thing bounding a signature that has been captured.
+WITHDRAW_WINDOW_S = 300
+
+#: Bytes of entropy in a withdrawal capability. 32, as `folder_keys.SECRET_BYTES`.
+WITHDRAW_SECRET_BYTES = 32
+
+#: The header the capability travels in. A header and not a field, for the reason `owner.TOKEN_HEADER`
+#: gives: a tool argument is written into the agent's transcript and its client's logs, and a shared
+#: secret written down in two places is no longer one secret. It is also kept out of the URL, so it
+#: cannot be read back out of a proxy log or a browser history.
+KEY_HEADER = "X-Application-Key"
+
+#: Who the row credits. `applicant` only where an applicant proof was actually shown.
+BY_SIGNATURE, BY_CAPABILITY, BY_OPERATOR = "applicant (signed)", "applicant (capability)", "hub operator"
+
+WITHDRAW_ACTION = "withdraw"
+
+
+def fingerprint(secret: str) -> str:
+    """The stored form of a withdrawal capability. The only thing ever written down about it."""
+    return hashlib.sha256((secret or "").encode()).hexdigest()
+
+
+def withdrawal_statement(app_id: str, nonce: str, expires: str) -> dict[str, Any]:
+    """The exact document a withdrawal signature covers.
+
+    Four fields and no more. The **application** so a signature for one cannot withdraw another, the
+    **action** so a signature made for anything else cannot withdraw at all, a **nonce** so two
+    withdrawals of the same application are two different documents, and an **expiry** so a captured
+    signature stops working. Published through `policy` and `withdrawal_to_sign`, so an applicant's
+    client signs the bytes this hub will check rather than guessing at them.
+    """
+    return {"application": app_id, "action": WITHDRAW_ACTION, "nonce": nonce, "expires": expires}
+
+
+def withdrawal_to_sign(app_id: str, nonce: str = "", expires: str = "") -> dict[str, Any]:
+    """A ready-to-sign withdrawal document, its canonical bytes, and when it runs out.
+
+    Offered so a client never has to construct the canonical form itself; passing the same `nonce`
+    and `expires` back with the signature is what makes the hub check the document it handed out.
+    """
+    nonce = (nonce or secrets.token_urlsafe(16)).strip()
+    expires = (expires or (_now() + timedelta(seconds=WITHDRAW_WINDOW_S)).isoformat()).strip()
+    statement = withdrawal_statement(app_id, nonce, expires)
+    return {
+        "statement": statement,
+        "canonical": base64.b64encode(hive.canonical(statement)).decode(),
+        "nonce": nonce,
+        "expires": expires,
+        "signature_field": "signature",
+    }
+
+
+def _expired(expires: str) -> bool:
+    """True when this withdrawal document's window has closed, or its expiry is unreadable.
+
+    Unreadable counts as expired. A signature over an expiry nothing can parse has no window at all,
+    and the safe reading of "no window" on a destructive act is "closed".
+    """
+    try:
+        when = datetime.fromisoformat((expires or "").strip().replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    if when.tzinfo is not None:
+        when = when.astimezone(UTC).replace(tzinfo=None)
+    return when <= _now()
+
+
+def _applicant_proof(row: dict[str, Any], key: str, signature: str, nonce: str, expires: str) -> str:
+    """Which applicant proof this request carried, or "" — with the refusal raised where it is wrong.
+
+    A *missing* proof returns "", because the caller may still be the operator. A proof that is
+    present and wrong raises: a wrong credential is never treated as no credential, or an attacker
+    would get the operator's error message and learn which door to try next.
+    """
+    registered = str(row.get("public_key") or "")
+    if signature or nonce or expires:
+        if not registered:
+            raise RegistrationError(
+                f"application {row['id']} brought no public key, so this hub holds its key and there is no"
+                f" applicant signature to check. Withdraw it with the capability `apply` returned, in the"
+                f" {KEY_HEADER} header"
+            )
+        if not (signature and nonce and expires):
+            raise RegistrationError(
+                "a signed withdrawal needs `signature`, `nonce` and `expires` together: the nonce and the"
+                " expiry are part of the document that was signed. GET /api/hub/register/{id}/withdrawal"
+                " returns a document to sign"
+            )
+        if _expired(expires):
+            raise RegistrationError(
+                "this withdrawal document has expired; ask for another and sign that."
+                f" A signed withdrawal is good for {WITHDRAW_WINDOW_S} s"
+            )
+        if not hive.verify(withdrawal_statement(row["id"], nonce, expires), signature, registered):
+            raise RegistrationError(
+                "the signature does not match the key this application registered, or it covers a different"
+                " document. It is made over the canonical JSON of"
+                " {application, action: 'withdraw', nonce, expires}"
+            )
+        return BY_SIGNATURE
+    if key:
+        stored = _withdraw_fingerprint(row["id"])
+        if not stored:
+            raise RegistrationError(
+                f"application {row['id']} carries no withdrawal capability — it predates them, or it brought"
+                " a public key and is withdrawn by signing instead"
+            )
+        if not guard.secret_matches(fingerprint(key), stored):
+            raise RegistrationError(f"that is not application {row['id']}'s withdrawal key")
+        return BY_CAPABILITY
+    return ""
+
+
+def _withdraw_fingerprint(app_id: str) -> str:
+    """The stored hash of one application's capability. Read here and nowhere else, never returned."""
+    with db.cursor() as cur:
+        found = cur.execute("SELECT withdraw_sha256 FROM hub_applications WHERE id = ?", [app_id]).fetchone()
+    return str(found[0]) if found and found[0] else ""
+
+
 # ---------------------------------------------------------------- applying
 
 
@@ -262,20 +420,52 @@ def apply(application: dict[str, Any], *, decided_by: str = "policy") -> dict[st
     else:
         state, reason = ADMITTED, "admitted automatically: this hub admits anything that passes its checks"
 
-    _store(app_id, application, entity_id, state, custody, verification, checks, reason, decided_by)
+    # Minted before the row is stored, and only for an application that will actually sit in a queue:
+    # an admitted or rejected one has nothing left to withdraw, so handing out a capability for it
+    # would be a secret with no purpose. An application that brought its own key needs none either —
+    # it withdraws by signing, which is stronger and which the hub cannot forge on its applicant's
+    # behalf. The plaintext is returned **once**, here, and is in nothing this module stores or logs.
+    secret = secrets.token_urlsafe(WITHDRAW_SECRET_BYTES) if state == PENDING and not public_key else ""
+    _store(
+        app_id,
+        application,
+        entity_id,
+        state,
+        custody,
+        verification,
+        checks,
+        reason,
+        decided_by,
+        fingerprint(secret) if secret else "",
+    )
     if state == ADMITTED:
         _publish(app_id, application, custody)
-    return get(app_id)
+    out = get(app_id)
+    if secret:
+        out["withdraw_key"] = secret
+        out["withdraw_with"] = (
+            f"Keep this. It is shown once and this hub stores only its hash. To withdraw before a decision,"
+            f" send it in the {KEY_HEADER} header of POST /api/hub/register/{app_id}/withdraw."
+        )
+    elif state == PENDING:
+        out["withdraw_with"] = (
+            f"You brought a public key, so you withdraw by signing rather than with a secret this hub gave you."
+            f" GET /api/hub/register/{app_id}/withdrawal returns the document to sign."
+        )
+    return out
 
 
-def _store(app_id, application, entity_id, state, custody, verification, checks, reason, decided_by) -> None:
+def _store(
+    app_id, application, entity_id, state, custody, verification, checks, reason, decided_by, withdraw_sha256=""
+) -> None:
+    """Write the application row. `withdraw_sha256` is the only trace a capability ever leaves."""
     entity = application.get("entity") if isinstance(application.get("entity"), dict) else {}
     now = _now()
     with db.write() as cur:
         cur.execute(
             "INSERT INTO hub_applications (id, created_at, state, entity_id, kind, name, public_key, custody,"
-            " verification, proofs, payload, checks, decided_at, decided_by, reason)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " verification, proofs, payload, checks, decided_at, decided_by, reason, withdraw_sha256)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [
                 app_id,
                 now,
@@ -294,6 +484,7 @@ def _store(app_id, application, entity_id, state, custody, verification, checks,
                 now if state != PENDING else None,
                 decided_by if state != PENDING else None,
                 reason,
+                withdraw_sha256,
             ],
         )
 
@@ -334,17 +525,80 @@ def decide(app_id: str, admit: bool, *, reason: str = "", decided_by: str = "adm
     return get(app_id)
 
 
-def withdraw(app_id: str) -> dict[str, Any]:
-    """An applicant changes their mind before a decision."""
+def withdraw(
+    app_id: str,
+    *,
+    key: str = "",
+    signature: str = "",
+    nonce: str = "",
+    expires: str = "",
+    by_operator: str = "",
+) -> dict[str, Any]:
+    """Withdraw a pending application, for whoever can prove they may. Refused for anyone who cannot.
+
+    One of three proofs, described at the top of this section: a signed action under the key the
+    application registered, the capability `apply` returned once for an application whose key the hub
+    holds, or the operator through an explicitly separate administrative route. `by_operator` is the
+    *kind* of admin credential the route already accepted, never the credential; it is trusted here
+    because only a route behind `admin_only` can pass it.
+
+    Fails closed. No proof means the application is not touched, and the refusal says which proof
+    this application takes rather than listing all three at somebody who cannot use two of them.
+
+    The transition is conditional on the row still being `pending`, inside the same transaction that
+    reads it, so admission and withdrawal have exactly one winner however they race. That is also
+    what makes a replayed proof inert: the second attempt finds a row that is no longer pending.
+
+    Attribution is the actual actor. `decided_by` is only an `applicant` form when an applicant proof
+    was shown — an operator withdrawal says so, and the reason says so, because a row claiming the
+    applicant changed their mind when nobody asked them is the part of #108 that outlasts the bug.
+    """
     row = get(app_id)
     if row["state"] != PENDING:
         raise RegistrationError(f"only a pending application can be withdrawn, this one is {row['state']}")
+
+    proof = _applicant_proof(row, key, signature, nonce, expires)
+    if not proof and by_operator:
+        proof = BY_OPERATOR
+    if not proof:
+        raise RegistrationError(_no_proof(row))
+
+    reason = (
+        f"withdrawn by the hub operator ({by_operator}), not by the applicant"
+        if proof == BY_OPERATOR
+        else f"withdrawn by the applicant, proved by {'a signed action' if proof == BY_SIGNATURE else 'capability'}"
+    )
     with db.write() as cur:
+        # The read and the write are one statement on one row: `WHERE state = PENDING` is the whole
+        # race guard, and it is inside the transaction that the earlier `get` is not.
         cur.execute(
-            "UPDATE hub_applications SET state = ?, decided_at = ?, reason = ? WHERE id = ?",
-            [WITHDRAWN, _now(), "withdrawn by the applicant", app_id],
+            "UPDATE hub_applications SET state = ?, decided_at = ?, decided_by = ?, reason = ?"
+            " WHERE id = ? AND state = ?",
+            [WITHDRAWN, _now(), proof, reason, app_id, PENDING],
         )
-    return get(app_id)
+    after = get(app_id)
+    if after["state"] != WITHDRAWN:
+        raise RegistrationError(
+            f"application {app_id} was decided while this withdrawal was being checked; it is now {after['state']}"
+        )
+    return after
+
+
+def _no_proof(row: dict[str, Any]) -> str:
+    """Why this withdrawal is refused, naming only the proof this particular application can give."""
+    if str(row.get("public_key") or ""):
+        return (
+            f"withdrawing application {row['id']} needs a signed action under the key it registered. Knowing an"
+            " application id is not authority to change it: the id is how anybody looks the application up."
+            f" GET /api/hub/register/{row['id']}/withdrawal returns the document to sign. An operator can also"
+            " withdraw it, as their own act, through POST /api/admin/applications/{id}/withdraw"
+        )
+    return (
+        f"withdrawing application {row['id']} needs the capability this hub returned once when it was submitted,"
+        f" in the {KEY_HEADER} header. Knowing an application id is not authority to change it: the id is how"
+        " anybody looks the application up. Lost it? An operator can withdraw the application as their own act,"
+        " through POST /api/admin/applications/{id}/withdraw"
+    )
 
 
 SELECT = (
@@ -384,7 +638,11 @@ def _row(r: tuple) -> dict[str, Any]:
 def _next_step(row: dict[str, Any]) -> str:
     """What the applicant should do now. An answer with no next step is a dead end."""
     if row["state"] == PENDING:
-        return "Nothing: a person on this hub reads every application. Check back with this id."
+        signing = " You brought a key, so a withdrawal is signed with it." if row.get("public_key") else ""
+        return (
+            "Nothing: a person on this hub reads every application. Check back with this id."
+            " To withdraw before they decide, prove it is yours." + signing
+        )
     if row["state"] == ADMITTED:
         return "You are in the index and findable. Publish updates by signing a new version of your card."
     if row["state"] == REJECTED:
@@ -431,6 +689,29 @@ def policy() -> dict[str, Any]:
         "verification_ladder": list(LADDER),
         "proof_types": list(PROOF_TYPES),
         "key_custody": "Bring a public key and you keep the private half. Omit it and this hub holds one for you.",
+        # Published with everything else this hub asks of an applicant, so withdrawing is a rule read
+        # in advance rather than a refusal discovered later.
+        "withdrawal": {
+            "means": (
+                "An application id is a lookup, not authority to change it. Withdrawing a pending application"
+                " needs proof it is yours."
+            ),
+            "with_an_owner_key": (
+                "Sign the canonical JSON of {application, action: 'withdraw', nonce, expires} with the private"
+                " half of the key you registered, and send signature, nonce and expires."
+                " GET /api/hub/register/{id}/withdrawal returns the document and its canonical bytes."
+            ),
+            "with_hub_custody": (
+                f"Send the capability this hub returned once when you applied, in the {KEY_HEADER} header."
+                " It is a header and not a field so it stays out of URLs, logs and agent transcripts;"
+                " this hub stores only its SHA-256 and can never show it to you again."
+            ),
+            "window_seconds": WITHDRAW_WINDOW_S,
+            "operator": (
+                "An operator can also withdraw an application, through POST /api/admin/applications/{id}/withdraw."
+                " That is recorded as the operator's own act and never as the applicant's consent."
+            ),
+        },
         "example": {
             "entity": {
                 "id": "your-id",

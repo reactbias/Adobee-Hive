@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS hub_connections (
     state VARCHAR NOT NULL,
     requester VARCHAR NOT NULL,
     requester_hub VARCHAR,
+    requester_proof VARCHAR,
     target VARCHAR NOT NULL,
     target_hub VARCHAR,
     via_hub VARCHAR,
@@ -60,9 +61,24 @@ CREATE TABLE IF NOT EXISTS hub_connections (
     rated_at TIMESTAMP,
     rating INTEGER,
     note VARCHAR,
-    folder_link VARCHAR
+    folder_link VARCHAR,
+    decided_by VARCHAR,
+    scored_by VARCHAR
 );
 """
+
+#: How the hub established the requester's home hub on this row, which is never the same question as
+#: what the row *says* it is. `requester_hub` is a name; this is what that name is worth.
+#:
+#: - `member`: this hub carries an entity by that id, so it can answer for them itself.
+#: - `claimed`: the caller said so and nothing checked it. A string, recorded as a string.
+#: - `none`: nobody said anything. Not "this hub" — a visitor who said nothing is not a member.
+#:
+#: Worth the column because these rows are the input to `calibration.py`, and a trust model whose
+#: own ledger cannot tell a member from a stranger is measuring something it has not identified
+#: (#158). Nothing here raises a refusal; it records what is known, so a reader can discount it.
+BY_MEMBER, BY_CLAIM, BY_NOBODY = "member", "claimed", "none"
+REQUESTER_PROOFS = (BY_MEMBER, BY_CLAIM, BY_NOBODY)
 
 REQUESTED = "requested"
 OPEN = "open"
@@ -93,6 +109,12 @@ def init() -> None:
         held = {r[1] for r in cur.execute("PRAGMA table_info('hub_connections')").fetchall()}
         if "folder_link" not in held:
             cur.execute("ALTER TABLE hub_connections ADD COLUMN folder_link VARCHAR")
+        if "requester_proof" not in held:
+            cur.execute("ALTER TABLE hub_connections ADD COLUMN requester_proof VARCHAR")
+        if "decided_by" not in held:
+            cur.execute("ALTER TABLE hub_connections ADD COLUMN decided_by VARCHAR")
+        if "scored_by" not in held:
+            cur.execute("ALTER TABLE hub_connections ADD COLUMN scored_by VARCHAR")
 
 
 def _now() -> datetime:
@@ -120,6 +142,7 @@ def _row(r: tuple) -> dict[str, Any]:
         "state",
         "requester",
         "requester_hub",
+        "requester_proof",
         "target",
         "target_hub",
         "via_hub",
@@ -131,6 +154,8 @@ def _row(r: tuple) -> dict[str, Any]:
         "rating",
         "note",
         "folder_link",
+        "decided_by",
+        "scored_by",
     )
     raw = dict(zip(keys, r, strict=True))
     out: dict[str, Any] = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in raw.items()}
@@ -156,8 +181,9 @@ def _days_left(stale_at: Any) -> int | None:
 
 
 SELECT = (
-    "SELECT id, created_at, state, requester, requester_hub, target, target_hub, via_hub, sharing, "
-    "published_rating, opened_at, stale_at, rated_at, rating, note, folder_link FROM hub_connections"
+    "SELECT id, created_at, state, requester, requester_hub, requester_proof, target, target_hub, via_hub, sharing, "
+    "published_rating, opened_at, stale_at, rated_at, rating, note, folder_link, decided_by, scored_by "
+    "FROM hub_connections"
 )
 
 
@@ -200,6 +226,7 @@ def request(
     target: str,
     *,
     requester_hub: str = "",
+    requester_proof: str = BY_NOBODY,
     target_hub: str = "",
     via_hub: str = "",
     sharing: str = "",
@@ -215,6 +242,10 @@ def request(
     `published_rating` is what the carrying hub said this entity was worth, in tenths of a star,
     frozen here. Later honesty is measured against this number and not against whatever the hub
     claims by the time the human gets round to scoring.
+
+    `requester_hub` is a name and `requester_proof` is what that name is worth: anything this
+    function is not handed is recorded as `none`, never as this hub. A row is allowed to say it does
+    not know who asked; it is not allowed to say a visitor was a member.
     """
     if not requester or not target:
         raise ConnectionError_("a connection needs both a requester and a target")
@@ -227,14 +258,16 @@ def request(
     stale_at = now + timedelta(days=CONFIRM_WITHIN_DAYS if needs_confirmation else STALE_AFTER_DAYS)
     with db.write() as cur:
         cur.execute(
-            "INSERT INTO hub_connections (id, created_at, state, requester, requester_hub, target, target_hub,"
-            " via_hub, sharing, published_rating, opened_at, stale_at, folder_link) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO hub_connections (id, created_at, state, requester, requester_hub, requester_proof,"
+            " target, target_hub, via_hub, sharing, published_rating, opened_at, stale_at, folder_link)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [
                 cid,
                 now,
                 state,
                 requester,
                 requester_hub,
+                requester_proof if requester_proof in REQUESTER_PROOFS else BY_NOBODY,
                 target,
                 target_hub,
                 via_hub,
@@ -248,7 +281,26 @@ def request(
     return get(cid)
 
 
-def confirm(connection_id: str) -> dict[str, Any]:
+def _only_from(connection_id: str, was: str, sets: str, args: list, now_is: str) -> dict[str, Any]:
+    """Move one row out of `was` and nowhere else, then return it, or refuse because it had moved.
+
+    The lifecycle checks above this read the row and then write it, which is two statements and
+    therefore a window: between them an owner can decline an introduction the requester is
+    confirming, or a score can land on a row that has just gone stale. `WHERE state = ?` closes it,
+    inside the transaction, so each transition has exactly one winner. The refusal names what the row
+    is now, because "somebody else got there first" is a different fact from "you may not do this".
+    """
+    with db.write() as cur:
+        cur.execute(f"UPDATE hub_connections SET {sets} WHERE id = ? AND state = ?", [*args, connection_id, was])
+    row = get(connection_id)
+    if row["state"] != now_is:
+        raise ConnectionError_(
+            f"connection {connection_id} changed while this was being authorised; it is now {row['state']}"
+        )
+    return row
+
+
+def confirm(connection_id: str, *, decided_by: str = "") -> dict[str, Any]:
     """The owner says yes, to the introduction and to the folder link in the same breath.
 
     They are one decision and the hub asks it once. A `confirm` Card's link waits precisely because
@@ -283,27 +335,26 @@ def confirm(connection_id: str) -> dict[str, Any]:
         except folders.FolderError as err:
             log.warning("connections: %s has no folder link to accept (%s); confirming anyway", connection_id, err)
     now = _now()
-    with db.write() as cur:
-        cur.execute(
-            "UPDATE hub_connections SET state = ?, opened_at = ?, stale_at = ? WHERE id = ?",
-            [OPEN, now, now + timedelta(days=STALE_AFTER_DAYS), connection_id],
-        )
-    return get(connection_id)
+    return _only_from(
+        connection_id,
+        REQUESTED,
+        "state = ?, opened_at = ?, stale_at = ?, decided_by = ?",
+        [OPEN, now, now + timedelta(days=STALE_AFTER_DAYS), decided_by],
+        OPEN,
+    )
 
 
-def decline(connection_id: str, note: str = "") -> dict[str, Any]:
+def decline(connection_id: str, note: str = "", *, decided_by: str = "") -> dict[str, Any]:
     """The owner says no. Nothing further happens, and it never becomes a rating."""
     row = get(connection_id)
     if row["state"] != REQUESTED:
         raise ConnectionError_(f"only a requested connection can be declined, this one is {row['state']}")
-    with db.write() as cur:
-        cur.execute(
-            "UPDATE hub_connections SET state = ?, note = ? WHERE id = ?", [DECLINED, note[:500], connection_id]
-        )
-    return get(connection_id)
+    return _only_from(
+        connection_id, REQUESTED, "state = ?, note = ?, decided_by = ?", [DECLINED, note[:500], decided_by], DECLINED
+    )
 
 
-def rate(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
+def rate(connection_id: str, rating: int, note: str = "", *, scored_by: str = "") -> dict[str, Any]:
     """The human scores the real meeting, once.
 
     Only an open connection can be scored: not one still waiting for a yes, not a declined one,
@@ -321,12 +372,16 @@ def rate(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
     if row["state"] != OPEN:
         raise ConnectionError_(f"only an open connection can be scored, this one is {row['state']}")
     now = _now()
-    with db.write() as cur:
-        cur.execute(
-            "UPDATE hub_connections SET state = ?, rating = ?, rated_at = ?, note = ? WHERE id = ?",
-            [RATED, rating, now, note[:500], connection_id],
-        )
-    return get(connection_id)
+    # Conditional on the row still being open, so the one final score has one winner: two callers
+    # racing cannot both write a rating, and the loser is told the row was already scored rather
+    # than silently overwriting the number calibration will read.
+    return _only_from(
+        connection_id,
+        OPEN,
+        "state = ?, rating = ?, rated_at = ?, note = ?, scored_by = ?",
+        [RATED, rating, now, note[:500], scored_by],
+        RATED,
+    )
 
 
 def get(connection_id: str) -> dict[str, Any]:

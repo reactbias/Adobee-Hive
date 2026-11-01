@@ -43,7 +43,10 @@ flowchart LR
     API[FastAPI · main.py<br/>REST /api · MCP /mcp/]:::host
     DUCK[(DuckDB file<br/>on the instance)]:::host
     PG[(Postgres<br/>adobee-hive-db)]:::host
+    AGT[Agent service<br/>adobee-agent, optional]:::host
   end
+
+  NODE[A hotel's own node<br/>tools/hotel_node.py, optional]:::host
 
   LLM[OpenAI · gpt-5-mini<br/>offline fallback without a key]:::model
   NET[Public web<br/>OpenAI web search or OpenStreetMap]:::model
@@ -51,6 +54,10 @@ flowchart LR
   G --> UI
   O --> UI
   UI -->|REST| API
+  UI -.->|VITE_AGENT_URL| AGT
+  AGT -.->|MCP| API
+  AGT -.->|contact.mcp: availability, booking| NODE
+  NODE -.->|signed card| API
   X -->|MCP| API
   API --- DUCK
   DUCK -.->|snapshot after each write<br/>restore on boot| PG
@@ -276,7 +283,7 @@ an agent can see that a card is a lead compiled from public information rather t
 
 ## 4. Where the data lives
 
-One DuckDB file holds every card version, booking, review and demand count. The free Render disk is wiped on
+One DuckDB file per hub holds every card version, booking, review and demand count. A hotel's own node has its own file, with its card's key and its bookings. The free Render disk is wiped on
 every deploy, so with `DATABASE_URL` set the whole file is copied to Postgres after each write and copied back on
 boot. Locally there is no Postgres; the file in `code/backend/data/` just stays.
 
@@ -350,6 +357,7 @@ flowchart LR
     H1["POST /api/hub/connect"]:::door
     H2["POST /api/hub/connections/{connection_id}/confirm · POST /api/hub/connections/{connection_id}/decline"]:::held
     H3["POST /api/hub/connections/{connection_id}/score"]:::held
+    H3b["GET /api/hub/connections/{connection_id}/decision"]:::door
     H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
   end
 
@@ -373,13 +381,16 @@ flowchart LR
     direction TB
     J1["GET /api/hub/directory · GET /api/hub/registration"]:::door
     J2["POST /api/hub/register"]:::door
-    J3["GET /api/hub/register/{application_id} · POST /api/hub/register/{application_id}/withdraw"]:::door
+    J3["GET /api/hub/register/{application_id} · GET /api/hub/register/{application_id}/withdrawal"]:::door
+    J4["POST /api/hub/register/{application_id}/withdraw"]:::held
   end
 
   ADMN([Hub operator]) --> ADMD
   subgraph ADMD["Administration · the admin panel, or curl"]
     direction TB
     D0["POST /api/admin/login · POST /api/admin/logout"]:::held
+    D0b["POST /api/admin/applications/{application_id}/withdraw"]:::held
+    D0c["POST /api/admin/connections/{connection_id}/{action}"]:::held
     D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held
@@ -415,6 +426,7 @@ flowchart LR
     R7["GET /api/hive/cards/{card_id}"]:::door
     R8["GET /api/hive/cards/{card_id}/availability"]:::door
     R9["POST /api/hive/cards/{card_id}/book"]:::door
+    R9B["POST /api/hive/cards/signed"]:::held
     R10["POST /api/hive/reviews"]:::door
     R11["POST /api/hive/verify"]:::door
   end

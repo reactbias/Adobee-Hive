@@ -193,3 +193,10 @@ Two things it deliberately does not do:
 `calibration.score` as three readings a person can tell apart — with the under-promising one scoring
 better than the over-promising one — and the whole chain end to end against a **real second hub in a
 subprocess**, because every fake-based version of this passed while `published_rating` was `NULL`.
+
+## hotel_node.py — a hotel with its own key and its own bookings
+
+A node is the ordinary backend with its own database, holding one card and that card's signing key. The tool signs
+the card there with the node's address in `contact.mcp`, then hands the signed card to a hub, which stores it as
+signed and holds no key for it. Agents then book at the node. Its usage is at the top of the file, and `lan.sh` runs
+it. What it does not cover: [LIMITS.md](../../../documentation/LIMITS.md#separate-nodes).

@@ -41,6 +41,16 @@ reviews and attestations — whatever the query was. An entity that fails no har
 review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint
 component was fixed for the same class of bug (it is now earned, never granted); this one is not.
 
+**Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
+parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya
+safari winning a Basel hotel booking because the guest was called Mara (#95). `hive.discover` itself does not:
+it has no notion of a requester, so the words of a name are ordinary query terms to it. **`hive_discover` over
+MCP calls the core directly**, so there the guest's own name still earns points — measured, `x-bekenya` takes 10
+for *"offers mara"* on the Basel hotel request. The right hotel still ranks first, so this is a mis-scored row
+rather than a wrong answer, but the rule belongs in the tokeniser where both doors inherit it.
+`tests/test_discover_identity.py` pins the REST behaviour, including that varying only the fictional guest name
+changes neither which hotels are eligible nor their order.
+
 **The app exposes neither `kind` nor `looking_for`.** Both are real parameters of `GET /api/hive/discover` and
 `hive_discover`, and both matter: `kind` narrows, and `looking_for` chooses which side of the market to search.
 The web app sends neither. On the traveller page the only search controls are the free-text box and the three-step
@@ -54,7 +64,7 @@ signature establishes, and nothing in the hub confirms a proof: a `dns-txt`, `re
 unverified and raises nothing. That is deliberate — a hub that blocks on a DNS lookup falls over when a registrar
 does — but it means the top two rungs of the ladder are unreachable today.
 
-**The hub holds a signing key for every card, including the ones that brought their own.** The onboarding panel
+**The hub holds a signing key for every card that joined through it, including the ones that brought their own.** The only exception is a card published from a hotel's own node ([below](#separate-nodes)). The onboarding panel
 generates an Ed25519 keypair in the browser, offers the private half as a download and signs the application's
 canonical JSON with it (`lib/signing.ts`), so `custody: "owner"` is reachable without a terminal. That proves the
 applicant holds the private half, and it is recorded on the card as `owner_public_key`, which a peer can see. The card version itself is still signed
@@ -62,6 +72,69 @@ by a key `hive.publish` generates and keeps in `hive_keys`, and that is the key 
 `/.well-known/hive.json` under `owner_keys` and used by every signature check. So the jury answer is still *the
 server, for the demo* — registration narrows the gap by pinning who applied, it does not close it. Owner-held
 signing keys are in [VISION.md](VISION.md#beyond-the-weekend).
+
+**An introduction can be asked for through your own hub, but your own hub cannot prove it is itself.**
+An agent that finds something a peer carries can ask *its* hub for the introduction, and that hub
+tells the peer on its member's behalf
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)). The point is the record, not the
+mechanism: the row calibration reads stays on the hub whose search found the match, with the carrying
+hub's claim frozen on it, and the peer learns that a member of another hub asked. Walking to the peer
+instead was always possible — `GET /api/hub/directory` gives every peer a working URL — and it is
+exactly what loses the hub the only evidence it ever gets about that peer.
+
+What the forward cannot do is prove who is calling. There is no hub identity key to sign it with, so
+the receiving hub records `requester_hub` as a claim and anyone who can reach its port can send the
+same call naming any hub. That is the unanchored hub id already in SECURITY.md, seen from the other
+side. The forward is also best effort by design: a peer that is down leaves `forwarded` saying so and
+never costs this hub the record of what its own member asked for.
+
+**Nobody has to prove who is asking for an introduction.** `requester` is a string on
+`POST /api/hub/connect` and on the `hub_connect` MCP tool, and this hub has no accounts to check it
+against. So an introduction can be created under any name by anyone who can reach the port, and the
+rows that result are the input `calibration.py` reads — the measurement that orders the hub
+directory. A hub's own evidence is writable by strangers, and that is worth saying before a jury
+rather than after.
+
+What changed with [#158](https://github.com/reactbias/Adobee-Hive/issues/158) is that the ledger
+stopped claiming more than it knows. `requester_hub` used to default to `config.HIVE_HUB_ID` — the
+hub *receiving* the request — so an agent from Zurich asking Basel was recorded as a Basel member.
+Now the hub records `requester_proof`: `member` when it carries an entity by that id, `claimed` when
+the caller named a hub, `none` when nobody said anything, and never `member` because of something in
+the request. The proof gates nothing, deliberately: a gate keyed on an unauthenticated string would
+refuse honest callers and admit anybody who guessed its shape. Per-owner authorization is
+[#135](https://github.com/reactbias/Adobee-Hive/issues/135); the step that makes the question
+answerable at all is a hub vouching for its own member
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)), because a hub can vouch for a member
+and cannot vouch for a string.
+**Withdrawing an application is proved; being the person who applied is not.** An application id is
+a lookup and no longer a mutation credential
+([#108](https://github.com/reactbias/Adobee-Hive/issues/108)): withdrawal takes a signed action under
+the key the application registered, or a capability the submission returned once for an application
+whose key the hub holds, or the operator through their own route — and the row credits whichever of
+the three it actually was, so it can no longer read "withdrawn by the applicant" about an act the
+applicant knew nothing about.
+
+What is proved is key possession or secret possession, which is not identity. A signature says
+whoever holds that private key asked; a capability says whoever read the submission's answer asked.
+The capability is the weaker half and is honest about it: over MCP the submission's answer lands in
+the agent's transcript, so anything that can read that transcript can withdraw the application until
+it is decided. There is no revocation and no rollover — bringing your own `public_key` avoids the
+problem rather than mitigating it, and the operator's route is the way out if it happens.
+**An introduction's two decisions are authorised; the people behind them are not identified.** The
+owner's yes and the requester's score used to need nothing at all, so a caller who knew a connection
+id could fake a consent and spend somebody else's one final score
+([#107](https://github.com/reactbias/Adobee-Hive/issues/107)). Both doors now fail closed, and what
+they take is the strongest thing this hub has: a secret bound to one side of the folder link the row
+stands on, a signature under the key the target registered, or — for a decision only, never a score
+— this hub's hub-wide owner token.
+
+None of that is identity. A link secret says whoever holds it is that side of that link; a signature
+says whoever holds that private key answered. The secret is minted once and handed over in the
+connect answer, which over MCP means it is written into the agent's transcript, so anything that can
+read the transcript can score the introduction. The owner token is one secret for the whole hub, so
+it is recorded on the row as `owner token` rather than as the owner's own yes, and it buys nothing at
+the scoring door. Per-owner accounts
+([#135](https://github.com/reactbias/Adobee-Hive/issues/135)) are the fix for the last of those.
 
 **Calibration does not reach the search rank.** A federated result is ranked
 `local_relevance × hub_path_trust × hop_decay`, and `hub_path_trust` comes from `reputation.py` — declared versus
@@ -133,6 +206,29 @@ folder is on its own hub, so the manifest the link opens is empty; the link itse
 fact and nothing more. And the card can only be checked when its hub is on this hub's peer list and
 has already answered — an origin two hops away, or a hub in the first `PEER_ASK_SECONDS` of a fresh
 stack, is refused rather than trusted.
+
+## Separate nodes
+
+**The agent can run as its own service, and the stage demo does not use it.** `render.yaml` defines `adobee-agent`,
+which reaches the hub only over MCP, but `lan.sh` still runs the agent inside each hub. `/api/ask` and the scout
+stay on the hub whichever is used. Activity from agent runs is recorded on the service that ran them, so the hub's
+feed and a card's *shown* and *read* counts miss them.
+
+**A hotel's own node covers one fictional hotel, and only booking.** Hotel Lindenhof keeps its key and bookings on
+its node, and its card is signed there. Three things have not moved with it:
+
+- **The owner's view.** The app's business screen reads the hub, so it shows no bookings for this hotel. They are
+  on the node, at `GET /api/owner/{card_id}`.
+- **Reviews.** `hive_review` works at the node, but a review left there does not reach the hub's rating.
+- **Availability at the hub.** The hub cannot see the node's bookings, so its search can list this hotel for dates
+  that are full. The agent's check at the node has the final word.
+
+The hub's `POST /api/demo/reset` also removes the card, until the node publishes it again. An agent that reaches
+the card over peer search rather than `HIVE_MCP_URLS` is not covered by a test.
+
+**A folder is still not a node.** The folder link runs inside the hub ([above](#the-folder-link)).
+
+**In the app, the owner's yes is the shared token.** The app's Accept and Decline send `X-Owner-Token`, so they work only on a hub that sets `OWNER_EDIT_TOKEN`, and that token covers every card. The hub also takes a per-party proof, but the app does not send one, and a hotel's own node does not answer introductions for its card.
 
 ## Running a hub
 

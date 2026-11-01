@@ -321,6 +321,14 @@ async def hive_discover(
     """
     if radius:
         guard.federated.check(request)  # a far search costs this hub outbound calls to its peers
+    if carrier := blocklist.filter_path([str(h) for h in (seen or [])]):
+        # A block holds in both directions, and this is the outward one: nothing of ours goes to a
+        # blocked hub, including an answer. `seen` is the asking hub's own declaration of where the
+        # query has been, which is all an unauthenticated peer protocol has to offer — a blocked hub
+        # that lies about its trail was never stoppable at this layer, and that is a limit of the
+        # protocol rather than something this check pretends to cover. It does stop the honest case,
+        # which is the one that actually happens: a query relayed to us by a hub we have shut out.
+        raise HTTPException(403, f"This hub has blocked {carrier} and does not answer a query carried by it.")
     constraints = _discovery_stay(
         query,
         request.query_params,
@@ -378,6 +386,21 @@ async def hive_card(
 def hive_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
     """Return free units for the dates."""
     return _hive_call(hive.check_availability, card_id, check_in, check_out, guests)
+
+
+class SignedCard(BaseModel):
+    """A card version its owner signed on their own node."""
+
+    card: dict[str, Any]
+    signature: str = Field(min_length=1, max_length=256)
+    public_key: str = Field(min_length=1, max_length=128)
+
+
+@app.post("/api/hive/cards/signed")
+def hive_accept_signed(body: SignedCard, request: Request) -> dict[str, Any]:
+    """Store a card its owner signed elsewhere, as signed. The hub holds no key for it and cannot book it."""
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
+    return _hive_call(hive.accept_signed, body.card, body.signature, body.public_key)
 
 
 @app.post("/api/hive/cards/{card_id}/book")
@@ -552,6 +575,15 @@ class ConnectBody(BaseModel):
 
     requester: str = Field(..., min_length=1, max_length=200, description="Who is asking, as their hub knows them")
     entity_id: str = Field(..., min_length=1, max_length=200, description="What they want to be connected to")
+    requester_hub: str = Field(
+        "",
+        max_length=200,
+        description=(
+            "The hub the requester is a member of, when it is not this one. Recorded as a claim and"
+            " not checked — the answer's `requester_proof` says which. Left out, the row says `none`"
+            " rather than naming this hub, because a visitor who said nothing is not a member"
+        ),
+    )
     target_hub: str = Field("", max_length=200, description="The hub id that carries it, if not this one")
     via_hub: str = Field("", max_length=200)
     card: dict[str, Any] | None = Field(
@@ -560,6 +592,15 @@ class ConnectBody(BaseModel):
             "For an entity on another hub: the signed card the federated search returned for it. This hub"
             " verifies it against the key that entity's own hub pinned and refuses it otherwise. Ignored for"
             " an entity this hub carries, whose own copy always wins"
+        ),
+    )
+    forward: bool = Field(
+        True,
+        description=(
+            "For an entity on a peer: also tell that peer, so it knows a member of another hub asked while the"
+            " row calibration reads stays here. Best effort — a peer that cannot be reached leaves `forwarded`"
+            " saying so and changes nothing else. One hub passes false to the next, so a forward never forwards"
+            " again"
         ),
     )
 
@@ -592,34 +633,105 @@ def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
     and `target_hub`, the hub id its provenance names. This hub checks that card against the key
     that hub pinned for it and refuses it otherwise — an introduction is this hub's to record even
     when the entity is not its own, but who the entity *is* is never taken on the carrier's word.
+
+    Who is **asking** is not proven at all, and the answer says so rather than implying otherwise:
+    `requester_proof` is `member` when this hub carries an entity by that id, `claimed` when the
+    caller named a `requester_hub`, and `none` when nobody said anything. It is never `member`
+    because of something in the request.
     """
     guard.federated.check(request)
     return _hive_call(
         hub.connect,
         body.requester,
         body.entity_id,
+        requester_hub=body.requester_hub,
         target_hub=body.target_hub,
         via_hub=body.via_hub,
         card=body.card,
+        forward=body.forward,
     )
 
 
+class DecideBody(BaseModel):
+    """An owner's signed yes or no. Nothing secret lives here; a link secret is a header."""
+
+    note: str = Field("", max_length=500, description="For a decline, what the owner wants recorded")
+    signature: str = Field("", max_length=400, description="Base64, over the document GET …/decision returns")
+    nonce: str = Field("", max_length=200, description="From that document; part of what was signed")
+    expires: str = Field("", max_length=64, description="From that document; part of what was signed")
+
+
+def _link_secret(request: Request) -> str:
+    """The link secret on this request, from the same header a folder read presents it in."""
+    return folder_keys.bearer(request.headers.get(folder_keys.HEADER, ""))
+
+
+@app.get("/api/hub/connections/{connection_id}/decision")
+def hub_decision_document(connection_id: str, action: str = "confirm") -> dict[str, Any]:
+    """The document a target's owner signs to answer this introduction, and its canonical bytes.
+
+    Public, because it carries a nonce and an expiry and nothing else: it is worth nothing to
+    anybody who cannot sign it with the key the target registered.
+    """
+    row = _hive_call(connections.get, connection_id)
+    return {"connection": row["id"], "state": row["state"], **_hive_call(hub.decision_to_sign, row["id"], action)}
+
+
 @app.post("/api/hub/connections/{connection_id}/score")
-def hub_score(connection_id: str, body: ScoreBody) -> dict[str, Any]:
-    """Score an introduction after the real meeting. Once, and only while it is still open."""
-    return _hive_call(hub.score, connection_id, body.rating, body.note)
+def hub_score(connection_id: str, body: ScoreBody, request: Request) -> dict[str, Any]:
+    """Score an introduction after the real meeting. Once, and only while it is still open.
+
+    The score belongs to the one party that asked for the introduction, so this needs **their**
+    credential: `Authorization: Bearer <link secret>`, the secret the answer to the connect request
+    returned. A connection id is not it — that id is in the same answer and in the queues anybody
+    reads, and knowing one used to be enough to consume somebody else's one final score. Fails
+    closed; an operator scores through the admin route and the row says they did.
+    """
+    return _hive_call(hub.score, connection_id, body.rating, body.note, secret=_link_secret(request))
 
 
 @app.post("/api/hub/connections/{connection_id}/confirm")
-def hub_confirm(connection_id: str) -> dict[str, Any]:
-    """The owner says yes to an introduction."""
-    return _hive_call(connections.confirm, connection_id)
+def hub_confirm(connection_id: str, request: Request, body: DecideBody | None = None) -> dict[str, Any]:
+    """The owner says yes to an introduction. Needs authority over the target.
+
+    One of: the target's side of this introduction's folder link, in `Authorization: Bearer
+    <link secret>`; a signature under the key the target registered, when it brought one
+    (`GET …/decision` gives the document); or this hub's `X-Owner-Token`, which proves the holder
+    may answer for *an* entity here and not for this one (#135). Refused with none of them.
+    """
+    body = body or DecideBody()
+    return _hive_call(
+        hub.decide,
+        connection_id,
+        "confirm",
+        secret=_link_secret(request),
+        owner_token=request.headers.get(owner.TOKEN_HEADER, ""),
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.post("/api/hub/connections/{connection_id}/decline")
-def hub_decline(connection_id: str) -> dict[str, Any]:
-    """The owner says no. It never becomes a rating."""
-    return _hive_call(connections.decline, connection_id)
+def hub_decline(connection_id: str, request: Request, body: DecideBody | None = None) -> dict[str, Any]:
+    """The owner says no. It never becomes a rating. Same authority as confirm.
+
+    A *requester* giving up on its own request may also decline, with its own link secret. That used
+    to be allowed with no credential at all on the grounds that it was this hub's own caller — which
+    was never checked, and so was available to anybody.
+    """
+    body = body or DecideBody()
+    return _hive_call(
+        hub.decide,
+        connection_id,
+        "decline",
+        note=body.note,
+        secret=_link_secret(request),
+        owner_token=request.headers.get(owner.TOKEN_HEADER, ""),
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.get("/api/hub/connections")
@@ -1243,10 +1355,64 @@ def hub_application(application_id: str) -> dict[str, Any]:
     return _hive_call(registration.get, application_id)
 
 
+class WithdrawBody(BaseModel):
+    """An applicant proving a withdrawal they signed. The capability goes in a header, not here."""
+
+    signature: str = Field(
+        "",
+        max_length=400,
+        description="Base64, over the canonical JSON of the document GET …/withdrawal returns",
+    )
+    nonce: str = Field("", max_length=200, description="The nonce from that document; part of what was signed")
+    expires: str = Field("", max_length=64, description="The expiry from that document; part of what was signed")
+
+
+#: The withdrawal capability, declared as a real header so /docs renders an input box for it.
+#: A header and not a body field on purpose — see `registration.KEY_HEADER`.
+ApplicationKey = Annotated[
+    str | None,
+    Header(
+        alias=registration.KEY_HEADER,
+        description="The capability POST /api/hub/register returned once, for a hub-custody application.",
+    ),
+]
+
+
+@app.get("/api/hub/register/{application_id}/withdrawal")
+def hub_withdrawal_document(application_id: str) -> dict[str, Any]:
+    """The document to sign to withdraw this application, and its exact canonical bytes.
+
+    Offered so an applicant's client signs what this hub will check instead of guessing at the
+    canonical form. Public: it carries a nonce and an expiry and nothing secret, and it is worth
+    nothing to anybody who cannot sign it with the key the application registered.
+    """
+    row = _hive_call(registration.get, application_id)
+    return {"application": row["id"], "state": row["state"], **registration.withdrawal_to_sign(row["id"])}
+
+
 @app.post("/api/hub/register/{application_id}/withdraw")
-def hub_withdraw(application_id: str) -> dict[str, Any]:
-    """Withdraw an application before it has been decided."""
-    return _hive_call(registration.withdraw, application_id)
+def hub_withdraw(
+    application_id: str, body: WithdrawBody | None = None, x_application_key: ApplicationKey = None
+) -> dict[str, Any]:
+    """Withdraw your own application before it has been decided. Needs proof that it is yours.
+
+    An application id is how anybody looks an application up, so it is not authority to change one.
+    An application that brought a `public_key` is withdrawn with a **signed action** under that key
+    (`GET …/withdrawal` gives the document); one whose key this hub holds is withdrawn with the
+    **capability** the submission returned once, in the `X-Application-Key` header. Neither
+    configured means neither works, and the application is left alone: this route fails closed.
+
+    An operator withdrawing somebody else's application is a different act and has its own route.
+    """
+    body = body or WithdrawBody()
+    return _hive_call(
+        registration.withdraw,
+        application_id,
+        key=x_application_key or "",
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.get("/api/admin/applications")
@@ -1255,7 +1421,37 @@ def admin_applications(state: str = "") -> dict[str, Any]:
     return {"applications": _hive_call(registration.listing, state), "policy": registration.policy()}
 
 
+@app.post("/api/admin/connections/{connection_id}/{action}")
+def admin_decide_connection(
+    connection_id: str, action: str, body: ScoreBody | None = None, credential: str = Depends(admin_only)
+) -> dict[str, Any]:
+    """Answer or score an introduction as the operator: an administrative act, recorded as one.
+
+    `action` is `confirm`, `decline` or `score`. Separate from the parties' own routes so the row can
+    say a hub-wide credential acted and not that the owner consented or the requester reported —
+    `decided_by` and `scored_by` carry which. Fails closed with the rest of administration.
+    """
+    if action == "score":
+        if body is None:
+            raise HTTPException(400, "Scoring needs a rating.")
+        return _hive_call(hub.score, connection_id, body.rating, body.note, by_operator=credential)
+    if action not in hub.DECIDE_ACTIONS:
+        raise HTTPException(400, f"An action is confirm, decline or score, not {action!r}.")
+    return _hive_call(hub.decide, connection_id, action, by_operator=credential)
+
+
 @app.post("/api/admin/applications/{application_id}")
 def admin_decide(application_id: str, body: DecisionBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)
+
+
+@app.post("/api/admin/applications/{application_id}/withdraw")
+def admin_withdraw(application_id: str, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Withdraw a pending application as the operator: an administrative act, recorded as one.
+
+    Separate from the applicant's route on purpose. The row is credited to the hub operator and says
+    the applicant did not ask, because a ledger that reads "withdrawn by the applicant" about an act
+    the applicant knew nothing about is worse than the missing check it came from.
+    """
+    return _hive_call(registration.withdraw, application_id, by_operator=credential)
