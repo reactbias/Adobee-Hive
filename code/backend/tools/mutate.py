@@ -67,6 +67,7 @@ SUITE = [
     "tests/test_admin_peers.py",
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
+    "tests/test_discover_identity.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
