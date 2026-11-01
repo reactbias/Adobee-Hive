@@ -47,6 +47,16 @@ reviews and attestations — whatever the query was. An entity that fails no har
 review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint
 component was fixed for the same class of bug (it is now earned, never granted); this one is not.
 
+**Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
+parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya
+safari winning a Basel hotel booking because the guest was called Mara (#95). `hive.discover` itself does not:
+it has no notion of a requester, so the words of a name are ordinary query terms to it. **`hive_discover` over
+MCP calls the core directly**, so there the guest's own name still earns points — measured, `x-bekenya` takes 10
+for *"offers mara"* on the Basel hotel request. The right hotel still ranks first, so this is a mis-scored row
+rather than a wrong answer, but the rule belongs in the tokeniser where both doors inherit it.
+`tests/test_discover_identity.py` pins the REST behaviour, including that varying only the fictional guest name
+changes neither which hotels are eligible nor their order.
+
 **The app exposes neither `kind` nor `looking_for`.** Both are real parameters of `GET /api/hive/discover` and
 `hive_discover`, and both matter: `kind` narrows, and `looking_for` chooses which side of the market to search.
 The web app sends neither. On the traveller page the only search controls are the free-text box and the three-step
@@ -60,7 +70,7 @@ signature establishes, and nothing in the hub confirms a proof: a `dns-txt`, `re
 unverified and raises nothing. That is deliberate — a hub that blocks on a DNS lookup falls over when a registrar
 does — but it means the top two rungs of the ladder are unreachable today.
 
-**The hub holds a signing key for every card, including the ones that brought their own.** The onboarding panel
+**The hub holds a signing key for every card that joined through it, including the ones that brought their own.** The only exception is a card published from a hotel's own node ([below](#separate-nodes)). The onboarding panel
 generates an Ed25519 keypair in the browser, offers the private half as a download and signs the application's
 canonical JSON with it (`lib/signing.ts`), so `custody: "owner"` is reachable without a terminal. That proves the
 applicant holds the private half, and it is recorded on the card as `owner_public_key`, which a peer can see. The card version itself is still signed
@@ -193,6 +203,29 @@ folder is on its own hub, so the manifest the link opens is empty; the link itse
 fact and nothing more. And the card can only be checked when its hub is on this hub's peer list and
 has already answered — an origin two hops away, or a hub in the first `PEER_ASK_SECONDS` of a fresh
 stack, is refused rather than trusted.
+
+## Separate nodes
+
+**The agent can run as its own service, and the stage demo does not use it.** `render.yaml` defines `adobee-agent`,
+which reaches the hub only over MCP, but `lan.sh` still runs the agent inside each hub. `/api/ask` and the scout
+stay on the hub whichever is used. Activity from agent runs is recorded on the service that ran them, so the hub's
+feed and a card's *shown* and *read* counts miss them.
+
+**A hotel's own node covers one fictional hotel, and only booking.** Hotel Lindenhof keeps its key and bookings on
+its node, and its card is signed there. Three things have not moved with it:
+
+- **The owner's view.** The app's business screen reads the hub, so it shows no bookings for this hotel. They are
+  on the node, at `GET /api/owner/{card_id}`.
+- **Reviews.** `hive_review` works at the node, but a review left there does not reach the hub's rating.
+- **Availability at the hub.** The hub cannot see the node's bookings, so its search can list this hotel for dates
+  that are full. The agent's check at the node has the final word.
+
+The hub's `POST /api/demo/reset` also removes the card, until the node publishes it again. An agent that reaches
+the card over peer search rather than `HIVE_MCP_URLS` is not covered by a test.
+
+**A folder is still not a node.** The folder link runs inside the hub ([above](#the-folder-link)).
+
+**In the app, the owner's yes is the shared token.** The app's Accept and Decline send `X-Owner-Token`, so they work only on a hub that sets `OWNER_EDIT_TOKEN`, and that token covers every card. The hub also takes a per-party proof, but the app does not send one, and a hotel's own node does not answer introductions for its card.
 
 ## Running a hub
 

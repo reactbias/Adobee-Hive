@@ -27,7 +27,35 @@ services:
         generateValue: true
       - key: DEMO_RESET_TOKEN
         generateValue: true
+      - key: LLM_CALLS_PER_CLIENT_HOUR
+        value: "120" # a room on one venue wifi shares an IP
       - key: DATABASE_URL
         fromDatabase:
           name: adobee-hive-db
           property: connectionString
+  # The traveller agent as its own service: same image, an empty store of its own, and it reaches the hub only
+  # over MCP. The app uses it when the Pages variable VITE_AGENT_URL is set, and the hub's own agent when it is not.
+  - type: web
+    name: adobee-agent
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: code/backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: HIVE_HUB_ID
+        value: agent
+      - key: HIVE_MCP_URLS
+        value: https://adobee-hive.onrender.com/mcp/
+      - key: SEED_ON_EMPTY
+        value: "false"
+      - key: LLM_CALLS_PER_CLIENT_HOUR
+        value: "120" # a room on one venue wifi shares an IP

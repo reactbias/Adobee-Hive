@@ -121,6 +121,9 @@ def _key_for(card_id: str) -> Ed25519PrivateKey:
         row = cur.execute("SELECT private_key FROM hive_keys WHERE card_id = ?", [card_id]).fetchone()
     if row:
         return serialization.load_pem_private_key(row[0].encode(), password=None)  # type: ignore[return-value]
+    # A card with no key row was signed by its owner elsewhere. Minting one here would quietly replace the owner.
+    if get_record(card_id) is not None:
+        raise HiveError(f"{card_id} signs its own card, so this hub holds no key for it: use its own node.")
     key = Ed25519PrivateKey.generate()
     pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
     with db.write() as cur:
@@ -159,7 +162,9 @@ def owner_keys() -> dict[str, str]:
     A valid signature alone proves nothing if anyone can put their own key in the card. Agents accept a card only if
     it is signed by the key pinned here for that card id.
     """
-    return {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
+    with db.cursor() as cur:
+        pinned = dict(cur.execute("SELECT id, public_key FROM hive_cards").fetchall())
+    return pinned | {k: v for k, v in signing_keys().items() if not k.startswith("ruleset:")}
 
 
 def verify_pinned(card: dict[str, Any], pins: dict[str, str]) -> bool:
@@ -248,6 +253,74 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
     card["valid_until"] = (signed_at + timedelta(days=FRESH_DAYS)).isoformat(timespec="seconds")
     key = _key_for(card["id"])
     signature = base64.b64encode(key.sign(canonical(card))).decode()
+    return _store_version(card, signature, _public_b64(key))
+
+
+def _check_shape(card: dict[str, Any]) -> None:
+    """Refuse a signed card this hub could not serve. A valid signature says who wrote it, not that it is usable."""
+    for field in ("id", "slug", "kind", "name", "valid_until"):
+        if not card.get(field) or not isinstance(card[field], str):
+            raise HiveError(f"A signed card needs {field}, as text.")
+    if not isinstance(card.get("version"), int) or isinstance(card["version"], bool) or card["version"] < 1:
+        raise HiveError("A signed card needs version, as a positive whole number.")
+    for field in ("description", "tagline", "address"):
+        if not isinstance(card.get(field, ""), str):
+            raise HiveError(f"A signed card's {field} must be text.")
+    for field in ("contact", "distances_m", "policies"):
+        if not isinstance(card.get(field, {}), dict):
+            raise HiveError(f"A signed card's {field} must be a map.")
+    features = card.get("features", [])
+    if not isinstance(features, list) or not all(isinstance(f, str) for f in features):
+        raise HiveError("A signed card's features must be a list of text.")
+    units = card.get("units", [])
+    if not isinstance(units, list) or not all(_is_unit(u) for u in units):
+        raise HiveError("A signed card's units each need id, name, max_guests, price_chf and quantity.")
+
+
+def _is_unit(unit: Any) -> bool:
+    """Whether one unit has what availability and booking read from it."""
+    return (
+        isinstance(unit, dict)
+        and all(isinstance(unit.get(field), str) and unit[field] for field in ("id", "name"))
+        and all(
+            isinstance(unit.get(field), int | float) and not isinstance(unit[field], bool)
+            for field in ("max_guests", "price_chf", "quantity")
+        )
+    )
+
+
+def accept_signed(card: dict[str, Any], signature: str, public_key: str) -> dict[str, Any]:
+    """Store a card version its owner signed on their own node, exactly as signed.
+
+    The first version pins the key, and every later version must verify against that key. The hub stores what it
+    was given and holds no private key, so it can neither change this card nor book it.
+    """
+    card = json.loads(json.dumps(card, default=str))
+    _check_shape(card)
+    if not verify(card, signature, public_key):
+        raise HiveError("The signature does not match this card and key.")
+    try:
+        if limits.vet(card) != card:  # normalising would change the signed bytes, so the owner has to do it
+            raise HiveError("This card is not in the hub's normal form; publish it through hive.publish first.")
+    except limits.LimitError as err:
+        raise HiveError(str(err)) from err
+    existing = get_record(card["id"])
+    by_slug = get_record(card["slug"])
+    if by_slug is not None and by_slug["id"] != card["id"]:
+        raise HiveError(f"The slug {card['slug']} belongs to another card.")
+    pinned = existing["public_key"] if existing else signing_keys().get(card["id"])
+    if pinned and pinned != public_key:
+        raise HiveError(f"{card['id']} is pinned to another key.")
+    if existing:
+        if card["version"] == existing["version"] and signature == existing["signature"]:
+            return get_card(card["id"])  # a repeat of what is already stored, say after a restart
+        if card["version"] <= existing["version"]:
+            raise HiveError(f"Version {card['version']} is not newer than version {existing['version']}.")
+    return _store_version(card, signature, public_key)
+
+
+def _store_version(card: dict[str, Any], signature: str, public_key: str) -> dict[str, Any]:
+    """Write one signed version as the current card and into its history."""
     with db.write() as cur:
         cur.execute(
             "INSERT OR REPLACE INTO hive_cards VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -258,14 +331,14 @@ def publish(card: dict[str, Any]) -> dict[str, Any]:
                 card["version"],
                 json.dumps(card),
                 signature,
-                _public_b64(key),
+                public_key,
                 db.now(),
             ],
         )
         # Every signed version is kept, so a receipt can later prove what the card said when it was booked.
         cur.execute(
             "INSERT OR REPLACE INTO hive_card_history VALUES (?, ?, ?, ?, ?)",
-            [card["id"], card["version"], json.dumps(card), signature, _public_b64(key)],
+            [card["id"], card["version"], json.dumps(card), signature, public_key],
         )
     return get_card(card["id"])
 
