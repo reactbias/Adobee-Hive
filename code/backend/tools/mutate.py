@@ -68,6 +68,7 @@ SUITE = [
     "tests/test_admin_peers.py",
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
+    "tests/test_search_words.py",
     "tests/test_discover_identity.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
@@ -300,7 +301,7 @@ CURATED: list[Mutant] = [
     Mutant(
         "semantic.py",
         "the similarity floor goes, so every card is a little bit like every query and ranking is noise",
-        "SIMILARITY_FLOOR = 0.25",
+        "SIMILARITY_FLOOR = 0.20",
         "SIMILARITY_FLOOR = 0.0",
     ),
     Mutant(
@@ -308,6 +309,48 @@ CURATED: list[Mutant] = [
         "the concept table stops being consulted, so semantic search is substring search again",
         'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in concepts]',
         "bag += []",
+    ),
+    Mutant(
+        "semantic.py",
+        "the tokeniser is a list of remembered letters again, so French and Italian queries find nothing",
+        'LETTERS = re.compile(r"[^\\W\\d_]+")',
+        'LETTERS = re.compile(r"[a-zäöü]+")',
+    ),
+    Mutant(
+        "semantic.py",
+        "nothing is folded before tokenising, so an accent or a capital hides a word from both paths",
+        "return [w for w in LETTERS.findall(fold(text)) if len(w) >= min_length and w not in STOPWORDS]",
+        "return [w for w in LETTERS.findall(text) if len(w) >= min_length and w not in STOPWORDS]",
+    ),
+    Mutant(
+        "semantic.py",
+        "the stopword list stops being folded, so every umlaut function word is unreachable again",
+        "    fold(word)\n    for word in",
+        "    word\n    for word in",
+    ),
+    Mutant(
+        "hive.py",
+        "the literal path gets its own short stopword list back, so filler words are evidence again",
+        "STOPWORDS = semantic.STOPWORDS",
+        'STOPWORDS = frozenset({"book", "basel", "hotel", "near", "under", "with", "that"})',
+    ),
+    Mutant(
+        "hive.py",
+        "the literal search stops folding the card, so a folded query term cannot match an accented card",
+        'text = semantic.fold(" ".join(_side_texts(card, side)))',
+        'text = " ".join(_side_texts(card, side)).lower()',
+    ),
+    Mutant(
+        "hive.py",
+        "any word is a literal term again, so a two-letter accident is worth ten points",
+        "MIN_TERM_LENGTH = 4",
+        "MIN_TERM_LENGTH = 1",
+    ),
+    Mutant(
+        "hive.py",
+        "a tie on points is settled by whatever order the cards came back in, not by the closer match",
+        'matches.sort(key=lambda m: (m["score"], closeness.get(m["id"], 0.0)), reverse=True)',
+        'matches.sort(key=lambda m: m["score"], reverse=True)',
     ),
     Mutant(
         "hive.py",
