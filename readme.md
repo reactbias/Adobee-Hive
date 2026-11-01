@@ -88,6 +88,7 @@ The full argument for where this goes in five to ten years is in [VISION.md](doc
 - An agent books a fictional Basel hotel end to end over MCP, with human approval and a signed receipt.
 - One Card and one search across every kind of business, and people too: find someone by skills, with an introduction
   only after they say yes and a CV only through a consented grant (a starter). Booking is end to end for stays; other kinds are found, compared and handed off.
+- Hiring accepts a job posting, ranks candidates with evidence, and interviews their agents only with consent and access to the permitted folder files: [HIRING.md](documentation/HIRING.md).
 - An owner edits a Card in plain words, reads the diff and publishes a new signed version.
 - Federated search with a hop limit and provenance, across three peered hubs on one machine
   ([`lan.sh`](lan.sh)). Every relayed Card is verified against its own hub's key.
