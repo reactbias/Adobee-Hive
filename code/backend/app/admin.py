@@ -352,7 +352,7 @@ def peer_table() -> dict[str, Any]:
     }
 
 
-def directory() -> dict[str, Any]:
+def directory(base_url: str = "") -> dict[str, Any]:
     """Every Hive we know of, as something a person choosing one can read.
 
     Modelled on instances.social, which solved this for Mastodon: before you can join a federated
@@ -368,10 +368,14 @@ def directory() -> dict[str, Any]:
     publishes, read by `federation`. This call only reads what has already arrived, so a peer that has stopped
     answering cannot make choosing a hub slow. Each peer row says when it was last asked (`last_asked`, ISO 8601
     UTC) and whether that ask was answered (`last_asked_ok`), both `None` when it has genuinely never been asked.
+
+    `base_url` is the address this hub was reached at, which is the only honest source for its *own* row: a
+    process does not know what name a client used to get to it. `config.HIVE_PUBLIC_URL` overrides it for a hub
+    behind a proxy. Without either the row's URL stays empty rather than guessing, and `why_not_asked` says so.
     """
     standing = {p["hub"]: p for p in calibration.ranked()}
     blocked = blocklist.blocked_hubs()
-    rows = [_home_row(standing, blocked)]
+    rows = [_home_row(standing, blocked, base_url)]
     for url in config.HIVE_PEER_URLS:
         rows.append(_directory_row(federation.peer_row(url), standing, blocked))
     for hub_id in standing:
@@ -388,6 +392,10 @@ def directory() -> dict[str, Any]:
         "asked_every_seconds": config.PEER_ASK_SECONDS,
         # How many scored introductions a verdict needs, so a row can say "2 of 3" instead of a bare "unproven".
         "min_evidence": calibration.MIN_EVIDENCE,
+        # What a verdict means, in the answer, for the same reason `admission_meanings` is: a row that reads
+        # `verdict: "unproven", evidence: 0` tells a reader a word and a number and nothing they can act on.
+        # Every row also carries its own `why`, which is this sentence applied to that hub's actual count.
+        "verdict_meanings": VERDICT_MEANINGS,
     }
 
 
@@ -405,11 +413,35 @@ def _standing_of(hub_id: str, standing: dict, blocked: set) -> dict[str, Any]:
     }
 
 
-def _home_row(standing: dict, blocked: set) -> dict[str, Any]:
-    """This hub's own row: the only one that can answer for itself without asking anybody."""
+#: What each calibration verdict means, for a reader who has only ever seen the word. Keyed by the values
+#: `calibration.score` produces, so a new verdict there shows up here as a missing key rather than as a wrong
+#: sentence; `tests/test_hub_directory.py` pins that they agree.
+VERDICT_MEANINGS = {
+    "unproven": (
+        "nobody has scored an introduction through this hub yet, or not enough of them. It is not a bad sign and"
+        " not a good one: there is no evidence either way, so judge the hub on what it carries and how it admits"
+        " members instead."
+    ),
+    "calibrated": "the ratings this hub published have matched what real people found, within half a star.",
+    "over-promises": "its published ratings have come out higher than what real people found.",
+    "under-promises": "its published ratings have come out lower than what real people found: better than it says.",
+}
+
+
+def _home_row(standing: dict, blocked: set, base_url: str = "") -> dict[str, Any]:
+    """This hub's own row: the only one that can answer for itself without asking anybody.
+
+    It answers for itself and that used to read as knowing nothing about itself — a blank `url`, a relative
+    `apply_at`, and `last_asked` null with nothing to say why. The address now comes from
+    `config.HIVE_PUBLIC_URL` or from the request that asked, because a process cannot know what name a client
+    used to reach it; `apply_at` is absolute whenever the address is known. The nulls stay null, because nothing
+    was asked and claiming a time would be a lie, and `why_not_asked` says that instead of leaving it to be read
+    as a failure.
+    """
+    url = (config.HIVE_PUBLIC_URL or base_url or "").rstrip("/")
     return {
         "hub": config.HIVE_HUB_ID,
-        "url": "",
+        "url": url,
         "home": True,
         **_standing_of(config.HIVE_HUB_ID, standing, blocked),
         "name": config.HIVE_NAME,
@@ -418,11 +450,13 @@ def _home_row(standing: dict, blocked: set) -> dict[str, Any]:
         "accepting": config.ADMISSION_POLICY != registration.CLOSED,
         "verification": config.HIVE_VERIFICATION,
         "entities": _index_size(),
-        "apply_at": "/api/hub/register",
+        "apply_at": f"{url}/api/hub/register" if url else "/api/hub/register",
         # This hub answers for itself, so there is nothing to ask and nothing to be out of date.
         "last_asked": None,
         "last_asked_ok": None,
+        "why_not_asked": "this hub's own row: it answers for itself, so nothing is asked and nothing can be stale",
         "stale": False,
+        "known": True,
     }
 
 
