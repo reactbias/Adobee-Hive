@@ -17,6 +17,7 @@ Start with [your lane](#team-focus-block), [local setup](#run-it-locally-in-5-mi
 | Public backend | [Health](https://adobee-hive.onrender.com/api/health) · [REST docs](https://adobee-hive.onrender.com/docs) · [MCP](https://adobee-hive.onrender.com/mcp/) |
 | Work queue / integration | [Issues](https://github.com/reactbias/Adobee-Hive/issues) · [PRs](https://github.com/reactbias/Adobee-Hive/pulls) · [CI/deploys](https://github.com/reactbias/Adobee-Hive/actions) |
 | Detailed maps | [Architecture/module inventory](documentation/ARCHITECTURE.md) · [Diagrams](documentation/DIAGRAMS.md) · [Developer guide](documentation/DEVELOPER.md) · [Drawn diagrams](documentation/diagrams/) |
+| JSON Card documentation and examples | [Card format and sharing rules](documentation/cards/README.md) · [Business Card JSON](documentation/cards/hotel-krafft.card.json) · [Person Card JSON](documentation/cards/lena-designer.card.json) · [Linked-folder manifest JSON](documentation/cards/manifest-after-handshake.json) |
 | Working agreements | [Contributing/file ownership](CONTRIBUTING.md) · [Team](documentation/TEAM.md) · [Security](SECURITY.md) · [Known limits](documentation/LIMITS.md) |
 | Deck and rehearsal | [Pitch](documentation/PITCH.md) · [Demo](documentation/DEMO.md) · [Vision](documentation/VISION.md) · [Assets](assets/README.md) |
 
