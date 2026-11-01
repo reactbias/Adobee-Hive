@@ -6,12 +6,13 @@ from mcp import Client
 
 from app import hive
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 

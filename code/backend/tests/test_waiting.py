@@ -7,6 +7,7 @@ from mcp import Client
 
 from app import db, hive, simulate, waiting
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 ARRIVE = (date.today() + timedelta(days=20)).isoformat()
 LEAVE = (date.today() + timedelta(days=22)).isoformat()
@@ -16,7 +17,7 @@ ASK = {"features": ["rooftop pool"], "near": "basel sbb", "max_price_chf": 300, 
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 

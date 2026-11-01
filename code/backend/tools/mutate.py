@@ -83,6 +83,7 @@ SUITE = [
     "tests/test_introduction_authority.py",
     "tests/test_federated_blocks.py",
     "tests/test_federated_facts.py",
+    "tests/test_mcp_refusals.py",
     "tests/test_sharing_enforced.py",
 ]
 
@@ -905,8 +906,50 @@ CURATED: list[Mutant] = [
     Mutant(
         "mcp_server.py",
         "publish works without a token: any agent that can reach /mcp/ can rewrite any claimed card",
-        'return {"error": refused} if refused else None',
-        "return None",
+        "    if refused := owner.editable(_owner_token(ctx)):\n        raise ToolError(refused)",
+        "    return",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "an owner edit declined for want of a token reads as a success again",
+        "raise ToolError(refused)",
+        'return {"error": refused}  # type: ignore[return-value]',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank requester, so an introduction is recorded under nobody",
+        'if not (requester or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank entity_id instead of saying where an id comes from",
+        'if not (entity_id or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "a local introduction stops saying what its state means and what to do next",
+        '"says": _says(row, entity_id)',
+        '"says": ""',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "a budget refusal reads as a success again, so an agent acts on an answer it never got",
+        "raise ToolError(over)  # the budget the REST route spends, before this hub calls any peer",
+        'return {"error": over}  # type: ignore[return-value]',
+    ),
+    Mutant(
+        "hub.py",
+        "a remote introduction drops the deadline and the score, as it did before two hubs showed it",
+        'f" {_next_step(row)}"\n        )',
+        '""\n        )',
+    ),
+    Mutant(
+        "hub.py",
+        "a waiting request claims somebody was notified, which nothing here does",
+        'f" recorded and waiting for it. Nobody is sent a message: it sits in this hub\'s list until"',
+        'f" recorded and waiting for it. Its owner has been notified and will answer, probably from"',
     ),
     Mutant(
         "hive.py",

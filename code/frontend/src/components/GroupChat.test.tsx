@@ -78,6 +78,41 @@ describe("group chat scrolling", () => {
   });
 });
 
+// The pitch runs on this button: Details opens on the finished chat, and Replay is how the room sees it unfold.
+describe("replay in Details", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const details = () =>
+    render(
+      <I18nProvider>
+        <GroupChat full segments={SEGMENTS} guestName="Mara" pending={false} meta={null} pinned={<p>The question</p>} />
+      </I18nProvider>,
+    );
+
+  it("opens on the finished conversation", () => {
+    localStorage.setItem("adobee-locale", "en");
+    details();
+    expect(screen.getByText("Third line from the agent.")).toBeInTheDocument();
+    expect(screen.getByText("The question")).toBeInTheDocument();
+  });
+
+  it("plays one line at a time, and asks the question only at the end", () => {
+    localStorage.setItem("adobee-locale", "en");
+    details();
+    fireEvent.click(screen.getByRole("button", { name: en["chat.replay"] }));
+    act(() => vi.advanceTimersByTime(50));
+    expect(screen.queryByText("Third line from the agent.")).not.toBeInTheDocument();
+    expect(screen.queryByText("The question")).not.toBeInTheDocument();
+    for (let i = 0; i < 40; i++) act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByText("Third line from the agent.")).toBeInTheDocument();
+    expect(screen.getByText("The question")).toBeInTheDocument();
+  });
+});
+
 // A request no card covers gets an honest answer: nobody offers it yet, and the critic says why no card was forced.
 describe("a request no card covers", () => {
   beforeEach(() => vi.useFakeTimers());
