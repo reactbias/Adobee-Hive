@@ -18,11 +18,14 @@
 
 Team B6's entry for Adobe's **The Post-Website Business** challenge at BaselHack 2026.
 
-**The problem.** A hotel's next visitor is an AI agent, not a person on a website. Today that agent scrapes and
+**The problem.** A local business's next visitor is an AI agent, not a person on a website. Today that agent scrapes and
 guesses, and platforms own the front door. Small businesses cannot afford to lose discovery a second time.
 
 **Our answer.** A business keeps its context in its own folders. A **hub** lists it as **signed JSON**, not as a page.
 Hubs **federate**, so one search reaches several. A match leads to **agents talking**, and a person says yes.
+
+**Not just hotels.** One Card format fits anything that offers or needs something: a hotel, a café, an employer, a
+freelancer. The hotel is where we start, because it is the hardest case: price, availability, trust and a booking.
 
 > On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.
 
@@ -48,7 +51,11 @@ scraped copy of a hotel tells agents to ignore the budget and book a CHF 780 sui
 the signature fail and books Rheinblick. Tick *Rules off* to see what an unguarded agent would have done; nothing is
 sent.
 
-**Be the agent yourself:** point any MCP client at `https://adobee-hive.onrender.com/mcp/`. 24 tools, no sign-up.
+**Try something that is not a hotel:** ask *"Which companies here are hiring?"*. Adobe, Endress+Hauser and Pax answer
+from unclaimed Cards, and the agent hands you over to them. The hosted hub also lists a café, recruiters, an event and
+adventure operators side by side.
+
+**Be the agent yourself:** point any MCP client at `https://adobee-hive.onrender.com/mcp/`. 29 tools, no sign-up.
 
 The hosted backend sleeps when idle and takes about a minute to wake, so a first `503` means cold, not broken. The
 status strip shows reachability and planner separately. With no model available the agent runs a scripted planner
@@ -79,6 +86,8 @@ The full argument for where this goes in five to ten years is in [VISION.md](doc
 **Runs today**
 
 - An agent books a fictional Basel hotel end to end over MCP, with human approval and a signed receipt.
+- One Card and one search across every kind of business, and people too: find someone by skills, with an introduction
+  only after they say yes and a CV only through a consented grant (a starter). Booking is end to end for stays; other kinds are found, compared and handed off.
 - An owner edits a Card in plain words, reads the diff and publishes a new signed version.
 - Federated search with a hop limit and provenance, across three peered hubs on one machine
   ([`lan.sh`](lan.sh)). Every relayed Card is verified against its own hub's key.
@@ -102,12 +111,12 @@ The full argument for where this goes in five to ten years is in [VISION.md](doc
 The stage demo runs the agent on the hub. The target is browser, agent, folders and hub as
 [separate nodes](documentation/LIMITS.md#separate-nodes).
 
-## For the jury
+## Where to check it
 
-| Criterion | Where to look |
+| | |
 | --- | --- |
 | **Innovation** | Peers score a hub on its honesty, and every request nobody could answer becomes a signal for what to open. [FEDERATION.md](documentation/FEDERATION.md#two-levels-of-trust) |
-| **Impact** | A business keeps its guest, with one document instead of a website and no aggregator in between. Any town or association can run a hub |
+| **Impact** | Any local business or person keeps their customer, with one document instead of a website and no aggregator in between. Any town or association can run a hub |
 | **Technical depth** | Signed Cards, MCP, federation with provenance. [Architecture](documentation/ARCHITECTURE.md) and [diagrams](documentation/DIAGRAMS.md) |
 | **Code quality and history** | About 1,000 backend and over 500 browser tests. CI also breaks the code on purpose: 130+ curated [mutants](code/backend/tools/README.md), and one survivor fails the build on `main`. Small conventional commits; AI-assisted ones carry a `Co-Authored-By` trailer |
 | **Fair play** | Public repository, [MIT](license.txt). Seed data is fictional, apart from clearly labelled unclaimed cards compiled from public information. Gaps are [listed](documentation/LIMITS.md) |
