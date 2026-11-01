@@ -7,8 +7,8 @@ Coverage proves a line ran. It does not prove a test would fail if that line wer
 `registration.py`, `federation.py`, `folders.py`, `limits.py`, `connections.py`, `folder_keys.py`,
 `reputation.py`, `peers.py`, `services.py`, `calibration.py`, `main.py`, `sharing.py`,
 `semantic.py`, `removals.py` and `audit.py` — runs the suite, and reports every change that
-**survived**, because a surviving mutant is a missing assertion, named and located. There are 78
-curated mutants.
+**survived**, because a surviving mutant is a missing assertion, named and located. There are more than
+130 curated mutants; `CURATED` in `mutate.py` is the list.
 
 ```bash
 cd code/backend && source .venv/bin/activate

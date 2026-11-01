@@ -41,7 +41,7 @@ The full file-to-lane map, which is the one that stops two people editing the sa
 
 1. **Get access.** The repository owner adds you on GitHub: repository *Settings* > *Collaborators* > *Add people*. Accept the
    invitation from your GitHub notifications or email.
-2. **Set up.** Clone the repo and follow [Run it locally in 5 minutes](../readme.md#run-it-locally-in-5-minutes).
+2. **Set up.** Clone the repo and follow [Start it](DEVELOPER.md#start-it).
    Ask a teammate in person for the OpenAI key if you need the live agent; it works offline without one.
 3. **Pick a lane.** Use the [current assignments](FIRST_HOURLY.md#team-focus-block), then the file ownership map in
    [CONTRIBUTING.md](../CONTRIBUTING.md#find-your-lane). Agree cross-lane changes with Ole and the affected teammate.
@@ -49,4 +49,4 @@ The full file-to-lane map, which is the one that stops two people editing the sa
    reproduce a bug before fixing it, keep the change nonbreaking and include behavior-focused verification.
 5. **Merge.** CI must be green and one teammate reviews; merge with a merge commit, never squash.
 
-Every link (live app, PRs, CI, local URLs): [readme](../readme.md#links).
+Every link (live app, PRs, CI, local URLs): [developer guide](DEVELOPER.md#links).
