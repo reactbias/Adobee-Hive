@@ -44,10 +44,10 @@ def load_corpus() -> None:
     """Open a throwaway database, create every table the app creates, and publish all 61 cards."""
     os.environ.setdefault("DUCKDB_PATH", str(Path(tempfile.mkdtemp()) / "eval.duckdb"))
     sys.path.insert(0, str(BACKEND))
-    from app import activity, blocklist, connections, db, hive, registration, waiting
+    from app import activity, blocklist, connections, db, hive, registration, removals, waiting
 
     db.init()
-    for module in (hive, waiting, activity, blocklist, connections, registration):
+    for module in (hive, waiting, activity, blocklist, connections, registration, removals):
         module.init()
 
     spec = importlib.util.spec_from_file_location("seed_vaults", BACKEND / "tools" / "seed_vaults.py")

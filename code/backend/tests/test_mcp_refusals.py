@@ -27,7 +27,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from mcp import Client
 from mcp.server.mcpserver.exceptions import ToolError
 
-from app import config, connections, federation, hive, hub
+from app import config, connections, federation, hive, hub, mcp_server
 from app.domains import base
 from app.mcp_server import server
 from tests.mcp_result import tool_result
@@ -126,6 +126,25 @@ def test_every_refusal_across_the_tool_surface_sets_the_flag(client):
         result = _call(tool, args)
         assert result.is_error is True, f"{tool} reported a refusal as a success"
         assert _text(result), f"{tool} refused without saying anything"
+
+
+def test_a_budget_refusal_sets_the_flag_too(client, monkeypatch):
+    """Not only the refusals `safe` raises. A call turned away for want of budget is a failure too.
+
+    The budget messages are #109's and are unchanged; what changes is that they arrive as errors.
+    An agent told "try again in 42 seconds" in the body of a *successful* result has been told
+    nothing it will act on.
+    """
+    monkeypatch.setattr(mcp_server.guard, "admit_mcp", lambda *a, **k: "Too many far searches. Try again in 42s.")
+
+    for tool, args in (
+        ("hive_discover", {"query": "quiet", "radius": 1}),
+        ("hub_connect", {"requester": "ole-agent", "entity_id": "hotel-rheinblick"}),
+        ("hub_register", {"entity": {"id": "x", "slug": "x", "kind": "service", "name": "X"}}),
+    ):
+        result = _call(tool, args)
+        assert result.is_error is True, f"{tool} reported a budget refusal as a success"
+        assert "42s" in _text(result)
 
 
 def test_safe_raises_rather_than_returning_an_error_body(client):

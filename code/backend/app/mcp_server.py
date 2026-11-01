@@ -11,7 +11,7 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import admin, config, connections, domains, guard, hive, hub, owner, registration, rulesets, waiting
+from . import admin, config, connections, domains, guard, hive, hub, limits, owner, registration, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -47,6 +47,7 @@ def _counted(out: dict[str, Any], kind: str) -> dict[str, Any]:
 
 @server.tool()
 def hive_discover(
+    ctx: Context,
     query: str = "",
     kind: str | None = None,
     near: str | None = None,
@@ -58,6 +59,7 @@ def hive_discover(
     ruleset: str | None = None,
     radius: int = 0,
     looking_for: str = "offers",
+    limit: int | None = None,
 ) -> dict[str, Any]:
     """Find anyone in the Hive by what they offer or what they need: a hotel, a developer, a café.
 
@@ -73,8 +75,13 @@ def hive_discover(
     ruleset: only one your user chose (see hive_rulesets). The answer names it and what it changed; tell the user.
     radius: how far to look. 0 (the default) is this Hive only. 1 also asks its peer Hives, 2 their peers, up to 3.
     Above 0 each match says in provenance which hubs it travelled and how many hops, and its score_breakdown adds
-    local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive.
+    local_relevance, hub_path_trust and hop_decay; tell the user when a business came from another Hive. A radius
+    above 0 makes this hub call its peers, so it is rate-limited: a refusal names the budget and when to retry.
+    limit: how many matches to answer with, up to 50. The answer says `truncated` and `total_matches` when there
+    were more, so narrow the query or raise this rather than assuming you saw the whole Hive.
     """
+    if radius and (over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True)):
+        raise ToolError(over)  # the budget the REST route spends, before this hub calls any peer
     found = _safe(
         hive.discover,
         query,
@@ -88,7 +95,10 @@ def hive_discover(
         radius,
         looking_for=looking_for,
     )
-    return _safe(rulesets.apply, found, ruleset) if ruleset else found
+    # `_safe` raises now, so a refusal never reaches here as a body to test for.
+    if ruleset:
+        found = _safe(rulesets.apply, found, ruleset)
+    return limits.bound_answer(found, limit)
 
 
 @server.tool()
@@ -186,6 +196,7 @@ def http_app():
 
 @server.tool()
 def hub_connect(
+    ctx: Context,
     requester: str = "",
     entity_id: str = "",
     target_hub: str = "",
@@ -214,7 +225,12 @@ def hub_connect(
     For an entity on **another** hub, pass the signed `card` the federated search returned for it and
     `target_hub`, the hub id its provenance names. This hub verifies that card against the key that hub pinned
     for it and refuses it otherwise; an introduction to a remote entity is recorded here and its owner's yes,
-    if it needs one, happens on their own hub."""
+    if it needs one, happens on their own hub.
+
+    Verifying a card from a peer means fetching that peer's key registry, so this spends the same budget
+    `POST /api/hub/connect` spends; a refusal names it and says when to try again."""
+    if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
+        raise ToolError(over)  # refused before this hub fetches any peer's key registry
     # Checked here rather than left to the schema: a missing argument otherwise comes back as a page of
     # pydantic, which tells an agent which field is wrong and nothing about what belongs in it.
     if not (requester or "").strip():
@@ -278,6 +294,7 @@ def hub_registration() -> dict[str, Any]:
 @server.tool()
 def hub_register(
     entity: dict[str, Any],
+    ctx: Context,
     public_key: str = "",
     proofs: list[dict[str, Any]] | None = None,
     invite: str = "",
@@ -290,7 +307,12 @@ def hub_register(
     Omit the key and this Hive generates and holds one, which is weaker and is recorded as such.
 
     A refusal is an answer, not a failure: the reply always carries the checks, the reason and what to do next.
-    Never invent proofs — they are claims about the world and a hub that catches a false one will block you."""
+    Never invent proofs — they are claims about the world and a hub that catches a false one will block you.
+
+    An application is signature-checked and stored, so this spends the same budget `POST /api/hub/register`
+    spends; a refusal for being over it names the budget and says when to try again."""
+    if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
+        raise ToolError(over)  # refused before the application is verified or stored
     return _safe(
         registration.apply,
         {"entity": entity, "public_key": public_key, "proofs": proofs or [], "invite": invite, "signature": signature},

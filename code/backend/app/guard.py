@@ -6,6 +6,35 @@ The Hive's read and booking APIs are public by design (agents need them). What i
 Administration takes two kinds of credential, both in `X-Admin-Token`: the static `ADMIN_TOKEN` for curl and CI,
 and a short-lived session token a person gets by posting the `ADMIN_PASSWORD` to `/api/admin/login`. Neither is
 ever logged. With neither configured, administration is refused rather than left open.
+
+## One budget per costly operation, whichever transport asks
+
+This hub is reachable two ways: REST, and MCP at `/mcp`. The same costly work sits behind both, so a budget
+that only one of them spends is not a budget — a caller refused at the REST door used to walk in through the
+MCP one and run the same peer fan-out and the same paid search. Every `RateLimiter` below is one object with
+one hub-global window, so REST and MCP spending it are spending the same thing; what the transports differ in
+is only how the principal is found.
+
+This is the whole of the client-attribution policy, written out rather than implied:
+
+| operation | REST door | MCP door | in-process agent |
+| --- | --- | --- | --- |
+| `hive_discover`, `radius > 0` | `federated`, per address | `federated`, per address | `federated`, as one principal |
+| `hub_connect` | `federated`, per address | `federated`, per address | `federated`, as one principal |
+| `hub_register` | `federated`, per address | `federated`, per address | `federated`, as one principal |
+| `hive_scout` (web search, paid) | `llm_calls`, per address | `llm_calls`, per address | spent by `POST /api/agent` |
+| `explore_ask` | `llm_calls`, per address | not charged: cannot reach a model | n/a |
+| `hive_owner_propose` | `llm_calls`, per address | `llm_calls`, per card | refused: no owner token there |
+
+`explore_ask` is the row to check rather than assume. Its REST twin passes `judge=config.LLM_ENABLED` and so
+can reach a model; the MCP tool never passes `judge` at all and cannot, on any configuration. Charging it
+would be inventing a cost, so it is left free and said so here.
+
+The last column is the one worth reading twice. `POST /api/agent` spends `llm_calls` for the run before the
+agent starts, so charging the agent's own `hive_scout` call again would bill one admission twice. It never
+spends `federated`, so the agent's federated discovery is charged here or nowhere — and a hub with no model
+key does not spend `llm_calls` at that door at all, which would otherwise leave peer fan-out free. In-process
+calls share one principal because there is one agent behind them and no address to tell them apart by.
 """
 
 import hmac
@@ -13,6 +42,7 @@ import secrets
 import threading
 import time
 from collections import defaultdict, deque
+from typing import Any
 
 from fastapi import HTTPException, Request
 
@@ -201,6 +231,53 @@ def over_budget(limiter: RateLimiter, key: str) -> str:
     except HTTPException as err:
         return str(err.detail)
     return ""
+
+
+# ---------------------------------------------------------------- who an MCP call is charged to
+#
+# An MCP tool has no `Request`, so the principal whose budget it spends has to come from somewhere. It comes
+# off the **transport** and never off a tool argument: an argument is written by the caller, and a caller who
+# gets to name their own principal has no budget at all. `mcp==2.3.0` hands a tool its originating request
+# through `Context.request_context.request` — a Starlette `Request` over Streamable HTTP, and `None` on a
+# transport that has no request at all (stdio, and this repo's own in-process agent).
+#
+# The address is `request.client.host`, which is the peer the ASGI server itself observed. `X-Forwarded-For`
+# is a client-supplied string and is deliberately not read: behind a proxy that rewrote it this limits per
+# proxy rather than per client, which undercounts callers and never miscounts one caller as another.
+
+#: The principal every in-process MCP call is charged to. There is one agent behind them and no address to
+#: tell them apart by, so they share one bucket rather than being quietly exempt.
+IN_PROCESS = "mcp:in-process"
+
+
+def mcp_client(ctx: Any) -> str:
+    """Which caller an MCP tool call is charged to, read off the transport. `IN_PROCESS` when it has none.
+
+    Never raises: a transport that turns out to carry no request, or a request with no peer address,
+    is charged as one unknown caller rather than going uncounted.
+    """
+    request = getattr(getattr(ctx, "request_context", None), "request", None)
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", "") or ""
+    return f"mcp:{host}" if host else IN_PROCESS
+
+
+def admit_mcp(limiter: RateLimiter, ctx: Any, *, charge_in_process: bool) -> str:
+    """Spend one MCP call's budget and return why it is refused, or "" when the costly work may run.
+
+    The admission boundary the REST routes reach through `RateLimiter.check` and the MCP tools reach
+    through here: one `limiter` object, so the hub-global window either transport fills is the same
+    window, and exhausting a budget through one of them refuses the other.
+
+    `charge_in_process` is the deliberate half of the policy in this module's docstring. True for a
+    budget no REST door spends on the agent's behalf (`federated`), so the agent's own calls are
+    counted. False for one `POST /api/agent` has already spent for the whole run (`llm_calls`), where
+    charging again would bill a single admission twice.
+    """
+    client = mcp_client(ctx)
+    if client == IN_PROCESS and not charge_in_process:
+        return ""
+    return over_budget(limiter, client)
 
 
 # One budget for everything that may call Claude: agent runs and owner edit proposals.
