@@ -34,10 +34,20 @@ this page says what the code does and names the disagreement — see
    keyword density or form a view about it. Writing it for discovery is the field working as
    designed. What stops an entity over-claiming is the economic loop — bad matches, scored meetings,
    a hub's calibration error — not prose analysis.
-3. **`GET /api/hive/discover` returns the whole hub, ranked, not a filtered result set.** An entity
-   that failed no *hard* constraint is a `match`, even with `score: 0`. A query for a haircut on the
-   `bern` hub returns all 20 entities; one has `score: 8` and nineteen have `score: 0`. **You must
-   threshold on `score > 0` yourself**, which is what the repo's own eval tools do.
+3. **A door answers with what matched, and says how many that was.** `GET /api/hive/discover` and
+   `hive_discover` over MCP return only the entities the query earned something from, and carry
+   `matched` (how many) over `considered` (how many were ranked to get them). So `matched: 0` means
+   nothing matched — a nonsense query returns `matches: []`, not the whole directory.
+   **Do not threshold on `score > 0` yourself.** It does not work, and this page used to tell you to:
+   `reputation.business_points` pays an entity for verified reviews and attestations whatever the
+   question was, so four Basel hotels score 1-2 on *every* query, including `asdfghjkl qwertz` and the
+   empty one, with an empty `why`. The honest test is `hive.relevance` — the five components the ask
+   itself earned (`constraints`, `text_relevance`, `offers_needs`, `semantic`, `proximity`) — and the
+   doors apply it for you.
+   Two exceptions, both deliberate: an ask with **nothing** in it (no query, no constraints) is a
+   browse and still returns everyone, and `include_irrelevant=true` gives back the old unfiltered
+   ranking. `hive.discover()` in-process is also unchanged and still returns the whole ranked hub,
+   because the eval tools and `federation.py`'s own scorer read it.
 4. **A result can always tell you which hub it came from.** At `radius: 0` there is only one hub.
    Above 0, every match carries `provenance.path`, origin-first, ending in the hub you asked. See
    [Federation and provenance](#federation-and-provenance).
@@ -446,8 +456,9 @@ curl -s "http://127.0.0.1:8522/api/hive/discover?query=piano%20tuner"
 }
 ```
 
-**`matches` is every entity that failed no hard constraint**, sorted by `score` descending. On
-`bern` that is all 20. `excluded` is everything that failed one, each with `why_not`:
+**`matches` is every entity that failed no hard constraint and earned something from the ask**, sorted by
+`score` descending. An empty query, or one naming only a place, is a browse and returns them all: on `bern`
+that is all 20. `excluded` is everything that failed one, each with `why_not`:
 
 ```bash
 curl -s "http://127.0.0.1:8520/api/hive/discover?query=quiet+room&near=basel+sbb&features=breakfast&max_price_chf=200"
@@ -593,7 +604,7 @@ key.
 ### The MCP surface
 
 Mounted at `/mcp/`, Streamable HTTP, **stateless** — so plain `curl` works with no session
-handshake. 26 tools. Verified:
+handshake. 31 tools. Verified:
 
 ```bash
 curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
@@ -604,7 +615,8 @@ curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
 ```
 hive_discover  hive_what_was_promised  hive_rulesets  hive_get_card  hive_check_availability
 hive_book  hive_cancel  hive_review  hive_wait  hive_check_waiting
-hr_find_people  hr_request_intro  hr_shortlist  hr_interview  explore_ask  hive_scout
+hr_find_people  hr_request_intro  hr_decide_intro  hr_grant_cv  hr_read_cv  hr_create_job  hr_submit_cv
+hr_shortlist  hr_interview  explore_ask  hive_scout
 hub_connect  hub_score  hub_connections  hub_standing  hub_registration  hub_register  hub_directory
 hive_owner_card  hive_owner_propose  hive_owner_publish
 ```
@@ -920,7 +932,7 @@ So having the thing beats being near it, and a structured claim beats prose, at 
 ### How the semantic component works
 
 - `semantic.best(query, texts)` returns the closest of `texts` to the query, or **`None`** when
-  nothing clears `SIMILARITY_FLOOR = 0.25`. `None` rather than the least-bad line, so an honest
+  nothing clears `SIMILARITY_FLOOR = 0.20`. `None` rather than the least-bad line, so an honest
   "nobody offers this" stays possible.
 - The provider is `OfflineProvider`: words accent-folded and stemmed, expanded through a
   hand-built four-language concept table, German compounds split (*Gartenzimmer* is a garden **and**
@@ -983,7 +995,7 @@ searchable word with its target, so literal matching scores zero on every one by
 code is the number of pairs not in the top three.
 
 ```
-19/41 first, 30/41 in the top three          (exit code 11)
+24/41 first, 33/41 in the top three          (exit code 8)
 ```
 
 **`tools/eval_search.py`** — the same 41 pairs against **73 entities** (the 61 vaults *plus* the 12
@@ -992,57 +1004,72 @@ then on:
 
 ```
                             literal only    with semantics
-  precision at 1                 0.000            0.415        (17/41)
-  precision at 3                 0.000            0.707        (29/41)
-  queries with any evidence      0.000            0.805
+  precision at 1                 0.000            0.585        (24/41)
+  precision at 3                 0.000            0.805        (33/41)
+  queries with any evidence      0.000            0.927
 
   fixed by the semantics (17)    broken by the semantics (0)
 ```
 
-The two differ because the corpora differ, not because either is wrong. The twelve extra cards cost
-two first places, and one of them is instructive: *"where can I get a haircut"* is **first** on the
-61-entity corpus and **not** first on the 73-entity one, because the word *where* literally appears
-in an offer on a seeded demo card and earns it 10 `offers_needs` points. Filler words earn offer
-points — see the gotchas below.
+The two agree now. They did not: the twelve extra cards used to cost two first places, and
+*"where can I get a haircut"* was **first** on the 61-entity corpus and **not** first on the
+73-entity one, because the word *where* literally appeared in an offer on a seeded demo card and
+earned it 10 `offers_needs` points. `where` is a stopword in both paths now, so that gap is closed.
 
 **The floor was chosen by measurement, not taste.** `tools/eval_search.py --sweep`, on the
 73-entity corpus:
 
 ```
- floor   p@1    p@3
-  0.00  0.122  0.341      <- no floor at all is near the worst setting there is
-  0.15  0.244  0.707
-  0.20  0.293  0.756
-  0.25  0.415  0.707      <- SIMILARITY_FLOOR
-  0.30  0.415  0.634
-  0.40  0.341  0.415
-  0.50  0.122  0.146
+ floor   p@1    p@3   (0.00 is no floor at all)
+  0.00  0.439  0.610
+  0.05  0.463  0.707
+  0.10  0.463  0.707
+  0.15  0.512  0.780
+  0.20  0.585  0.805  <- in use
+  0.25  0.561  0.732
+  0.30  0.561  0.707
+  0.35  0.561  0.585
+  0.40  0.463  0.463
+  0.50  0.171  0.195
 ```
 
+`SIMILARITY_FLOOR` was `0.25` and is `0.20`, because the tokeniser moved the optimum: the floor
+compares *normalised* bags, so dropping filler words from both the query and the card changes every
+cosine in the corpus — there is less shared nothing diluting a real overlap, so genuine pairs sit
+higher and the line belongs lower. A constant chosen by measurement gets re-measured when the thing
+it measures changes.
+
 Without a floor every card is a little like every query, the component pays everybody, and it ranks
-nothing. (The `--sweep` output prints `<- in use` on **every** row; that is a bug in the marker, not
-in the numbers. Noted below.)
+nothing.
 
 ### Gotchas that will bite a search tool
 
-1. **`matches` is the whole hub.** Threshold on `score > 0` or you will show twenty results for a
-   query that had one answer. Both eval tools do exactly this.
-2. **Query terms are `len > 3` only, and the tokeniser is `[a-zäöü]+`.** So the literal path knows
-   German umlauts and **nothing else**: `café` tokenises to nothing, `crème brûlée` to nothing,
-   `pianoforte` to `pianoforte`. A French or Italian query gets `text_relevance: 0` and
-   `offers_needs: 0`, and **the semantic component is the only thing that answers it** — which it
-   does, because it accent-folds. Measured: `"chambre d'hôtes avec une table d'hôte"` →
-   `text_relevance: 0`, `semantic: 24`.
-3. **`hive.STOPWORDS` is 21 words long** where `semantic.STOPWORDS` is 323. So `where`, `someone`,
-   `somewhere` and the like are *real query terms* for the literal path and earn `offers_needs`
-   points off any card whose offer prose happens to contain them. Measured: on the 73-entity corpus
-   *"where can I get a haircut"* returns `x-4xor, schnittwerk-bern, svenja-aebi` — the unclaimed
-   example card wins on 10 points for the word *where*, over the hairdresser's 8 for actually
-   cutting hair. The *"someone who can write Rust"* near-miss in `testdata/README.md` is the same
-   bug seen from the other side.
+1. **`matches` is what matched, and `score > 0` is not how you'd have found that out.** The doors
+   filter on `hive.relevance` and report `matched`/`considered`; `hive.discover()` in-process still
+   returns the whole ranked hub, which is what the eval tools read (they threshold on `score > 0`,
+   which is why they also count the four reputation-only hotels as results — see point 4).
+2. **Query terms are `len >= hive.MIN_TERM_LENGTH` (4), and there is one tokeniser for both paths.**
+   `hive.query_terms` is `semantic.content_words(query, 4)`: folded with `semantic.fold`, cut on
+   `semantic.LETTERS` (`[^\W\d_]+`, every alphabet rather than a list of remembered letters), and
+   filtered through `semantic.STOPWORDS`. So `café` is the term `cafe` and finds *Café Rhein*
+   literally, and a French or Italian query earns `text_relevance` and `offers_needs` like any
+   other. Both sides of the comparison are folded — `_side_hits` and the prose blob too — because
+   folding only the query would stop `cafe` matching `Café`.
+   Short words are still dropped on purpose: literal containment pays a flat 10 a word on the
+   offers side, and a three-letter word lands inside somebody's prose by accident far more often
+   than on purpose. They still reach the similarity bag, which weighs them against a whole line.
+3. **There is one stopword list: `semantic.STOPWORDS`, and `hive.STOPWORDS` is an alias of it.**
+   Every entry is passed through `fold()`, so `für` and `fuer` are one entry — before that the
+   German entries were ASCII transliterations (`fuer`, `moechte`, `koennen`) that no query spelling
+   them with umlauts could ever reach. `where`, `someone`, `macht`, `jemanden`, `pour` and `vorrei`
+   are filler in both paths now. Generic *errand* words are deliberately **not** filler: `hotel`,
+   `room`, `book` and `check` were in the old 21-word `hive.STOPWORDS` and are content words again,
+   because a card that offers a room differs from one that does not.
 4. **Reputation is paid without a relevance test.** `reputation.business_points` is added whatever
-   the query was, so a well-reviewed entity that fails no hard constraint can outrank a less-reviewed
-   one that actually offers the thing. Listed in [LIMITS.md](LIMITS.md#discovery).
+   the query was. The doors keep those rows out of an answer they did not earn (point 3), but among
+   entities that *did* earn something a well-reviewed one still gets its points on top and can
+   outrank a less-reviewed one that offers more of what was asked for. Listed in
+   [LIMITS.md](LIMITS.md#discovery).
 5. **`rating: null` is not `0`.** Render "no rating yet". Every seeded card is `null`, because a
    rating needs a signed booking receipt and seeding cannot manufacture one.
 6. **`claimed: false` is a lead, not a business.** The subject never agreed to anything. Never book
@@ -1235,7 +1262,8 @@ tables, claiming an unclaimed card).
 The three that matter most to a search team:
 
 - **Reputation is paid without a relevance test** ([LIMITS.md](LIMITS.md#discovery)). Review points
-  are added whatever the query was.
+  are added whatever the query was. The doors no longer let a reputation-only row pass for a result,
+  but the ranking among real matches still carries them.
 - **`verification` never rises above `signed`.** A `dns-txt`, `rel-me` or `email` proof is recorded
   unverified and raises nothing.
 - **There is no second deployed hub.** The hop machinery is real and tested, but
@@ -1280,21 +1308,17 @@ what is documented above.
   refreshed. **Worth fixing before the pitch:** anyone who runs a federated search in the first half
   minute of a fresh stack sees local-only results and a broken-looking ranking for the rest of the
   session.
-- **`tools/eval_search.py --sweep` marks every row `<- in use`.** It compares the loop variable to
-  `semantic.SIMILARITY_FLOOR` *after* assigning the loop variable to it, so the comparison is always
-  true. It should compare against the saved `in_use`. The numbers are right; only the marker is
-  wrong.
-- **Filler words earn `offers_needs` points.** `hive.STOPWORDS` has 21 entries where
-  `semantic.STOPWORDS` has 323, so `where`, `someone` and `somewhere` are scoring query terms. It
-  costs real first places: *"where can I get a haircut"* returns `x-4xor, schnittwerk-bern,
-  svenja-aebi` on the 73-entity corpus — an unclaimed example card on 10 points for the word *where*
-  above the hairdresser on 8 for cutting hair — and it is the *"someone who can write Rust"*
-  near-miss in `testdata/README.md`. The fix is presumably to reuse `semantic.STOPWORDS` for the
-  literal tokeniser, but that moves the eval numbers and belongs in a PR that re-measures them.
-- **The literal tokeniser only knows German umlauts.** `re.findall(r"[a-zäöü]+", query.lower())`
-  drops `é à è ù ò ç` and every upper-case umlaut, so a French or Italian query scores `0` on both
-  literal components. Semantic search covers it, so this is a missing lower bound rather than a
-  broken search.
+- **`./lan.sh down` stops other people's servers.** Its cleanup loop sweeps ports 8420–8445 and
+  kills any listener whose command line matches `uvicorn` or `vite`, regardless of which stack
+  started it or which ports this invocation was given. On a machine running two stacks — which
+  `PORT_A`/`PORT_B`/`PORT_C` explicitly support — `down` takes both out.
+- **A cap-saturated tie is not really ranked.** The semantic component pays per query word covered
+  and ignores how close the match was, so entities pile up on `SEMANTIC_CAP` with identical scores.
+  Closeness breaks the tie in the sort, which recovers the clear cases — a caterer over a
+  hairdresser for *"catering for a wedding of fifty people"* — but it is a weak signal: for
+  *"hostel with bunk beds for a school group"* nine lodgings tie at 24 and the real hostel lands
+  9th, because `Mehrbettzimmer A` normalises worse than `Courtyard single`. Making the points
+  themselves similarity-weighted is the real fix and would move every number in this document.
 
 ---
 

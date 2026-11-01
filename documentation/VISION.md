@@ -195,7 +195,7 @@ the cloud — three peered hubs run on one laptop for the demo
 
 ## Beyond the weekend
 
-- **Owner-held keys.** Today the server holds each card's signing key, even for an application that brought its
+- **Owner-held keys.** One fictional hotel now keeps its own key on its own node ([LIMITS.md](LIMITS.md#separate-nodes)). Every other card's signing key is on the server, even for an application that brought its
   own public key: that key pins who applied, and the card version is still signed by a key the hub generates. In
   the real thing the signing key lives with the owner (a wallet, or their Adobe account) and the Hive only stores
   what they signed. This is the one gap in the trust story, and it is named in

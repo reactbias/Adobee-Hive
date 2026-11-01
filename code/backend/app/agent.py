@@ -22,6 +22,7 @@ import time
 from contextlib import AsyncExitStack
 from datetime import date, timedelta
 from typing import Any
+from urllib.parse import urlparse
 
 import anthropic
 import httpx
@@ -34,6 +35,8 @@ from .replies import language_line, say
 
 log = logging.getLogger(__name__)
 
+NODE_TOOLS = {"hive_check_availability", "hive_book"}  # a business with its own node answers these itself
+NODE_UNREACHABLE = "The business's own system could not be reached, so nothing was checked or booked."
 LOCAL_HIVE = "Adobee Hive (Basel)"
 
 AGENT_NAME = "Adobee travel agent"
@@ -74,6 +77,27 @@ async def _pinned_keys(target: Any) -> dict[str, str]:
     return {k: v for k, v in keys.items() if isinstance(k, str) and isinstance(v, str)}
 
 
+def node_url(card: dict[str, Any]) -> str:
+    """The MCP address a card names for its business's own node, or "" if there is none this server may dial."""
+    url = str((card.get("contact") or {}).get("mcp") or "").strip()
+    try:
+        parts = urlparse(url)
+        if parts.scheme not in ("http", "https") or not parts.hostname or parts.port == 0:
+            return ""
+    except ValueError:  # a broken IPv6 host or port: a signed card can still hold a bad address
+        return ""
+    if config.NODE_ALLOW_PRIVATE:
+        return url
+    from .domains.scout import _public_host  # local: the scout is a domain, loaded after the agent
+
+    return url if _public_host(url) else ""
+
+
+def _may_dial(node: str) -> bool:
+    """Whether this address may still be dialled, asked again just before connecting."""
+    return node_url({"contact": {"mcp": node}}) == node
+
+
 class HiveConnections:
     """The agent's MCP sources. hive_discover asks every source and merges the matches; other card tools go to the
     source that listed the card, otherwise to the first source that advertised the tool.
@@ -84,12 +108,17 @@ class HiveConnections:
     """
 
     def __init__(
-        self, extra: list[tuple[str, Any]] | None = None, guarded: bool = True, source: str | None = None
+        self,
+        extra: list[tuple[str, Any]] | None = None,
+        guarded: bool = True,
+        source: str | None = None,
+        node: str | None = None,
     ) -> None:
         self.stack = AsyncExitStack()
         self.extra = extra or []
         self.guarded = guarded
         self.source = source
+        self.node = node  # connect to this business's own node and nothing else
         self.sources: dict[str, Client] = {}
         self.routes: dict[str, list[str]] = {}
         self.origin: dict[str, str] = {}  # card id -> source that listed it as a match
@@ -97,10 +126,13 @@ class HiveConnections:
         self.blocked: dict[tuple[str, str], dict[str, Any]] = {}
         self.last_source = ""
         self.pins: dict[str, str] = {}  # card id -> the owner's pinned public key, from each Hive's registry
+        self.direct: dict[str, str] = {}  # card id -> its own node, only from a card that passed the pin check
 
     async def __aenter__(self) -> "HiveConnections":
         targets = [(url, url) for url in config.HIVE_MCP_URLS] or [(LOCAL_HIVE, local_server)]
-        if self.source is not None:
+        if self.node is not None:
+            targets = [(self.node, self.node)]
+        elif self.source is not None:
             targets = [(label, target) for label, target in targets if label == self.source]
             if not targets:
                 raise ValueError("The Hive selected for this booking is no longer configured. Ask your agent again.")
@@ -145,8 +177,23 @@ class HiveConnections:
             return {"error": f"unknown tool {name}"}
         if name == "hive_discover":
             return self._merge([(label, await self._call(label, name, args)) for label in labels])
+        node = self.direct.get(str(args.get("card_id"))) if name in NODE_TOOLS else None
+        if node:
+            return await self._call_node(node, name, args)
         label = self.origin.get(str(args.get("card_id")), "")
         return await self._call(label if label in labels else labels[0], name, args)
+
+    async def _call_node(self, node: str, name: str, args: dict[str, Any]) -> dict[str, Any]:
+        """Ask the business's own node. If it is down, that is an answer for the agent to pass on, never a crash."""
+        if not _may_dial(node):  # checked again here: a name can resolve differently than when the card was read
+            return {"error": NODE_UNREACHABLE}
+        try:
+            if node not in self.sources:
+                self.sources[node] = await self.stack.enter_async_context(Client(node))
+            return await self._call(node, name, args)
+        except Exception:  # noqa: BLE001 - a business's node is someone else's machine, and any failure means the same
+            log.warning("Could not reach the business's own node at %s", node, exc_info=True)
+            return {"error": NODE_UNREACHABLE}
 
     def _merge(self, results: list[tuple[str, dict[str, Any]]]) -> dict[str, Any]:
         """One discovery answer from several sources, each match tagged with where it came from."""
@@ -200,6 +247,8 @@ class HiveConnections:
             if not valid:
                 reason = "this copy does not match what the owner signed"
                 self._block(self.last_source, output.get("id"), output.get("name"), "signature_mismatch", reason)
+            elif node_url(output):
+                self.direct[str(output.get("id"))] = node_url(output)
         findings = injection.scan(output)
         if findings:
             output = injection.redact(output, findings)
@@ -274,9 +323,13 @@ async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]
         raise ValueError("Only a held hive_book call can be approved.")
     args = _take(str(pending.get("id", "")))
     source = args.pop("_source", None)
+    pin = args.pop("_pin", None)
     steps: list[dict[str, Any]] = []
-    async with HiveConnections(source=source) as hives:
-        booking = await hives.step(steps, "hive_book", args)
+    if pin:
+        booking = await _book_at_node(source, pin, args, steps)
+    else:
+        async with HiveConnections(source=source) as hives:
+            booking = await hives.step(steps, "hive_book", args)
     if booking.get("status") != "confirmed":
         return {"reply": say(locale, "book_failed", error=booking.get("error")), "steps": steps, "booking": None}
     return {
@@ -293,6 +346,38 @@ async def approve(pending: dict[str, Any], locale: str = "en") -> dict[str, Any]
     }
 
 
+async def _book_at_node(node: str, pin: str, args: dict[str, Any], steps: list[dict[str, Any]]) -> dict[str, Any]:
+    """Send a held booking to the business's own node, and accept only a receipt signed by the pinned key."""
+    if not _may_dial(node):
+        return {"error": NODE_UNREACHABLE}
+    try:
+        async with HiveConnections(node=node) as hives:  # only the node: a hub being down must not cost this booking
+            hives.direct[str(args.get("card_id"))] = node
+            booking = await hives.step(steps, "hive_book", args)
+    except Exception:  # noqa: BLE001 - a business's node is someone else's machine, and any failure means the same
+        log.warning("Could not reach the business's own node at %s", node, exc_info=True)
+        return {"error": NODE_UNREACHABLE}
+    if booking.get("status") == "confirmed" and not _receipt_matches(booking, args, pin):
+        return {"error": "The receipt was not signed by this business's key for this booking."}
+    return booking
+
+
+def _receipt_matches(booking: dict[str, Any], held: dict[str, Any], pin: str) -> bool:
+    """Whether the receipt is signed by the pinned key, is for what was approved, and agrees with the confirmation."""
+    receipt = str(booking.get("receipt", ""))
+    if not hive.verify_statement(receipt, pin):
+        return False
+    try:
+        signed = hive.read_statement(receipt)
+    except hive.HiveError:
+        return False
+    return (
+        all(signed.get(field) == held.get(field) for field in ("card_id", "unit_id", "check_in", "check_out"))
+        and signed.get("guests") == held.get("guests", 1)
+        and all(signed.get(field) == booking.get(field) for field in ("booking_id", "total_chf"))
+    )
+
+
 # Held bookings live here, not with the client: approve() books exactly what the agent held, once. In memory is
 # enough because the backend runs as one instance; a restart only means asking the agent again.
 _HELD: dict[str, tuple[float, dict[str, Any]]] = {}
@@ -300,7 +385,7 @@ HOLD_TTL_S = 30 * 60
 MAX_HELD = 1000
 
 
-def _hold(args: dict[str, Any], source: str | None = None) -> dict[str, Any]:
+def _hold(args: dict[str, Any], source: str | None = None, pin: str | None = None) -> dict[str, Any]:
     now = time.time()
     for key in [k for k, (at, _) in _HELD.items() if now - at > HOLD_TTL_S]:
         del _HELD[key]
@@ -310,6 +395,8 @@ def _hold(args: dict[str, Any], source: str | None = None) -> dict[str, Any]:
     stored = dict(args)
     if source is not None:
         stored["_source"] = source
+    if pin is not None:  # only a booking for a business's own node: its receipt is checked against this key
+        stored["_pin"] = pin
     _HELD[hold_id] = (now, stored)
     return {"id": hold_id, "tool": "hive_book", "input": args}
 
@@ -325,7 +412,10 @@ def _take(hold_id: str) -> dict[str, Any]:
 def _call_tool(name: str, args: dict[str, Any], hives: HiveConnections) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """Hold hive_book for the traveller's approval; any other tool is called. Returns (pending, args to call)."""
     if name == "hive_book":
-        source = hives.origin.get(str(args.get("card_id"))) or hives.routes[name][0]
+        card_id = str(args.get("card_id"))
+        if node := hives.direct.get(card_id):
+            return _hold(args | {"agent": AGENT_NAME}, node, hives.pins[card_id]), {}
+        source = hives.origin.get(card_id) or hives.routes[name][0]
         return _hold(args | {"agent": AGENT_NAME}, source), {}
     return None, args
 
@@ -598,6 +688,13 @@ async def _run_scripted(
         "hive_check_availability",
         {"card_id": best["id"], "check_in": req["check_in"], "check_out": req["check_out"], "guests": req["guests"]},
     )
+    if avail.get("error"):  # a node that cannot answer has said nothing about its rooms
+        return {
+            "reply": say(locale, "book_failed", error=avail["error"]),
+            "steps": steps,
+            "pending": None,
+            "mode": "scripted",
+        }
     if not avail.get("available_units"):
         return {
             "reply": say(locale, "sold_out", name=best["name"]),
@@ -642,6 +739,7 @@ async def _run_scripted(
             "agent": AGENT_NAME + " (scripted)",
         },
         hives.last_source,
+        hives.pins.get(best["id"]) if best["id"] in hives.direct else None,
     )
     reply = (
         say(

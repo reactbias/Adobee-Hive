@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/adobee-hive-wordmark-light.png">
-    <img src="assets/brand/adobee-hive-wordmark.png" alt="Adobee Hive" width="420">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/adobee-hive-wordmark-light-v2.png">
+    <img src="assets/brand/adobee-hive-wordmark-v2.png" alt="Adobee Hive" width="420">
   </picture>
 </p>
 
@@ -96,8 +96,9 @@ recorded, so you see that twelve agents asked for a dog-friendly room this week 
 Edit in plain words — "add sauna, the courtyard double is 165 francs" — read the diff, sign, and the change is
 live for every agent at once.
 
-**If you are building an agent**, you get a directory you do not have to scrape. One MCP endpoint, 26 tools,
-structured answers: search, fetch a signed Card, check availability, hold a booking, ask for an introduction. Your
+**If you are building an agent**, you get a directory you do not have to scrape. One MCP endpoint, 31 tools,
+structured answers: search, fetch a signed Card, check availability, hold a booking, ask for an introduction,
+and exchange a consented CV. Your
 agent verifies every fact itself against a key published by the Card's own hub, so you are not trusting our
 server — and every result carries its score breakdown and the reason each other candidate lost, which is
 something a search box has never given you. No key, no contract and no sign-up to try it: point a client at
@@ -358,8 +359,9 @@ and the exact field ceilings, so read those from the hub rather than hard-coding
 - `offers` and `needs` are the index; `kind` is only a filter, and `looking_for=offers|needs|any` chooses which
   side of the market to search. A hub carries a tavern, a developer and an electrician side by side, so nothing
   downstream may assume a narrow domain.
-- Hard constraints decide **eligibility**; free-text relevance decides **ranking, not inclusion**. `matches` can
-  contain zero-score entries, so threshold it yourself and read `score_breakdown`, `why` and `excluded`.
+- Hard constraints decide **eligibility**, and an entity the ask earned nothing from is left out, so `matched: 0`
+  means nothing answered. Pass `include_irrelevant=true` for the full ranking, and read `score_breakdown`, `why`
+  and `excluded`.
 - A local match is a summary — fetch its Card by id. A **federated** match already includes its signed `card`, so
   do not ask the answering hub for a remote id. Show `provenance.path` origin-first; a user must never be unable
   to tell whose directory answered.
@@ -395,7 +397,8 @@ asyncio.run(main())
 Call `list_tools()` for the live schemas; the groups are `hive_discover`/`hive_get_card`,
 `hive_check_availability`/`hive_book`/`hive_cancel`/`hive_review`, `hub_directory`,
 `hub_connect`/`hub_connections`/`hub_standing`, `hub_registration`/`hub_register`, `hive_owner_*`, and the domain
-tools `hr_find_people`/`hr_request_intro`/`hr_shortlist`/`hr_interview`, `explore_ask` and `hive_scout`.
+tools `hr_find_people`/`hr_request_intro`/`hr_decide_intro`/`hr_grant_cv`/`hr_read_cv`/`hr_create_job`/`hr_submit_cv`,
+`hr_shortlist`/`hr_interview`, `explore_ask` and `hive_scout`.
 
 <details>
 <summary>Two rules that are not obvious</summary>
@@ -403,9 +406,9 @@ tools `hr_find_people`/`hr_request_intro`/`hr_shortlist`/`hr_interview`, `explor
 <br>
 
 - **A tool refusal can be a structured `error` result.** Do not assume a completed MCP call succeeded.
-- **Folder reads and grants are REST calls, not MCP tools.** `hub_connect` can return an inline manifest and a
-  link credential; use that credential against the [Folder API](documentation/FOLDER_API.md) and obtain the
-  per-path grant before reading non-public bytes. `hr_request_intro` records a request and returns
+- **CV reads and grants require consent.** `hub_connect` can return an inline manifest and a link credential;
+  `hr_decide_intro` accepts or declines the introduction, `hr_grant_cv` grants one candidate file, and
+  `hr_read_cv` returns its bytes and folder metadata. `hr_request_intro` records a request and returns
   `pending_consent` — it does not release a CV.
 
 </details>

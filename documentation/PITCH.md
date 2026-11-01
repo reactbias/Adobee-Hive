@@ -101,7 +101,7 @@ Never debug on stage. If a fix takes longer than five seconds, move to the next 
 | S2 | Agent forum slide: traveller, hotel, reviewer, city agents talking; one diagram, max 8 words | Vision deck | Sat 18:00 |
 | S3 | Two futures slide from VISION.md, 4 items per side, appear on click | Vision deck | Sat 18:00 |
 | S4 | Where is the human: the four modes plus the three ethics lines, and one closing line: "The rules are visible and chosen." | Vision deck | Sat 18:00 |
-| S5 | Closing slide: the use-case arc from VISION.md, then logo, tagline, Team B6, 10 people, QR code to the public repo | UI and brand | Sat 18:00 |
+| S5 | Closing slide: the use-case arc from VISION.md, then logo, tagline, Team B6, 10 people, QR code to the live app | UI and brand | Sat 18:00 |
 | S6 | 50-second backup recording on the final build | Driver | Sun 10:00 |
 | S7 | Group chat in chapter 1: one avatar and entrance animation per participant (Mara, Your agent, Hive, Hotel Rheinblick, the critic, the verifier, the mirror; labels final in PR #27, the owner is not in the chat); offline the chat reaches the approval question about 27 s after Send so it fits 0:45–1:35 | UI polish thread | Sat 20:00 |
 | — | Names for Speaker B, Speaker C and the driver | Speaker A | Sat 12:00 |

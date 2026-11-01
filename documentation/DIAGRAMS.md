@@ -43,7 +43,10 @@ flowchart LR
     API[FastAPI · main.py<br/>REST /api · MCP /mcp/]:::host
     DUCK[(DuckDB file<br/>on the instance)]:::host
     PG[(Postgres<br/>adobee-hive-db)]:::host
+    AGT[Agent service<br/>adobee-agent, optional]:::host
   end
+
+  NODE[A hotel's own node<br/>tools/hotel_node.py, optional]:::host
 
   LLM[OpenAI · gpt-5-mini<br/>offline fallback without a key]:::model
   NET[Public web<br/>OpenAI web search or OpenStreetMap]:::model
@@ -51,6 +54,10 @@ flowchart LR
   G --> UI
   O --> UI
   UI -->|REST| API
+  UI -.->|VITE_AGENT_URL| AGT
+  AGT -.->|MCP| API
+  AGT -.->|contact.mcp: availability, booking| NODE
+  NODE -.->|signed card| API
   X -->|MCP| API
   API --- DUCK
   DUCK -.->|snapshot after each write<br/>restore on boot| PG
@@ -283,7 +290,7 @@ an agent can see that a card is a lead compiled from public information rather t
 
 ## 4. Where the data lives
 
-One DuckDB file holds every card version, booking, review and demand count. The free Render disk is wiped on
+One DuckDB file per hub holds every card version, booking, review and demand count. A hotel's own node has its own file, with its card's key and its bookings. The free Render disk is wiped on
 every deploy, so with `DATABASE_URL` set the whole file is copied to Postgres after each write and copied back on
 boot. Locally there is no Postgres; the file in `code/backend/data/` just stays.
 
@@ -343,7 +350,7 @@ flowchart LR
     M1[hive_discover · hive_rulesets · hive_get_card · hive_check_availability]:::door
     M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
     M3[hive_wait · hive_check_waiting]:::door
-    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro · hr_shortlist · hr_interview]:::door
+    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro · hr_decide_intro · hr_grant_cv · hr_read_cv · hr_create_job · hr_submit_cv · hr_shortlist · hr_interview]:::door
     M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
     M6[hub_registration · hub_register · hub_directory]:::door
     M7[hive_owner_card]:::door
@@ -433,6 +440,7 @@ flowchart LR
     R7["GET /api/hive/cards/{card_id}"]:::door
     R8["GET /api/hive/cards/{card_id}/availability"]:::door
     R9["POST /api/hive/cards/{card_id}/book"]:::door
+    R9B["POST /api/hive/cards/signed"]:::held
     R10["POST /api/hive/reviews"]:::door
     R11["POST /api/hive/verify"]:::door
   end

@@ -304,6 +304,7 @@ const de: Record<Key, string> = {
   "nav.chapters": "Weg",
   "nav.network": "Hub-Netzwerk",
   "chapter.find": "Finden und buchen",
+  "chapter.hr": "Mit Agenten einstellen",
   "chapter.offer": "Für Betriebe",
   "chapter.business.lead":
     "{name}: Sagen Sie in eigenen Worten, was sich geändert hat. Die neue Version ist sofort signiert und live.",
@@ -319,6 +320,22 @@ const de: Record<Key, string> = {
   "chapter.business.leadUnclaimed":
     "{name} hat seine Karte nicht beansprucht. Sie wurde aus öffentlichen Informationen erstellt.",
   "owner.unclaimed": "Nur der Betrieb selbst kann diese Karte beanspruchen und bearbeiten.",
+  "hr.eyebrow": "Übergabe an Hiring Hub",
+  "hr.title": "Die richtige Person finden",
+  "hr.lead":
+    "Ihr HR-Agent und ein Kandidaten-Agent können entdecken, zustimmen und einen Lebenslauf teilen, bevor der Hiring Hub übernimmt.",
+  "hr.job.title": "Stellentitel",
+  "hr.job.description": "Anforderung",
+  "hr.start": "Agenten fragen",
+  "hr.chat.recruiter": "Recruiting-Team",
+  "hr.meta": "MCP über HTTPS · CV-Austausch mit Zustimmung",
+  "hr.chat.summary":
+    "Der Agent der kandidierenden Person hat cv.pdf nach Zustimmung geteilt. Die Datei ist für diese Stelle im Hiring Hub vorgemerkt.",
+  "hr.handoff.eyebrow": "Eine Übergabe",
+  "hr.handoff.title": "Hiring Hub öffnen",
+  "hr.handoff.body": "Der Lebenslauf ist dieser Stelle zugeordnet. Prüfen Sie die Kandidatur im Hiring Hub.",
+  "hr.handoff.open": "Hiring Hub öffnen",
+  "hr.handoff.sent": "Hiring Hub wurde in einem neuen Tab geöffnet.",
   // The live activity feed (?demo)
   "activity.eyebrow": "Präsentationswerkzeuge · Hinter den Kulissen",
   "activity.title": "Was die Agenten gerade tun.",
@@ -814,6 +831,11 @@ const de: Record<Key, string> = {
   "score.exact": "Danke. {hub} lag genau richtig.",
   "score.thanks": "Danke. Ihre Bewertung ist gespeichert.",
   "score.standing": "Damit steht {hub} so da:",
+  "asks.title": "Was Sie vorher gefragt haben",
+  "asks.again": "Erneut fragen: {ask}",
+  "asks.forget": "Diese vergessen",
+  "asks.only":
+    "Nur in diesem Browser gespeichert. Der Hub hält fest, dass gesucht wurde, nie was Sie getippt haben oder wer Sie sind.",
   "folder.eyebrow": "Ihr Ordner",
   "folder.title": "Was {name} mit Ihnen teilt",
   "folder.linked": "Sie haben eine Verbindung zu diesem Ordner und sehen daher mehr, als die Karte sagte.",

@@ -49,7 +49,7 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | Domain | Card kind | Tools | Where |
 | --- | --- | --- | --- |
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
-| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py`; people are in `hive_discover` too, their contact never is |
+| HR | `person` | `hr_find_people`, `hr_request_intro`, `hr_decide_intro`, `hr_grant_cv`, `hr_read_cv`, `hr_create_job`, `hr_submit_cv` | `domains/hr.py`; person cards are public, introductions and CV files require consent |
 | Recruiting | `person` | `hr_shortlist`, `hr_interview` | `domains/recruit.py` over `talent.py` and `interview.py`: a posting in, a ranked shortlist out, candidates' agents answering from their folders |
 | Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
 | Scout | any kind found on the web (`taxi`, ...) | `hive_scout` | `domains/scout.py`: web search, verifier, unclaimed cards `w-*` |
@@ -105,6 +105,7 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `EntitiesPanel.tsx` | `?admin` only (`#admin`, Entities tab) | What this hub carries, as a list an operator can scan: id, name, kind, claimed or unclaimed, rating and count, when it was published. Open one and the detail view shows the whole signed card, its offers and needs, every contact channel with the sharing flag that actually applies, the trust block, the signature and the key it was checked against, and whether this hub has blocked it. From there: **Remove** (a withdrawal, reason required, with a confirmation that names the entity and says what will happen), **Restore**, and **Block**, with the difference between removing and blocking written on the screen |
 | `ServicesPanel.tsx` | `?admin` only (`#admin`, Services tab) | The optional integrations: what each is for, what the hub does without it, whether a key is set and whether it came from the panel or the environment, and a *Test* button that makes one cheap call. Set and clear a key; a stored key is shown only as a fingerprint and four characters, never in full, and the panel says plainly that it is stored on this hub in the clear unless the host encrypts its disk |
 | `PeersPanel.tsx` | `?admin` only (`#admin`, Neighbours tab) | Manage the connected hubs: add, edit and remove a peer at runtime, each with a required reason, and *Check now* to ask them all whether they answer. Each row carries the URL, the hub id, the name, whether it answers and when it was last tried, and its calibration. Removing and blocking are both offered, with the difference written on the screen: removing stops this hub asking a peer, blocking refuses it in both directions |
+| `HRPanel.tsx` | beside 1 and 2 (`#hr`) | Watch the hiring flow play from a job title and requirement to a hand-off to the Hiring Hub. It is a hard-coded script: it calls none of the `hr_*` tools, creates no job and sends no CV |
 | `NetworkPanel.tsx` | after 2, always (`#network`) | The live node view of the hub network: this hub in the centre of a honeycomb, each configured peer a cell around it with an edge coloured by its calibration, a blocked peer still drawn and visibly cut. Four counts above it, the same hubs as rows below, and the rows alone on a phone. Open to anyone, built from `GET /api/admin/overview` and `/api/admin/neighbours`, with names and entity counts from `/api/hub/directory` where it is deployed; a hub we have not asked reads as unknown, never as zero. Polls every 10 s, only while on screen |
 | `InstanceFinder.tsx` | before 1 (`#finder`) | Pick which Hive to use or join, instances.social style. Each hive answers three questions side by side: what it carries (description, entities, when it was last asked), whether it will have you (accepting, admission policy) and whether to trust it (calibration, lower is better, `unproven` when the evidence is thin). `accepting: null` and `entities: null` read as not asked yet, never as no or none. Search across name, address and description; filters for hives taking members and hives with a track record. The hive you are on is badged, not pinned first. Join is disabled where admission is closed. Falls back to one row for this hub when `GET /api/hub/directory` is not deployed |
 | `HiringPanel.tsx` | after 2, `#hire` (third in the header) | Hire from a job posting in three steps on one screen. Edit or pick a posting and the people whose signed cards fit it follow within half a second (`POST /api/hr/shortlist`): what the Hive understood of the posting as chips (a run like "AWS, Azure or GCP" is one), then each person with a score bar, how many must-haves their card covers, the lines that cover them and how each was found (says it, implies it, partly, close to it), and what the card does not say. **Start the interviews** is a choice, not a consequence (`POST /api/hr/interview`): who said yes, what each opened, then the recruiter's agent and each candidate's agent talking one exchange at a time on the dark stage with the quoted line and its file, and the ranking. A person who said `ask` stays closed until *Say yes for them* (`POST /api/hr/screening/{card_id}`), a button that plays the person's part for testing and asks for the owner token when the hub sets one. Editing the posting after an interview says it is out of date |
@@ -142,6 +143,11 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hr_shortlist` | Find the people on this hub who fit a job posting, pasted as text. Returns what was understood of the posting (`job`), then per match a score, the evidence for each requirement (`literal`, `related`, `partial` or `similar`, with the person's own words), the gaps and what the card does not state; every card left out says why. Public fields only, nothing is sent to anyone |
 | `hr_interview` | `hr_shortlist`, then the recruiter's agent questions each candidate's agent and ranks on the answers. A candidate is interviewed only if their own folder says `screening: yes`; `ask` or silence records a request and leaves the folder closed, `no` is left alone. Answers quote only files that candidate's folder lets this recruiter read, naming the file. Introduces nobody: `hr_request_intro` is the next step. Takes no approval argument |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
+| `hr_decide_intro` | Accept or decline an HR introduction using the candidate-side transport credential or owner token |
+| `hr_grant_cv` | Grant the connected HR agent access to one candidate file, using the candidate side of the folder link |
+| `hr_read_cv` | Read a granted candidate CV through MCP, returning its folder metadata and base64 file content |
+| `hr_create_job` | Create a Hiring Hub position from an HR job requirement JSON document |
+| `hr_submit_cv` | Upload a candidate CV that was granted on a folder link to an existing Hiring Hub position |
 | `hive_owner_card` | One card as its owner sees it: the signed card, its bookings or hand-offs, the demand it missed, what agents did with it in the last 7 days, and who is waiting for a change. The same answer as `GET /api/owner/{card_id}` — guest names come through as initials unless the connection carries the owner token, and nothing else is withheld |
 | `hive_owner_propose` | A plain-language change to the owner's own card to a proposed card and a field-by-field diff, in EN/DE/FR/IT. Publishes nothing: the diff is what the agent shows its person. A change over one of the published ceilings is refused here, naming the ceiling and the size |
 | `hive_owner_publish` | Sign and publish the proposed card the owner said yes to, as a new version; waiting agents get signed offers. Identity fields keep their values. **Fails closed**: the owner token must arrive in the `X-Owner-Token` header of the MCP connection, and a hub with no `OWNER_EDIT_TOKEN` set publishes nothing over MCP at all |
@@ -213,6 +219,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `DELETE /api/admin/blocklist/{kind}/{subject}` | Lift a block | `X-Admin-Token`, fails closed |
 | `GET /api/hive/cards/{card_id}` | One signed card by id or slug, with trust (signature, `valid_until`, `fresh`, attestations, reviews) | |
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
+| `POST /api/hive/cards/signed` | Store a card version its owner signed on their own node, exactly as signed. The first version pins the key, a later one must verify against it. This hub holds no key for that card, so it cannot edit or book it | `X-Owner-Token` |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
 | `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
 | `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
@@ -243,6 +250,21 @@ All six paths go through `owner.py`, and the read guard is one function (`owner.
 cannot drift into different ideas of what an owner may read. What differs is the write guard, on purpose: a REST
 route with no `OWNER_EDIT_TOKEN` set is open, as it has always been, while the MCP tools refuse — see
 [LIMITS.md](LIMITS.md#running-a-hub).
+
+## Separate nodes
+
+The design keeps the browser, the agent, the business and the hub apart, wherever each one runs. Two of those
+separations can be switched on today, using the same backend code with different settings:
+
+- **The agent as its own service.** Set `HIVE_MCP_URLS` to the hub's `/mcp/`, leave its store empty with
+  `SEED_ON_EMPTY=false`, and build the app with `VITE_AGENT_URL` (`api.agentBase`). Without that variable the app
+  uses the hub's own agent, as before. A person who picks another hub gets that hub's agent.
+- **A hotel's own node.** `tools/hotel_node.py` signs a card into the node's own database with its `contact.mcp`
+  address, then hands the signed card to the hub. The agent checks that card against the hub's registry, then asks
+  the node for availability and sends the held booking there, and accepts only a receipt signed by the pinned key.
+  A card without `contact.mcp` books on the hub as before.
+
+What each one still lacks: [LIMITS.md](LIMITS.md#separate-nodes).
 
 ## Trust by design
 
@@ -297,6 +319,6 @@ backend. Without a key everything still runs offline.
 
 ## Known limits
 
-- The server holds each owner's signing key (the vision is owner-held keys).
+- The hub holds the signing key of every card except one published through `POST /api/hive/cards/signed` from a hotel node (the vision is owner-held keys everywhere).
 - DuckDB on local disk with a Postgres snapshot pins the backend to one instance. Fine for a demo.
 - No real payments; restaurant table booking is not built yet.

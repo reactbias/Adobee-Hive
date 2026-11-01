@@ -304,6 +304,7 @@ const it: Record<Key, string> = {
   "nav.chapters": "Percorso",
   "nav.network": "Rete di hub",
   "chapter.find": "Trova e prenota",
+  "chapter.hr": "Assumi con gli agenti",
   "chapter.offer": "Per le attività",
   "chapter.business.lead":
     "{name}: dica con parole Sue che cosa è cambiato. La nuova versione è subito firmata e online.",
@@ -319,6 +320,22 @@ const it: Record<Key, string> = {
   "chapter.business.leadUnclaimed":
     "{name} non ha rivendicato la sua scheda. È stata composta da informazioni pubbliche.",
   "owner.unclaimed": "Solo l'azienda può rivendicare questa scheda e modificarla.",
+  "hr.eyebrow": "Passaggio a Hiring Hub",
+  "hr.title": "Trova la persona giusta",
+  "hr.lead":
+    "Il tuo agente HR e l'agente di una candidata o di un candidato possono cercare, ottenere il consenso e condividere un CV prima del passaggio a Hiring Hub.",
+  "hr.job.title": "Titolo della posizione",
+  "hr.job.description": "Requisito della posizione",
+  "hr.start": "Interroga gli agenti",
+  "hr.chat.recruiter": "Team di selezione",
+  "hr.meta": "MCP su HTTPS · scambio del CV con consenso",
+  "hr.chat.summary":
+    "L'agente della persona candidata ha condiviso cv.pdf dopo il consenso. Il file è in coda per questa posizione in Hiring Hub.",
+  "hr.handoff.eyebrow": "Un passaggio",
+  "hr.handoff.title": "Apri Hiring Hub",
+  "hr.handoff.body": "Il CV è associato a questo requisito. Continua in Hiring Hub per esaminare la candidatura.",
+  "hr.handoff.open": "Apri Hiring Hub",
+  "hr.handoff.sent": "Hiring Hub è stato aperto in una nuova scheda.",
   // The live activity feed (?demo)
   "activity.eyebrow": "Strumenti di presentazione · Dietro le quinte",
   "activity.title": "Cosa stanno facendo gli agenti.",
@@ -808,6 +825,11 @@ const it: Record<Key, string> = {
   "score.exact": "Grazie. {hub} aveva ragione.",
   "score.thanks": "Grazie. Il suo voto è registrato.",
   "score.standing": "Dove lascia {hub}:",
+  "asks.title": "Che cosa ha chiesto prima",
+  "asks.again": "Chiedi di nuovo: {ask}",
+  "asks.forget": "Dimentica tutto",
+  "asks.only":
+    "Conservato solo in questo browser. L'hub registra che una ricerca c'è stata, mai che cosa ha scritto né chi è.",
   "folder.eyebrow": "La loro cartella",
   "folder.title": "Che cosa {name} condivide con lei",
   "folder.linked": "Ha un collegamento a questa cartella, quindi vede più di quanto diceva la card.",

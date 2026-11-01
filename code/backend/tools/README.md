@@ -200,3 +200,10 @@ The presentation samples (a terminal narration and a one-page viewer) are in `co
 The real screen is **Hiring** in the app: [HIRING.md](../../../documentation/HIRING.md).
 
 - `cv_to_vault.py` turns CV analyzer JSON into the vaults in `testdata/candidates`.
+
+## hotel_node.py — a hotel with its own key and its own bookings
+
+A node is the ordinary backend with its own database, holding one card and that card's signing key. The tool signs
+the card there with the node's address in `contact.mcp`, then hands the signed card to a hub, which stores it as
+signed and holds no key for it. Agents then book at the node. Its usage is at the top of the file, and `lan.sh` runs
+it. What it does not cover: [LIMITS.md](../../../documentation/LIMITS.md#separate-nodes).
