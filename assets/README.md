@@ -68,6 +68,7 @@ tenths of a star, where lower is better.
 | --- | --- |
 | [adobee-hive-logo-1024.png](brand/adobee-hive-logo-1024.png) | The mark: a bee in an open hexagon, from the whiteboard sketch |
 | [adobee-hive-wordmark.png](brand/adobee-hive-wordmark.png) | Logo and name |
+| [adobee-hive-wordmark-v2-on-light.png](brand/adobee-hive-wordmark-v2-on-light.png), [-on-dark.png](brand/adobee-hive-wordmark-v2-on-dark.png) | The v2 logos cropped for the readme: `adobee-hive-wordmark-v2.png` for light grounds, `adobee-hive-wordmark-light-v2.png` for dark |
 | [b6-bee-mascot.png](brand/b6-bee-mascot.png) | The B6 bee |
 | [hero-clay.svg](brand/hero-clay.svg) | Lit clay honeycomb, for slides |
 
@@ -80,3 +81,7 @@ panel are not captured here yet: [home](screens/phone-375-home.jpg),
 [traveller agent](screens/phone-375-agent.jpg), [ask the Hive](screens/phone-375-ask.jpg),
 [owner studio](screens/phone-375-owner.jpg), [card](screens/phone-375-card.jpg),
 [demand map](screens/phone-375-demand.jpg).
+
+## Pitch uploads
+
+Added on the last morning: decks ([bees](slides/adobee-hive-bees.html), [with photos](slides/adobee-hive-with-photos-upd.html), [presentation update](<slides/Adobee Hive — Presentation Update (2).html>)), [animation](slides/adobee-hive.gif), [bee images, zipped](slides/bees.zip), [network](slides/slide-network.png), [team](slides/slide-team.png).

@@ -24,7 +24,7 @@ TEXT: dict[str, dict[str, str]] = {
         "verified": " Verified claims: {claims}.",
         "claim_by": "{claim} by {by}",
         "booked": "Booked {name}, {unit}, CHF {total} total. Reference {ref}; the signed receipt is your "
-        "proof of stay.",
+        "proof of booking.",
         "book_failed": "Booking failed: {error}",
         "terms_changed": "{name} changed the terms after you saw them, so nothing was booked. It is now CHF {total}; "
         "you approved CHF {approved}. Cancellation: {cancellation}. Approve again if that still suits you.",
@@ -65,8 +65,8 @@ TEXT: dict[str, dict[str, str]] = {
         "ready": "Bereit zur Buchung: {name}, {unit}, {check_in} bis {check_out}, CHF {total} total. Warum: {reasons}.",
         "verified": " Bestätigte Angaben: {claims}.",
         "claim_by": "{claim}, bestätigt von {by}",
-        "booked": "Gebucht: {name}, {unit}, CHF {total} total. Referenz {ref}; die signierte Quittung belegt Ihren "
-        "Aufenthalt.",
+        "booked": "Gebucht: {name}, {unit}, CHF {total} total. Referenz {ref}; die signierte Quittung belegt Ihre "
+        "Buchung.",
         "book_failed": "Buchung fehlgeschlagen: {error}",
         "terms_changed": "{name} hat die Bedingungen geändert, nachdem Sie sie gesehen hatten. Darum wurde nichts "
         "gebucht. Neu sind es CHF {total}; bestätigt hatten Sie CHF {approved}. Stornierung: {cancellation}. "
@@ -111,7 +111,7 @@ TEXT: dict[str, dict[str, str]] = {
         "verified": " Informations attestées : {claims}.",
         "claim_by": "{claim}, attesté par {by}",
         "booked": "Réservé : {name}, {unit}, CHF {total} au total. Référence {ref} ; le reçu signé prouve "
-        "votre séjour.",
+        "votre réservation.",
         "book_failed": "La réservation a échoué : {error}",
         "terms_changed": "{name} a modifié ses conditions après que vous les avez vues : rien n'a donc été réservé. "
         "C'est désormais CHF {total} ; vous aviez approuvé CHF {approved}. Annulation : {cancellation}. Approuvez à "
@@ -154,8 +154,8 @@ TEXT: dict[str, dict[str, str]] = {
         "Perché: {reasons}.",
         "verified": " Dati attestati: {claims}.",
         "claim_by": "{claim}, attestato da {by}",
-        "booked": "Prenotato: {name}, {unit}, CHF {total} in totale. Riferimento {ref}; la ricevuta firmata prova il "
-        "Suo soggiorno.",
+        "booked": "Prenotato: {name}, {unit}, CHF {total} in totale. Riferimento {ref}; la ricevuta firmata prova la "
+        "Sua prenotazione.",
         "book_failed": "Prenotazione non riuscita: {error}",
         "terms_changed": "{name} ha cambiato le condizioni dopo che Le ha viste, quindi non è stato prenotato nulla. "
         "Ora sono CHF {total}; aveva approvato CHF {approved}. Cancellazione: {cancellation}. Approvi di nuovo se Le "

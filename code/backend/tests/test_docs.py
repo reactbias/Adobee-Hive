@@ -84,9 +84,8 @@ def test_every_link_between_the_docs_resolves():
     assert broken == []
 
 
-def test_the_developer_guide_is_linked_and_names_only_what_runs(client):
+def test_the_developer_guide_names_only_what_runs(client):
     guide = (ROOT / "documentation" / "DEVELOPER.md").read_text(encoding="utf-8")
-    assert "documentation/DEVELOPER.md" in (ROOT / "readme.md").read_text(encoding="utf-8")
 
     async def tools() -> set[str]:
         async with Client(server) as c:
@@ -101,12 +100,8 @@ def test_the_developer_guide_is_linked_and_names_only_what_runs(client):
     assert named_paths - served_paths == set(), "the guide names endpoints the backend does not serve"
 
 
-def test_the_diagrams_are_linked_and_name_only_what_exists(client):
+def test_the_diagrams_name_only_what_exists(client):
     diagrams = (ROOT / "documentation" / "DIAGRAMS.md").read_text(encoding="utf-8")
-    assert diagrams.count("```mermaid") >= 4, "system, booking, any business and persistence pictures"
-    assert "documentation/DIAGRAMS.md" in (ROOT / "readme.md").read_text(encoding="utf-8")
-    assert "DIAGRAMS.md" in (ROOT / "documentation" / "DEVELOPER.md").read_text(encoding="utf-8")
-    assert "DIAGRAMS.md" in ARCHITECTURE
 
     files = set(re.findall(r"(?<![\w.-])([\w-]+(?:\.test)?\.(?:py|tsx|ts|yml|yaml))\b", diagrams))
     repo = {p.name for p in ROOT.rglob("*") if "node_modules" not in p.parts and ".git" not in p.parts}

@@ -9,6 +9,7 @@ from mcp import Client
 from app import db, hive
 from app.domains import explore, scout
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 TAXI_PAGE = """<html><head><title>Taxi Muster Aesch</title>
 <meta name="description" content="Ihr Taxi in Aesch und Umgebung, rund um die Uhr."></head>
@@ -108,7 +109,7 @@ def test_scout_endpoint_and_mcp_tool(client, web):
     async def call():
         async with Client(server) as c:
             res = await c.call_tool("hive_scout", {"question": "Taxi in Aesch"})
-            return json.loads(res.content[0].text)
+            return tool_result(res)
 
     out = asyncio.run(call())
     assert out["status"] == "added" and out["added"][0]["claimed"] is False

@@ -90,11 +90,15 @@ export default function TravellerAgent({
   const [mirror, setMirror] = useState(false);
   const [rulesOff, setRulesOff] = useState(false);
   const { events: log, pull: pullLog } = useActivityLog();
-  // On a narrow screen Details opens under the cards: bring it into view once, without hiding them for good.
+  // Details opens under the cards on a narrow screen and low beside them on a wide one: bring it into view once,
+  // without hiding the cards for good. A chat already on screen stays where the reader has it.
   const sideRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!details || !window.matchMedia?.("(max-width: 900px)").matches) return;
-    sideRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    const side = sideRef.current;
+    if (!details || !side) return;
+    const narrow = window.matchMedia?.("(max-width: 900px)").matches;
+    if (narrow || side.getBoundingClientRect().top > window.innerHeight * 0.4)
+      side.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [details]);
   const box = useRef<HTMLTextAreaElement>(null);
   // After the booking, the business's side of it is the other screen.

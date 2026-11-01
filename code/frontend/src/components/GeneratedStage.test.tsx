@@ -287,7 +287,7 @@ describe("results from other hubs", () => {
     expect(
       screen.getByText("geneva was left out: no key registry: its cards could not be verified here"),
     ).toBeInTheDocument();
-    expect(screen.getByText("A copy from Hive Zürich did not match what the owner signed")).toBeInTheDocument();
+    expect(screen.getByText("A copy from Hive Zürich did not match the signed card")).toBeInTheDocument();
   });
 
   it("offers to connect to a live result the way its owner allowed, and shows contact as the owner shared it", () => {

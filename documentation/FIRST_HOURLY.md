@@ -13,11 +13,11 @@ rehearsal links are all below, as they were written.
 | Deck and rehearsal | [Pitch](PITCH.md) · [Demo](DEMO.md) · [Vision](VISION.md) · [Assets](../assets/README.md) |
 
 Everything a visitor needs — the hosted app, the hosted backend, local URLs — is in the
-[readme's link table](../readme.md#links).
+[developer guide's link table](DEVELOPER.md#links).
 
 **This page is the handover for our three-hour focus block, not the jury pitch.** Architecture checked against `main` at [`067d7d8`](https://github.com/reactbias/Adobee-Hive/tree/067d7d8354745876e094d01fb2a64bc653ea9e23). Pending work below is not a shipped capability. The pre-presentation rewrite is tracked in [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
 
-Start with [your lane](#team-focus-block), [local setup](../readme.md#run-it-locally-in-5-minutes), then the [REST/MCP contracts](../readme.md#integration-contracts). Use fictional data throughout.
+Start with [your lane](#team-focus-block), [local setup](DEVELOPER.md#start-it), then the [REST/MCP contracts](DEVELOPER.md#integration-contracts). Use fictional data throughout.
 
 ## Team focus block
 
@@ -27,9 +27,9 @@ These are the current named assignments; they supersede older workstream/next-de
 | --- | --- | --- |
 | **Tobi (`reactbias`)** | UI and the end-to-end browser experience | `code/frontend/src/App.tsx`, `pages/TravellerAgent.tsx`, `panels/`, `components/`, `api.ts`, `i18n/`. Keep selected-hub status, discovery, Details, explicit approval and receipt usable. Coordinate API changes with Ole; pair with Andrey on the hotel-MCP alternative below. |
 | **Andrey (`dodonov-dev`)** | Support fuzzy search over the cards' JSON; **alternatively**, help Tobi handle a hotel that advertises its own booking MCP in a discovered folder | Search: `app/hive.py`, `app/semantic.py`, [Search API](SEARCH_API.md), `tools/eval_answer_key.py`, `tools/eval_search.py`. Work with the existing offline matcher and score breakdown. Hotel-MCP option: [provider handoff](#a-hotel-advertises-its-own-booking-mcp), with Tobi and Ole; agree a real provider contract before changing routing. |
-| **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](../readme.md#architecture) and [journeys](../readme.md#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
+| **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](DEVELOPER.md#architecture) and [journeys](DEVELOPER.md#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
 | **Felix + baker** | Tests, measured performance gains, stability and fixes for existing issues — **nonbreaking changes only** | `code/backend/tests/`, frontend `*.test.ts(x)`, `code/backend/tools/`. Pick a bounded issue with Ole, reproduce on current `main`, add a behavior regression, measure before/after for performance work. Keep public schemas, signatures, consent/approval gates and offline behavior intact; no broad refactor or dependency/DB cutover. See [stability work](#stability-work-without-breaking-the-demo). |
-| **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](../readme.md#mcp-for-an-external-agent), the [Folder API walkthrough](FOLDER_API.md) and [your issue queue](#cv-team). Distinguish card metadata from file bytes. Use fictional data, link credentials and explicit grants; coordinate backend dependencies with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
+| **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](DEVELOPER.md#mcp-for-an-external-agent), the [Folder API walkthrough](FOLDER_API.md) and [your issue queue](#cv-team). Distinguish card metadata from file bytes. Use fictional data, link credentials and explicit grants; coordinate backend dependencies with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
 | **Ole (`busssard`)** | Backend MCP/REST API. Not a gate: the contracts are documented, read them first | `code/backend/app/main.py`, `mcp_server.py`, `domains/`, `config.py`, `guard.py`, storage and folder integration. Own shared-contract decisions, backend availability, integration order and rehearsal. Unblock other lanes without changing their interfaces underneath them. |
 
 `app/...` above means `code/backend/app/...`. Coordinate edits to `main.py`, `mcp_server.py`, `api.ts`, `hive.py`, `config.py`, auth and deployment files; those are shared boundaries, not independent sandboxes.
@@ -53,8 +53,6 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Andrey
 
-- **JSON fuzzy-search focus:** [#151 filler-word false matches](https://github.com/reactbias/Adobee-Hive/issues/151), [#152 irrelevant/nonsense queries still look successful](https://github.com/reactbias/Adobee-Hive/issues/152), [#153 German/French relevance](https://github.com/reactbias/Adobee-Hive/issues/153). Coordinate response/UI implications with Tobi and Ole; preserve existing consumers.
-- **Acceptance review:** [#95 Basel hotel query/ranking](https://github.com/reactbias/Adobee-Hive/issues/95) already has merged normalization work; identify any remaining relevance criteria instead of repeating it.
 - **Alternative, paired with Tobi:** [#173 discover and safely hand off to an owner-supplied hotel MCP](https://github.com/reactbias/Adobee-Hive/issues/173). Agree the real provider contract and approval gate before implementation; see [provider handoff](#a-hotel-advertises-its-own-booking-mcp).
 
 #### Saad and Emily
@@ -64,7 +62,7 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Felix and baker
 
-- **Nonbreaking test/performance focus:** [#149 hardcoded editorial/source-text checks](https://github.com/reactbias/Adobee-Hive/issues/149), [#140 slow-peer timing race](https://github.com/reactbias/Adobee-Hive/issues/140), [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
+- **Nonbreaking test/performance focus:** [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
 - **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
 - **Contract/wording follow-up, not a silent semantics change:** [#122 booking-backed reviews versus completed stays](https://github.com/reactbias/Adobee-Hive/issues/122).
 
@@ -106,7 +104,7 @@ For Saad/Emily: the supplied [architecture diagram](diagrams/05-current-architec
 For Andrey and Tobi:
 
 - `offers`/`needs` are the market-side index; `kind` is an optional filter. Use `looking_for=offers|needs|any` deliberately. Do not make every service or CV search a hotel search.
-- Hard constraints determine eligibility. Free-text relevance determines ranking, **not inclusion**: `matches` can contain zero-score entries and reputation points do not prove a content match. Inspect `score_breakdown`, `why` and `excluded`; choose an appropriate relevance policy in the consumer.
+- Hard constraints determine eligibility. An entity the ask earned nothing from is left out, and `matched: 0` means nothing answered; `include_irrelevant=true` returns the full ranking. Reputation points do not prove a content match, so inspect `score_breakdown`, `why` and `excluded`.
 - REST recognizes explicit room requests and reuses the stay parser; explicit parameters win. MCP uses its explicit tool parameters, not that REST text-normalization step. Supply structured dates, guests, budget and features when their correctness matters.
 - `radius=0` is local; positive radius searches configured peers, up to three hops. REST additionally exposes `budget_ms` and `seen`. The presenter reach control already passes radius; broader browser search controls remain incomplete.
 - A local match is a summary: fetch its Card by ID. A federated match includes its signed `card`; do not fetch a remote ID from the answering hub's local card endpoint. Show origin-first `provenance.path` and retain `origin_url`/source identity. The remaining browser handover is [#172](https://github.com/reactbias/Adobee-Hive/issues/172): send that signed Card with a cross-hub introduction.

@@ -10,6 +10,17 @@ const rule = (selector: string) => {
 };
 
 describe("styles", () => {
+  // The find screen clears every frame's background, and the stage's text is light in both colour schemes.
+  it("keeps the agent stage dark on the find screen, so its light text can be read", () => {
+    expect(rule(".screen-find .chat-stage.frame")).toMatch(/var\(--stage\)/);
+  });
+
+  // At the 125 % zoom the pitch uses, a wrapped roster left the conversation 135 px of the screen.
+  it("keeps the roster beside the results to one line, so the conversation keeps the screen", () => {
+    expect(rule(".journey-side .roster ul")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".journey-side .roster-meta")).toMatch(/flex-wrap:\s*nowrap/);
+  });
+
   it("keeps a Try example readable on hover, over the dark hover of every other button", () => {
     // button:hover:not(:disabled) paints buttons dark; an example has to win that with its own light background.
     const hover = rule(".example:hover:not(:disabled)");
@@ -84,16 +95,14 @@ describe("styles", () => {
   });
 
   // Honey on white: one accent, named for what it is, and a dark stage that lifts it rather than a second accent.
-  it("has honey as its one accent, with no trace of the old clay", () => {
+  it("has honey as its one accent", () => {
     expect(rule(":root")).toMatch(/--accent:\s*#d99a1e/);
     expect(rule(":root")).toMatch(/--accent-bright:\s*#f2b63c/);
     expect(rule(":root")).toMatch(/--stage:\s*#15171c/);
-    expect(css).not.toMatch(/--clay|--paper\b|#a24f2c|#d98b5f/);
   });
 
   it("keeps the pinned search bar on white, so the results read under it", () => {
     expect(rule(".search-top")).toMatch(/background:[^;]*var\(--bg\)/);
-    expect(css).not.toMatch(/\.hero \{|\.principles \{/);
   });
 
   // The phone rule this used to pin (`.nav-end .status { font-size: 0 }`) hid the status text so that

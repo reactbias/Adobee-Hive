@@ -34,10 +34,20 @@ this page says what the code does and names the disagreement — see
    keyword density or form a view about it. Writing it for discovery is the field working as
    designed. What stops an entity over-claiming is the economic loop — bad matches, scored meetings,
    a hub's calibration error — not prose analysis.
-3. **`GET /api/hive/discover` returns the whole hub, ranked, not a filtered result set.** An entity
-   that failed no *hard* constraint is a `match`, even with `score: 0`. A query for a haircut on the
-   `bern` hub returns all 20 entities; one has `score: 8` and nineteen have `score: 0`. **You must
-   threshold on `score > 0` yourself**, which is what the repo's own eval tools do.
+3. **A door answers with what matched, and says how many that was.** `GET /api/hive/discover` and
+   `hive_discover` over MCP return only the entities the query earned something from, and carry
+   `matched` (how many) over `considered` (how many were ranked to get them). So `matched: 0` means
+   nothing matched — a nonsense query returns `matches: []`, not the whole directory.
+   **Do not threshold on `score > 0` yourself.** It does not work, and this page used to tell you to:
+   `reputation.business_points` pays an entity for verified reviews and attestations whatever the
+   question was, so four Basel hotels score 1-2 on *every* query, including `asdfghjkl qwertz` and the
+   empty one, with an empty `why`. The honest test is `hive.relevance` — the five components the ask
+   itself earned (`constraints`, `text_relevance`, `offers_needs`, `semantic`, `proximity`) — and the
+   doors apply it for you.
+   Two exceptions, both deliberate: an ask with **nothing** in it (no query, no constraints) is a
+   browse and still returns everyone, and `include_irrelevant=true` gives back the old unfiltered
+   ranking. `hive.discover()` in-process is also unchanged and still returns the whole ranked hub,
+   because the eval tools and `federation.py`'s own scorer read it.
 4. **A result can always tell you which hub it came from.** At `radius: 0` there is only one hub.
    Above 0, every match carries `provenance.path`, origin-first, ending in the hub you asked. See
    [Federation and provenance](#federation-and-provenance).
@@ -446,8 +456,9 @@ curl -s "http://127.0.0.1:8522/api/hive/discover?query=piano%20tuner"
 }
 ```
 
-**`matches` is every entity that failed no hard constraint**, sorted by `score` descending. On
-`bern` that is all 20. `excluded` is everything that failed one, each with `why_not`:
+**`matches` is every entity that failed no hard constraint and earned something from the ask**, sorted by
+`score` descending. An empty query, or one naming only a place, is a browse and returns them all: on `bern`
+that is all 20. `excluded` is everything that failed one, each with `why_not`:
 
 ```bash
 curl -s "http://127.0.0.1:8520/api/hive/discover?query=quiet+room&near=basel+sbb&features=breakfast&max_price_chf=200"
@@ -593,7 +604,7 @@ key.
 ### The MCP surface
 
 Mounted at `/mcp/`, Streamable HTTP, **stateless** — so plain `curl` works with no session
-handshake. 24 tools. Verified:
+handshake. 29 tools. Verified:
 
 ```bash
 curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
@@ -604,7 +615,8 @@ curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
 ```
 hive_discover  hive_what_was_promised  hive_rulesets  hive_get_card  hive_check_availability
 hive_book  hive_cancel  hive_review  hive_wait  hive_check_waiting
-hr_find_people  hr_request_intro  explore_ask  hive_scout
+hr_find_people  hr_request_intro  hr_decide_intro  hr_grant_cv  hr_read_cv  hr_create_job  hr_submit_cv
+explore_ask  hive_scout
 hub_connect  hub_score  hub_connections  hub_standing  hub_registration  hub_register  hub_directory
 hive_owner_card  hive_owner_propose  hive_owner_publish
 ```
@@ -920,7 +932,7 @@ So having the thing beats being near it, and a structured claim beats prose, at 
 ### How the semantic component works
 
 - `semantic.best(query, texts)` returns the closest of `texts` to the query, or **`None`** when
-  nothing clears `SIMILARITY_FLOOR = 0.25`. `None` rather than the least-bad line, so an honest
+  nothing clears `SIMILARITY_FLOOR = 0.20`. `None` rather than the least-bad line, so an honest
   "nobody offers this" stays possible.
 - The provider is `OfflineProvider`: words accent-folded and stemmed, expanded through a
   hand-built four-language concept table, German compounds split (*Gartenzimmer* is a garden **and**
@@ -1032,8 +1044,10 @@ nothing.
 
 ### Gotchas that will bite a search tool
 
-1. **`matches` is the whole hub.** Threshold on `score > 0` or you will show twenty results for a
-   query that had one answer. Both eval tools do exactly this.
+1. **`matches` is what matched, and `score > 0` is not how you'd have found that out.** The doors
+   filter on `hive.relevance` and report `matched`/`considered`; `hive.discover()` in-process still
+   returns the whole ranked hub, which is what the eval tools read (they threshold on `score > 0`,
+   which is why they also count the four reputation-only hotels as results — see point 4).
 2. **Query terms are `len >= hive.MIN_TERM_LENGTH` (4), and there is one tokeniser for both paths.**
    `hive.query_terms` is `semantic.content_words(query, 4)`: folded with `semantic.fold`, cut on
    `semantic.LETTERS` (`[^\W\d_]+`, every alphabet rather than a list of remembered letters), and
@@ -1052,8 +1066,10 @@ nothing.
    `room`, `book` and `check` were in the old 21-word `hive.STOPWORDS` and are content words again,
    because a card that offers a room differs from one that does not.
 4. **Reputation is paid without a relevance test.** `reputation.business_points` is added whatever
-   the query was, so a well-reviewed entity that fails no hard constraint can outrank a less-reviewed
-   one that actually offers the thing. Listed in [LIMITS.md](LIMITS.md#discovery).
+   the query was. The doors keep those rows out of an answer they did not earn (point 3), but among
+   entities that *did* earn something a well-reviewed one still gets its points on top and can
+   outrank a less-reviewed one that offers more of what was asked for. Listed in
+   [LIMITS.md](LIMITS.md#discovery).
 5. **`rating: null` is not `0`.** Render "no rating yet". Every seeded card is `null`, because a
    rating needs a signed booking receipt and seeding cannot manufacture one.
 6. **`claimed: false` is a lead, not a business.** The subject never agreed to anything. Never book
@@ -1246,7 +1262,8 @@ tables, claiming an unclaimed card).
 The three that matter most to a search team:
 
 - **Reputation is paid without a relevance test** ([LIMITS.md](LIMITS.md#discovery)). Review points
-  are added whatever the query was.
+  are added whatever the query was. The doors no longer let a reputation-only row pass for a result,
+  but the ranking among real matches still carries them.
 - **`verification` never rises above `signed`.** A `dns-txt`, `rel-me` or `email` proof is recorded
   unverified and raises nothing.
 - **There is no second deployed hub.** The hop machinery is real and tested, but

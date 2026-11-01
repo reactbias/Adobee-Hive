@@ -310,3 +310,20 @@ def test_the_requesters_own_words_about_themselves_are_not_evidence(corpus):
     bare = _ranked("maquettes cliquables")
     padded = _ranked("Bonjour, je cherche quelqu'un qui pourrait me faire des maquettes cliquables, merci !")
     assert bare and padded[: len(bare)] == bare
+
+
+@pytest.mark.parametrize("query", ["AI engineer for my startup", "an AI consultant", "ai"])
+def test_ai_is_a_word_in_english_and_not_filler(query):
+    """French `ai` is a verb form, but the shared list reads every language, and English `AI` is a topic."""
+    assert "ai" in semantic.content_words(query)
+
+
+@pytest.mark.parametrize("query", ["j'ai besoin d'un plombier", "J’ai besoin d'un plombier"])
+def test_the_french_verb_form_is_still_filler(query):
+    """Keeping `AI` must not let every French sentence that starts "j'ai" read as a machine-learning request."""
+    assert "ai" not in semantic.content_words(query)
+
+
+def test_an_ai_request_finds_the_ai_company_on_the_demo_hub(client):
+    """The query the review caught: with `ai` as filler, a hotel came first for it."""
+    assert hive.discover(query="AI engineer for my startup")["matches"][0]["id"] == "x-4xor"
