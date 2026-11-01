@@ -84,6 +84,7 @@ SUITE = [
     "tests/test_introduction_authority.py",
     "tests/test_federated_blocks.py",
     "tests/test_federated_facts.py",
+    "tests/test_booking_concurrency.py",
     "tests/test_mcp_refusals.py",
     "tests/test_sharing_enforced.py",
     "tests/test_hr_cv.py",
@@ -416,8 +417,15 @@ CURATED: list[Mutant] = [
     Mutant(
         "hive.py",
         "a withdrawn entity can still be booked, so the hub sells what it no longer carries",
-        '    carried(card["id"])\n    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
-        '    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+        '        carried(card["id"])\n'
+        '        free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+        '        free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}',
+    ),
+    Mutant(
+        "hive.py",
+        "checking a room and taking it come apart again, so two callers can both book the last one",
+        "    with db.exclusive():",
+        "    if True:",
     ),
     Mutant(
         "peers.py",

@@ -63,7 +63,7 @@ These are the current named assignments; they supersede older workstream/next-de
 #### Felix and baker
 
 - **Nonbreaking test/performance focus:** [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
-- **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
+- **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
 - **Contract/wording follow-up, not a silent semantics change:** [#122 booking-backed reviews versus completed stays](https://github.com/reactbias/Adobee-Hive/issues/122).
 
 #### CV team
