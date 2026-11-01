@@ -30,7 +30,7 @@ These are the current named assignments; they supersede older workstream/next-de
 | **Saad + Emily (`asukuna`)** | A coherent slide deck, with a complete understanding of the actual architecture | Follow the [architecture](../readme.md#architecture) and [journeys](../readme.md#the-two-journeys), then `documentation/PITCH.md`, `DEMO.md`, `VISION.md`, `assets/`. Show the implemented system separately from future vision; check each technical claim with its lane owner. |
 | **Felix + baker** | Tests, measured performance gains, stability and fixes for existing issues — **nonbreaking changes only** | `code/backend/tests/`, frontend `*.test.ts(x)`, `code/backend/tools/`. Pick a bounded issue with Ole, reproduce on current `main`, add a behavior regression, measure before/after for performance work. Keep public schemas, signatures, consent/approval gates and offline behavior intact; no broad refactor or dependency/DB cutover. See [stability work](#stability-work-without-breaking-the-demo). |
 | **Aneeq + Sarder + Shayan** | A separate system that finds CVs in folders; learn the hub MCP and integrate discovery/access | Start with [MCP](../readme.md#mcp-for-an-external-agent), the [Folder API walkthrough](FOLDER_API.md) and [your issue queue](#cv-team). Distinguish card metadata from file bytes. Use fictional data, link credentials and explicit grants; coordinate backend dependencies with Ole rather than inventing folder MCP tools. Bring back one candidate → permitted CV → extraction result with source attribution and a clear blocked/denied outcome. |
-| **Ole (`busssard`)** | Keep the team focused and supply a working backend MCP/REST API | `code/backend/app/main.py`, `mcp_server.py`, `domains/`, `config.py`, `guard.py`, storage and folder integration. Own shared-contract decisions, backend availability, integration order and rehearsal. Unblock other lanes without changing their interfaces underneath them. |
+| **Ole (`busssard`)** | Backend MCP/REST API. Not a gate: the contracts are documented, read them first | `code/backend/app/main.py`, `mcp_server.py`, `domains/`, `config.py`, `guard.py`, storage and folder integration. Own shared-contract decisions, backend availability, integration order and rehearsal. Unblock other lanes without changing their interfaces underneath them. |
 
 `app/...` above means `code/backend/app/...`. Coordinate edits to `main.py`, `mcp_server.py`, `api.ts`, `hive.py`, `config.py`, auth and deployment files; those are shared boundaries, not independent sandboxes.
 
@@ -45,52 +45,61 @@ These are the current named assignments; they supersede older workstream/next-de
 #### Tobi
 
 - **Focus:** [#139 Details/reach/connect bug list](https://github.com/reactbias/Adobee-Hive/issues/139) — items 1 and 2 are done (#157); item 3 is partly done and the rest is #182, #173 and #128. [#171 retain the link credential and browse permitted folder files](https://github.com/reactbias/Adobee-Hive/issues/171) — PR open.
-- **With Ole at the auth boundary:** [#106 keep saved credentials scoped to the issuing hub](https://github.com/reactbias/Adobee-Hive/issues/106).
+- **Auth boundary — the contract is [SECURITY.md](../SECURITY.md), which names every credential and what it does *not* prove:** [#106 keep saved credentials scoped to the issuing hub](https://github.com/reactbias/Adobee-Hive/issues/106).
 - **Search controls:** [#132 kind and offers/needs selection](https://github.com/reactbias/Adobee-Hive/issues/132), [#133 per-search rulesets](https://github.com/reactbias/Adobee-Hive/issues/133), [#134 standing requests/offers in the browser](https://github.com/reactbias/Adobee-Hive/issues/134).
 - **Introduction/calibration UI follow-up:** [#165 visible hub calibration](https://github.com/reactbias/Adobee-Hive/issues/165) — PR open.
-- **UI roadmap, backend contract with Ole first:** [#166 interaction/search history](https://github.com/reactbias/Adobee-Hive/issues/166) (browser half has a PR), [#167 folder requests and demand visibility](https://github.com/reactbias/Adobee-Hive/issues/167), [#168 owner-visible agent/folder-read history](https://github.com/reactbias/Adobee-Hive/issues/168), [#169 booking/introduction notifications](https://github.com/reactbias/Adobee-Hive/issues/169) (PR open), [#170 inbox/contact experience](https://github.com/reactbias/Adobee-Hive/issues/170). The half of #166 that is left is a person's own past introductions, which needs a `state=` or `include=` filter on `GET /api/hub/connections`.
-- **Owner/onboarding roadmap, shared with Ole:** [#174 rescan a folder and regenerate its Card](https://github.com/reactbias/Adobee-Hive/issues/174), [#175 folder-selection and onboarding clarity](https://github.com/reactbias/Adobee-Hive/issues/175), [#176 sign-in/accounts](https://github.com/reactbias/Adobee-Hive/issues/176), [#178 per-person API-key experience](https://github.com/reactbias/Adobee-Hive/issues/178), [#179 admin settings/read boundaries](https://github.com/reactbias/Adobee-Hive/issues/179), [#180 reporting/moderation decisions](https://github.com/reactbias/Adobee-Hive/issues/180), [#181 index-copying policy and visibility](https://github.com/reactbias/Adobee-Hive/issues/181).
+- **UI roadmap — the backend contract is [SEARCH_API.md](SEARCH_API.md):** [#166 interaction/search history](https://github.com/reactbias/Adobee-Hive/issues/166) (browser half has a PR), [#167 folder requests and demand visibility](https://github.com/reactbias/Adobee-Hive/issues/167), [#168 owner-visible agent/folder-read history](https://github.com/reactbias/Adobee-Hive/issues/168), [#169 booking/introduction notifications](https://github.com/reactbias/Adobee-Hive/issues/169) (PR open), [#170 inbox/contact experience](https://github.com/reactbias/Adobee-Hive/issues/170). The half of #166 that is left is a person's own past introductions, which needs a `state=` or `include=` filter on `GET /api/hub/connections`.
+- **Owner/onboarding roadmap — see [FOLDERS.md](FOLDERS.md) and the `hive_owner_*` tools in [SEARCH_API.md](SEARCH_API.md):** [#174 rescan a folder and regenerate its Card](https://github.com/reactbias/Adobee-Hive/issues/174), [#175 folder-selection and onboarding clarity](https://github.com/reactbias/Adobee-Hive/issues/175), [#176 sign-in/accounts](https://github.com/reactbias/Adobee-Hive/issues/176), [#178 per-person API-key experience](https://github.com/reactbias/Adobee-Hive/issues/178), [#179 admin settings/read boundaries](https://github.com/reactbias/Adobee-Hive/issues/179), [#180 reporting/moderation decisions](https://github.com/reactbias/Adobee-Hive/issues/180), [#181 index-copying policy and visibility](https://github.com/reactbias/Adobee-Hive/issues/181).
 
 #### Andrey
 
 - **JSON fuzzy-search focus:** [#151 filler-word false matches](https://github.com/reactbias/Adobee-Hive/issues/151), [#152 irrelevant/nonsense queries still look successful](https://github.com/reactbias/Adobee-Hive/issues/152), [#153 German/French relevance](https://github.com/reactbias/Adobee-Hive/issues/153). Coordinate response/UI implications with Tobi and Ole; preserve existing consumers.
 - **Acceptance review:** [#95 Basel hotel query/ranking](https://github.com/reactbias/Adobee-Hive/issues/95) already has merged normalization work; identify any remaining relevance criteria instead of repeating it.
-- **Alternative, paired with Tobi and Ole:** [#173 discover and safely hand off to an owner-supplied hotel MCP](https://github.com/reactbias/Adobee-Hive/issues/173). Agree the real provider contract and approval gate before implementation; see [provider handoff](#a-hotel-advertises-its-own-booking-mcp).
+- **Alternative, paired with Tobi:** [#173 discover and safely hand off to an owner-supplied hotel MCP](https://github.com/reactbias/Adobee-Hive/issues/173). Agree the real provider contract and approval gate before implementation; see [provider handoff](#a-hotel-advertises-its-own-booking-mcp).
 
 #### Saad and Emily
 
 - **Deck/video:** [#73 presentation structure and video](https://github.com/reactbias/Adobee-Hive/issues/73).
-- **Presentation cutover, shared with Ole:** [#147 jury-facing README, final architecture visual and verified try-it path](https://github.com/reactbias/Adobee-Hive/issues/147). Saad/Emily align the story and slides; Ole coordinates the final runnable backend and publication.
+- **Presentation cutover:** [#147 jury-facing README, final architecture visual and verified try-it path](https://github.com/reactbias/Adobee-Hive/issues/147). Saad/Emily align the story and slides; Ole coordinates the final runnable backend and publication.
 
 #### Felix and baker
 
 - **Nonbreaking test/performance focus:** [#149 hardcoded editorial/source-text checks](https://github.com/reactbias/Adobee-Hive/issues/149), [#140 slow-peer timing race](https://github.com/reactbias/Adobee-Hive/issues/140), [#154 oversized MCP discovery payloads](https://github.com/reactbias/Adobee-Hive/issues/154).
-- **Correctness fixes with Ole:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
+- **Correctness fixes — read [SECURITY.md](../SECURITY.md) before touching booking or auth:** [#103 inventory concurrency](https://github.com/reactbias/Adobee-Hive/issues/103), [#104 approved price/cancellation terms](https://github.com/reactbias/Adobee-Hive/issues/104), [#112 federation query deadline](https://github.com/reactbias/Adobee-Hive/issues/112).
 - **Contract/wording follow-up, not a silent semantics change:** [#122 booking-backed reviews versus completed stays](https://github.com/reactbias/Adobee-Hive/issues/122).
 
 #### CV team
 
-**Aneeq, Sarder and Shayan own the CV client/extraction work; Ole owns the backend dependencies.** These links are not an instruction to build a second hub or to finish the whole HR roadmap.
+**Aneeq, Sarder and Shayan own the CV client/extraction work.** The backend it talks to is documented: [SEARCH_API.md](SEARCH_API.md) for the Card and the search endpoints, [FOLDER_API.md](FOLDER_API.md) for reading a linked folder. These links are not an instruction to build a second hub or to finish the whole HR roadmap.
 
 - **CV slice:** [#127 CV import and person-owned HR flow](https://github.com/reactbias/Adobee-Hive/issues/127). Keep the broader profile/consent workflow coordinated with Ole.
-- **Backend dependency to agree with Ole:** [#150 retrieve a person Card found on another hub](https://github.com/reactbias/Adobee-Hive/issues/150); preserve the discovered origin and inline signed Card.
+- **Backend dependency, contract in [SEARCH_API.md](SEARCH_API.md):** [#150 retrieve a person Card found on another hub](https://github.com/reactbias/Adobee-Hive/issues/150); preserve the discovered origin and inline signed Card.
 - **Later exchange/deployment dependencies:** [#128 private-context exchange beyond link metadata](https://github.com/reactbias/Adobee-Hive/issues/128), [#182 a folder service on the person's own machine](https://github.com/reactbias/Adobee-Hive/issues/182). The current [Folder API](FOLDER_API.md) serves permitted files on the hub's disk; it does not solve cross-machine sync.
 
-#### Ole
+#### Ole (`busssard`)
 
-- **Keep the team unblocked:** [#72 working LAN instance](https://github.com/reactbias/Adobee-Hive/issues/72), [#116 folder API and remaining driving/UI scope](https://github.com/reactbias/Adobee-Hive/issues/116). The REST read surface is merged; review remaining scope with Tobi/CV team instead of rebuilding it.
-- **Consent/authentication and bounded public operations:** [#107 introduction decisions/ratings](https://github.com/reactbias/Adobee-Hive/issues/107), [#108 registration withdrawal authority](https://github.com/reactbias/Adobee-Hive/issues/108), [#109 resource budgets across transports](https://github.com/reactbias/Adobee-Hive/issues/109), [#158 authenticated requester identity](https://github.com/reactbias/Adobee-Hive/issues/158).
-- **Federation/privacy contracts:** [#110 administrative blocks on federated results](https://github.com/reactbias/Adobee-Hive/issues/110), [#111 summaries bound to signed facts](https://github.com/reactbias/Adobee-Hive/issues/111), [#121 sharing enforcement](https://github.com/reactbias/Adobee-Hive/issues/121), [#155 honest MCP errors and next steps](https://github.com/reactbias/Adobee-Hive/issues/155), [#156 home-hub directory address/metadata](https://github.com/reactbias/Adobee-Hive/issues/156), [#159 introductions via the requester's home hub](https://github.com/reactbias/Adobee-Hive/issues/159).
-- **Trust/search roadmap — triage, not this block's promise:** [#123 owner-held publishing keys](https://github.com/reactbias/Adobee-Hive/issues/123), [#124 signed attestations](https://github.com/reactbias/Adobee-Hive/issues/124), [#125 business-side negotiation](https://github.com/reactbias/Adobee-Hive/issues/125), [#126 calibration in ranking](https://github.com/reactbias/Adobee-Hive/issues/126), [#129 optional embeddings](https://github.com/reactbias/Adobee-Hive/issues/129), [#130 claiming an unclaimed Card](https://github.com/reactbias/Adobee-Hive/issues/130), [#131 domain/identity proofs](https://github.com/reactbias/Adobee-Hive/issues/131).
-- **Production/commercial roadmap:** [#135 individual owner/operator authorization](https://github.com/reactbias/Adobee-Hive/issues/135), [#136 durable approvals/security state](https://github.com/reactbias/Adobee-Hive/issues/136), [#137 fulfillment/payments/non-room transactions](https://github.com/reactbias/Adobee-Hive/issues/137).
+Most of this block shipped. **Done:** #72, #105, #109, #164, the folder read surface, cross-hub
+connect, the owner's MCP tools, the public readme.
+
+**In flight, one PR each:** #107, #108, #110, #111, #121, #155, #156, #158, #159.
+
+**Not promised:** #123, #124, #125, #126, #129, #130, #131, #135, #136, #137. #170 and #180 are
+decisions before they are work — an inbox or a TOS scanner commits the hub to hosting messages or
+judging content, and `folders.py` and `waiting.py` promise the opposite in words a jury could read.
+
+**Nothing here gates anyone else.** The contracts are written down: [SEARCH_API.md](SEARCH_API.md),
+[FOLDER_API.md](FOLDER_API.md), [FOLDERS.md](FOLDERS.md), [SECURITY.md](../SECURITY.md),
+[ARCHITECTURE.md](ARCHITECTURE.md), and [LIMITS.md](LIMITS.md) for what is honestly missing. Read
+those first; open an issue if one is wrong. Several were wrong this week and were fixed by people
+who checked rather than asked.
 
 ## Notes for the deck lane
 
-For Saad/Emily: the supplied [LAN architecture SVG](http://192.168.21.123:8490/05-current-architecture.svg) is a working sketch, only reachable on the team network. Its “browser never passes radius” warning is stale, its calibration/ranking relationship is not implemented, and its folder/API status must be rechecked after merges. Use the version-controlled map above for this handover; refresh the presentation visual under [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
+For Saad/Emily: the supplied [architecture diagram](diagrams/05-current-architecture.svg) is a working sketch, only reachable on the team network. Its “browser never passes radius” warning is stale, its calibration/ranking relationship is not implemented, and its folder/API status must be rechecked after merges. Use the version-controlled map above for this handover; refresh the presentation visual under [#147](https://github.com/reactbias/Adobee-Hive/issues/147).
 
 ## Operating the shared LAN stack
 
-**Only Ole/the current host operator should start or stop the shared LAN stack.** `lan.sh up` can reclaim its configured app port; choose a free one, not another team's live port. Do not reset or reseed the presentation instance as a test. The older warning in `SEARCH_API.md` about `down` sweeping every worktree is historical: current cleanup checks process working directories, but the shared instance is still not your sandbox.
+**Whoever is hosting the shared stack starts and stops it.** `lan.sh` now refuses to touch servers belonging to another checkout and refuses to start on ports already held, so a branch worktree can no longer take the shared demo down by accident ([DEVELOPER.md](DEVELOPER.md)). `lan.sh up` can reclaim its configured app port; choose a free one, not another team's live port. Do not reset or reseed the presentation instance as a test. The older warning in `SEARCH_API.md` about `down` sweeping every worktree is historical: current cleanup checks process working directories, but the shared instance is still not your sandbox.
 
 ## Search and UI notes for the API consumers
 
@@ -105,7 +114,7 @@ For Andrey and Tobi:
 
 ## CV and folder integration
 
-Aneeq, Sarder and Shayan can work independently on extraction, but the hub access contract must be agreed with Ole.
+Aneeq, Sarder and Shayan can work independently on extraction. The hub access contract is [FOLDER_API.md](FOLDER_API.md) — a link opens the manifest, a per-path grant opens the bytes; read it rather than asking.
 
 | Layer | Available on this main snapshot | Not implied |
 | --- | --- | --- |
@@ -138,7 +147,7 @@ For another laptop, the fixture host must explicitly bind an agreed LAN interfac
 
 ### A hotel advertises its own booking MCP
 
-**Andrey's alternative with Tobi, coordinated with Ole.** Main can carry an arbitrary contact channel such as `contact.mcp` (the folder seeder reads `contact.md`), but no current fixture advertises a hotel MCP. Neither the folder manifest nor the booking agent implements automatic folder-to-provider discovery. There is no agreed descriptor-file schema to assume.
+**Andrey's alternative, with Tobi.** Main can carry an arbitrary contact channel such as `contact.mcp` (the folder seeder reads `contact.md`), but no current fixture advertises a hotel MCP. Neither the folder manifest nor the booking agent implements automatic folder-to-provider discovery. There is no agreed descriptor-file schema to assume.
 
 The handover to agree is: find the advertisement → establish the hotel's/provider's identity and permitted endpoint → inspect its real transport/auth/tool schemas → map the discovered hotel/room to provider IDs → display an offer → obtain explicit approval → book through that same provider. Finding a URL is data, **not authorization to connect or book**.
 
@@ -146,9 +155,9 @@ The existing planner expects Hive-shaped discovery/cards/availability. **Only th
 
 ## Stability work without breaking the demo
 
-Felix and baker: choose a small issue with Ole and check the current revision before fixing it. An open issue can describe code that has since changed; search normalization, source-bound approval and backend-status fixes are already merged even where old issues remain open.
+Felix and baker: choose a small issue from your queue and check the current revision before fixing it. An open issue can describe code that has since changed; search normalization, source-bound approval and backend-status fixes are already merged even where old issues remain open.
 
-Use the [Felix and baker issue queue](#felix-and-baker) above as the single task list. Coordinate fixes touching booking or auth with Ole rather than silently changing the contract; do not pick an already completed issue from an old prose list.
+Use the [Felix and baker issue queue](#felix-and-baker) above as the single task list. Fixes touching booking or auth: read [SECURITY.md](../SECURITY.md) first, then open a PR rather than silently changing the contract; do not pick an already completed issue from an old prose list.
 
 **Nonbreaking means:** preserve request/response shapes, signed canonical data, explicit approvals, origin verification, withheld-data rules and the no-key path. Keep performance work measurable on the same fictional workload; do not trade away relevance or safety checks for speed. No test skipping, raised timeouts to hide races, swallowed errors or synthetic success fallbacks. For a bug, keep a behavior regression and exercise the actual API/MCP/UI path after the fix.
 

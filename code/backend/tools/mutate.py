@@ -72,6 +72,10 @@ SUITE = [
     "tests/test_budgets.py",
     "tests/test_local_calibration.py",
     "tests/test_home_hub_row.py",
+    "tests/test_forward_introduction.py",
+    "tests/test_requester_identity.py",
+    "tests/test_withdrawal_authority.py",
+    "tests/test_introduction_authority.py",
     "tests/test_mcp_refusals.py",
 ]
 
@@ -418,9 +422,9 @@ CURATED: list[Mutant] = [
     ),
     Mutant(
         "folder_keys.py",
-        "a revoked secret keeps working, so losing a laptop cannot be undone",
-        '"SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ? AND revoked_at IS NULL",',
-        '"SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ?",',
+        "a revoked secret keeps working at both doors, so losing a laptop cannot be undone",
+        'WHERE secret_sha256 = ? AND revoked_at IS NULL"',
+        'WHERE secret_sha256 = ?"',
     ),
     Mutant(
         "folder_keys.py",
@@ -429,9 +433,75 @@ CURATED: list[Mutant] = [
         '[key_id, _now(), link["id"], me, peer, secret],',
     ),
     Mutant(
+        "hub.py",
+        "a connection id authorises its own answer again, so a stranger fakes a consent",
+        "        raise HubError(_no_authority(row, action))",
+        "        proof = BY_LINK",
+    ),
+    Mutant(
+        "hub.py",
+        "any live link secret answers any introduction, not only one on this row's own link",
+        '    if key is None or key["link"] != row["folder_link"]:',
+        "    if key is None:",
+    ),
+    Mutant(
+        "hub.py",
+        "either party's secret answers for the other, so a requester consents on the owner's behalf",
+        '        return key["handle"] == folders.handle_for(who)',
+        '        return key["peer"] == folders.handle_for(who)',
+    ),
+    Mutant(
+        "hub.py",
+        "a requester's secret confirms as well as declines, so the owner's yes is not theirs to give",
+        '    elif _party_by_link(row, secret, row["requester"]) and action == "decline":',
+        '    elif _party_by_link(row, secret, row["requester"]):',
+    ),
+    Mutant(
+        "hub.py",
+        "an unset owner token authorises everybody, the way an owner edit over REST would",
+        "    elif owner_token and guard.secret_matches(owner_token, config.OWNER_EDIT_TOKEN):",
+        "    elif guard.secret_ok(owner_token, config.OWNER_EDIT_TOKEN):",
+    ),
+    Mutant(
+        "hub.py",
+        "a decision signature is accepted without being checked against the target's registered key",
+        '    if not hive.verify(decision_statement(row["id"], action, nonce, expires), signature, pinned):',
+        "    if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "an expired decision signature still answers, so a captured one answers for ever",
+        '    if _expired(expires):\n        raise HubError(f"this decision document has expired',
+        '    if False:\n        raise HubError(f"this decision document has expired',
+    ),
+    Mutant(
+        "hub.py",
+        "a score can be given by anybody again, so one person's one final score is anyone's to spend",
+        "            f\"scoring {row['id']} needs the requester's own credential: the\"",
+        "            f\"unreachable {row['id']}\"",
+    ),
+    Mutant(
+        "hub.py",
+        "a hub-wide owner token scores, so the requester's one report is not theirs",
+        '    if _party_by_link(row, secret, row["requester"]):\n        proof = BY_LINK\n    elif by_operator:',
+        "    if True:\n        proof = BY_LINK\n    elif by_operator:",
+    ),
+    Mutant(
+        "connections.py",
+        "a transition stops being conditional, so two racing callers both win",
+        'cur.execute(f"UPDATE hub_connections SET {sets} WHERE id = ? AND state = ?", [*args, connection_id, was])',
+        'cur.execute(f"UPDATE hub_connections SET {sets} WHERE id = ?", [*args, connection_id])',
+    ),
+    Mutant(
         "folder_keys.py",
-        "a secret is minted for a link nobody accepted, which makes the other side's yes decorative",
-        'if link["state"] != folders.ESTABLISHED:\n        raise KeyError_(',
+        "a party lookup stops noticing a revoked link, so withdrawing a link leaves its authority",
+        '    return None if link["state"] == folders.REVOKED else key',
+        "    return key",
+    ),
+    Mutant(
+        "folder_keys.py",
+        "the default stops refusing a link nobody accepted, so `pending_ok` means nothing and reads open early",
+        'if link["state"] != folders.ESTABLISHED and not pending_ok:\n        raise KeyError_(',
         "if False:\n        raise KeyError_(",
     ),
     Mutant(
@@ -505,6 +575,54 @@ CURATED: list[Mutant] = [
         "an application that brings a key need not sign, so the key is just a claim",
         'return False, "an application that brings a public key must be signed with the private half"',
         'return True, "unsigned"',
+    ),
+    Mutant(
+        "registration.py",
+        "an application can be withdrawn with no proof at all, by anybody who knows its id",
+        "        raise RegistrationError(_no_proof(row))",
+        "        proof = BY_CAPABILITY",
+    ),
+    Mutant(
+        "registration.py",
+        "a wrong withdrawal capability is accepted, so the hash check is decorative",
+        "        if not guard.secret_matches(fingerprint(key), stored):",
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "a withdrawal signature is accepted without being checked against the registered key",
+        '        if not hive.verify(withdrawal_statement(row["id"], nonce, expires), signature, registered):',
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "an expired withdrawal signature still works, so a captured one works for ever",
+        "        if _expired(expires):",
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "an unreadable expiry is read as a live window instead of a closed one",
+        "        return True\n    if when.tzinfo is not None:",
+        "        return False\n    if when.tzinfo is not None:",
+    ),
+    Mutant(
+        "registration.py",
+        "the withdrawal transition stops being conditional, so admission and withdrawal both win",
+        '" WHERE id = ? AND state = ?",\n            [WITHDRAWN, _now(), proof, reason, app_id, PENDING],',
+        '" WHERE id = ?",\n            [WITHDRAWN, _now(), proof, reason, app_id],',
+    ),
+    Mutant(
+        "registration.py",
+        "an operator withdrawal is credited to the applicant, so the row claims a consent nobody gave",
+        '        if proof == BY_OPERATOR\n        else f"withdrawn by the applicant',
+        '        if False\n        else f"withdrawn by the applicant',
+    ),
+    Mutant(
+        "registration.py",
+        "the capability is minted for an application that brought its own key, weakening both",
+        '    secret = secrets.token_urlsafe(WITHDRAW_SECRET_BYTES) if state == PENDING and not public_key else ""',
+        "    secret = secrets.token_urlsafe(WITHDRAW_SECRET_BYTES)",
     ),
     Mutant(
         "registration.py",
@@ -629,7 +747,7 @@ CURATED: list[Mutant] = [
     Mutant(
         "hub.py",
         "a local introduction stops saying what its state means and what to do next",
-        '"says": _says(row, entity_id, flag)',
+        '"says": _says(row, entity_id)',
         '"says": ""',
     ),
     Mutant(
@@ -685,6 +803,60 @@ CURATED: list[Mutant] = [
         "a local introduction is attributed to nobody, so calibration never counts it",
         "    if not remote and not target_hub:",
         "    if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "a forward tells the peer the requester is one of *its* members, which is the bug it exists to fix",
+        '        "requester_hub": config.HIVE_HUB_ID,',
+        '        "requester_hub": "",',
+    ),
+    Mutant(
+        "hub.py",
+        "a peer URL is taken from the request instead of this hub's own peer list",
+        '    return next((row["url"] for row in federation.peer_rows() if row["hub"] == hub_id and row["url"]), "")',
+        "    return hub_id",
+    ),
+    Mutant(
+        "hub.py",
+        "a forward that failed is reported as sent, so a hub believes a peer was told",
+        '        return {"sent": False, "to": target_hub, "url": url, "why": f"{type(err).__name__}: {err}"}',
+        '        return {"sent": True, "to": target_hub, "url": url, "why": f"{type(err).__name__}: {err}"}',
+    ),
+    Mutant(
+        "hub.py",
+        "a forward is forwarded again, so two hubs can bounce one introduction between them",
+        "    if remote and forward and FORWARD_INTRODUCTIONS:",
+        "    if remote and FORWARD_INTRODUCTIONS:",
+    ),
+    Mutant(
+        "federation.py",
+        "the carrier hint claims every peer carries every entity, so a refusal points anywhere",
+        '        if entity_id in ((record or {}).get("owner_keys") or {}):',
+        "        if True:",
+    ),
+    Mutant(
+        "hub.py",
+        "a visitor who said nothing is labelled a member of the hub they are visiting",
+        '    return "", connections.BY_NOBODY',
+        "    return config.HIVE_HUB_ID, connections.BY_MEMBER",
+    ),
+    Mutant(
+        "hub.py",
+        "a caller buys membership of this hub by claiming it, so the ledger cannot be read at all",
+        "        return claimed, connections.BY_CLAIM",
+        "        return claimed, connections.BY_MEMBER",
+    ),
+    Mutant(
+        "hub.py",
+        "a claim overrides what the hub can see for itself, so a member can disown their own hub",
+        "    if name and hive.get_record(name) is not None:",
+        "    if False:",
+    ),
+    Mutant(
+        "connections.py",
+        "an invented proof value is written to the ledger as itself",
+        "                requester_proof if requester_proof in REQUESTER_PROOFS else BY_NOBODY,",
+        "                requester_proof,",
     ),
 ]
 

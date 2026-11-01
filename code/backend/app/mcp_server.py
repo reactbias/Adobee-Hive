@@ -11,7 +11,21 @@ from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import admin, config, connections, domains, guard, hive, hub, limits, owner, registration, rulesets, waiting
+from . import (
+    admin,
+    config,
+    connections,
+    domains,
+    folder_keys,
+    guard,
+    hive,
+    hub,
+    limits,
+    owner,
+    registration,
+    rulesets,
+    waiting,
+)
 
 server = MCPServer(
     name="Adobee Hive",
@@ -203,6 +217,7 @@ def hub_connect(
     ctx: Context,
     requester: str = "",
     entity_id: str = "",
+    requester_hub: str = "",
     target_hub: str = "",
     via_hub: str = "",
     card: dict[str, Any] | None = None,
@@ -231,8 +246,21 @@ def hub_connect(
     for it and refuses it otherwise; an introduction to a remote entity is recorded here and its owner's yes,
     if it needs one, happens on their own hub.
 
+    `requester_hub` is the hub your person is a member of, if it is not this one. Pass it and the row records it
+    as a **claim**: this hub cannot check it, and the answer's `requester_proof` says `claimed` so nobody reads
+    it as more than that. Leave it out and the row says `none`. It is never filled in with this hub's own id,
+    because a visitor who said nothing is not a member — which is what the ledger used to record.
+
     Verifying a card from a peer means fetching that peer's key registry, so this spends the same budget
-    `POST /api/hub/connect` spends; a refusal names it and says when to try again."""
+    `POST /api/hub/connect` spends; a refusal names it and says when to try again.
+
+    Ask **your own** hub for an introduction to something a peer carries, rather than going to the peer and
+    asserting a name there. This hub then tells the peer on your behalf, so the peer knows a member of another
+    hub asked and the row this hub will learn from stays here, where the search found the match — a score weeks
+    later is the only evidence a hub ever gets about a peer, and one recorded somewhere else is evidence this
+    hub did the work for and lost. The answer's `forwarded` says what the peer made of it; a peer that cannot
+    be reached changes nothing about the introduction recorded here. Nothing stops you walking to the peer
+    instead: `hub_directory` gives you every peer's URL. It just costs this hub the record."""
     if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
         raise ToolError(over)  # refused before this hub fetches any peer's key registry
     # Checked here rather than left to the schema: a missing argument otherwise comes back as a page of
@@ -248,17 +276,31 @@ def hub_connect(
             "hub_connect needs `entity_id`: the `id` of a match from hive_discover, not its name. Search first,"
             " then pass the id of the entry your person chose."
         )
-    return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub, card=card)
+    return _safe(
+        hub.connect,
+        requester,
+        entity_id,
+        requester_hub=requester_hub,
+        target_hub=target_hub,
+        via_hub=via_hub,
+        card=card,
+    )
 
 
 @server.tool()
-def hub_score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
+def hub_score(ctx: Context, connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
     """Record how an introduction actually went, after the real meeting, from the person who asked for it.
 
     `rating` is tenths of a star out of five: 43 means 4.3 stars. Scoring is once and final, and only while the
     connection is still open — an introduction nobody scored within a month closes unscored. This is the only
-    input to how much this Hive trusts the Hive the entry came from, so ask the person, never guess."""
-    return _safe(hub.score, connection_id, rating, note)
+    input to how much this Hive trusts the Hive the entry came from, so ask the person, never guess.
+
+    The score belongs to whoever asked for the introduction, so this needs **their** credential: the link secret
+    `hub_connect` returned in `folder_key.secret`, put in this connection's `Authorization: Bearer <secret>`
+    header. It is a header and not an argument for the reason the owner token is — an argument is written into
+    this conversation and into your client's logs. A connection id is not a credential: it is in the answer that
+    made it and in `hub_connections`, and knowing one used to be enough to spend somebody else's one score."""
+    return _safe(hub.score, connection_id, rating, note, secret=_link_secret(ctx))
 
 
 @server.tool()
@@ -332,6 +374,18 @@ def hub_register(
 # readable without leaving the protocol. On a transport that carries no headers at all — stdio, or
 # this repo's own in-process agent — the token arrives empty and the edit tools refuse, which is the
 # right way round.
+
+
+def _link_secret(ctx: Context | None) -> str:
+    """The folder link secret this call carried, or "". Compared and dropped, never logged or echoed.
+
+    A link secret is a party's own credential for one introduction (`folder_keys.py`), which is what
+    makes it the right proof for a score: it names *which side* of the row the caller is, where the
+    hub's owner token would only say somebody on this hub may act.
+    """
+    headers: Mapping[str, str] = (ctx.headers if ctx else None) or {}
+    value = next((v for k, v in headers.items() if k.lower() == folder_keys.HEADER.lower()), "")
+    return folder_keys.bearer(value)
 
 
 def _owner_token(ctx: Context) -> str:
