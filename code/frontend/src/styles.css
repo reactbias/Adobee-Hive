@@ -4306,6 +4306,10 @@ button.onboard-back {
 }
 @media (pointer: coarse) {
   .past-asks .chip {
+    min-height: 44px;
+  }
+}
+
 /* ---------- A peer's folder, browsed without an agent ---------- */
 
 .folder-browse {

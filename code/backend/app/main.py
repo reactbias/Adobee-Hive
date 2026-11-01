@@ -321,6 +321,14 @@ async def hive_discover(
     """
     if radius:
         guard.federated.check(request)  # a far search costs this hub outbound calls to its peers
+    if carrier := blocklist.filter_path([str(h) for h in (seen or [])]):
+        # A block holds in both directions, and this is the outward one: nothing of ours goes to a
+        # blocked hub, including an answer. `seen` is the asking hub's own declaration of where the
+        # query has been, which is all an unauthenticated peer protocol has to offer — a blocked hub
+        # that lies about its trail was never stoppable at this layer, and that is a limit of the
+        # protocol rather than something this check pretends to cover. It does stop the honest case,
+        # which is the one that actually happens: a query relayed to us by a hub we have shut out.
+        raise HTTPException(403, f"This hub has blocked {carrier} and does not answer a query carried by it.")
     constraints = _discovery_stay(
         query,
         request.query_params,
@@ -355,6 +363,21 @@ def hive_card(card_id: str) -> dict[str, Any]:
 def hive_availability(card_id: str, check_in: str, check_out: str, guests: int = 1) -> dict[str, Any]:
     """Return free units for the dates."""
     return _hive_call(hive.check_availability, card_id, check_in, check_out, guests)
+
+
+class SignedCard(BaseModel):
+    """A card version its owner signed on their own node."""
+
+    card: dict[str, Any]
+    signature: str = Field(min_length=1, max_length=256)
+    public_key: str = Field(min_length=1, max_length=128)
+
+
+@app.post("/api/hive/cards/signed")
+def hive_accept_signed(body: SignedCard, request: Request) -> dict[str, Any]:
+    """Store a card its owner signed elsewhere, as signed. The hub holds no key for it and cannot book it."""
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
+    return _hive_call(hive.accept_signed, body.card, body.signature, body.public_key)
 
 
 @app.post("/api/hive/cards/{card_id}/book")

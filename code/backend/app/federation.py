@@ -30,6 +30,19 @@ federated result is ranked `local_relevance × hub_path_trust × hop_decay`, wit
 What a peer says about businesses it excluded is carried along as the peer's own words, tagged with its
 provenance, and stays data: it is never read as an instruction (the agent's guard in `injection.py` scans it like
 any other tool result).
+
+Verifying the card is not the same as verifying the sentence around it, which is what `_bound` is for. Once a
+relayed card has passed `verify_pinned`, every fact the result asserts about the *entity* — its name, what it
+says it does, how to reach it — is rebuilt from that card, and the carrier's copy is discarded rather than merged
+back over it. What is left is what only the peer can know: how relevant it found the entity, what it has free,
+what its own guests scored. That is kept, and `verified` in each result names which fields are which, so a
+consumer reading `signature_valid: true` is reading it about facts that really were signed.
+
+An **administrative block** (`blocklist.py`) is honoured here, on the path the API actually serves, and not only
+in the `hub.py` façade that nothing on the read path goes through. A blocked peer is dropped before any outbound
+call — the profile fetch included, because that call and the query after it are how a shut-out hub used to learn
+what this hub's users were asking. A blocked entity, and any result whose carrier chain passes through a blocked
+hub, is removed from the matches *and* from the exclusions on the way in. One policy, both directions.
 """
 
 import asyncio
@@ -41,7 +54,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from . import config, hive, reputation
+from . import blocklist, config, hive, reputation
 
 log = logging.getLogger(__name__)
 
@@ -218,6 +231,16 @@ async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] |
     return (await _ask(base_url, transport))["profile"]
 
 
+def known_hub_id(base_url: str) -> str:
+    """The canonical hub id this peer URL last gave for itself, or "" when we have never been told.
+
+    A URL is not an identity. Two URLs can be one hub and a hub can move, so a hostname guessed from
+    a peer URL is not something a policy may be built on; only the `hub_id` the peer published in its
+    own discovery document is. `""` therefore means *we do not know yet*, never *it is nobody*.
+    """
+    return str(((_peers.get(base_url) or {}).get("profile") or {}).get("hub_id") or "")
+
+
 def pinned_keys_of(hub_id: str) -> dict[str, str]:
     """The owner keys one peer published, from what the background asking already learned.
 
@@ -246,14 +269,22 @@ def carriers_of(entity_id: str) -> list[dict[str, str]]:
     nothing more — a hub that pins a key for an id is a hub claiming that entity, and the claim is
     only worth acting on because the card still has to survive `_verified` or `hub._verified_remote`
     at the other end. So this never admits anything; it only says where to look.
+
+    An administrative block is applied to the hint as well. A hub nothing of ours goes to is not a
+    place to send somebody: naming it hands the asker the address and the query, which is the leak
+    blocking it was meant to close, one indirection further out. A blocked *entity* gets no hint
+    either, for the same reason an exclusion naming one would be no better than a match.
     """
     entity_id = (entity_id or "").strip()
     if not entity_id:
         return []
+    refused = blocklist.screener()
+    if refused(entity_id):
+        return []
     by_url = {str((record.get("profile") or {}).get("hub_id") or ""): url for url, record in _peers.items()}
     out = []
     for hub_id, record in _by_hub.items():
-        if entity_id in ((record or {}).get("owner_keys") or {}):
+        if entity_id in ((record or {}).get("owner_keys") or {}) and not refused(entity_id, [hub_id]):
             out.append({"hub": hub_id, "url": by_url.get(hub_id, "")})
     return sorted(out, key=lambda row: row["hub"])
 
@@ -299,7 +330,13 @@ async def ask_peers(transport: Transport | None = None) -> list[dict[str, Any]]:
     """
     from . import peers as peer_store
 
-    urls = peer_store.urls()
+    # A blocked peer is not asked, here as well as on the search path. "Nothing of ours goes to it"
+    # includes the timer: polling a hub this operator has shut out every PEER_ASK_SECONDS is an
+    # outbound call to it, and a steady one. A peer whose canonical id we have never learned is still
+    # asked, because there is nothing yet to check against the list — the identity has to come from
+    # somewhere, and it only ever comes from the peer's own discovery document.
+    blocked = blocklist.blocked_hubs()
+    urls = [url for url in peer_store.urls() if known_hub_id(url) not in blocked]
     if urls:
         await asyncio.gather(*[_ask(url, transport or DEFAULT_TRANSPORT) for url in urls])
     return peer_rows()
@@ -332,11 +369,35 @@ async def _choose_peers(
     from . import peers as peer_store  # local: peers.py is about which peers exist, this about who they are
 
     urls = peer_store.urls()
-    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in urls])
-    peers, skipped = [], []
-    for url, profile in zip(urls, profiles, strict=False):
+    blocked = blocklist.blocked_hubs()
+    # An administrative block is checked **before** any outbound work, and again on the identity the
+    # peer itself returns. Both, because the first check can only use an identity this hub already
+    # had, and the second one cannot stop a request that has already gone out. Reading a peer's
+    # discovery document is itself a call to it, and the query would follow, which is how a blocked
+    # hub used to learn what this hub's users were searching for even though it was shut out.
+    asking, skipped = [], []
+    for url in urls:
+        known = known_hub_id(url)
+        if known and known in blocked:
+            skipped.append({"hub": known, "reason": "blocked on this hub: not asked, and nothing of ours sent to it"})
+        else:
+            asking.append(url)
+    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in asking])
+    peers = []
+    for url, profile in zip(asking, profiles, strict=False):
         if profile is None:
+            # Unknown identity fails closed, and that is the policy rather than an accident: a peer
+            # whose discovery document cannot be read has neither a hub id to check against the
+            # blocklist nor keys to verify its cards with. Unknown is never treated as trusted.
             skipped.append({"hub": url, "reason": "no key registry: its cards could not be verified here"})
+        elif profile["hub_id"] in blocked:
+            skipped.append(
+                {
+                    "hub": profile["hub_id"],
+                    "reason": "blocked on this hub: it named itself on the only call made to it, and the query"
+                    " was not forwarded",
+                }
+            )
         elif profile["hub_id"] not in seen:
             peers.append((url, profile, reputation.hub_trust(profile["hub_id"], profile)["trust"]))
     peers.sort(key=lambda peer: peer[2], reverse=True)  # stable, so configured order breaks a tie
@@ -443,6 +504,91 @@ def _dedup(arrivals: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(best.values())
 
 
+#: The fields a result asserts about the entity itself. Every one of them is in the body the owner
+#: signed, so once `hive.verify_pinned` has passed they can be rebuilt from the card and the
+#: carrier's copy of them thrown away. This is the whole of #111: authenticating the embedded card
+#: does not authenticate the prose a peer wrapped around it, and a response that said
+#: `signature_valid: true` beside a name and a contact address the owner never signed was a
+#: response a consumer was right to trust and wrong to believe.
+SIGNED_FACTS = ("id", "slug", "kind", "name", "tagline", "description", "contact", "contact_sharing", "sharing")
+
+#: The fields a peer is genuinely the author of: how relevant *it* found the entity for this ask,
+#: what *it* has free, how far *its* landmark is, what *its* own guests scored. None of it is in any
+#: signed card, none of it can be rebuilt here, and all of it is useful — so it is kept and said to
+#: be the peer's, rather than quietly presented as fact or dropped for not being provable.
+PEER_CLAIMS = ("score", "score_breakdown", "why", "rating", "rating_count", "from_price_chf", "distance_m", "bookable")
+
+
+def _bound(match: dict[str, Any], card: dict[str, Any], origin: str, origin_url: str) -> dict[str, Any]:
+    """A verified arrival whose owner-authored facts come from the card rather than from its carrier.
+
+    Built as an allowlist, not as a merge. The carrier's dictionary is never laid back over the
+    card: a field this hub can authenticate is taken from the card, a field only the peer can know
+    is copied across and named as the peer's, and anything else a carrier invented is dropped —
+    unknown fails closed, because a key a consumer has no way to place is exactly the one it will
+    read as fact.
+
+    `signature_valid` and `verified` are the receiver's own verdict and are set here, never copied.
+    A carrier cannot assert that a card checked out, and cannot assert that one did not either.
+    """
+    return {
+        **{key: card[key] for key in SIGNED_FACTS if key in card},
+        **{key: match[key] for key in PEER_CLAIMS if key in match},
+        # Signed too, in the card's own provenance block: an unclaimed card was compiled from public
+        # information and its subject never published it, which is not a carrier's to redefine.
+        "claimed": (card.get("provenance") or {}).get("verified_by_owner") is not False,
+        "signature_valid": True,
+        "card": card,
+        "provenance": match.get("provenance"),
+        # Said in the answer, so a consumer does not have to know this module to tell the two apart.
+        "verified": {
+            "card": True,
+            "origin": origin,
+            "key_from": origin_url,
+            "how": (
+                "checked against the key this entity's own hub pinned for it, fetched from that hub"
+                " directly rather than through whoever relayed the card"
+            ),
+            "signed_facts": [key for key in SIGNED_FACTS if key in card],
+            "peer_claims": [key for key in PEER_CLAIMS if key in match],
+        },
+    }
+
+
+def _screen(
+    arrivals: list[dict[str, Any]], excluded: list[dict[str, Any]], report: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Drop every blocked entity and every blocked carrier chain, from the matches and the exclusions alike.
+
+    `hive.discover` already keeps a blocked entity out of the *local* answer. This is the other
+    direction — what arrived from a peer — plus the one thing that only exists out here, the chain of
+    hubs a result travelled: a card is refused when *any* hub that carried it is blocked, so blocking
+    a hub that merely relays for a blocked one still achieves something.
+
+    Both lists are screened, because an exclusion is not harmless. It names a business and says why it
+    missed the ask, which is most of what a match says; leaving a blocked entity in `excluded` would
+    publish exactly what the block was meant to withhold.
+
+    Called before `_dedup`, so an alternate route through a blocked hub is gone before it can be
+    folded into a kept result's `also_reached_by`. A business reachable both through a blocked hub and
+    through an allowed one therefore survives on the allowed route alone, which is what blocking a
+    *hub* rather than an entity means.
+    """
+    refused = blocklist.screener()
+
+    def kept(row: dict[str, Any], where: str) -> bool:
+        path = [str(h) for h in ((row.get("provenance") or {}).get("path") or [])]
+        reason = refused(str(row.get("id") or ""), path)
+        if reason:
+            report["blocked"].append({"id": row.get("id"), "where": where, "path": path, "reason": reason})
+        return not reason
+
+    return (
+        [a for a in arrivals if kept(a, "matches")],
+        [e for e in excluded if kept(e, "excluded")],
+    )
+
+
 async def _verified(
     out: dict[str, Any],
     carrier: dict[str, Any],
@@ -477,7 +623,10 @@ async def _verified(
         elif not hive.verify_pinned(card, origin["owner_keys"]):
             reason = "this copy does not match what the owner signed, or no key is pinned for it"
         else:
-            arrivals.append(_arrival(match, path, origin_url))
+            # The carrier's own copy of this hub's verdict is not an input to it, so say what we
+            # found rather than passing on what it claimed.
+            card["trust"] = {**(card.get("trust") or {}), "signature_valid": True}
+            arrivals.append(_arrival(_bound(match, card, claimed[0], origin_url), path, origin_url))
             continue
         report["rejected"].append(
             {"hub": carrier["hub_id"], "card_id": match["id"], "origin": claimed[0], "reason": reason}
@@ -495,6 +644,12 @@ async def _verified(
                 {
                     **{k: v for k, v in left_out.items() if k not in ("card", "provenance")},
                     "provenance": {"path": [*route, hub], "hops": len(route), "origin": route[0]},
+                    # An exclusion carries no card, so there is nothing here to bind to anything the
+                    # owner signed — not the name, not the reason it missed. Where a fact cannot be
+                    # bound it is made visibly the peer's claim instead of the hub's, which is the
+                    # other half of #111: the prose is useful and it is not ours to vouch for.
+                    "asserted_by": carrier["hub_id"],
+                    "verified": {"card": False, "how": "a peer's own account of a business it left out"},
                 }
             )
     return arrivals, excluded
@@ -529,6 +684,8 @@ async def search(
         "asked": [],
         "dropped": [],
         "rejected": [],
+        # What an administrative block refused, named so "why is this missing" has an answer.
+        "blocked": [],
         "hub_trust": {},
     }
 
@@ -566,6 +723,7 @@ async def search(
             arrivals += found
             excluded += left_out
 
+    arrivals, excluded = _screen(arrivals, excluded, report)
     matches = _dedup(arrivals)
     matches.sort(key=lambda m: (-m["federated_score"], m["hops"], m["id"]))
     for hub_id in {h for m in matches for h in m["provenance"]["path"] if h != hub} | {
