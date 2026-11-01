@@ -252,6 +252,7 @@ function CardHit({
               name={card.name}
               mode={connectMode(hit.sharing, card.kind)}
               targetHub={hit.found.origin}
+              card={hit.signedCard}
               onConnected={onConnected}
             />
           )}

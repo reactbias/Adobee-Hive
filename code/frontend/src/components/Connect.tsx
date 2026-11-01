@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, OFFLINE, shownError, type Connection } from "../api";
+import { api, OFFLINE, shownError, type Card, type Connection } from "../api";
 import { useI18n } from "../i18n";
 import { remember, requesterId, type ConnectMode } from "../lib/connect";
 import { day } from "../lib/format";
@@ -13,6 +13,7 @@ export default function Connect({
   name,
   mode,
   targetHub = "",
+  card,
   onConnected,
 }: {
   entityId: string;
@@ -20,6 +21,13 @@ export default function Connect({
   mode: ConnectMode;
   /** The Hive the result came from, so the introduction is logged against the hub that carried it. */
   targetHub?: string;
+  /**
+   * The signed card, for a result this hub does not carry. Without it the hub has only the asker's word
+   * for who the entity is, and refuses: an introduction to somebody on a peer is recorded here, but who
+   * they are is checked against the key their own hub pinned. Must be the card the search returned, not
+   * the screen's normalised copy — the signature covers the exact bytes.
+   */
+  card?: Card;
   onConnected?: (connection: Connection) => void;
 }) {
   const { t, intl } = useI18n();
@@ -36,6 +44,9 @@ export default function Connect({
         requester: requesterId(),
         entity_id: entityId,
         ...(targetHub ? { target_hub: targetHub } : {}),
+        // Sent whenever the search handed one over. The hub ignores it for an entity it carries itself,
+        // so there is nothing here that has to guess which results are remote — guessing wrong is the bug.
+        ...(card ? { card } : {}),
       });
       remember(entityId, name);
       setMade(connection);

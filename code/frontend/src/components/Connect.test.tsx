@@ -69,6 +69,36 @@ describe("connecting to a result", () => {
     expect(onConnected).toHaveBeenCalledTimes(1);
   });
 
+  it("sends the signed card, so an introduction to somebody on a peer is not refused", async () => {
+    // #172: the hub cannot take the asker's word for who a remote entity is. Without the card it has
+    // nothing to check against the key that entity's own hub pinned, and answers 400 — which is what
+    // every Connect on a Zürich or Bern result used to do.
+    const connect = vi.spyOn(api, "connect").mockResolvedValue(row("open"));
+    const signed = {
+      id: "lena-hofmann",
+      name: "Lena Hofmann",
+      signature: "ed25519:abc",
+      published_at: "2026-10-30T09:00:00",
+    } as never;
+    draw({ mode: "now", targetHub: "zurich", card: signed });
+    fireEvent.click(screen.getByRole("button", { name: en["connect.now"] }));
+
+    await screen.findByText(/Connected\./);
+    const sent = connect.mock.calls[0][0];
+    expect(sent.target_hub).toBe("zurich");
+    // Byte for byte what the search returned: the signature covers the exact JSON.
+    expect(sent.card).toBe(signed);
+  });
+
+  it("sends no card when the search did not hand one over, so a local introduction is unchanged", async () => {
+    const connect = vi.spyOn(api, "connect").mockResolvedValue(row("open"));
+    draw({ mode: "now" });
+    fireEvent.click(screen.getByRole("button", { name: en["connect.now"] }));
+
+    await screen.findByText(/Connected\./);
+    expect("card" in connect.mock.calls[0][0]).toBe(false);
+  });
+
   it("says when an open introduction can be scored until", async () => {
     vi.spyOn(api, "connect").mockResolvedValue(row("open"));
     draw({ mode: "now" });
