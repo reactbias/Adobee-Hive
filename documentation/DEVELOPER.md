@@ -158,8 +158,9 @@ missing assertion, printed with the line to look at. Exit code is the survivor c
 There is no way to know whether the tests notice a break except to run them against it, so the cost is
 71 × one suite run. Four mutants are checked at a time, each in its own throwaway copy of the tree: a full
 local run measured 19m34s sequentially and 6m28s with four workers, same 71 mutants, same
-`No survivors.` CI goes further and checks only the modules a pull request touched, keeping all 71 for every
-push to main — `--modules app/calibration.py` is three mutants and 43s. It stays a separate CI job rather than part of
+`No survivors.` On a runner the whole job is about eight minutes. CI goes further and checks only the modules
+a pull request touched, keeping all 71 for every push to main — `--modules app/calibration.py` is three
+mutants and 43s. It stays a separate CI job rather than part of
 `backend` so a survivor reads as "the tests have a hole", not "the build is broken".
 
 Your checkout is never mutated — the copies are — and they are deleted on the way out, including on
