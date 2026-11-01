@@ -65,8 +65,13 @@ localhost:
 ```bash
 ./lan.sh up       # three hubs, seed the test vaults, build the app, print the join URL
 ./lan.sh check    # is this machine actually reachable from another device?
-./lan.sh down     # stop everything
+./lan.sh down     # stop everything this checkout started
 ```
+
+What it started is recorded in `.lan/state` — the address, the four ports, the checkout, the time — and `check`
+and `down` act on that rather than working the ports out again. They used to guess, and the guess was wrong in
+a way that looked right: the free-port scan skips past hubs that are already listening and reports the next
+free number, so `check` probed ports nothing was on and printed three crosses for a healthy stack.
 
 What it does, and why each part is the way it is:
 
@@ -81,9 +86,48 @@ What it does, and why each part is the way it is:
   the same wifi. The app's port is fixed at 8440 because it is the URL people are given.
 - **A directory with real rows.** `http://<lan-ip>:8420/api/hub/directory` now answers with three hubs that each
   described themselves, which is what `InstanceFinder` and `NetworkPanel` render.
+- **Nothing it kills belongs to anybody else.** Every pid `down` stops, and the one `up` reclaims the app port
+  from, has to be a `uvicorn` or `vite` whose working directory is inside this checkout. Several worktrees of
+  this repo run at once and share the `8420`–`8445` range, so a process that fails either test is named and left
+  alone. `up` refuses and tells you to pin `PORT_APP` rather than reclaiming a port it does not own.
 
-If another device cannot reach it but this one can, the wifi has client isolation; use a phone hotspot and put
-every device on it. What federation does with those hubs: [FEDERATION.md](FEDERATION.md). How someone joins one:
+### Two things that otherwise cost an hour
+
+- **The address changes whenever the machine switches network**, and nothing looks broken when it does — the
+  hubs still answer and `./lan.sh check` still passes, while every link people were given and every peer URL
+  names the old address. `check` compares against `.lan/state` and warns. Next section.
+- **Venue wifi usually has client isolation**, which blocks device-to-device traffic at the access point, where
+  no local configuration can reach it. Nothing is misconfigured and nothing can be fixed on the laptop: every
+  service already binds `0.0.0.0` and the firewall is already off. Test from a second device early
+  (`./lan.sh check` prints the curl to run), and if it fails put everyone on a phone hotspot, this laptop
+  included.
+
+### When the laptop changes network
+
+This is the one failure that breaks everything while looking like nothing, and it happens whenever the machine
+moves between wifi and a hotspot. **The address is in the peer URLs, not in the frontend bundle.** The bundle is
+built same-origin (`VITE_API_URL=""`), so it does not care; what cares is that `lan.sh` starts each hub with
+`HIVE_PEER_URLS` naming the other two at the address it detected.
+
+After a move, nothing looks wrong from the laptop. The hubs bind `0.0.0.0`, so they answer on the new address
+and `./lan.sh check` passes on every line. What has actually happened is that every link anyone was given names
+an address nothing is on, and all six peer URLs do too, so federated search has quietly gone local-only.
+
+`./lan.sh check` now compares the current address with the one in `.lan/state` and says so instead of printing
+three ticks. The fix is a restart:
+
+```bash
+./lan.sh down && ADMIN_TOKEN=... ./lan.sh up
+```
+
+`up` notices the change itself and clears the hub stores before starting, which is the part that is easy to get
+wrong: peers are seeded from `HIVE_PEER_URLS` **only while the table is empty** (`peers.init()` in
+`app/peers.py`), `peers.urls()` prefers stored rows over the environment, and the DuckDB files under `.lan/`
+survive a stop. So a restart that kept them would come up with all six peer rows still pointing at the old
+address. The vaults are seeded again in the same run, so the cost is the seeding time and any registrations made
+by hand — which the address change had already invalidated.
+
+What federation does with those hubs: [FEDERATION.md](FEDERATION.md). How someone joins one:
 [REGISTRATION.md](REGISTRATION.md).
 
 ## Models and offline mode

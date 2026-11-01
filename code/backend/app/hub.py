@@ -14,7 +14,9 @@ What an agent can do:
   Either way the introduction is logged. An entity this hub does not carry is connected to on the
   strength of the signed card the search returned, verified here against the key its *own* hub
   pinned — never on the carrier's word.
-- `score` the introduction afterwards, once the human has actually met whoever it was.
+- `score` the introduction afterwards, once the human has actually met whoever it was. An
+  introduction to an entity this hub carries itself is scored against this hub's *own* claim about
+  it, so a hub can be measured by its own members' meetings and not only by its peers'.
 
 That last step is what everything else is built on. The hub learns nothing useful from a search and
 nothing trustworthy from a booking; it learns from a person saying, weeks later, how it went.
@@ -46,6 +48,13 @@ def _published_rating(card: dict[str, Any]) -> int | None:
 
     Frozen here on purpose. Honesty is measured against what was claimed at the introduction, not
     against whatever the hub is claiming by the time a human gets round to scoring it.
+
+    In practice the number is always the second lookup: no card in the index carries a top-level
+    `rating`, because a rating is not a thing an owner may sign about themselves. It is
+    `trust.verified_reviews.average`, computed per read from reviews that each cost a real booking
+    receipt — which is why this has to be handed a `hive.get_card` body and not a stored one.
+    `None` is the honest answer for an entity nobody has reviewed: nothing was claimed, so there is
+    nothing a score could be measured against, and `connections.rated_via` leaves the row out.
     """
     rating = card.get("rating")
     if rating is None:
@@ -166,9 +175,22 @@ def connect(
         raise HubError(f"{target_hub} is blocked on this hub")
 
     record = hive.get_record(entity_id)
-    # Local first, and the local copy wins: a card this hub carries itself is the one it answers for.
-    held = record["data"] if record is not None else _verified_remote(entity_id, card, target_hub)
     remote = record is None
+    # Local first, and the local copy wins: a card this hub carries itself is the one it answers for.
+    #
+    # `hive.get_card` and not `record["data"]`. The stored body is the card as its owner *signed* it,
+    # and a signature cannot cover a number that changes every time somebody reviews the place, so
+    # the trust block is computed per read and is not in the body at all. Reading the body here left
+    # `_published_rating` with nothing to find on every local introduction, and a row with no
+    # published claim is one `connections.rated_via` drops: the hub could never learn anything from
+    # an introduction to one of its own members, and its own directory row stayed `unproven` however
+    # much it was used (#164).
+    #
+    # This makes the two branches agree rather than adding a special case — the remote branch has
+    # always received a `get_card` body, trust block included. What `held` is read for is `kind` and
+    # `sharing` (`_entity_default`) and the published claim (`_published_rating`); the first two are
+    # the same values in the body and in the card, so the claim is the only thing that changes.
+    held = _verified_remote(entity_id, card, target_hub) if remote else hive.get_card(entity_id)
     flag = sharing.resolve(_entity_default(held), None)
     if not sharing.connectable(flag, None):
         raise HubError(
@@ -176,6 +198,18 @@ def connect(
             if flag == sharing.PUSH
             else f"{entity_id} is not shared"
         )
+
+    # An introduction to an entity this hub carries was carried *by this hub*, and that is exactly
+    # the claim calibration measures: this hub said what the entity was worth, and weeks later a
+    # person came back and said what they found. A blank `target_hub` attributed the row to nobody,
+    # so `rated_via` and `hubs_with_ratings` both passed over it and the evidence was thrown away.
+    #
+    # Note which way round this is. The *target* hub of a local entity really is this hub, because
+    # this hub is the one carrying it and making the claim about it. The *requester* hub is the
+    # opposite case and must not be defaulted the same way: a visitor from another hub is not a
+    # member of this one, whatever this hub would like to record (#158).
+    if not remote and not target_hub:
+        target_hub = config.HIVE_HUB_ID
 
     # The folders meet before the booking does. A published, freely connectable Card is a standing
     # yes to being contacted — that is what publishing one means — so its link is accepted in the

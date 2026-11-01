@@ -3,6 +3,10 @@ import type { Key } from "./en";
 // Italiano della Svizzera italiana, registro formale.
 const it: Record<Key, string> = {
   "nav.language": "Lingua",
+  "theme.label": "Combinazione di colori",
+  "theme.system": "Segui il sistema",
+  "theme.light": "Chiaro",
+  "theme.dark": "Scuro",
   "nav.live": "Modello online configurato",
   "nav.offline": "Pianificatore offline",
   "nav.down": "Backend non raggiungibile",
