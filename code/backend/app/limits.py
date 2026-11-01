@@ -436,6 +436,50 @@ def body_refusal(size: int) -> str:
     return f"a request body is at most {MAX_BODY_BYTES} bytes; this one is {size}"
 
 
+# ---------------------------------------------------------------- the answer door
+#
+# The other half of `BodyLimit`. Bounding what arrives and not what leaves is half a job: a
+# `hive_discover` at radius 2 over MCP answered with all 73 cards inline, about 690 KB, because a
+# federated match carries the whole signed card rather than a reference to it. Nothing was over any
+# limit and no counter had been breached — an unbounded answer is a resource hole on its own, and the
+# caller had no way to ask for less because the tool took no limit at all.
+#
+# Bounded here at the MCP tool rather than in `hive.discover`: the ranking, the answer key in
+# `testdata/` and the app all want the whole list, and a core that silently returned fewer matches
+# than it found would make every measurement over it a different measurement. The agent-facing door
+# is the one that needed a ceiling.
+
+MAX_ANSWER_MATCHES = 50  # the most matches one MCP discovery answer carries, whatever the radius
+DEFAULT_ANSWER_MATCHES = 20  # what it carries when the caller does not say
+
+
+def bound_answer(found: dict[str, Any], limit: int | None = None) -> dict[str, Any]:
+    """Cut a discovery answer down to `limit` matches, saying so when it cut anything.
+
+    `limit` is clamped into 1..`MAX_ANSWER_MATCHES`, so neither a caller asking for everything nor
+    one asking for nothing gets it. An answer that was cut carries `total_matches` and
+    `truncated: True` beside the matches it kept: a client that reads only `matches` is never
+    misled into thinking it saw the whole Hive, which is the honest half of a ceiling.
+
+    Anything that is not a discovery answer — a refusal, say — is returned untouched.
+    """
+    matches = found.get("matches")
+    if not isinstance(matches, list):
+        return found
+    cap = DEFAULT_ANSWER_MATCHES if limit is None else max(1, min(int(limit), MAX_ANSWER_MATCHES))
+    if len(matches) <= cap:
+        return found
+    return found | {
+        "matches": matches[:cap],
+        "total_matches": len(matches),
+        "truncated": True,
+        "note": (
+            f"This hub answers with at most {MAX_ANSWER_MATCHES} matches and {cap} were asked for; "
+            f"{len(matches)} fit the query. Narrow it, or raise `limit`."
+        ),
+    }
+
+
 async def _too_large(send: Any, size: int) -> None:
     """Answer 413 in the shape every other refusal on this hub has: `detail`, a sentence, no code."""
     body = json.dumps({"detail": body_refusal(size)}).encode()

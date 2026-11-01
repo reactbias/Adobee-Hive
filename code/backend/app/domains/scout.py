@@ -23,9 +23,9 @@ from urllib.parse import quote, urlparse
 
 import httpx
 import openai
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 
-from .. import config, hive, llm, services
+from .. import config, guard, hive, llm, services
 from . import explore
 from .base import safe
 
@@ -379,11 +379,16 @@ def register(server: MCPServer) -> None:
     """Add the scout tool to the Hive's MCP server."""
 
     @server.tool()
-    def hive_scout(question: str) -> dict[str, Any]:
+    def hive_scout(question: str, ctx: Context) -> dict[str, Any]:
         """When no Hive card answers a request (explore_ask found nothing), look for real businesses on the public
         web. Each candidate is verified against its own website (public, reachable, name on the page, not closed);
         only verified ones are added, as unclaimed cards signed by the Hive as compiler, with source and checks.
-        Tell your user plainly that these cards are unclaimed. Never takes an action."""
+        Tell your user plainly that these cards are unclaimed. Never takes an action.
+
+        A web search and the page fetches behind it cost money and other sites' bandwidth, so this spends the
+        same budget `POST /api/ask/scout` spends; a refusal names it and says when to try again."""
+        if over := guard.admit_mcp(guard.llm_calls, ctx, charge_in_process=False):
+            return {"error": over}  # refused before any search or page fetch happens
         out = safe(find, question)
         if out.get("result") and out["result"].get("pending"):
             out["result"]["pending"] = {k: v for k, v in out["result"]["pending"].items() if k != "id"}
