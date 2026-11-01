@@ -85,6 +85,7 @@ SUITE = [
     "tests/test_federated_facts.py",
     "tests/test_mcp_refusals.py",
     "tests/test_sharing_enforced.py",
+    "tests/test_hr_cv.py",
 ]
 
 
@@ -122,6 +123,18 @@ class Mutant:
 # Each one is a bug a tired person could plausibly write at 3am, aimed at an invariant the
 # design depends on. If the suite does not catch these, the suite is decorative.
 CURATED: list[Mutant] = [
+    Mutant(
+        "domains/hr.py",
+        "the HR tools hand over a file the folder read route refuses, so a second door moves the line",
+        'if entry is None or not allowed or entry["visibility"] not in folders.SERVED:',
+        "if entry is None or not allowed:",
+    ),
+    Mutant(
+        "domains/hr.py",
+        "any anonymous MCP caller can spend the organisation's Hiring Hub key",
+        "if not guard.secret_matches(_header(ctx, HIRING_KEY_HEADER), config.HIRING_HUB_API_KEY):",
+        "if False:",
+    ),
     Mutant(
         "guard.py",
         "the MCP door stops spending, so a budget exhausted over REST lets MCP run the same work",
