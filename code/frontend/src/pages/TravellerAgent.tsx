@@ -560,7 +560,8 @@ export default function TravellerAgent({
               )
             }
           />
-          {/* Federation and the manipulation demo are presenter tools: one Hive is what a visitor searches. */}
+          {/* Federation is the product, so how far to search is on the bar for everyone. Only the
+              manipulation demo below it stays a presenter tool. */}
           <Reach radius={radius} disabled={busy || searching} onChange={(next) => void changeReach(next)} />
           {reachEmpty && (
             <p className="muted small" role="status">
