@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 1240" width="1680" height="1240" font-family="system-ui,sans-serif">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#b99a3e"/></marker><marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#c2553f"/></marker></defs>
+<rect width="1680" height="1240" fill="#fffef9"/>
+<text x="40" y="46" font-size="25" font-weight="700" fill="#1a1407">AdoBeeHive — current architecture</text>
+<text x="40" y="69" font-size="12.5" fill="#6b5d3e">One FastAPI backend serves the browser over REST and agents over MCP. Both read the same signed Cards. Module names and import edges read from <tspan font-family="ui-monospace,monospace">origin/main</tspan>.</text>
+<rect x="40" y="92" width="1180" height="196" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="109" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">BROWSER  ·  CODE/FRONTEND/SRC</text>
+<rect x="58" y="120" width="150" height="40" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="133.0" y="137.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">InstanceFinder</text>
+<text x="133.0" y="151.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">pick a Hive first</text>
+<rect x="222" y="120" width="172" height="40" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="308.0" y="137.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">TravellerAgent</text>
+<text x="308.0" y="151.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">the guest&#x27;s agent</text>
+<rect x="404" y="120" width="172" height="40" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="490.0" y="137.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">OwnerPanel</text>
+<text x="490.0" y="151.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">Your card</text>
+<rect x="586" y="120" width="172" height="40" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="672.0" y="137.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">AdminPanel</text>
+<text x="672.0" y="151.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">operator</text>
+<rect x="768" y="120" width="172" height="40" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="854.0" y="137.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">NetworkPanel</text>
+<text x="854.0" y="151.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">hub graph</text>
+<rect x="58" y="176" width="336" height="38" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="226.0" y="192.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">components/</text>
+<text x="226.0" y="206.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">GroupChat · TraceParts · TrustBadge · Connect </text>
+<text x="226.0" y="217.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> Composer · Reach · NextSteps · JourneyLog</text>
+<rect x="406" y="176" width="300" height="38" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="556.0" y="192.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">lib/</text>
+<text x="556.0" y="206.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">provenance · reasons · hubScene · network </text>
+<text x="556.0" y="217.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> signing · folderScan · calibration · route</text>
+<rect x="718" y="176" width="180" height="38" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="808.0" y="192.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">i18n/</text>
+<text x="808.0" y="206.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">en · de · fr · it</text>
+<rect x="910" y="176" width="150" height="38" rx="7" fill="#ffeab8" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="985.0" y="192.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">api.ts</text>
+<text x="985.0" y="206.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">one HTTP client</text>
+<rect x="1072" y="176" width="130" height="38" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="1137.0" y="192.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">main.tsx</text>
+<text x="1137.0" y="206.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">App.tsx</text>
+<text x="58" y="240" font-size="10.5" fill="#c2553f" font-weight="600">⚠ api.ts supports radius, but the search screens never pass it — so every browser search is radius=0, this hub only.</text>
+<text x="58" y="258" font-size="10.5" fill="#6b5d3e">Cross-hub results are therefore invisible in the UI while working perfectly over REST and MCP. One-line frontend fix.</text>
+<text x="58" y="276" font-size="10.5" fill="#6b5d3e">Keys are generated in the browser during onboarding; the folder is scanned in the page and never uploaded.</text>
+<rect x="40" y="306" width="1180" height="86" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="323" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">TRANSPORT</text>
+<rect x="120" y="334" width="300" height="44" rx="7" fill="#f3e7c2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="270.0" y="353.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">REST  /api/*</text>
+<text x="270.0" y="367.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">FastAPI · CORS incl. private-network</text>
+<rect x="470" y="334" width="300" height="44" rx="7" fill="#e8f0dc" stroke="#9bb37a" stroke-width="1.4"/>
+<text x="620.0" y="353.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">MCP  /mcp/  (Streamable HTTP)</text>
+<text x="620.0" y="367.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">20 tools incl. hive_owner_* · mcp==2.3.0 </text>
+<text x="620.0" y="378.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> the owner token rides the header, never an argument</text>
+<rect x="820" y="334" width="300" height="44" rx="7" fill="#f3e7c2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="970.0" y="353.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">/.well-known/hive.json</text>
+<text x="970.0" y="367.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">hub profile + owner_keys registry</text>
+<path d="M 985 215 L 270 334" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="608.0" y="261.5" width="39.0" height="14" rx="3" fill="#fdfbf4" opacity="0.95"/>
+<text x="627.5" y="272.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#8a7330">fetch</text>
+<path d="M 620 215 L 620 334" stroke="#b99a3e" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<rect x="544.7" y="265.5" width="150.6" height="14" rx="3" fill="#fdfbf4" opacity="0.95"/>
+<text x="620.0" y="276.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#8a7330">agents, not the browser</text>
+<rect x="40" y="410" width="1180" height="92" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="427" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">API LAYER  ·  CODE/BACKEND/APP</text>
+<rect x="120" y="438" width="300" height="48" rx="7" fill="#f3e7c2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="270.0" y="459.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">main.py</text>
+<text x="270.0" y="473.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">every route · BodyLimit 1 MiB → 413 </text>
+<text x="270.0" y="484.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> /api/folders/* · /api/owner/* live</text>
+<rect x="470" y="438" width="300" height="48" rx="7" fill="#e8f0dc" stroke="#9bb37a" stroke-width="1.4"/>
+<text x="620.0" y="459.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">mcp_server.py</text>
+<text x="620.0" y="473.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">hive_* · hub_* · hr_* · explore_ask</text>
+<rect x="820" y="438" width="300" height="48" rx="7" fill="#f3e7c2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="970.0" y="459.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">admin.py</text>
+<text x="970.0" y="473.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">overview · entities · blocklist </text>
+<text x="970.0" y="484.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> password + rate limit</text>
+<path d="M 270 378 L 270 438" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 620 378 L 620 438" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 970 378 L 970 438" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="40" y="520" width="1180" height="96" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="537" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">DOMAIN FAÇADES</text>
+<rect x="120" y="548" width="290" height="52" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="265.0" y="571.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">hub.py</text>
+<text x="265.0" y="585.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">blocklist · calibration · connections </text>
+<text x="265.0" y="596.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> hive · sharing</text>
+<rect x="440" y="548" width="290" height="52" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="585.0" y="571.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">agent.py</text>
+<text x="585.0" y="585.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">the traveller&#x27;s tool loop over MCP </text>
+<text x="585.0" y="596.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> critic · second_opinion · injection · guard</text>
+<rect x="760" y="548" width="360" height="52" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="940.0" y="571.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">registration.py  ·  limits.py</text>
+<text x="940.0" y="585.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">5 checks in order · open/vetted/invite/closed </text>
+<text x="940.0" y="596.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> 24 published ceilings, size only</text>
+<path d="M 270 486 L 270 548" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 620 486 L 560 548" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 970 486 L 940 548" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="40" y="634" width="1180" height="232" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="651" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">CORE  ·  THE SIGNED CARD, TRUST, AND REACH</text>
+<rect x="70" y="664" width="250" height="62" rx="7" fill="#ffeab8" stroke="#d8c48a" stroke-width="2"/>
+<text x="195.0" y="692.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">hive.py</text>
+<text x="195.0" y="706.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">publish · discover · get_card </text>
+<text x="195.0" y="717.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> Ed25519 over canonical JSON</text>
+<rect x="342" y="664" width="232" height="62" rx="7" fill="#e4eeda" stroke="#9bb37a" stroke-width="1.4"/>
+<text x="458.0" y="692.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">semantic.py</text>
+<text x="458.0" y="706.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">offline similarity, no key </text>
+<text x="458.0" y="717.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> stems · compounds · trigrams</text>
+<rect x="596" y="664" width="252" height="62" rx="7" fill="#ffeab8" stroke="#d8c48a" stroke-width="2"/>
+<text x="722.0" y="692.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">federation.py</text>
+<text x="722.0" y="706.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">radius 0–3 · budget · seen </text>
+<text x="722.0" y="717.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> provenance.path, origin first</text>
+<rect x="870" y="664" width="230" height="62" rx="7" fill="#dde7f2" stroke="#7d93ad" stroke-width="1.4"/>
+<text x="985.0" y="692.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">folders.py  folder_keys.py</text>
+<text x="985.0" y="706.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">claim · link · grant · can_read </text>
+<text x="985.0" y="717.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> a link secret, hashed at rest</text>
+<rect x="70" y="748" width="250" height="56" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="195.0" y="773.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">connections.py</text>
+<text x="195.0" y="787.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">requested→open→rated→stale </text>
+<text x="195.0" y="798.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> 0–50 tenths of a star</text>
+<rect x="342" y="748" width="232" height="56" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="458.0" y="773.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">calibration.py  reputation.py</text>
+<text x="458.0" y="787.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">published − realised, signed </text>
+<text x="458.0" y="798.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> under-promising earns credit</text>
+<rect x="596" y="748" width="252" height="56" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="722.0" y="773.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">sharing.py  blocklist.py</text>
+<text x="722.0" y="787.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">public·confirm·push·never </text>
+<text x="722.0" y="798.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> shared &amp; hidden omitted entirely</text>
+<rect x="870" y="748" width="230" height="56" rx="7" fill="#fff" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="985.0" y="773.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">peers.py removals.py audit.py</text>
+<text x="985.0" y="787.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">peers an operator edits while it runs </text>
+<text x="985.0" y="798.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> a withdrawal, never a delete · the ledger</text>
+<rect x="70" y="824" width="1030" height="28" rx="7" fill="#fdf6e4" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="585.0" y="842.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="8.5" font-weight="400" fill="#1a1407">guard.py · limits.py · services.py · rulesets.py · waiting.py · injection.py · critic.py · second_opinion.py · replies.py · activity.py · owner.py · domains/ · mirror.py (demo only) · simulate.py · hive_seed.py</text>
+<path d="M 195 600 L 195 664" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 560 600 L 460 664" stroke="#b99a3e" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<path d="M 940 600 L 960 664" stroke="#b99a3e" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<path d="M 320 695 L 342 695" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="311.5" y="676.0" width="39.0" height="14" rx="3" fill="#fdfbf4" opacity="0.95"/>
+<text x="331.0" y="686.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#8a7330">score</text>
+<path d="M 574 695 L 596 695" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<rect x="565.5" y="676.0" width="39.0" height="14" rx="3" fill="#fdfbf4" opacity="0.95"/>
+<text x="585.0" y="686.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#8a7330">reach</text>
+<rect x="40" y="884" width="1180" height="100" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="53" y="901" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">STORAGE</text>
+<rect x="120" y="912" width="260" height="52" rx="7" fill="#f0ece0" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="250.0" y="935.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">db.py → DuckDB</text>
+<text x="250.0" y="949.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">cards · connections · links </text>
+<text x="250.0" y="960.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> history, so a receipt still proves</text>
+<rect x="410" y="912" width="300" height="52" rx="7" fill="#f0ece0" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="560.0" y="935.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">testdata/vaults/  (61 entities)</text>
+<text x="560.0" y="949.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">416 files, 119 KB · 165 non-markdown </text>
+<text x="560.0" y="960.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> structure lists all, reads markdown only</text>
+<rect x="740" y="912" width="380" height="52" rx="7" fill="#f7e4de" stroke="#c2553f" stroke-width="1.4"/>
+<text x="930.0" y="935.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">storage.py  ·  code/backend/data/</text>
+<text x="930.0" y="949.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">folder-link private keys live here </text>
+<text x="930.0" y="960.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e"> gitignored — a near-miss, twice now</text>
+<path d="M 195 852 L 195 912" stroke="#b99a3e" stroke-width="1.5" fill="none" marker-end="url(#a)"/>
+<path d="M 560 804 L 560 912" stroke="#b99a3e" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<path d="M 960 804 L 930 912" stroke="#b99a3e" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#a)"/>
+<rect x="1248" y="92" width="392" height="892" rx="11" fill="#fdfbf4" stroke="#e8dcb8" stroke-width="1.2" stroke-dasharray="5 4"/>
+<text x="1261" y="109" font-family="system-ui,sans-serif" font-size="11" font-weight="700" letter-spacing="1.1" fill="#a8913f">THE FEDERATION  ·  OTHER HUBS</text>
+<rect x="1272" y="132" width="344" height="76" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="1444.0" y="167.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">Hive · basel  :8420</text>
+<text x="1444.0" y="181.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">stays &amp; places</text>
+<text x="1444.0" y="192.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">32 entities · own key registry</text>
+<text x="1444.0" y="203.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">/.well-known/hive.json</text>
+<path d="M 848 690 L 1272 170" stroke="#b99a3e" stroke-width="1.2" fill="none" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="1272" y="236" width="344" height="76" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="1444.0" y="271.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">Hive · zurich  :8421</text>
+<text x="1444.0" y="285.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">developers &amp; freelance</text>
+<text x="1444.0" y="296.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">21 entities · own key registry</text>
+<text x="1444.0" y="307.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">/.well-known/hive.json</text>
+<path d="M 848 690 L 1272 274" stroke="#b99a3e" stroke-width="1.2" fill="none" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<rect x="1272" y="340" width="344" height="76" rx="7" fill="#fff8e2" stroke="#d8c48a" stroke-width="1.4"/>
+<text x="1444.0" y="375.0" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="11" font-weight="600" fill="#1a1407">Hive · bern  :8422</text>
+<text x="1444.0" y="389.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">local services</text>
+<text x="1444.0" y="400.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">20 entities · own key registry</text>
+<text x="1444.0" y="411.0" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9.5" fill="#6b5d3e">/.well-known/hive.json</text>
+<path d="M 848 690 L 1272 378" stroke="#b99a3e" stroke-width="1.2" fill="none" stroke-dasharray="5 4" marker-end="url(#a)"/>
+<text x="1272" y="470" font-size="11" font-weight="700" fill="#a8913f">WHAT CROSSES A BOUNDARY</text>
+<text x="1272" y="492" font-size="10.5" fill="#6b5d3e">A signed Card, and nothing else.</text>
+<text x="1272" y="509" font-size="10.5" fill="#6b5d3e">A carrier can withhold or delay it,</text>
+<text x="1272" y="526" font-size="10.5" fill="#6b5d3e">never forge it: every card is checked</text>
+<text x="1272" y="543" font-size="10.5" fill="#6b5d3e">against its OWN hub&#x27;s registry, fetched</text>
+<text x="1272" y="560" font-size="10.5" fill="#6b5d3e">directly — not through the relay.</text>
+<text x="1272" y="577" font-size="10.5" fill="#6b5d3e"></text>
+<text x="1272" y="594" font-size="10.5" fill="#6b5d3e">provenance.path = [&quot;bern&quot;,&quot;basel&quot;]</text>
+<text x="1272" y="611" font-size="10.5" fill="#6b5d3e">reads origin first, so the UI can always</text>
+<text x="1272" y="628" font-size="10.5" fill="#6b5d3e">say which hub answered.</text>
+<text x="1272" y="645" font-size="10.5" fill="#6b5d3e"></text>
+<text x="1272" y="662" font-size="10.5" fill="#6b5d3e">A relayed card that fails its check is</text>
+<text x="1272" y="679" font-size="10.5" fill="#6b5d3e">refused. The carrier is charged only for</text>
+<text x="1272" y="696" font-size="10.5" fill="#6b5d3e">what it controls — not for a registry we</text>
+<text x="1272" y="713" font-size="10.5" fill="#6b5d3e">could not read (fixed in #119).</text>
+<text x="1272" y="760" font-size="11" font-weight="700" fill="#c2553f">STILL NOT TRUE OF IT</text>
+<text x="1272" y="782" font-size="10.5" fill="#8a6b5d">A folder read is served by this hub,</text>
+<text x="1272" y="799" font-size="10.5" fill="#8a6b5d">gated by a per-link bearer. Both folders</text>
+<text x="1272" y="816" font-size="10.5" fill="#8a6b5d">sit on one disk: nothing crosses a</text>
+<text x="1272" y="833" font-size="10.5" fill="#8a6b5d">machine. /api/folders/status says so.</text>
+<text x="1272" y="850" font-size="10.5" fill="#8a6b5d"></text>
+<text x="1272" y="867" font-size="10.5" fill="#8a6b5d">owner_public_key is recorded but never</text>
+<text x="1272" y="884" font-size="10.5" fill="#8a6b5d">checked against. trust.public_key is.</text>
+<text x="1272" y="901" font-size="10.5" fill="#8a6b5d"></text>
+<text x="1272" y="918" font-size="10.5" fill="#8a6b5d">A requester is an unauthenticated string</text>
+<text x="1272" y="935" font-size="10.5" fill="#8a6b5d">(#158), and a local introduction yields</text>
+<text x="1272" y="952" font-size="10.5" fill="#8a6b5d">no calibration number at all (#164).</text>
+<text x="40" y="1016" font-size="11.5" font-weight="700" fill="#a8913f">TWO PATHS IN, ONE SOURCE OF TRUTH</text>
+<text x="40" y="1038" font-size="11" fill="#4a4030">A browser and an agent reach the same hive.discover() and get the same signed Cards and the same score_breakdown.</text>
+<text x="40" y="1056" font-size="11" fill="#4a4030">The browser just forgets to ask for a radius — which is why the MCP path demonstrates federation today and the web UI does not.</text>
+<text x="40" y="1074" font-size="11" fill="#4a4030">Every ranking factor is returned, never hidden: local relevance × hub_path_trust × hop_decay (0.85 ** hops), each separately in score_breakdown.</text>
+<text x="40" y="1114" font-size="11.5" font-weight="700" fill="#a8913f">OPEN WORK</text>
+<text x="40" y="1136" font-size="10.5" fill="#6b5d3e">Merged since: #102 admin · #115 a booking stands on a folder link · #117 SEARCH_API.md and the three-folder fixture · #146 the folder read surface and cross-hub connect</text>
+<text x="40" y="1154" font-size="10.5" fill="#6b5d3e">#157 the reach control · #160 the mutation gate, 32 minutes to 7 · #161 #find and #offer · #162 dark mode · #183 an owner&#x27;s agent edits its own Card over MCP</text>
+<text x="40" y="1196" font-size="10" fill="#9a8c6a">Generated from origin/main. Solid arrow = a direct import. Dashed = reads or calls across a layer. Red = a known gap or a hazard.</text>
+</svg>

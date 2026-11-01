@@ -1,3 +1,5 @@
+import type { Card } from "../api";
+
 // The page draws itself from the hub folders: each entity, then its offers/ and searches/.
 // Matching is local on purpose: a search should show the offerings before any model is called.
 // The chat stays behind Details.
@@ -59,6 +61,17 @@ export type Hit = {
   found?: { why: string[]; path: string[]; hops: number; origin: string };
   /** The sharing flag the hub reported for a live result: what connecting to it will take. */
   sharing?: string;
+  /**
+   * The signed card exactly as the carrying hub published it, for an introduction to an entity this hub
+   * does not hold.
+   *
+   * **Not `card` above, and never interchangeable with it.** `card` is `readHubCard`'s normalised view,
+   * built for the screen: it re-orders, coerces and drops fields. An Ed25519 signature covers the exact
+   * canonical JSON, so the normalised copy fails `hive.verify_pinned` and the hub refuses the
+   * introduction — a refusal indistinguishable from the feature being broken. This one is passed through
+   * untouched and is the only one `api.connect` may send.
+   */
+  signedCard?: Card;
 };
 
 /** What the other hubs did with a search above radius 0: who was asked, who did not answer, which copy was refused. */
@@ -405,6 +418,8 @@ export function readHubCard(raw: unknown): HiveCard | null {
 
 type DiscoverMatch = {
   id: string;
+  /** The signed card, as the hub that carries it published it. Attached to a federated match. */
+  card?: Card;
   score?: number;
   score_breakdown?: Record<string, number>;
   claimed?: boolean;
@@ -462,6 +477,8 @@ export function sceneFromDiscovery(
     hits.push({
       sharing: match.sharing ?? (typeof raw?.sharing === "string" ? raw.sharing : undefined),
       card,
+      // Straight from the match, never from `cards[...]`: hubScene merges that one for the screen.
+      signedCard: match.card,
       offers: card.offers,
       needs: card.needs,
       acting: acting && match.bookable !== false,

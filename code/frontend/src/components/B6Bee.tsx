@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "../i18n";
+import { THEME_EVENT } from "../lib/theme";
 
 // Team B6 easter egg: the whiteboard bee crosses the bottom of the screen and drops six little 6s.
-// It flies once after a minute of idling, or when someone clicks the sleepy bee in the footer.
+// It flies once after a minute of idling, when someone clicks the sleepy bee in the footer, or when the
+// colour scheme has been flipped a few times.
 const FLIGHT_MS = 7000;
 const IDLE_MS = 60000;
+// How many scheme flips wake it. Every time would be an animation, not a surprise; on the third it is still
+// a reward for playing with the switch rather than something you sit through to use it.
+const THEME_FLIPS = 3;
 
 type Six = { id: number; x: number; y: number };
 
@@ -39,6 +44,19 @@ export default function B6Bee({ children }: { children?: ReactNode }) {
       clearTimeout(clear);
     };
   }, [flying]);
+
+  // Flipping the colour scheme wakes it, now and then. The toggle fires this *after* applying the theme and
+  // never waits on it, so the bee cannot stand between a click and the page changing. `fly` does nothing
+  // under prefers-reduced-motion, so neither does this.
+  useEffect(() => {
+    let flips = 0;
+    const flipped = () => {
+      flips += 1;
+      if (flips % THEME_FLIPS === 0) fly();
+    };
+    window.addEventListener(THEME_EVENT, flipped);
+    return () => window.removeEventListener(THEME_EVENT, flipped);
+  }, [fly]);
 
   // One idle flight per visit.
   useEffect(() => {

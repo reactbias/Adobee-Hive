@@ -69,12 +69,21 @@ observed vetting, paid placement, availability, latency, cards that failed verif
 measurement, `calibration.py`'s published-minus-realised error, orders `GET /api/hub/standing`, the neighbours
 table and the hub directory, and is what a person choosing a hub reads. It is not a factor in that product yet.
 
-**Hub reputation resets; hub calibration needs evidence nothing in the demo produces.** `reputation.py` keeps its
-observations in a module-level dict, so a restart returns every peer to trust on first use. Calibration does
-persist — it is computed from the `hub_connections` table — but a verdict needs `MIN_EVIDENCE`, three scored
-introductions, and a score only exists after a person has gone to a real meeting and come back to say how it went.
-On a fresh hub every peer therefore reads **unproven**, which is honest and is also most of what the directory
-shows.
+**Hub reputation resets; hub calibration needs evidence a hackathon weekend barely produces.**
+`reputation.py` keeps its observations in a module-level dict, so a restart returns every peer to trust on first
+use. Calibration does persist — it is computed from the `hub_connections` table — but a verdict needs
+`MIN_EVIDENCE`, three scored introductions, and a score only exists after a person has gone to a real meeting and
+come back to say how it went. On a fresh hub every peer therefore reads **unproven**, which is honest and is also
+most of what the directory shows.
+
+Until [#164](https://github.com/reactbias/Adobee-Hive/issues/164) that was worse than slow, it was impossible for
+the hub you are standing on: an introduction to one of its *own* members was written with `published_rating NULL`,
+because `hub.connect` read the stored card body and a signed body carries no `trust` block. `rated_via` drops a
+row with no claim, so the home row in a hub's own directory read `unproven` with "no introductions through this
+hub yet" however many it had had. `hub.connect` now reads `hive.get_card` for a local entity — the same body the
+cross-hub branch always received — and records this hub as the one that carried it, so a hub can be measured by
+its own members' meetings. What is still true: an entity nobody has reviewed has no claim to measure, so its
+introductions stay uncounted, and that is the honest answer rather than a number.
 
 ## The folder link
 
