@@ -7,7 +7,7 @@ import asyncio
 import pytest
 from mcp import Client
 
-from app import blocklist, config, connections, db, folders, hive, registration, sharing
+from app import blocklist, config, connections, db, folder_keys, folders, hive, registration, sharing
 from app.mcp_server import server
 
 
@@ -42,9 +42,24 @@ def _introduced(requester: str, target: str, **kw) -> dict:
 
     The tests below are about scoring, standing and the admin counts. That they all have to link
     two folders first is the precondition working.
+
+    Each side's link secret comes back on the row under `requester_key` and `target_key`, because
+    answering an introduction and scoring one both need the party's own credential now (#107). They
+    are what `hub.connect` hands the requester in its answer; here they are minted directly, since
+    these rows are written through `connections.request` rather than through the door.
     """
-    folders.open_link(requester, target, auto_accept=True)
-    return connections.request(requester, target, **kw)
+    link = folders.open_link(requester, target, auto_accept=True)
+    row = connections.request(requester, target, **kw)
+    return {
+        **row,
+        "requester_key": folder_keys.mint(link["id"], folders.handle_for(requester))["secret"],
+        "target_key": folder_keys.mint(link["id"], folders.handle_for(target))["secret"],
+    }
+
+
+def _as(secret: str) -> dict:
+    """The header a party presents its link secret in, the same one a folder read uses."""
+    return {folder_keys.HEADER: f"{folder_keys.SCHEME} {secret}"}
 
 
 # ---------------------------------------------------------------- connect
@@ -121,7 +136,11 @@ def test_scoring_an_introduction_reports_the_gap_against_what_was_promised(clien
         needs_confirmation=False,
     )
 
-    out = _mcp("hub_score", {"connection_id": row["id"], "rating": 25, "note": "noisy"})
+    out = client.post(
+        f"/api/hub/connections/{row['id']}/score",
+        json={"rating": 25, "note": "noisy"},
+        headers=_as(row["requester_key"]),
+    ).json()
 
     assert out["connection"]["state"] == connections.RATED
     assert out["gap"] == 25 and out["gap_stars"] == 2.5, "promised 5.0, found 2.5"
@@ -132,20 +151,26 @@ def test_scoring_an_introduction_reports_the_gap_against_what_was_promised(clien
 
 def test_a_score_outside_the_scale_is_refused_at_the_rest_door(client):
     row = _introduced("m@example.com", "x", published_rating=40, needs_confirmation=False)
-    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 51}).status_code == 422
-    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": -1}).status_code == 422
+    me = _as(row["requester_key"])
+    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 51}, headers=me).status_code == 422
+    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": -1}, headers=me).status_code == 422
 
 
 def test_scoring_twice_is_refused(client):
     row = _introduced("m@example.com", "x", published_rating=40, needs_confirmation=False)
-    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 40}).status_code == 200
-    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 10}).status_code == 400
+    me = _as(row["requester_key"])
+    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 40}, headers=me).status_code == 200
+    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 10}, headers=me).status_code == 400
 
 
 def test_the_owner_can_decline_and_it_never_becomes_a_rating(client):
     row = _introduced("m@example.com", "lena", needs_confirmation=True)
-    assert client.post(f"/api/hub/connections/{row['id']}/decline").status_code == 200
-    assert client.post(f"/api/hub/connections/{row['id']}/score", json={"rating": 50}).status_code == 400
+    declined = client.post(f"/api/hub/connections/{row['id']}/decline", headers=_as(row["target_key"]))
+    assert declined.status_code == 200
+    scored = client.post(
+        f"/api/hub/connections/{row['id']}/score", json={"rating": 50}, headers=_as(row["requester_key"])
+    )
+    assert scored.status_code == 400
 
 
 def test_an_agent_can_list_what_is_still_waiting_on_a_human(client):

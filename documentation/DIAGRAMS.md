@@ -350,6 +350,7 @@ flowchart LR
     H1["POST /api/hub/connect"]:::door
     H2["POST /api/hub/connections/{connection_id}/confirm · POST /api/hub/connections/{connection_id}/decline"]:::held
     H3["POST /api/hub/connections/{connection_id}/score"]:::held
+    H3b["GET /api/hub/connections/{connection_id}/decision"]:::door
     H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
   end
 
@@ -382,6 +383,7 @@ flowchart LR
     direction TB
     D0["POST /api/admin/login · POST /api/admin/logout"]:::held
     D0b["POST /api/admin/applications/{application_id}/withdraw"]:::held
+    D0c["POST /api/admin/connections/{connection_id}/{action}"]:::held
     D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held

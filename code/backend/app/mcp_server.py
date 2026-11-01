@@ -10,7 +10,21 @@ from typing import Any
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import admin, config, connections, domains, guard, hive, hub, limits, owner, registration, rulesets, waiting
+from . import (
+    admin,
+    config,
+    connections,
+    domains,
+    folder_keys,
+    guard,
+    hive,
+    hub,
+    limits,
+    owner,
+    registration,
+    rulesets,
+    waiting,
+)
 
 server = MCPServer(
     name="Adobee Hive",
@@ -238,13 +252,19 @@ def hub_connect(
 
 
 @server.tool()
-def hub_score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
+def hub_score(ctx: Context, connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
     """Record how an introduction actually went, after the real meeting, from the person who asked for it.
 
     `rating` is tenths of a star out of five: 43 means 4.3 stars. Scoring is once and final, and only while the
     connection is still open — an introduction nobody scored within a month closes unscored. This is the only
-    input to how much this Hive trusts the Hive the entry came from, so ask the person, never guess."""
-    return _safe(hub.score, connection_id, rating, note)
+    input to how much this Hive trusts the Hive the entry came from, so ask the person, never guess.
+
+    The score belongs to whoever asked for the introduction, so this needs **their** credential: the link secret
+    `hub_connect` returned in `folder_key.secret`, put in this connection's `Authorization: Bearer <secret>`
+    header. It is a header and not an argument for the reason the owner token is — an argument is written into
+    this conversation and into your client's logs. A connection id is not a credential: it is in the answer that
+    made it and in `hub_connections`, and knowing one used to be enough to spend somebody else's one score."""
+    return _safe(hub.score, connection_id, rating, note, secret=_link_secret(ctx))
 
 
 @server.tool()
@@ -318,6 +338,18 @@ def hub_register(
 # readable without leaving the protocol. On a transport that carries no headers at all — stdio, or
 # this repo's own in-process agent — the token arrives empty and the edit tools refuse, which is the
 # right way round.
+
+
+def _link_secret(ctx: Context | None) -> str:
+    """The folder link secret this call carried, or "". Compared and dropped, never logged or echoed.
+
+    A link secret is a party's own credential for one introduction (`folder_keys.py`), which is what
+    makes it the right proof for a score: it names *which side* of the row the caller is, where the
+    hub's owner token would only say somebody on this hub may act.
+    """
+    headers: Mapping[str, str] = (ctx.headers if ctx else None) or {}
+    value = next((v for k, v in headers.items() if k.lower() == folder_keys.HEADER.lower()), "")
+    return folder_keys.bearer(value)
 
 
 def _owner_token(ctx: Context) -> str:

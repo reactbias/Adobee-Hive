@@ -74,6 +74,7 @@ SUITE = [
     "tests/test_home_hub_row.py",
     "tests/test_requester_identity.py",
     "tests/test_withdrawal_authority.py",
+    "tests/test_introduction_authority.py",
 ]
 
 
@@ -419,9 +420,9 @@ CURATED: list[Mutant] = [
     ),
     Mutant(
         "folder_keys.py",
-        "a revoked secret keeps working, so losing a laptop cannot be undone",
-        '"SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ? AND revoked_at IS NULL",',
-        '"SELECT id, link_id, handle, peer FROM folder_keys WHERE secret_sha256 = ?",',
+        "a revoked secret keeps working at both doors, so losing a laptop cannot be undone",
+        'WHERE secret_sha256 = ? AND revoked_at IS NULL"',
+        'WHERE secret_sha256 = ?"',
     ),
     Mutant(
         "folder_keys.py",
@@ -430,9 +431,75 @@ CURATED: list[Mutant] = [
         '[key_id, _now(), link["id"], me, peer, secret],',
     ),
     Mutant(
+        "hub.py",
+        "a connection id authorises its own answer again, so a stranger fakes a consent",
+        "        raise HubError(_no_authority(row, action))",
+        "        proof = BY_LINK",
+    ),
+    Mutant(
+        "hub.py",
+        "any live link secret answers any introduction, not only one on this row's own link",
+        '    if key is None or key["link"] != row["folder_link"]:',
+        "    if key is None:",
+    ),
+    Mutant(
+        "hub.py",
+        "either party's secret answers for the other, so a requester consents on the owner's behalf",
+        '        return key["handle"] == folders.handle_for(who)',
+        '        return key["peer"] == folders.handle_for(who)',
+    ),
+    Mutant(
+        "hub.py",
+        "a requester's secret confirms as well as declines, so the owner's yes is not theirs to give",
+        '    elif _party_by_link(row, secret, row["requester"]) and action == "decline":',
+        '    elif _party_by_link(row, secret, row["requester"]):',
+    ),
+    Mutant(
+        "hub.py",
+        "an unset owner token authorises everybody, the way an owner edit over REST would",
+        "    elif owner_token and guard.secret_matches(owner_token, config.OWNER_EDIT_TOKEN):",
+        "    elif guard.secret_ok(owner_token, config.OWNER_EDIT_TOKEN):",
+    ),
+    Mutant(
+        "hub.py",
+        "a decision signature is accepted without being checked against the target's registered key",
+        '    if not hive.verify(decision_statement(row["id"], action, nonce, expires), signature, pinned):',
+        "    if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "an expired decision signature still answers, so a captured one answers for ever",
+        '    if _expired(expires):\n        raise HubError(f"this decision document has expired',
+        '    if False:\n        raise HubError(f"this decision document has expired',
+    ),
+    Mutant(
+        "hub.py",
+        "a score can be given by anybody again, so one person's one final score is anyone's to spend",
+        "            f\"scoring {row['id']} needs the requester's own credential: the\"",
+        "            f\"unreachable {row['id']}\"",
+    ),
+    Mutant(
+        "hub.py",
+        "a hub-wide owner token scores, so the requester's one report is not theirs",
+        '    if _party_by_link(row, secret, row["requester"]):\n        proof = BY_LINK\n    elif by_operator:',
+        "    if True:\n        proof = BY_LINK\n    elif by_operator:",
+    ),
+    Mutant(
+        "connections.py",
+        "a transition stops being conditional, so two racing callers both win",
+        'cur.execute(f"UPDATE hub_connections SET {sets} WHERE id = ? AND state = ?", [*args, connection_id, was])',
+        'cur.execute(f"UPDATE hub_connections SET {sets} WHERE id = ?", [*args, connection_id])',
+    ),
+    Mutant(
         "folder_keys.py",
-        "a secret is minted for a link nobody accepted, which makes the other side's yes decorative",
-        'if link["state"] != folders.ESTABLISHED:\n        raise KeyError_(',
+        "a party lookup stops noticing a revoked link, so withdrawing a link leaves its authority",
+        '    return None if link["state"] == folders.REVOKED else key',
+        "    return key",
+    ),
+    Mutant(
+        "folder_keys.py",
+        "the default stops refusing a link nobody accepted, so `pending_ok` means nothing and reads open early",
+        'if link["state"] != folders.ESTABLISHED and not pending_ok:\n        raise KeyError_(',
         "if False:\n        raise KeyError_(",
     ),
     Mutant(

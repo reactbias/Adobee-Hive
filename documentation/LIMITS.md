@@ -95,6 +95,21 @@ The capability is the weaker half and is honest about it: over MCP the submissio
 the agent's transcript, so anything that can read that transcript can withdraw the application until
 it is decided. There is no revocation and no rollover — bringing your own `public_key` avoids the
 problem rather than mitigating it, and the operator's route is the way out if it happens.
+**An introduction's two decisions are authorised; the people behind them are not identified.** The
+owner's yes and the requester's score used to need nothing at all, so a caller who knew a connection
+id could fake a consent and spend somebody else's one final score
+([#107](https://github.com/reactbias/Adobee-Hive/issues/107)). Both doors now fail closed, and what
+they take is the strongest thing this hub has: a secret bound to one side of the folder link the row
+stands on, a signature under the key the target registered, or — for a decision only, never a score
+— this hub's hub-wide owner token.
+
+None of that is identity. A link secret says whoever holds it is that side of that link; a signature
+says whoever holds that private key answered. The secret is minted once and handed over in the
+connect answer, which over MCP means it is written into the agent's transcript, so anything that can
+read the transcript can score the introduction. The owner token is one secret for the whole hub, so
+it is recorded on the row as `owner token` rather than as the owner's own yes, and it buys nothing at
+the scoring door. Per-owner accounts
+([#135](https://github.com/reactbias/Adobee-Hive/issues/135)) are the fix for the last of those.
 
 **Calibration does not reach the search rank.** A federated result is ranked
 `local_relevance × hub_path_trust × hop_decay`, and `hub_path_trust` comes from `reputation.py` — declared versus

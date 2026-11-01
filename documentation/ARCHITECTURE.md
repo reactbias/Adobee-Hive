@@ -159,9 +159,10 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hive/cards` | All cards, optionally `?kind=` | |
 | `GET /api/hive/discover` | Structured constraints and `looking_for`, plus `radius`, `budget_ms` and `seen` for peer forwarding. Explicit hotel/room prose reuses the stay parser for constraints and removes declared guest identity from ranking; explicit query parameters win and absent stay dates are not invented. Generic services/needs searches remain generic | rate limit above radius 0 |
 | `POST /api/hub/connect` | Ask to be introduced to an entity, and log it. Also hands the requester the secret for its side of the folder link the handshake opened, once. For an entity on a **peer**, pass `card` (the signed card the federated search returned) and `target_hub`: this hub verifies it against the key that hub pinned for it and refuses it otherwise, so an introduction is this hub's to record even when the entity is not its own | rate limit |
-| `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
-| `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
-| `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
+| `GET /api/hub/connections/{connection_id}/decision` | The document a target's owner signs to answer this introduction, and its canonical bytes | — |
+| `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once. Needs the **requester's** own link secret in `Authorization: Bearer`, which the connect answer returned. Fails closed | requester proof |
+| `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes. Needs authority over the target: its side of the link, a signature under the key it registered, or this hub's `X-Owner-Token`. Fails closed | target proof |
+| `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating. Same authority, and the requester may withdraw with its own secret | target or requester proof |
 | `GET /api/hub/connections` | Introductions waiting on a yes or on a score, each with the days it has left (`stale_in_days`, `stale_soon`) | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
 | `GET /api/folders/status` | Which folder link is in use, what was asked for, why they differ, what a read costs, and the honest line that on `local` both folders are on one disk. Names no server path | — |
@@ -183,6 +184,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
 | `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
 | `POST /api/admin/applications/{application_id}/withdraw` | Withdraw an application as the operator. Recorded as the operator's act, never as the applicant's consent | `X-Admin-Token`, fails closed |
+| `POST /api/admin/connections/{connection_id}/{action}` | Confirm, decline or score an introduction as the operator. Recorded as the operator's act, never as the owner's consent or the requester's report | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities` | Every entity this hub carries: id, name, kind, claimed, rating and count, published at | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities/{entity_id}` | One entity in full: the signed card, its offers and needs, contact with the sharing flag that applies to each channel, its trust block, its signature state, and whether it is blocked | `X-Admin-Token`, fails closed |
 | `POST /api/admin/entities/{entity_id}/remove` | Stop carrying an entity: out of discovery, not bookable, signed history kept. A reason is required | `X-Admin-Token`, fails closed |

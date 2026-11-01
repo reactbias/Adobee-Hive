@@ -596,22 +596,86 @@ def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
     )
 
 
+class DecideBody(BaseModel):
+    """An owner's signed yes or no. Nothing secret lives here; a link secret is a header."""
+
+    note: str = Field("", max_length=500, description="For a decline, what the owner wants recorded")
+    signature: str = Field("", max_length=400, description="Base64, over the document GET …/decision returns")
+    nonce: str = Field("", max_length=200, description="From that document; part of what was signed")
+    expires: str = Field("", max_length=64, description="From that document; part of what was signed")
+
+
+def _link_secret(request: Request) -> str:
+    """The link secret on this request, from the same header a folder read presents it in."""
+    return folder_keys.bearer(request.headers.get(folder_keys.HEADER, ""))
+
+
+@app.get("/api/hub/connections/{connection_id}/decision")
+def hub_decision_document(connection_id: str, action: str = "confirm") -> dict[str, Any]:
+    """The document a target's owner signs to answer this introduction, and its canonical bytes.
+
+    Public, because it carries a nonce and an expiry and nothing else: it is worth nothing to
+    anybody who cannot sign it with the key the target registered.
+    """
+    row = _hive_call(connections.get, connection_id)
+    return {"connection": row["id"], "state": row["state"], **_hive_call(hub.decision_to_sign, row["id"], action)}
+
+
 @app.post("/api/hub/connections/{connection_id}/score")
-def hub_score(connection_id: str, body: ScoreBody) -> dict[str, Any]:
-    """Score an introduction after the real meeting. Once, and only while it is still open."""
-    return _hive_call(hub.score, connection_id, body.rating, body.note)
+def hub_score(connection_id: str, body: ScoreBody, request: Request) -> dict[str, Any]:
+    """Score an introduction after the real meeting. Once, and only while it is still open.
+
+    The score belongs to the one party that asked for the introduction, so this needs **their**
+    credential: `Authorization: Bearer <link secret>`, the secret the answer to the connect request
+    returned. A connection id is not it — that id is in the same answer and in the queues anybody
+    reads, and knowing one used to be enough to consume somebody else's one final score. Fails
+    closed; an operator scores through the admin route and the row says they did.
+    """
+    return _hive_call(hub.score, connection_id, body.rating, body.note, secret=_link_secret(request))
 
 
 @app.post("/api/hub/connections/{connection_id}/confirm")
-def hub_confirm(connection_id: str) -> dict[str, Any]:
-    """The owner says yes to an introduction."""
-    return _hive_call(connections.confirm, connection_id)
+def hub_confirm(connection_id: str, request: Request, body: DecideBody | None = None) -> dict[str, Any]:
+    """The owner says yes to an introduction. Needs authority over the target.
+
+    One of: the target's side of this introduction's folder link, in `Authorization: Bearer
+    <link secret>`; a signature under the key the target registered, when it brought one
+    (`GET …/decision` gives the document); or this hub's `X-Owner-Token`, which proves the holder
+    may answer for *an* entity here and not for this one (#135). Refused with none of them.
+    """
+    body = body or DecideBody()
+    return _hive_call(
+        hub.decide,
+        connection_id,
+        "confirm",
+        secret=_link_secret(request),
+        owner_token=request.headers.get(owner.TOKEN_HEADER, ""),
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.post("/api/hub/connections/{connection_id}/decline")
-def hub_decline(connection_id: str) -> dict[str, Any]:
-    """The owner says no. It never becomes a rating."""
-    return _hive_call(connections.decline, connection_id)
+def hub_decline(connection_id: str, request: Request, body: DecideBody | None = None) -> dict[str, Any]:
+    """The owner says no. It never becomes a rating. Same authority as confirm.
+
+    A *requester* giving up on its own request may also decline, with its own link secret. That used
+    to be allowed with no credential at all on the grounds that it was this hub's own caller — which
+    was never checked, and so was available to anybody.
+    """
+    body = body or DecideBody()
+    return _hive_call(
+        hub.decide,
+        connection_id,
+        "decline",
+        note=body.note,
+        secret=_link_secret(request),
+        owner_token=request.headers.get(owner.TOKEN_HEADER, ""),
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.get("/api/hub/connections")
@@ -1299,6 +1363,25 @@ def hub_withdraw(
 def admin_applications(state: str = "") -> dict[str, Any]:
     """The admission queue. Pass state=pending for what is waiting on a person."""
     return {"applications": _hive_call(registration.listing, state), "policy": registration.policy()}
+
+
+@app.post("/api/admin/connections/{connection_id}/{action}")
+def admin_decide_connection(
+    connection_id: str, action: str, body: ScoreBody | None = None, credential: str = Depends(admin_only)
+) -> dict[str, Any]:
+    """Answer or score an introduction as the operator: an administrative act, recorded as one.
+
+    `action` is `confirm`, `decline` or `score`. Separate from the parties' own routes so the row can
+    say a hub-wide credential acted and not that the owner consented or the requester reported —
+    `decided_by` and `scored_by` carry which. Fails closed with the rest of administration.
+    """
+    if action == "score":
+        if body is None:
+            raise HTTPException(400, "Scoring needs a rating.")
+        return _hive_call(hub.score, connection_id, body.rating, body.note, by_operator=credential)
+    if action not in hub.DECIDE_ACTIONS:
+        raise HTTPException(400, f"An action is confirm, decline or score, not {action!r}.")
+    return _hive_call(hub.decide, connection_id, action, by_operator=credential)
 
 
 @app.post("/api/admin/applications/{application_id}")

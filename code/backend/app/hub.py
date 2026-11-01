@@ -25,9 +25,12 @@ nothing trustworthy from a booking; it learns from a person saying, weeks later,
 
 from __future__ import annotations
 
+import base64
+import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from . import blocklist, calibration, config, connections, folder_keys, folders, hive, sharing
+from . import blocklist, calibration, config, connections, folder_keys, folders, guard, hive, owner, sharing
 
 
 class HubError(ValueError):
@@ -265,10 +268,15 @@ def connect(
     )
     # The requester asked to be introduced, so this answer speaks for the requester and may hand it
     # the credential for its side of the link: `folder_key.secret` is the only time that secret
-    # exists outside a hash, and it reads nothing the owner has not granted. A `confirm` Card's link
-    # is still `requested` here, so there is no key to give yet — it is minted when the owner says
-    # yes, which is `connections.confirm`'s moment and not this one.
-    key = folder_keys.mint(link["id"], who) if link["state"] == folders.ESTABLISHED else None
+    # exists outside a hash, and it reads nothing the owner has not granted.
+    # Minted whatever the link's state, and `pending_ok` is why. The requester asked for this
+    # introduction and this answer speaks for them, so this is their one chance to be handed a
+    # credential for it — and for a `confirm` Card that is the *only* chance, because the next thing
+    # that happens to the row is a decision only its owner may make. A key on a link the other side
+    # has not accepted reads nothing (`folder_keys.resolve` re-reads the link's state every time), so
+    # what it carries here is proof of which side of this introduction the holder is, which is what
+    # `hub.score` and a requester's withdrawal need (#107).
+    key = folder_keys.mint(link["id"], who, pending_ok=True)
     out = {**row, "folder": folders.manifest(them, who), "folder_key": key}
     if remote:
         # Said in the answer, not only in the row: an introduction to somebody on another hub is one
@@ -289,13 +297,242 @@ def connect(
     return out
 
 
-def score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
+# ---------------------------------------------------------------- who may answer for a row
+#
+# Two decisions sit on a connection and they belong to two different people. The **owner** of the
+# target says yes or no to being introduced, and the **requester** says afterwards how it went.
+# Neither needed anything: an unrelated caller who knew a connection id could walk a row from
+# `requested` through `open` to `rated`, and the real requester's score was then refused as already
+# given. The id is in the answer `hub_connect` returns and in the queues an agent reads, so it was
+# never a secret and was never authority (#107).
+#
+# What this hub has to work with is not accounts (#135 is roadmap) but three things that exist:
+#
+# - a **link secret** (`folder_keys.py`): 32 bytes bound to one side of one folder link, resolving to
+#   a handle. Every connection row stands on a folder link, so a link secret names a *party to this
+#   row* — the strongest proof here, and the only one that is per-party rather than per-hub.
+#   `hub.connect` hands the requester theirs, which is why `folder_keys.mint` now mints on a pending
+#   link: otherwise a `confirm` introduction had no requester-side proof in existence at all.
+# - a **signed action** under the key the target registered, for a card whose owner brought one
+#   (`custody: "owner"`, `owner_public_key` pinned). Per-entity and unforgeable by this hub. Same
+#   shape as `registration.withdrawal_statement`.
+# - this hub's **owner token**, and its **admin credential**. Both are hub-wide: they prove the
+#   holder may answer for *an* entity here, never for *this* one. That is the #135 gap, and it is
+#   recorded on the row rather than smoothed over, so a reader can tell a per-entity yes from a
+#   hub-wide one.
+#
+# Every door fails closed. No proof means the row is not touched, and `decided_by` / `scored_by`
+# record which of the proofs it actually was.
+
+BY_LINK, BY_OWNER_KEY, BY_OWNER_TOKEN, BY_ADMIN = "link secret", "owner key", "owner token", "hub operator"
+
+#: How long a signed decision is good for. Short, like `registration.WITHDRAW_WINDOW_S`, and for the
+#: same reason: a window is the only thing bounding a signature somebody captured.
+DECIDE_WINDOW_S = 300
+
+DECIDE_ACTIONS = ("confirm", "decline")
+
+
+def decision_statement(connection_id: str, action: str, nonce: str, expires: str) -> dict[str, Any]:
+    """The exact document an owner's signed yes or no covers.
+
+    The **connection** so a yes to one introduction is not a yes to another, the **action** so a
+    decline cannot be replayed as a confirm, a **nonce** so two decisions are two documents, and an
+    **expiry** so a captured signature stops working.
+    """
+    return {"connection": connection_id, "action": action, "nonce": nonce, "expires": expires}
+
+
+def decision_to_sign(connection_id: str, action: str, nonce: str = "", expires: str = "") -> dict[str, Any]:
+    """A ready-to-sign decision document and its canonical bytes, so a client signs what is checked."""
+    if action not in DECIDE_ACTIONS:
+        raise HubError(f"an action is one of {', '.join(DECIDE_ACTIONS)}, not {action!r}")
+    nonce = (nonce or secrets.token_urlsafe(16)).strip()
+    expires = (expires or (_now() + timedelta(seconds=DECIDE_WINDOW_S)).isoformat()).strip()
+    statement = decision_statement(connection_id, action, nonce, expires)
+    return {
+        "statement": statement,
+        "canonical": base64.b64encode(hive.canonical(statement)).decode(),
+        "nonce": nonce,
+        "expires": expires,
+    }
+
+
+def _now() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _expired(expires: str) -> bool:
+    """True when this document's window has closed, or its expiry cannot be read.
+
+    Unreadable counts as closed: a signature over an expiry nothing can parse has no window, and on
+    a decision that cannot be taken back the safe reading of "no window" is "shut".
+    """
+    try:
+        when = datetime.fromisoformat((expires or "").strip().replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    if when.tzinfo is not None:
+        when = when.astimezone(UTC).replace(tzinfo=None)
+    return when <= _now()
+
+
+def _party_by_link(row: dict[str, Any], secret: str, who: str) -> bool:
+    """True when `secret` is a live key for `who`'s side of the folder link this row stands on.
+
+    Three things are checked and all three matter: that the secret belongs to a live key at all, that
+    the key is on **this row's** link — one for some other link between the same two agents would
+    otherwise do — and that the handle it names is the side being claimed.
+
+    `folder_keys.party_of` and not `resolve`: the read door refuses a link the other side has not
+    accepted, which is right for reading somebody's files and wrong here. An introduction waiting for
+    its owner's yes stands on a link that is not established *by definition*, so asking the read door
+    would have left the owner's own decision with nothing per-party behind it. Authority over this
+    row is not access to a folder. Both calls re-read the link on every request, so revoking the link
+    ends this on the next one.
+    """
+    if not secret or not row.get("folder_link"):
+        return False
+    key = folder_keys.party_of(secret)
+    if key is None or key["link"] != row["folder_link"]:
+        return False
+    try:
+        return key["handle"] == folders.handle_for(who)
+    except folders.FolderError:
+        return False
+
+
+def _owner_signed(row: dict[str, Any], action: str, signature: str, nonce: str, expires: str) -> bool:
+    """True when this decision carries a valid signature under the key the target itself registered.
+
+    The key comes from the card in this hub's own index (`owner_public_key`, pinned at registration
+    when the applicant brought one), never from the request. A card whose key this hub holds has
+    none, so this is simply not available for it and the caller is told which proof it can give.
+    """
+    record = hive.get_record(row["target"])
+    pinned = str(((record or {}).get("data") or {}).get("owner_public_key") or "")
+    if not pinned:
+        raise HubError(
+            f"{row['target']}'s signing key is held by this hub, not by its owner, so there is no owner"
+            f" signature to check. Its owner answers with this hub's {owner.TOKEN_HEADER}"
+        )
+    if not (signature and nonce and expires):
+        raise HubError(
+            "a signed decision needs `signature`, `nonce` and `expires` together: the nonce and the expiry"
+            " are part of the document that was signed"
+        )
+    if _expired(expires):
+        raise HubError(f"this decision document has expired; ask for another and sign that ({DECIDE_WINDOW_S} s)")
+    if not hive.verify(decision_statement(row["id"], action, nonce, expires), signature, pinned):
+        raise HubError(
+            f"the signature does not match the key {row['target']} registered, or it covers a different"
+            " document. It is made over the canonical JSON of {connection, action, nonce, expires}"
+        )
+    return True
+
+
+def decide(
+    connection_id: str,
+    action: str,
+    *,
+    note: str = "",
+    secret: str = "",
+    owner_token: str = "",
+    signature: str = "",
+    nonce: str = "",
+    expires: str = "",
+    by_operator: str = "",
+) -> dict[str, Any]:
+    """The target's owner answers an introduction. Refused for anyone who cannot show they may.
+
+    `action` is `confirm` or `decline`. The proofs, strongest first: the target's side of this row's
+    folder link, a signature under the key the target registered, this hub's owner token, or the
+    operator. The row records which it was, so a per-entity yes and a hub-wide one are different
+    facts afterwards.
+
+    A declining *requester* is not a case this answers. The old code let a decline through on the
+    grounds that it was "this hub's own caller giving up on its own request", which was never
+    checked and so was available to anybody; a requester who wants out shows the same link secret
+    they would score with.
+    """
+    if action not in DECIDE_ACTIONS:
+        raise HubError(f"an action is one of {', '.join(DECIDE_ACTIONS)}, not {action!r}")
+    row = connections.get(connection_id)
+    if row["state"] != connections.REQUESTED:
+        raise HubError(f"only a requested connection can be answered, this one is {row['state']}")
+
+    if _party_by_link(row, secret, row["target"]):
+        proof = BY_LINK
+    elif _party_by_link(row, secret, row["requester"]) and action == "decline":
+        proof = f"{BY_LINK} (requester withdrew)"
+    elif signature or nonce or expires:
+        _owner_signed(row, action, signature, nonce, expires)
+        proof = BY_OWNER_KEY
+    elif owner_token and guard.secret_matches(owner_token, config.OWNER_EDIT_TOKEN):
+        proof = BY_OWNER_TOKEN
+    elif by_operator:
+        proof = f"{BY_ADMIN} ({by_operator})"
+    else:
+        raise HubError(_no_authority(row, action))
+
+    if action == "confirm":
+        return connections.confirm(connection_id, decided_by=proof)
+    return connections.decline(connection_id, note, decided_by=proof)
+
+
+def _no_authority(row: dict[str, Any], action: str) -> str:
+    """Why this decision is refused, naming the proofs this particular row can actually take."""
+    record = hive.get_record(row["target"])
+    signs = bool(str(((record or {}).get("data") or {}).get("owner_public_key") or ""))
+    ways = [
+        f"the `Authorization: Bearer <link secret>` for {row['target']}'s side of this introduction's folder link",
+    ]
+    if signs:
+        ways.append(
+            f"a signature under the key {row['target']} registered"
+            f" (GET /api/hub/connections/{row['id']}/decision?action={action} returns the document)"
+        )
+    ways.append(
+        f"this hub's {owner.TOKEN_HEADER}"
+        if config.OWNER_EDIT_TOKEN
+        else f"this hub's {owner.TOKEN_HEADER}, which its operator has not set"
+    )
+    return (
+        f"{action} on {row['id']} needs authority over {row['target']}. A connection id is in the answer that"
+        f" made it and in the queues anybody reads, so knowing one is not authority to act on it. This hub"
+        f" accepts: {'; or '.join(ways)}. An operator can also answer, as their own act, through"
+        f" POST /api/admin/connections/{row['id']}/{action}"
+    )
+
+
+def score(
+    connection_id: str, rating: int, note: str = "", *, secret: str = "", by_operator: str = ""
+) -> dict[str, Any]:
     """Score an introduction after the real meeting, and show what it did to the hub it came from.
 
     This is the only moment the trust layer learns anything, so the answer says plainly what the
     score changed: the gap against what was promised, and where that leaves the carrying hub.
+
+    The score belongs to the party that asked for the introduction, and there is exactly one of
+    them, so this takes the requester's own link secret — `hub.connect` returns it — and nothing
+    hub-wide. An operator can score as themselves for a demo or a repair, and the row says so;
+    a hub-wide credential standing in for the requester would make the one final score available to
+    whoever holds it, which is the half of #107 that matters most. Fails closed either way.
     """
-    row = connections.rate(connection_id, rating, note)
+    row = connections.get(connection_id)
+    if _party_by_link(row, secret, row["requester"]):
+        proof = BY_LINK
+    elif by_operator:
+        proof = f"{BY_ADMIN} ({by_operator})"
+    else:
+        raise HubError(
+            f"scoring {row['id']} needs the requester's own credential: the"
+            " `Authorization: Bearer <link secret>` that the answer to the connect request returned, for"
+            f" {row['requester']}'s side of this introduction's folder link. A connection id is not it — it is in"
+            " that same answer and in the queues anybody reads. One introduction gets one score, and it is the"
+            " person who asked for the meeting who gives it"
+        )
+    row = connections.rate(connection_id, rating, note, scored_by=proof)
     hub_id = row.get("via_hub") or row.get("target_hub") or ""
     published = row.get("published_rating")
     out: dict[str, Any] = {"connection": row, "hub": hub_id}
