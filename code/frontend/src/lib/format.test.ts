@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chf, day, metres, moment, nights, since, stay } from "./format";
+import { chf, day, metres, moment, nights, since, size, stay } from "./format";
 
 describe("format", () => {
   it("counts nights between ISO days", () => {
@@ -55,5 +55,24 @@ describe("how long ago", () => {
 
   it("gives the exact moment for a title", () => {
     expect(moment("2026-10-31T12:00:00Z", "en-CH")).toMatch(/2026/);
+  });
+});
+
+describe("file sizes", () => {
+  it("shows whole bytes below a kilobyte", () => {
+    expect(size(872, "en-CH")).toBe("872 B");
+    expect(size(0, "en-CH")).toBe("0 B");
+  });
+
+  it("goes up a unit at a thousand, with one decimal while it is small", () => {
+    expect(size(2048, "en-CH")).toBe("2.0 kB");
+    expect(size(182_000, "en-CH")).toBe("182 kB");
+    expect(size(26_214_400, "en-CH")).toBe("26.2 MB");
+  });
+
+  it("says nothing rather than something wrong for a size that is not one", () => {
+    expect(size(null, "en-CH")).toBe("");
+    expect(size(-1, "en-CH")).toBe("");
+    expect(size("big", "en-CH")).toBe("");
   });
 });

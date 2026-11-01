@@ -126,6 +126,35 @@ function adminHeaders(): Record<string, string> {
   return token ? { "X-Admin-Token": token } : {};
 }
 
+// A folder link's credential. Unlike the owner and admin tokens it is deliberately NOT stored: it is a bearer
+// for somebody else's folder, handed over once in the Connect response, and it stays in the state of the screen
+// that received it. A reload loses the browse, and that is the right trade for not parking another person's
+// credential in a browser.
+const folderAuth = (secret: string): Record<string, string> => ({ Authorization: `Bearer ${secret}` });
+
+/**
+ * One file from a peer's folder, as bytes.
+ *
+ * Not through `call`, which parses JSON: a granted file is a PDF or a photo as often as it is markdown. The
+ * refusal shape is `call`'s, so a 404 still arrives as an `ApiError` a screen can say something about, and a
+ * lost connection still arrives as OFFLINE.
+ */
+async function folderBytes(secret: string, path: string): Promise<Blob> {
+  const query = new URLSearchParams({ path }).toString();
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase()}/api/folders/file?${query}`, { headers: folderAuth(secret) });
+  } catch {
+    throw new Error(OFFLINE);
+  }
+  if (COLD.has(res.status)) throw new Error(OFFLINE);
+  if (!res.ok) {
+    const body: { detail?: string } = await res.json().catch(() => ({}));
+    throw new ApiError(body.detail ?? `${res.status} ${res.statusText}`, res.status);
+  }
+  return res.blob();
+}
+
 // The hub the app is pointed at, chosen in the instance finder: its id, and where it actually answers.
 // Remembered for this tab only, so closing the tab goes back to the build's default.
 const HUB_KEY = "adobee-hub";
@@ -556,6 +585,52 @@ export interface HiveMatch {
 export type Sharing = "public" | "confirm" | "push" | "never";
 
 /**
+ * One file in a peer's folder, as one folder link may see it.
+ *
+ * The manifest lists more than it serves, on purpose. `readable` is the backend's own answer to "may this link
+ * read the bytes", computed per path from the owner's visibility markers and grants, and a `public-summary`
+ * row comes back listed and not readable: the Card already admits the file exists and hashes to this, while
+ * the bytes stay the owner's to hand over. A screen that offered a button on every row would offer dead ones.
+ */
+export interface FolderFile {
+  /** Relative to the owner's folder; what `/api/folders/file?path=` takes. */
+  path: string;
+  bytes: number;
+  media_type: string;
+  /** `sha256:` and the first twelve hex characters, the same string the file read sends as its `ETag`. */
+  digest: string;
+  /** How much of this path the owner admits to: `public`, `public-summary`, `shared`. */
+  visibility: string;
+  /** `<owner>/<path>`, the backend's own handle for the file. */
+  ref: string;
+  readable: boolean;
+}
+/** A peer's folder as one link may see it. `withheld` is a count and never a name. */
+export interface FolderManifest {
+  owner: string;
+  viewer: string;
+  /** Whether the link is established. Unlinked, a viewer sees only what the published Card already said. */
+  linked: boolean;
+  files: FolderFile[];
+  /** How many paths the owner keeps to themselves. The names are not sent, so they cannot be shown. */
+  withheld: number;
+}
+/**
+ * The credential for one folder link. `secret` is the only time that secret exists outside a hash, so it is
+ * never written to storage here: it lives in the component state of the screen that received it and is gone on
+ * a reload, which is the honest cost of not keeping somebody else's bearer token in a browser.
+ */
+export interface FolderKey {
+  id: string;
+  link: string;
+  handle: string;
+  peer: string;
+  secret: string;
+  /** Always `Bearer` today; read rather than assumed. */
+  scheme: string;
+}
+
+/**
  * One introduction. `requested` waits on the owner's yes, `open` waits on a person's score until `stale_at`,
  * `rated` is final, and `stale` and `declined` can never become a rating. Ratings are tenths of a star, 0–50.
  */
@@ -578,6 +653,23 @@ export interface Connection {
   note: string | null;
   rating_stars: number | null;
   published_rating_stars: number | null;
+  /** The folder link this introduction opened, when the hub made one. */
+  folder_link?: string;
+  /**
+   * The peer's folder as this link may see it, handed over with the introduction itself.
+   *
+   * Always present, and **empty for a remote entity**: `hub.connect` computes it from `folders.manifest`
+   * against this hub's own folder root, and an entity on a peer keeps its folder on that peer's disk. So
+   * browsing a folder is a local-connect feature today, and `remote` is what tells the two cases apart —
+   * "nothing in it" and "not on this hub" are different sentences.
+   */
+  folder?: FolderManifest;
+  /** The bearer for that folder, sent once and never again. `null` until a `confirm` owner says yes. */
+  folder_key?: FolderKey | null;
+  /** True when the entity is carried by another hub, so this hub recorded the introduction and cannot complete it. */
+  remote?: boolean;
+  /** Which hub carries it, when `remote`. */
+  origin_hub?: string;
 }
 export interface Connections {
   /** Open and unscored, the one about to go stale first. */
@@ -1029,6 +1121,17 @@ export const api = {
     return call<Connections>(`/api/hub/connections${query ? `?${query}` : ""}`);
   },
   standing: () => call<Standing>("/api/hub/standing"),
+
+  /**
+   * A peer's folder as this link may see it, asked again rather than trusted from the Connect response: the
+   * owner can grant a path while somebody is looking at the list, and `readable` changes under them.
+   */
+  folderManifest: (secret: string) => call<FolderManifest>("/api/folders/manifest", { headers: folderAuth(secret) }),
+  /**
+   * One granted file, as bytes. Every refusal is the same 404 on purpose, so a caller learns nothing from
+   * one: a listed-but-not-served path and a path that was never there answer identically.
+   */
+  folderFile: (secret: string, path: string) => folderBytes(secret, path),
 
   /** Trade the hub's password for a session token. A 429 carries the seconds to wait in `retryAfter`. */
   adminLogin: (password: string) => post<AdminSession>("/api/admin/login", { password }),

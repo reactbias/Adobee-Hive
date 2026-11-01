@@ -98,9 +98,10 @@ local with the reason in `GET /api/health`, because the adapter for the real lib
 **A client can open a link, read the manifest and read a granted file; it cannot yet drive the rest.**
 `GET /api/folders/manifest` and `GET /api/folders/file` are built, authenticated by a secret bound to the
 link ([FOLDER_API.md](FOLDER_API.md)), and `POST /api/hub/connect` hands the requester that secret in the same
-answer. What has no endpoint yet is claiming a handle, requesting and accepting a link by hand, **giving a
-grant**, and revoking either: those can still only be done from Python, so the demo's grants are made by the
-seeder and not by an owner clicking. Issue #116 has the shape; the routes are the remaining slice.
+answer. What has no endpoint yet is claiming a handle, and requesting or accepting a link by
+hand: those can still only be done from Python. Giving and revoking a grant **do** have endpoints
+(`POST`/`GET /api/folders/grants`, `DELETE /api/folders/grants/{id}`), so the demo's grants are made by the
+seeder only not by an owner clicking. Issue #116 has the shape; the routes are the remaining slice.
 
 **The read surface serves less than the link admits.** A linked peer *sees* a `shared` file in the manifest —
 that is the folder link's whole point, since the Card never said it existed — but `GET /api/folders/file`
