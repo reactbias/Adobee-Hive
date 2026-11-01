@@ -98,6 +98,9 @@ def hive_discover(
     above 0 makes this hub call its peers, so it is rate-limited: a refusal names the budget and when to retry.
     limit: how many matches to answer with, up to 50. The answer says `truncated` and `total_matches` when there
     were more, so narrow the query or raise this rather than assuming you saw the whole Hive.
+    A match from another Hive carries that business's full signed card inline under `card`, already verified
+    against its owner's key: read it from there rather than calling hive_get_card again, and pass it to
+    hub_connect when you connect. hive_get_card also works for such an id, by asking the peer.
     The answer carries `matched` (how many businesses the query actually earned something from) over
     `considered` (how many were ranked to get them). Only the ones that earned something come back, so
     `matched: 0` means nothing on this Hive answers the question — say so to the user rather than offering
@@ -151,10 +154,26 @@ def hive_rulesets() -> dict[str, Any]:
 
 
 @server.tool()
-def hive_get_card(card_id: str) -> dict[str, Any]:
+def hive_get_card(ctx: Context, card_id: str, radius: int = 1) -> dict[str, Any]:
     """Read one business's full Hive card: offering, units and prices, policies, contact, and trust
-    (signature, public key, third-party attestations, proof-of-stay reviews)."""
-    return _counted(_safe(hive.get_card, card_id), "read")
+    (signature, public key, third-party attestations, proof-of-stay reviews).
+
+    Works for an id this Hive found on a peer: if it does not carry the card itself it asks its peers for
+    it, and the answer says in `trust.federation` which Hive it came from. radius 0 looks only at this Hive.
+    A federated match from hive_discover already carries the same signed card inline under `card`, so you
+    do not have to call this at all for a result you have just been handed — use that and save the hop."""
+    try:
+        local = hive.get_card(card_id)
+    except hive.HiveError as err:
+        if not radius:
+            raise ToolError(str(err)) from err
+        if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
+            raise ToolError(over) from None
+        found = _safe(hive.card_from_peer, card_id, radius)
+        if found is None:
+            raise ToolError(str(err)) from err
+        return _counted(found, "read")
+    return _counted(local, "read")
 
 
 @server.tool()

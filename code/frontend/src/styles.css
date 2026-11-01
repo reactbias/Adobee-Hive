@@ -1464,6 +1464,16 @@ th.end {
 .screen-find:has(.journey > *) .search-top {
   position: static;
 }
+.hr-brief {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s4);
+  margin-top: var(--s4);
+}
+.hr-brief > div {
+  width: 100%;
+}
 .screen-find .journey,
 .screen-find .result-pending {
   margin-top: var(--s4);

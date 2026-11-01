@@ -38,17 +38,23 @@ export interface CardDraft {
   structure: StructureRow[];
 }
 
-/** The parts at the top of a folder, each shared or kept back as a whole. A file at the top is its own part. */
+// A slash cannot be a child directory's name; keep this UI key out of the published structure.
+export const ROOT_FILES_GROUP = "/";
+
+/** The parts at the top of a folder, with all loose files shared or kept back as one part. */
 export function groupsOf(files: VaultFile[]): { path: string; files: number }[] {
   const counts = new Map<string, number>();
   for (const file of files) {
-    const group = file.path.split("/")[0];
+    const group = groupOf(file.path);
     counts.set(group, (counts.get(group) ?? 0) + 1);
   }
-  return [...counts].sort(([a], [b]) => a.localeCompare(b)).map(([path, n]) => ({ path, files: n }));
+  return [...counts]
+    .sort(([a], [b]) => (a === ROOT_FILES_GROUP ? -1 : b === ROOT_FILES_GROUP ? 1 : a.localeCompare(b)))
+    .map(([path, n]) => ({ path, files: n }));
 }
 
-export const groupOf = (path: string) => path.split("/")[0];
+/** The visibility key of a file: its child directory, or the single group of loose root files. */
+export const groupOf = (path: string) => (path.includes("/") ? path.split("/")[0] : ROOT_FILES_GROUP);
 
 /** A part's visibility as the person set it; `public-summary` until they say otherwise, as in seed_vaults.py. */
 const visibilityOf = (path: string, chosen: Record<string, Visibility>): Visibility =>
@@ -204,7 +210,8 @@ export async function buildDraft(
       structure.push({ path: file.path, bytes: file.bytes.length, visibility: seen, digest: await digest(file.bytes) });
     else if (seen === "private") kept.set(groupOf(file.path), (kept.get(groupOf(file.path)) ?? 0) + 1);
   }
-  for (const [path, n] of kept) structure.push({ path, files: n, visibility: "private" });
+  for (const [path, n] of kept)
+    structure.push({ path: path === ROOT_FILES_GROUP ? "." : path, files: n, visibility: "private" });
   structure.sort((a, b) => a.path.localeCompare(b.path));
 
   return {

@@ -6,6 +6,10 @@ Owned by the HR workflows lane. This is the working skeleton to build on, not th
 - Built beside it, in `recruit.py`: `hr_shortlist` and `hr_interview` search people by a whole job posting and
   let a recruiter's agent question theirs (`talent.py`, `interview.py`); CV import is `code/cv_analyzer`.
 - Next: seed fictional people, a person view and studio in the frontend, and a Hiring_Hub upload adapter.
+- Built: the `person` card kind, skills matching, consented introductions, the MCP CV exchange, and the upload to
+  a Hiring Hub. `panels/HRPanel.tsx` plays this flow as a labelled script; it calls none of these tools.
+- Next: seed fictional people, a person view and studio in the frontend, and a way for a candidate to hold their
+  own link secret, which today only the operator can mint (`documentation/LIMITS.md`).
   (`hive.discover` lists person cards now — they are found by what they offer and need like anyone else —
   so a seeded person is public presence, and only their contact and files stay behind consent.)
 
@@ -23,10 +27,11 @@ from typing import Any
 import httpx
 from mcp.server.mcpserver import Context, MCPServer
 
-from .. import config, folder_keys, folders, hive, hub
+from .. import audit, config, folder_keys, folders, guard, hive, hub
 from .base import safe
 
 KIND = "person"
+HIRING_KEY_HEADER = "X-Hiring-Hub-Key"
 PUBLIC_FIELDS = ("id", "slug", "name", "headline", "skills", "languages", "availability", "location", "version")
 MAX_MESSAGE = 1000
 
@@ -107,20 +112,54 @@ def grant_cv(path: str, ctx: Context) -> dict[str, Any]:
     link = folders.get_link(key["link"])
     if key["handle"] != link["to_handle"]:
         raise hive.HiveError("Only the candidate side of the folder link may grant a CV.")
-    return folders.grant(f"{key['handle']}/{path}", key["peer"])
+    # An empty path is the whole folder to `folders.grant`, so it is refused here as on the REST route.
+    name = path.strip().strip("/")
+    if not name or "*" in name or "?" in name:
+        raise hive.HiveError("A CV grant names one path, with no pattern, and not the whole folder.")
+    return folders.grant(f"{key['handle']}/{name}", key["peer"])
+
+
+def _read_granted(path: str, ctx: Context, doing: str) -> tuple[dict[str, Any], bytes]:
+    """The listing and bytes of one granted file, under the same rules as `GET /api/folders/file`.
+
+    These tools are a second door to the same files, so they hold the same line: `folders.SERVED`, the
+    link's read budget, the size ceiling, one refusal for every kind of no, and a ledger row the owner
+    can read. `doing` says in that row what the bytes were read for.
+    """
+    key = folder_keys.resolve(folder_keys.bearer(_header(ctx, folder_keys.HEADER)))
+    if key is None:
+        raise hive.HiveError("A connected folder link is required to read a CV.")
+    if over := guard.over_budget(guard.folder_reads, key["link"]):
+        raise hive.HiveError(over)
+    reference = f"{key['peer']}/{path}"
+    refused = hive.HiveError("This CV has not been granted on the connected folder link.")
+    try:
+        entry = folders.entry(reference)
+        allowed = folders.can_read(reference, key["handle"])
+    except folders.FolderError:
+        raise refused from None
+    if entry is None or not allowed or entry["visibility"] not in folders.SERVED:
+        raise refused
+    if entry["bytes"] > config.FOLDER_READ_MAX_BYTES:
+        raise hive.HiveError(
+            f"That file is {entry['bytes']} bytes and this hub serves at most {config.FOLDER_READ_MAX_BYTES}."
+        )
+    content = folders.read(reference, key["handle"])
+    folder_keys.touch(key["id"])
+    audit.record(
+        "folder.read",
+        reference,
+        f"{doing} over folder link {key['link']}",
+        credential="link secret",
+        detail=f"key {key['id']}",
+        actor=key["handle"],
+    )
+    return entry, content
 
 
 def read_cv(path: str, ctx: Context) -> dict[str, Any]:
     """Read one CV after the candidate granted it, returning bytes for the HR agent."""
-    secret = folder_keys.bearer(_header(ctx, folder_keys.HEADER))
-    key = folder_keys.resolve(secret)
-    if key is None:
-        raise hive.HiveError("A connected folder link is required to read a CV.")
-    reference = f"{key['peer']}/{path}"
-    entry = folders.entry(reference)
-    if entry is None or not folders.can_read(reference, key["handle"]):
-        raise hive.HiveError("This CV has not been granted on the connected folder link.")
-    content = folders.read(reference, key["handle"])
+    entry, content = _read_granted(path, ctx, "read through hr_read_cv")
     return {
         "path": path,
         "media_type": entry["media_type"],
@@ -130,12 +169,18 @@ def read_cv(path: str, ctx: Context) -> dict[str, Any]:
     }
 
 
-def _hiring_hub_client() -> httpx.Client:
-    """Create the configured Hiring Hub client, refusing an incomplete integration."""
+def _hiring_hub_client(ctx: Context) -> httpx.Client:
+    """The configured Hiring Hub client, for a caller who shows the organisation's own key.
+
+    The hub holds one organisation's key and every MCP caller is anonymous, so without this any of
+    them could create positions in that organisation and start its paid CV extraction. Fails closed.
+    """
     if not config.HIRING_HUB_URL:
         raise hive.HiveError("Hiring Hub integration is not configured: set HIRING_HUB_URL.")
     if not config.HIRING_HUB_API_KEY:
         raise hive.HiveError("Hiring Hub integration is not configured: set HIRING_HUB_API_KEY.")
+    if not guard.secret_matches(_header(ctx, HIRING_KEY_HEADER), config.HIRING_HUB_API_KEY):
+        raise hive.HiveError(f"The Hiring Hub tools need the organisation's key in the {HIRING_KEY_HEADER} header.")
     return httpx.Client(
         base_url=config.HIRING_HUB_URL,
         headers={"x-api-key": config.HIRING_HUB_API_KEY},
@@ -143,7 +188,7 @@ def _hiring_hub_client() -> httpx.Client:
     )
 
 
-def create_job_posting(job: dict[str, Any]) -> dict[str, Any]:
+def create_job_posting(job: dict[str, Any], ctx: Context) -> dict[str, Any]:
     """Create a Hiring Hub position from an HR job requirement JSON document."""
     title = str(job.get("title") or "").strip()
     if not title:
@@ -154,7 +199,7 @@ def create_job_posting(job: dict[str, Any]) -> dict[str, Any]:
         "custom_fields": job.get("custom_fields") or [],
     }
     try:
-        with _hiring_hub_client() as client:
+        with _hiring_hub_client(ctx) as client:
             response = client.post("/positions", json=payload)
             response.raise_for_status()
             return response.json()
@@ -166,25 +211,18 @@ def submit_cv(position_id: int, path: str, ctx: Context) -> dict[str, Any]:
     """Read a granted CV and upload it to an existing Hiring Hub position."""
     if position_id < 1:
         raise hive.HiveError("A valid Hiring Hub position_id is required.")
-    secret = folder_keys.bearer(_header(ctx, folder_keys.HEADER))
-    key = folder_keys.resolve(secret)
-    if key is None:
-        raise hive.HiveError("A connected folder link is required to submit a CV.")
-    reference = f"{key['peer']}/{path}"
-    entry = folders.entry(reference)
-    if entry is None or not folders.can_read(reference, key["handle"]):
-        raise hive.HiveError("This CV has not been granted on the connected folder link.")
-    try:
-        content = folders.read(reference, key["handle"])
-        with _hiring_hub_client() as client:
+    # The key first: a caller without it must not spend the link's budget or leave a read in the ledger.
+    with _hiring_hub_client(ctx) as client:
+        entry, content = _read_granted(path, ctx, f"sent to Hiring Hub position {position_id}")
+        try:
             response = client.post(
                 f"/positions/{position_id}/cvs",
                 files={"files": (path.rsplit("/", 1)[-1], content, entry["media_type"])},
             )
             response.raise_for_status()
             return {"position_id": position_id, "path": path, "upload": response.json()}
-    except httpx.HTTPError as err:
-        raise hive.HiveError(f"Hiring Hub could not receive the CV: {err}") from err
+        except httpx.HTTPError as err:
+            raise hive.HiveError(f"Hiring Hub could not receive the CV: {err}") from err
 
 
 def register(server: MCPServer) -> None:
@@ -202,7 +240,7 @@ def register(server: MCPServer) -> None:
 
     @server.tool()
     def hr_decide_intro(connection_id: str, approve: bool, ctx: Context) -> dict[str, Any]:
-        """Accept or decline an HR introduction using an owner token or the candidate's link credential."""
+        """Accept or decline an HR introduction, as `hub.decide` allows: owner token or the target's link secret."""
         return safe(decide_intro, connection_id, approve, ctx)
 
     @server.tool()
@@ -216,11 +254,11 @@ def register(server: MCPServer) -> None:
         return safe(read_cv, path, ctx)
 
     @server.tool()
-    def hr_create_job(job: dict[str, Any]) -> dict[str, Any]:
-        """Create a Hiring Hub job posting from the HR requirement JSON."""
-        return safe(create_job_posting, job)
+    def hr_create_job(job: dict[str, Any], ctx: Context) -> dict[str, Any]:
+        """Create a Hiring Hub job posting; the organisation's key must arrive in the X-Hiring-Hub-Key header."""
+        return safe(create_job_posting, job, ctx)
 
     @server.tool()
     def hr_submit_cv(position_id: int, ctx: Context, path: str = "cv.pdf") -> dict[str, Any]:
-        """Upload a candidate's consented CV directly to a Hiring Hub position."""
+        """Upload a granted CV to a Hiring Hub position; needs the link secret and the X-Hiring-Hub-Key header."""
         return safe(submit_cv, position_id, path, ctx)

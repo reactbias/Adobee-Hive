@@ -379,8 +379,31 @@ async def hive_discover(
 
 
 @app.get("/api/hive/cards/{card_id}")
-def hive_card(card_id: str) -> dict[str, Any]:
-    """Return one card by id or slug."""
+async def hive_card(
+    request: Request, card_id: str, radius: int = Query(1, ge=0, le=federation.MAX_RADIUS)
+) -> dict[str, Any]:
+    """Return one card by id or slug, asking this hub's peers for an id it does not carry itself.
+
+    An id that came out of a federated search is readable from the hub that was searched. It was not: an
+    entity found on a peer answered *"No Hive card"* here, so an agent following this hub's own
+    instruction to read the card next had nowhere to go and no hub parameter to ask with.
+
+    `radius=0` keeps it local, which is the old behaviour for anything relying on it. Above 0 it costs
+    this hub outbound calls to its peers, so it is charged against the same budget as a federated search
+    and only tried after the local lookup misses.
+    """
+    try:
+        return hive.get_card(card_id)
+    except hive.HiveError:
+        if not radius:
+            # Local only, as asked: the refusal goes out in the shape every other refusal here has.
+            return _hive_call(hive.get_card, card_id)
+    guard.federated.check(request)
+    found = await asyncio.to_thread(hive.card_from_peer, card_id, radius)
+    if found:
+        return found
+    # Still nothing: answer with the local error, which is the honest one — this hub does not have it and
+    # no peer it can reach does either.
     return _hive_call(hive.get_card, card_id)
 
 

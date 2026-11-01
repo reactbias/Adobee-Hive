@@ -11,7 +11,7 @@ after that the table is the live list and the variable is history. That matters 
 anything is stored, including a removal, the environment is never consulted again, so a peer an
 operator dropped does not come back at the next restart.
 
-`federation._choose_peers` reads `urls()`, so a peer added here is asked by the very next search
+`federation._fan_out` reads `urls()`, so a peer added here is asked by the very next search
 above radius 0 — no restart, no redeploy. There is no cache to invalidate, because the list is read
 per query.
 

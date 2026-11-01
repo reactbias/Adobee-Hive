@@ -127,6 +127,76 @@ describe("joining a hive", () => {
     expect(screen.getByRole("region", { name: en["onboard.review.title"] }).textContent).not.toContain("diary");
   });
 
+  it.each(["hidden", "private", "shared", "public"] as const)(
+    "applies %s to all top-level files in the reviewed and submitted Card",
+    async (visibility) => {
+      vi.spyOn(api, "register").mockResolvedValue(outcome());
+      const rootFiles = [
+        md("about.md", "# Root identity\nRoot description with wifi.\n"),
+        md("contact.md", "- email: root@example.ch\n"),
+        md("offers.md", "## What I do\n- Root offer — CHF 900.\n"),
+        md("needs.md", "## What I need\n- Root need\n"),
+        md("rooms.md", "- Root room — 2 guests, CHF 100, 1 of them.\n"),
+      ];
+      vi.mocked(folderPick.pickDirectory).mockResolvedValue({
+        folder: "Folder identity",
+        files: [...rootFiles, md("work/offers.md", "## What I do\n- Directory offer\n")],
+      });
+      show();
+      await userEvent.click(await screen.findByRole("button", { name: en["onboard.folder.pick"] }));
+      const root = await screen.findByRole("combobox", { name: en["onboard.folder.rootFiles"] });
+      const work = screen.getByRole("combobox", { name: "work" });
+      expect(document.querySelectorAll(".onboard-groups select")).toHaveLength(2);
+      expect(root).toHaveValue("public-summary");
+      await userEvent.selectOptions(root, visibility);
+      expect(work).toHaveValue("public-summary");
+      await userEvent.click(screen.getByRole("button", { name: en["onboard.folder.read"] }));
+      await screen.findByRole("textbox", { name: en["onboard.card.name"] });
+
+      const review = screen.getByRole("region", { name: en["onboard.review.title"] });
+      const shown = JSON.parse(review.querySelector("pre")!.textContent!);
+      const entity = shown.entity;
+      expect(entity.offers).toContainEqual(expect.objectContaining({ title: "Directory offer" }));
+      expect(entity.structure).toContainEqual(
+        expect.objectContaining({ path: "work/offers.md", visibility: "public-summary" }),
+      );
+      if (visibility === "public") {
+        expect(entity.name).toBe("Root identity");
+        expect(entity.description).toBe("Root description with wifi.");
+        expect(entity.contact.email).toBe("root@example.ch");
+        expect(entity.features).toContain("wifi");
+        expect(entity.offers).toContainEqual(expect.objectContaining({ title: "Root offer" }));
+        expect(entity.needs).toContainEqual(expect.objectContaining({ title: "Root need" }));
+        expect(entity.units).toContainEqual(expect.objectContaining({ name: "Root room" }));
+        for (const file of rootFiles)
+          expect(entity.structure).toContainEqual(
+            expect.objectContaining({ path: file.path, visibility: "public", digest: expect.any(String) }),
+          );
+      } else {
+        expect(entity.name).toBe("Folder identity");
+        expect(entity.description).toBe("");
+        expect(entity.contact.email).toBe("");
+        expect(entity.features).toEqual([]);
+        expect(entity.offers).toHaveLength(1);
+        expect(entity.needs).toEqual([]);
+        expect(entity).not.toHaveProperty("units");
+        for (const file of rootFiles)
+          expect(entity.structure).not.toContainEqual(expect.objectContaining({ path: file.path }));
+        expect(JSON.stringify(shown)).not.toMatch(
+          /Root identity|Root description|root@example\.ch|Root offer|Root need|Root room/,
+        );
+        const privateRows = entity.structure.filter((row: { visibility: string }) => row.visibility === "private");
+        expect(privateRows).toEqual(visibility === "private" ? [{ path: ".", files: 5, visibility: "private" }] : []);
+        expect(entity.structure).toHaveLength(visibility === "private" ? 2 : 1);
+      }
+      expect(entity.structure).not.toContainEqual(expect.objectContaining({ path: "/" }));
+      await userEvent.click(screen.getByRole("radio", { name: en["onboard.key.hub"] }));
+      await userEvent.click(screen.getByRole("button", { name: en["onboard.apply"] }));
+      await waitFor(() => expect(api.register).toHaveBeenCalled());
+      expect(vi.mocked(api.register).mock.calls[0][0].entity).toEqual(entity);
+    },
+  );
+
   it("says a shared or hidden part never appears in the Card", async () => {
     show();
     vi.mocked(folderPick.pickDirectory).mockResolvedValue(folder);

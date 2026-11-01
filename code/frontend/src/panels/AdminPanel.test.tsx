@@ -148,13 +148,34 @@ describe("the admin panel", () => {
     expect(await screen.findByText(en["admin.lockedOut"].replace("{s}", "754"))).toBeInTheDocument();
   });
 
-  it("says administration is switched off when the hub has no password", async () => {
-    vi.spyOn(api, "adminLogin").mockRejectedValue(new ApiError("no ADMIN_PASSWORD", 503));
+  it("shows the hub's actionable 503 detail through the real client", async () => {
+    const detail = "This hub has no ADMIN_PASSWORD set, so there is nothing to sign in to.";
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 503 }));
     show();
     await userEvent.type(screen.getByLabelText(en["admin.password"]), "anything");
     await userEvent.click(screen.getByRole("button", { name: en["admin.signIn"] }));
+    expect(await screen.findByText(detail)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem("adobee-admin-session")).toBeNull();
+  });
 
-    expect(await screen.findByText(en["admin.disabled"])).toBeInTheDocument();
+  it("translates an actual transport failure instead of displaying an internal key", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+    show();
+    await userEvent.type(screen.getByLabelText(en["admin.password"]), "anything");
+    await userEvent.click(screen.getByRole("button", { name: en["admin.signIn"] }));
+    expect(await screen.findByText(en["error.offline"])).toBeInTheDocument();
+  });
+
+  it("shows a lockout's detail when the hub sends no Retry-After header", async () => {
+    const detail = "Too many sign-in attempts; wait 30 seconds.";
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 429 }));
+    show();
+    await userEvent.type(screen.getByLabelText(en["admin.password"]), "anything");
+    await userEvent.click(screen.getByRole("button", { name: en["admin.signIn"] }));
+    expect(await screen.findByText(detail)).toBeInTheDocument();
   });
 
   it("keeps the session in this tab only, never in localStorage", async () => {
