@@ -216,11 +216,35 @@ def _fresh(record: dict[str, Any]) -> bool:
     return (monotonic() - record["asked_at"]) < config.PEER_STALE_AFTER_S
 
 
-async def _profile(base_url: str, transport: Transport, lookups: _ProfileLookups) -> dict[str, Any] | None:
-    """Read each origin once per query, including an empty or unavailable registry."""
+class DeadlineExpired(Exception):
+    """The whole-query deadline passed before a registry lookup finished: our clock, not the peer's fault."""
+
+
+def _ms_left(deadline: float) -> float:
+    """Milliseconds until `deadline`, a `perf_counter()` instant; negative once it has passed."""
+    return (deadline - perf_counter()) * 1000
+
+
+async def _profile(
+    base_url: str, transport: Transport, lookups: _ProfileLookups, deadline: float
+) -> dict[str, Any] | None:
+    """Read each origin once per query, including an empty or unavailable registry, before `deadline`.
+
+    Raises `DeadlineExpired` instead of waiting past it, and starts no lookup once it has passed. A lookup
+    already under way is shielded rather than cancelled, so a later card from the same origin can still
+    reuse it and a late answer still warms the cache for the next query.
+    """
     if base_url not in lookups:
+        record = _peers.get(base_url)
+        if record and _fresh(record):
+            return record["profile"]
+        if _ms_left(deadline) <= 0:
+            raise DeadlineExpired
         lookups[base_url] = asyncio.create_task(_load_profile(base_url, transport))
-    return await lookups[base_url]
+    try:
+        return await asyncio.wait_for(asyncio.shield(lookups[base_url]), timeout=max(0.0, _ms_left(deadline)) / 1000)
+    except TimeoutError:
+        raise DeadlineExpired from None
 
 
 async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] | None:
@@ -359,33 +383,19 @@ async def keep_peers_fresh() -> None:
         await asyncio.sleep(max(1.0, config.PEER_ASK_SECONDS))
 
 
-async def _choose_peers(
-    seen: list[str], transport: Transport, lookups: _ProfileLookups
+def _rank(
+    ready: list[tuple[str, Any]], seen: list[str], blocked: set[str]
 ) -> tuple[list[tuple[str, dict[str, Any], float]], list[dict[str, str]]]:
-    """The peers worth asking at this hop: not in `seen`, readable, the `PEERS_PER_HOP` most trusted first."""
-    # The stored peer list, not the environment: a neighbour an operator added is asked by the very
-    # next query, and one they removed is not (peers.py). Read per query, so there is no cache to
-    # invalidate and no restart to wait for.
-    from . import peers as peer_store  # local: peers.py is about which peers exist, this about who they are
-
-    urls = peer_store.urls()
-    blocked = blocklist.blocked_hubs()
-    # An administrative block is checked **before** any outbound work, and again on the identity the
-    # peer itself returns. Both, because the first check can only use an identity this hub already
-    # had, and the second one cannot stop a request that has already gone out. Reading a peer's
-    # discovery document is itself a call to it, and the query would follow, which is how a blocked
-    # hub used to learn what this hub's users were searching for even though it was shut out.
-    asking, skipped = [], []
-    for url in urls:
-        known = known_hub_id(url)
-        if known and known in blocked:
-            skipped.append({"hub": known, "reason": "blocked on this hub: not asked, and nothing of ours sent to it"})
-        else:
-            asking.append(url)
-    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in asking])
-    peers = []
-    for url, profile in zip(asking, profiles, strict=False):
-        if profile is None:
+    """Of the peers whose discovery documents just arrived, the ones worth asking, most trusted first."""
+    peers, skipped = [], []
+    for url, profile in ready:
+        if isinstance(profile, DeadlineExpired):
+            skipped.append(
+                {"hub": known_hub_id(url) or url, "reason": "deadline: its discovery document did not arrive in time"}
+            )
+        elif isinstance(profile, BaseException):
+            raise profile
+        elif profile is None:
             # Unknown identity fails closed, and that is the policy rather than an accident: a peer
             # whose discovery document cannot be read has neither a hub id to check against the
             # blocklist nor keys to verify its cards with. Unknown is never treated as trusted.
@@ -401,11 +411,138 @@ async def _choose_peers(
         elif profile["hub_id"] not in seen:
             peers.append((url, profile, reputation.hub_trust(profile["hub_id"], profile)["trust"]))
     peers.sort(key=lambda peer: peer[2], reverse=True)  # stable, so configured order breaks a tie
-    over = peers[PEERS_PER_HOP:]
-    skipped += [
-        {"hub": p["hub_id"], "reason": f"breadth cap: only the top {PEERS_PER_HOP} peers by trust"} for _, p, _ in over
-    ]
-    return peers[:PEERS_PER_HOP], skipped
+    return peers, skipped
+
+
+def _breadth_capped(hub_id: str) -> dict[str, str]:
+    return {"hub": hub_id, "reason": f"breadth cap: only the top {PEERS_PER_HOP} peers by trust"}
+
+
+async def _fan_out(
+    ask: dict[str, Any],
+    hops: int,
+    trail: list[str],
+    hub: str,
+    transport: Transport,
+    lookups: _ProfileLookups,
+    deadline: float,
+) -> list[dict[str, Any]]:
+    """Ask up to `PEERS_PER_HOP` peers, each on its own clock: registry, search, then verification.
+
+    No peer waits for another. A peer is asked the moment its discovery document is in, and its answer is
+    verified the moment it arrives, so a slow registry or a slow search costs that peer its turn and nobody
+    else theirs. Peers whose documents arrive together are taken most trusted first; a peer still unread
+    when the deadline passes, or when the breadth cap is already full, is reported and not asked.
+    Returns one record per outcome, in the order the peers were taken, so the report reads the same each run.
+    """
+    # The stored peer list, not the environment: a neighbour an operator added is asked by the very
+    # next query, and one they removed is not (peers.py). Read per query, so there is no cache to
+    # invalidate and no restart to wait for.
+    from . import peers as peer_store  # local: peers.py is about which peers exist, this about who they are
+
+    blocked = blocklist.blocked_hubs()
+    # An administrative block is checked **before** any outbound work, and again on the identity the
+    # peer itself returns. Both, because the first check can only use an identity this hub already
+    # had, and the second one cannot stop a request that has already gone out. Reading a peer's
+    # discovery document is itself a call to it, and the query would follow, which is how a blocked
+    # hub used to learn what this hub's users were searching for even though it was shut out.
+    records: list[dict[str, Any]] = []
+    reading: dict[asyncio.Task, str] = {}
+    for url in peer_store.urls():
+        known = known_hub_id(url)
+        if known and known in blocked:
+            records.append(
+                {
+                    "dropped": [
+                        {"hub": known, "reason": "blocked on this hub: not asked, and nothing of ours sent to it"}
+                    ]
+                }
+            )
+        else:
+            reading[asyncio.create_task(_profile(url, transport, lookups, deadline))] = url
+    order = list(reading.values())
+    taken: list[tuple[asyncio.Task, dict[str, Any]]] = []
+    pending = set(reading)
+    while pending:
+        done, pending = await asyncio.wait(
+            pending, timeout=max(0.0, _ms_left(deadline)) / 1000, return_when=asyncio.FIRST_COMPLETED
+        )
+        if not done:
+            break
+        batch = sorted(done, key=lambda task: order.index(reading[task]))
+        peers, skipped = _rank(
+            [(reading[t], t.exception() if t.exception() else t.result()) for t in batch], trail, blocked
+        )
+        records.append({"dropped": skipped})
+        for url, profile, trust in peers:
+            left = _ms_left(deadline)
+            if len(taken) >= PEERS_PER_HOP:
+                records.append({"dropped": [_breadth_capped(profile["hub_id"])]})
+            elif left < MIN_FORWARD_MS:
+                records.append(
+                    {
+                        "dropped": [
+                            {
+                                "hub": profile["hub_id"],
+                                "reason": f"budget spent choosing peers: {max(0.0, left):.0f} ms left,"
+                                f" {MIN_FORWARD_MS:.0f} ms needed to forward",
+                            }
+                        ]
+                    }
+                )
+            else:
+                record = {"asked": (url, profile, trust)}
+                task = asyncio.create_task(
+                    _take(url, profile, ask, hops, left, trail, hub, transport, lookups, deadline)
+                )
+                taken.append((task, record))
+                records.append(record)
+        if len(taken) >= PEERS_PER_HOP:
+            break
+    for task in sorted(pending, key=lambda task: order.index(reading[task])):
+        task.cancel()  # the lookup itself is shielded, so it still lands in the cache for the next query
+        url = reading[task]
+        if len(taken) >= PEERS_PER_HOP:
+            records.append({"dropped": [_breadth_capped(known_hub_id(url) or url)]})
+        else:
+            records.append(
+                {
+                    "dropped": [
+                        {
+                            "hub": known_hub_id(url) or url,
+                            "reason": "deadline: its discovery document did not arrive in time",
+                        }
+                    ]
+                }
+            )
+    for task, record in taken:
+        record.update(await task)
+    return records
+
+
+async def _take(
+    url: str,
+    profile: dict[str, Any],
+    ask: dict[str, Any],
+    hops: int,
+    left: float,
+    trail: list[str],
+    hub: str,
+    transport: Transport,
+    lookups: _ProfileLookups,
+    deadline: float,
+) -> dict[str, Any]:
+    """One peer's whole turn: forward the query with what is left, then verify what it sends back."""
+    answer = await _ask_peer(url, ask, hops - 1, left, trail, transport)
+    if answer.get("code"):
+        if answer["code"] == "deadline":
+            reputation.record_timeout(profile["hub_id"])
+        return {"dropped": [{"hub": profile["hub_id"], "reason": answer["reason"]}]}
+    out = answer["out"]
+    reputation.record_answer(profile["hub_id"], answer["ms"], relayed=len(out.get("matches") or []))
+    report: dict[str, Any] = {"rejected": []}
+    found, left_out = await _verified(out, profile, url, hub, transport, report, lookups, deadline)
+    return {"arrivals": found, "excluded": left_out, "rejected": report["rejected"]}
 
 
 async def _ask_peer(
@@ -597,6 +734,7 @@ async def _verified(
     transport: Transport,
     report: dict,
     lookups: _ProfileLookups,
+    deadline: float,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Take a peer's answer apart: verify every card against its own hub's registry, drop what fails."""
     arrivals, excluded = [], []
@@ -609,10 +747,18 @@ async def _verified(
         blameless = False
         origin_url = str(provenance.get("origin_url") or carrier_url)
         card = match.get("card")
-        origin = await _profile(origin_url, transport, lookups) if isinstance(card, dict) else None
+        expired = False
+        try:
+            origin = await _profile(origin_url, transport, lookups, deadline) if isinstance(card, dict) else None
+        except DeadlineExpired:
+            origin, expired = None, True
         # The carrier's word counts for nothing here: the key comes from the card's own hub, fetched directly.
         if not isinstance(card, dict):
             reason = "no card to check against the owner's key"
+        elif expired:
+            # Our deadline, not anything the carrier did, so nobody is charged for it.
+            reason = f"deadline: the key registry at {origin_url} was not read in time, so this card was not checked"
+            blameless = True
         elif origin is None:
             reason = f"no key registry at {origin_url}"
         elif not origin["owner_keys"]:
@@ -680,6 +826,9 @@ async def search(
     transport = transport or DEFAULT_TRANSPORT
     lookups: _ProfileLookups = {}
     budget = float(budget_ms or DEFAULT_BUDGET_MS)
+    # One absolute deadline for every phase — peer selection, the forwarded search and the origin checks —
+    # so each phase gets what is actually left rather than a figure worked out before the one ahead of it.
+    deadline = started + budget / 1000
     hub = config.HIVE_HUB_ID
     trail = [*(seen or [])]
     if hub not in trail:
@@ -700,37 +849,29 @@ async def search(
 
     local, arrivals = await asyncio.to_thread(_local, ask, hub)
     excluded = list(local["excluded"])
-    left = budget - (perf_counter() - started) * 1000
+    left = _ms_left(deadline)
     if hops >= 1 and left < MIN_FORWARD_MS:
         report["dropped"].append(
             {"hub": "*", "reason": f"budget spent: {left:.0f} ms left, {MIN_FORWARD_MS:.0f} ms needed to forward"}
         )
     elif hops >= 1:
-        peers, skipped = await _choose_peers(trail, transport, lookups)
-        report["dropped"] += skipped
-        report["asked"] = [
-            {
-                "hub": profile["hub_id"],
-                "name": profile.get("name") or profile["hub_id"],
-                "description": profile.get("description") or "",
-                "rating": trust,  # our own opinion of this peer, not its word for itself
-                "url": url,
-                "trust": trust,
-            }
-            for url, profile, trust in peers
-        ]
-        answers = await asyncio.gather(*[_ask_peer(url, ask, hops - 1, left, trail, transport) for url, _, _ in peers])
-        for (url, profile, _), answer in zip(peers, answers, strict=False):
-            if answer.get("code"):
-                report["dropped"].append({"hub": profile["hub_id"], "reason": answer["reason"]})
-                if answer["code"] == "deadline":
-                    reputation.record_timeout(profile["hub_id"])
-                continue
-            out = answer["out"]
-            reputation.record_answer(profile["hub_id"], answer["ms"], relayed=len(out.get("matches") or []))
-            found, left_out = await _verified(out, profile, url, hub, transport, report, lookups)
-            arrivals += found
-            excluded += left_out
+        for record in await _fan_out(ask, hops, trail, hub, transport, lookups, deadline):
+            report["dropped"] += record.get("dropped", [])
+            report["rejected"] += record.get("rejected", [])
+            arrivals += record.get("arrivals", [])
+            excluded += record.get("excluded", [])
+            if "asked" in record:
+                url, profile, trust = record["asked"]
+                report["asked"].append(
+                    {
+                        "hub": profile["hub_id"],
+                        "name": profile.get("name") or profile["hub_id"],
+                        "description": profile.get("description") or "",
+                        "rating": trust,  # our own opinion of this peer, not its word for itself
+                        "url": url,
+                        "trust": trust,
+                    }
+                )
 
     arrivals, excluded = _screen(arrivals, excluded, report)
     matches = _dedup(arrivals)

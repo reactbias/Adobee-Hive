@@ -157,6 +157,12 @@ observed vetting, paid placement, availability, latency, cards that failed verif
 measurement, `calibration.py`'s published-minus-realised error, orders `GET /api/hub/standing`, the neighbours
 table and the hub directory, and is what a person choosing a hub reads. It is not a factor in that product yet.
 
+**On a cold cache, the breadth cap is filled in arrival order.** Peers are ranked by trust only among
+those whose discovery documents are in together; a cached document is in at once, so a warm hub ranks
+exactly. When documents still have to be fetched, a quick low-trust peer can take one of the
+`PEERS_PER_HOP` slots before a slower trusted one has answered. The trade is deliberate: waiting for every
+registry to rank them is how one slow peer used to spend the whole budget (#112).
+
 **Hub reputation resets; hub calibration needs evidence a hackathon weekend barely produces.**
 `reputation.py` keeps its observations in a module-level dict, so a restart returns every peer to trust on first
 use. Calibration does persist — it is computed from the `hub_connections` table — but a verdict needs
@@ -343,7 +349,8 @@ too, with the hub proxied same-origin.
 **One instance, in memory.** Rate limits, held bookings, held hand-offs and hub reputation live in the process:
 they reset on a restart and would not be shared between two instances. DuckDB on local disk with a Postgres
 snapshot pins the backend to one instance anyway. Fine for a demo, and the reason a redeploy clears an admin
-lockout.
+lockout. The lock that stops two callers booking the last room is in the process too, so it would not hold across
+two instances either.
 
 ## Not built
 
