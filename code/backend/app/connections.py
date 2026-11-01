@@ -39,7 +39,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from . import db, folders
+from . import config, db, folders
 
 log = logging.getLogger(__name__)
 
@@ -239,12 +239,28 @@ def confirm(connection_id: str) -> dict[str, Any]:
     its owner had not yet said anything; when they do, the folders are linked and the connection
     opens together.
 
+    Refused for an entity another hub carries: see the comment below. Declining stays allowed,
+    because that is this hub's own caller giving up on its own request.
+
     A row whose link has gone — written before links existed, or left behind by a demo reset — is
     confirmed anyway. The precondition is on making a booking, and this booking was made.
     """
+    from . import hive  # local: hive imports nothing from here, and this is the only call that needs it
+
     row = get(connection_id)
     if row["state"] != REQUESTED:
         raise ConnectionError_(f"only a requested connection can be confirmed, this one is {row['state']}")
+    # An introduction to an entity on another hub is this hub's to *record* and not to complete. The
+    # owner is not its member and their card is not its card, so a yes given here would be a consent
+    # nobody gave. The row stays `requested`, exactly as a local one does while its owner is silent.
+    # Narrow on purpose: it is the entity being absent from this index that makes the yes somebody
+    # else's, not a `target_hub` a caller happened to put on a row about a local entity.
+    elsewhere = row.get("target_hub") or ""
+    if elsewhere and elsewhere != config.HIVE_HUB_ID and hive.get_record(row["target"]) is None:
+        raise ConnectionError_(
+            f"{row['target']} is carried by {elsewhere}, not by this hub, so this hub cannot say yes for it:"
+            f" its owner confirms the introduction on {elsewhere}. This hub has recorded that it was asked for"
+        )
     if row["folder_link"]:
         try:
             folders.accept_link(row["folder_link"], by=row["target"])

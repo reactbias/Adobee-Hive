@@ -132,10 +132,15 @@ class RateLimiter:
         self.hits: dict[str, deque[float]] = defaultdict(deque)
         self.lock = threading.Lock()
 
-    def check(self, request: Request) -> None:
-        """Count one call, or raise 429 when the client or the backend is over. The 429 says when to try again."""
+    def check(self, request: Request, key: str = "") -> None:
+        """Count one call, or raise 429 when the client or the backend is over. The 429 says when to try again.
+
+        `key` counts against something other than the caller's IP. A folder read is limited per
+        *link*, because the link is what the hub granted and an IP is not: one agent behind a
+        shared address must not spend another's budget, and moving address must not refill it.
+        """
         now = time.monotonic()
-        client = request.client.host if request.client else "unknown"
+        client = key or (request.client.host if request.client else "unknown")
         with self.lock:
             for key in (client, "*"):
                 hits = self.hits[key]
@@ -157,9 +162,9 @@ class RateLimiter:
         waits = [self.window - (now - self.hits[k][0]) if self.hits[k] else self.window for k in over]
         return max(1, int(max(waits)) + 1)
 
-    def forget(self, request: Request) -> None:
+    def forget(self, request: Request, key: str = "") -> None:
         """Drop this client's counted attempts, so a password typed right costs nothing lasting."""
-        client = request.client.host if request.client else "unknown"
+        client = key or (request.client.host if request.client else "unknown")
         with self.lock:
             self.hits.pop(client, None)
 
@@ -169,6 +174,13 @@ llm_calls = RateLimiter(per_client=config.LLM_CALLS_PER_CLIENT_HOUR, total=confi
 # A search with a radius above 0 makes this hub fetch from its peers, so a stranger must not be able to use it
 # as an amplifier. Peer URLs come from config only, never from the request.
 federated = RateLimiter(per_client=30, total=300)
+# Folder reads, counted per *link* and not per IP: the link is what was granted. Generous enough for
+# an agent pulling a folder of CVs in one go, low enough that one link cannot hold the hub's workers.
+folder_reads = RateLimiter(
+    per_client=config.FOLDER_READS_PER_LINK_HOUR,
+    total=config.FOLDER_READS_TOTAL_HOUR,
+    what="folder reads",
+)
 # Simulated traffic writes demand events; keep it to demo use.
 simulations = RateLimiter(per_client=20, total=200)
 # The admin password. A few tries per client is more than a person who mistypes needs, and the global cap is what

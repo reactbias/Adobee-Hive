@@ -180,13 +180,24 @@ def http_app():
 
 
 @server.tool()
-def hub_connect(requester: str, entity_id: str, target_hub: str = "", via_hub: str = "") -> dict[str, Any]:
+def hub_connect(
+    requester: str,
+    entity_id: str,
+    target_hub: str = "",
+    via_hub: str = "",
+    card: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Ask to be introduced to a business or person found in a search, and log the introduction.
 
     An entry marked public opens at once; one marked `needs_confirmation` waits for its owner's yes; one its
     owner shares only on their own initiative cannot be asked for at all. Returns the connection and its state.
-    Keep the connection id: it is what hub_score needs later."""
-    return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub)
+    Keep the connection id: it is what hub_score needs later.
+
+    For an entity on **another** hub, pass the signed `card` the federated search returned for it and
+    `target_hub`, the hub id its provenance names. This hub verifies that card against the key that hub pinned
+    for it and refuses it otherwise; an introduction to a remote entity is recorded here and its owner's yes,
+    if it needs one, happens on their own hub."""
+    return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub, card=card)
 
 
 @server.tool()

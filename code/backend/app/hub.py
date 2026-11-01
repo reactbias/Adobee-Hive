@@ -8,10 +8,12 @@ What an agent can do:
 
 - `search` the index, across peer Hives at a chosen radius, getting JSON back. Items the owner
   closed never appear, and blocked hubs and entities are filtered on the way in and on the way out.
-- `connect` to something it found. The two agents' folders link first (folders.py) and the answer
-  carries the manifest that link opened; then a `public` item opens at once, a `confirm` item waits
-  for the owner's yes, and a `push` item cannot be asked for at all. Either way the introduction is
-  logged.
+- `connect` to something it found, **on this hub or on a peer**. The two agents' folders link first
+  (folders.py) and the answer carries the manifest that link opened; then a `public` item opens at
+  once, a `confirm` item waits for the owner's yes, and a `push` item cannot be asked for at all.
+  Either way the introduction is logged. An entity this hub does not carry is connected to on the
+  strength of the signed card the search returned, verified here against the key its *own* hub
+  pinned — never on the carrier's word.
 - `score` the introduction afterwards, once the human has actually met whoever it was.
 
 That last step is what everything else is built on. The hub learns nothing useful from a search and
@@ -22,7 +24,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import blocklist, calibration, config, connections, folders, hive, sharing
+from . import blocklist, calibration, config, connections, folder_keys, folders, hive, sharing
 
 
 class HubError(ValueError):
@@ -91,6 +93,52 @@ def _local(ask: dict[str, Any]) -> dict[str, Any]:
     return hive.discover(**ask)
 
 
+def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str, Any]:
+    """A card for an entity this hub does not carry, or a refusal that names why it was not taken.
+
+    An introduction is the *local* hub's to record even when the entity is not its own: a person on
+    this hub asking to meet somebody in Bern is a fact this hub should store. What it must not do is
+    take the asker's word for who that somebody is, so the card arrives with the request and is
+    checked here exactly as a relayed search result is (`federation._verified`): the pinning key
+    comes from the entity's **own** hub's registry, which this hub fetched itself in the background
+    from a URL on its own peer list. Nothing about the key comes from the request.
+
+    A card that cannot be checked is refused, never admitted with a note. That is the one thing
+    federation does not bend on, and an unverifiable stranger is exactly the case the rule is for.
+    """
+    from . import federation  # local: federation imports hive, and hive must load first
+
+    if not isinstance(offered, dict) or not offered:
+        raise HubError(
+            f"{entity_id} is not on this hub. An introduction to an entity on a peer needs the signed card the"
+            " search returned for it, passed as `card`, plus `target_hub`: this hub verifies it against the key"
+            " that entity's own hub pinned rather than trusting whoever carried it"
+        )
+    if str(offered.get("id") or "") != entity_id:
+        raise HubError(
+            f"the card offered is for {str(offered.get('id') or '')!r}, not for {entity_id!r};"
+            " a connection is made to the entity whose card was checked"
+        )
+    if not target_hub:
+        raise HubError(
+            f"{entity_id} is not on this hub, so an introduction to it needs `target_hub`: the hub id the search"
+            " said it came from, which is where its pinned key is read from"
+        )
+    pins = federation.pinned_keys_of(target_hub)
+    if not pins:
+        raise HubError(
+            f"this hub has no key registry for {target_hub!r}, so {entity_id}'s card cannot be checked here and is"
+            f" refused rather than trusted. Either {target_hub} is not on this hub's peer list, or it has not"
+            " answered yet — a fresh hub takes up to PEER_ASK_SECONDS to learn its neighbours' keys"
+        )
+    if not hive.verify_pinned(offered, pins):
+        raise HubError(
+            f"the card offered for {entity_id} is not the one {target_hub} published for it: unsigned, altered, or"
+            f" signed by a key {target_hub} does not pin for it. Refused rather than trusted"
+        )
+    return offered
+
+
 def connect(
     requester: str,
     entity_id: str,
@@ -98,11 +146,13 @@ def connect(
     requester_hub: str = "",
     target_hub: str = "",
     via_hub: str = "",
+    card: Any = None,
 ) -> dict[str, Any]:
-    """Ask to be introduced to something in the index, and log the introduction either way.
+    """Ask to be introduced to something, on this hub or on a peer, and log the introduction.
 
-    Refused outright for a blocked entity, and for an item its owner marked `push` or `never` —
-    those are the owner's to send, not anyone's to request.
+    Refused outright for a blocked entity, for a blocked hub, and for an item its owner marked
+    `push` or `never` — those are the owner's to send, not anyone's to request. An entity this hub
+    does not carry needs its signed card and its hub id with the request; see `_verified_remote`.
     """
     entity_id = (entity_id or "").strip()
     if not entity_id:
@@ -113,10 +163,10 @@ def connect(
         raise HubError(f"{target_hub} is blocked on this hub")
 
     record = hive.get_record(entity_id)
-    if record is None:
-        raise HubError(f"no entity {entity_id!r} on this hub")
-    card = record["data"]
-    flag = sharing.resolve(_entity_default(card), None)
+    # Local first, and the local copy wins: a card this hub carries itself is the one it answers for.
+    held = record["data"] if record is not None else _verified_remote(entity_id, card, target_hub)
+    remote = record is None
+    flag = sharing.resolve(_entity_default(held), None)
     if not sharing.connectable(flag, None):
         raise HubError(
             f"{entity_id} cannot be asked for: its owner shares it only on their own initiative"
@@ -131,7 +181,7 @@ def connect(
     # grant, which is the owner's to give (folders.py).
     who, them = folders.handle_for(requester), folders.handle_for(entity_id)
     link = folders.open_link(who, them, auto_accept=flag == sharing.PUBLIC, by=them)
-    published = _published_rating(card)
+    published = _published_rating(held)
     row = connections.request(
         requester,
         entity_id,
@@ -143,7 +193,30 @@ def connect(
         needs_confirmation=flag == sharing.CONFIRM,
         folder_link=link["id"],
     )
-    return {**row, "folder": folders.manifest(them, who)}
+    # The requester asked to be introduced, so this answer speaks for the requester and may hand it
+    # the credential for its side of the link: `folder_key.secret` is the only time that secret
+    # exists outside a hash, and it reads nothing the owner has not granted. A `confirm` Card's link
+    # is still `requested` here, so there is no key to give yet — it is minted when the owner says
+    # yes, which is `connections.confirm`'s moment and not this one.
+    key = folder_keys.mint(link["id"], who) if link["state"] == folders.ESTABLISHED else None
+    out = {**row, "folder": folders.manifest(them, who), "folder_key": key}
+    if remote:
+        # Said in the answer, not only in the row: an introduction to somebody on another hub is one
+        # this hub recorded and cannot complete. Its owner's yes happens where its owner is, and
+        # `connections.confirm` refuses it here for the same reason (`folder` is empty for the same
+        # reason again — the entity's folder is on its own hub, not on this disk).
+        out["remote"] = True
+        out["origin_hub"] = target_hub
+        out["says"] = (
+            f"{entity_id} is carried by {target_hub}, not by this hub. Its card was checked against the key"
+            f" {target_hub} pinned for it. This hub has recorded the introduction"
+            + (
+                f"; {entity_id}'s owner says yes on {target_hub}, not here."
+                if flag == sharing.CONFIRM
+                else " and opened it."
+            )
+        )
+    return out
 
 
 def score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:
