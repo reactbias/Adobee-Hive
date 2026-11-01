@@ -1,9 +1,9 @@
 import type { ReactNode, RefObject } from "react";
 
-// The app is two screens, and they are not two kinds of person: they are the two sides of every Card, finding
-// and offering. A hub carrying hairdressers and developers has no travellers in it, and the entity that offers a
-// room this week is looking for a designer the next. The header switches between them by hash; App.tsx keeps
-// both mounted so a booking survives a look at the other side.
+// The app's main screens are finding and offering, the two sides of every Card, not two kinds of person: a hub
+// carrying hairdressers and developers has no travellers in it, and the entity that offers a room this week is
+// looking for a designer the next. Hiring sits between them. The header switches by hash; App.tsx keeps them all
+// mounted so a booking survives a look at another screen.
 
 export type ScreenId = "find" | "hr" | "offer" | "network";
 /** The traveller and HR screens share the journey header; the network view is reached from the footer. */

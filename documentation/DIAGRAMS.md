@@ -490,7 +490,7 @@ sequenceDiagram
   AG->>H0: hive_discover(radius 2, budget)
   Note over H0: radius 0 would stop here, byte for byte as before
   H0->>H0: local matches, hops 0
-  Note over H0: top 4 peers by trust, in parallel, seen = [local]
+  Note over H0: up to 4 peers, each on its own clock, seen = [local]<br/>ranked by trust among those whose registries are in together (cold cache: arrival order, see LIMITS.md)
   H0->>P1: GET /api/hive/discover (radius 1, budget left, seen)
   P1->>P2: one hop further (radius 0, seen = [local, A])
   P2-->>P1: its cards, signed by their owners

@@ -67,16 +67,18 @@ async function call<T>(path: string, init?: RequestInit, retry = true): Promise<
   } finally {
     clearTimeout(timer);
   }
-  // A gateway error means the request never reached the app (cold start): safe to send again.
-  if (COLD.has(res.status) && retry) return call<T>(path, init, false);
-  if (COLD.has(res.status)) throw new Error(OFFLINE);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     // FastAPI sends a string for our errors and a list of field errors for invalid input
     const detail = Array.isArray(body.detail) ? body.detail[0]?.msg : body.detail;
+    // A JSON refusal came from the app, even on 503. Retry only reads without an application detail.
+    if (COLD.has(res.status) && !detail) {
+      if (retry && safe) return call<T>(path, init, false);
+      throw new Error(OFFLINE);
+    }
     // `headers` is optional only because a stubbed Response in a test may not carry it.
-    const retry = res.headers?.get("Retry-After") ?? null;
-    throw new ApiError(detail ?? `${res.status} ${res.statusText}`, res.status, retry);
+    const retryAfter = res.headers?.get("Retry-After") ?? null;
+    throw new ApiError(detail ?? `${res.status} ${res.statusText}`, res.status, retryAfter);
   }
   return res.json() as Promise<T>;
 }

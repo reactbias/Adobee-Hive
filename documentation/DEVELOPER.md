@@ -88,9 +88,10 @@ or panel is missing from either page.
 
 **Booking:** browser REST request → traveller agent → MCP discovery, Card and availability → server-held
 `hive_book` proposal → **explicit human approval** → the original configured MCP source → booking and signed
-receipt. The critic is deterministic; the second opinion can use a model or a rule check. A hold is neither an
-inventory reservation nor a guarantee against later price or terms changes. An external client calling `hive_book`
-directly must implement its own approval policy.
+receipt. The critic is deterministic; the second opinion can use a model or a rule check. A hold is not an inventory
+reservation, and it does not freeze the price: it binds the terms the traveller saw, so if the price or a policy
+changes first, nothing is booked and the traveller is asked again on the new terms. An external client calling
+`hive_book` directly must implement its own approval policy, and can pass `expected_terms` to get the same check.
 
 **Candidate and CV:** external system → MCP discovery → signed person Card and its `structure` → introduction and
 link metadata → authorised REST file access → its own extraction. Link credentials and explicit per-path grants

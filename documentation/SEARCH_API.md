@@ -496,6 +496,21 @@ Useful once, to pull the corpus into your own index; 32 cards on `basel`.
 you get `offers`, `needs` and `structure` after a local search, since the match summary has none of
 them.
 
+**It works for an id this hub found on a peer.** `?radius=` defaults to 1: the local lookup comes
+first, and only on a miss does the hub ask its live peer list, returning the signed card with
+`trust.federation` saying which hub carried it. `radius=0` is local-only. Before this an entity found at radius 1 — the
+id the search had just handed you — answered `400 No Hive card`, with no hub parameter to ask with,
+so an agent following this hub's own instruction to read the card next had nowhere to go. The card
+also still travels inline on a federated match under `card`, which is cheaper: use that when you have
+it. `hive_get_card` over MCP takes the same `radius` and behaves the same way.
+
+A peer lookup costs this hub outbound calls, so it is charged against the same `guard.federated`
+budget as a federated search.
+The signed body stays unchanged: the owner's own `provenance`, including a compiled card's source,
+is not replaced by routing data. `trust.federation.origin` names the entity's hub and
+`trust.federation.path` ends in the answering hub. Fallback reads retain the federation sharing
+projection: a peer's `push` or `never` card is not returned even when its id is known.
+
 An unknown id is **400**, not 404: `{"detail": "No Hive card 'nope'."}`. Every `HiveError` on this
 app becomes a 400 (`main._hive_call`), so do not branch on 404 — branch on the status being 4xx and
 read `detail`.
@@ -763,7 +778,13 @@ hop decrements the radius, appends its own hub id to `seen`, forwards only to pe
 and subtracts the time already spent from `budget_ms`; a hop with less than
 `MIN_FORWARD_MS = 150 ms` left is not made. `PEERS_PER_HOP = 4` caps breadth. Peers are asked in
 parallel; one that misses the deadline is **dropped from the answer, named in `federation.dropped`,
-and never fails the query**.
+and never fails the query**. The deadline also bounds the registry reads: a peer whose discovery
+document does not arrive in time is dropped with a `deadline` reason and not asked, the budget a
+peer is sent is what is left when it is asked, and a relayed card whose origin registry is not
+read in time lands in `federation.rejected` with a `deadline` reason, at no cost to the carrier.
+No peer waits for another: each is asked once its own discovery document is in and its cards are
+checked once its own answer is back. Peers whose documents arrive together are taken most trusted
+first, so on a cold cache a quick low-trust peer can take a slot ahead of a slower trusted one.
 
 **Trust is not transitive.** A card that arrives over a relay is verified here, against the key this
 hub fetches directly from the *originating* hub's `/.well-known/hive.json` — not from the relay. A

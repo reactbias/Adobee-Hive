@@ -157,6 +157,12 @@ observed vetting, paid placement, availability, latency, cards that failed verif
 measurement, `calibration.py`'s published-minus-realised error, orders `GET /api/hub/standing`, the neighbours
 table and the hub directory, and is what a person choosing a hub reads. It is not a factor in that product yet.
 
+**On a cold cache, the breadth cap is filled in arrival order.** Peers are ranked by trust only among
+those whose discovery documents are in together; a cached document is in at once, so a warm hub ranks
+exactly. When documents still have to be fetched, a quick low-trust peer can take one of the
+`PEERS_PER_HOP` slots before a slower trusted one has answered. The trade is deliberate: waiting for every
+registry to rank them is how one slow peer used to spend the whole budget (#112).
+
 **Hub reputation resets; hub calibration needs evidence a hackathon weekend barely produces.**
 `reputation.py` keeps its observations in a module-level dict, so a restart returns every peer to trust on first
 use. Calibration does persist — it is computed from the `hub_connections` table — but a verdict needs
@@ -197,7 +203,24 @@ hands over bytes only for `public` and `public-summary` paths (`folders.SERVED`)
 first time a byte of a file left the folder. Granted `shared` reads are one constant away and are not switched
 on.
 
+**The HR screen is a script, and a candidate cannot yet hold their own key.** `panels/HRPanel.tsx` calls none of the
+`hr_*` tools. The tools work over MCP, but `hr_grant_cv` needs the candidate's link secret, and only the operator can
+mint one (`POST /api/folders/keys`). `hr_decide_intro` in practice takes the hub-wide owner token, because that mint
+is refused until the link is established. `hr_request_intro` records a request that none of these tools read.
+
 ## Reaching an entity on another hub
+
+**Reading a remote card costs a browse, not a lookup.** `hive_get_card` and `GET /api/hive/cards/{id}`
+answer for an id a peer carries, which they did not before — an entity found at radius 1 used to answer
+*"No Hive card"* at the hub that had just returned it. But there is no single-card route in the peer
+protocol: `federation.Transport` can read a profile and forward a *search*, so the lookup is a browse one
+hop out with the wanted card picked off the answer. It is correct and it is verified (`federation._verified`
+checks every arriving card against its own hub's key registry), but one card costs a full peer round trip
+and it only reaches as far as the configured radius. The cheap path is the signed card already inline on a
+federated match, which is what `POST /api/hub/connect` uses.
+Routing metadata is under `trust.federation`, not the signed card's `provenance`, so the returned
+body still verifies and keeps the owner's compiled-source provenance. The fallback uses the same
+live peer list and sharing projection as discovery; it does not make privately held entries readable.
 
 **It works, and the introduction is recorded here, but this hub cannot complete it.** A federated
 search finds an entity on a peer and `POST /api/hub/connect` will now connect to it: the caller
@@ -243,6 +266,11 @@ the card over peer search rather than `HIVE_MCP_URLS` is not covered by a test.
 **A folder is still not a node.** The folder link runs inside the hub ([above](#the-folder-link)).
 
 **In the app, the owner's yes is the shared token.** The app's Accept and Decline send `X-Owner-Token`, so they work only on a hub that sets `OWNER_EDIT_TOKEN`, and that token covers every card. The hub also takes a per-party proof, but the app does not send one, and a hotel's own node does not answer introductions for its card.
+
+**The hub relays CVs and holds one organisation's Hiring Hub key.** `hr_read_cv` and `hr_submit_cv` move a CV's bytes
+through the hub, which the separate-nodes design would not. A hub serves one Hiring Hub organisation
+(`HIRING_HUB_URL`, `HIRING_HUB_API_KEY`). `Hiring Hub/`'s frontend also carries its `ADMIN_TOKEN` in the built
+JavaScript, so that stack is for a machine you trust and not for the public internet.
 
 ## Item sharing
 

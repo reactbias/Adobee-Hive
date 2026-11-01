@@ -4,6 +4,7 @@ import {
   ApiError,
   api,
   setAdminToken,
+  OFFLINE,
   type AdminOverview,
   type AdminSettings,
   type Application,
@@ -48,10 +49,9 @@ function SignIn({ onToken }: { onToken: (token: string) => void }) {
       setAdminToken(session.token);
       onToken(session.token);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 429) setWait(Number(err.retryAfter) || 1);
-      else if (err instanceof ApiError && err.status === 503) setError(t("admin.disabled"));
+      if (err instanceof ApiError && err.status === 429 && Number(err.retryAfter) > 0) setWait(Number(err.retryAfter));
       else if (err instanceof ApiError && err.status === 403) setError(t("admin.wrongPassword"));
-      else setError((err as Error).message);
+      else setError((err as Error).message === OFFLINE ? t("error.offline") : (err as Error).message);
     } finally {
       setBusy(false);
     }

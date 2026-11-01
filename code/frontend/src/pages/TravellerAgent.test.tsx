@@ -1,7 +1,8 @@
+/// <reference lib="esnext.promise" />
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { api, type AgentResult, type Approval } from "../api";
+import { api, type AgentResult, type Approval, type Discovery } from "../api";
 import { I18nProvider } from "../i18n";
 import en from "../i18n/en";
 import TravellerAgent from "./TravellerAgent";
@@ -73,6 +74,30 @@ const APPROVAL: Approval = {
     payment: "Pay at the property",
   },
 };
+
+function discoveryFor(name: string): Discovery {
+  return {
+    matches: [
+      {
+        id: name,
+        slug: name,
+        name,
+        description: "A quiet hotel room.",
+        rating: null,
+        rating_count: 0,
+        kind: "hotel",
+        from_price_chf: null,
+        distance_m: null,
+        score: 80,
+        score_breakdown: { text_relevance: 80 },
+        why: ["quiet hotel room"],
+        signature_valid: true,
+      },
+    ],
+    excluded: [],
+    ranking_policy: "open",
+  };
+}
 
 const gateQuestion = en["agent.gate.question"]
   .replace("{unit}", "River-view double")
@@ -257,6 +282,175 @@ describe("traveller agent", () => {
 
     await act(async () => settle(RESULT));
     expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
+  });
+
+  it("reopens loaded details without another run or consuming an unsent draft", async () => {
+    const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const approve = vi.spyOn(api, "approve");
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await openDetails(user);
+    const details = screen.getByRole("button", { name: en["card.details"] });
+    await user.click(details);
+    const box = screen.getByRole("textbox", { name: en["agent.followUp"] });
+    await user.type(box, "a draft for tomorrow");
+    await user.click(details);
+
+    expect(details).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: gateQuestion })).toBeInTheDocument();
+    expect(box).toHaveValue("a draft for tomorrow");
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(approve).not.toHaveBeenCalled();
+  });
+
+  it("retries failed details deliberately, with one prompt and the draft untouched", async () => {
+    const agent = vi
+      .spyOn(api, "agent")
+      .mockRejectedValueOnce(new Error("Too many requests. Try again later."))
+      .mockResolvedValueOnce(RESULT);
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    const box = screen.getByRole("textbox", { name: en["agent.followUp"] });
+    await user.type(box, "a draft for tomorrow");
+    const details = await screen.findByRole("button", { name: en["card.details"] });
+    await user.click(details);
+    expect(await screen.findByText("Too many requests. Try again later.")).toBeInTheDocument();
+    expect(details).toHaveAttribute("aria-pressed", "false");
+    expect(agent).toHaveBeenCalledTimes(1);
+    expect(box).toHaveValue("a draft for tomorrow");
+
+    await user.click(details);
+    expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
+    expect(agent).toHaveBeenCalledTimes(2);
+    expect(agent.mock.calls[1]).toEqual([[{ role: "user", content: en["agent.example.1"] }], {}]);
+    const chat = within(screen.getByRole("region", { name: en["agent.stage"] }));
+    expect(chat.getAllByText(en["agent.example.1"], { selector: "p" })).toHaveLength(1);
+    expect(box).toHaveValue("a draft for tomorrow");
+  });
+
+  it("refreshes radius 0, 1 and 3 from the submitted prompt, clearing old holds without duplicate chat", async () => {
+    const { promise, resolve: settle } = Promise.withResolvers<Discovery>();
+    const discover = vi
+      .spyOn(api, "discover")
+      .mockResolvedValueOnce(discoveryFor("Local room"))
+      .mockReturnValueOnce(promise)
+      .mockResolvedValueOnce(discoveryFor("Further room"));
+    const agent = vi
+      .spyOn(api, "agent")
+      .mockResolvedValueOnce(RESULT)
+      .mockResolvedValueOnce({
+        reply: "The nearby room answers this request.",
+        mode: "offline",
+        steps: [],
+        pending: null,
+      })
+      .mockResolvedValueOnce({
+        reply: "The further room answers this request.",
+        mode: "offline",
+        steps: [],
+        pending: null,
+      });
+    const approve = vi.spyOn(api, "approve");
+    const user = setup();
+    await user.click(screen.getByRole("radio", { name: en["reach.local"] }));
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    await user.clear(box);
+    await user.type(box, "a quiet hotel room{Enter}");
+    expect(await screen.findByRole("heading", { name: "Local room" })).toBeInTheDocument();
+    expect(discover).toHaveBeenLastCalledWith({ query: "a quiet hotel room", radius: 0 });
+    await openDetails(user);
+    await user.type(box, "an unsent draft");
+
+    await user.click(screen.getByRole("radio", { name: en["reach.near"] }));
+    expect(screen.queryByRole("heading", { name: gateQuestion })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["card.details"] })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: en["agent.newTrip"] })).toBeDisabled();
+    expect(screen.getByRole("button", { name: en["card.searching"] })).toBeDisabled();
+    for (const name of [en["reach.local"], en["reach.near"], en["reach.far"]]) {
+      expect(screen.getByRole("radio", { name })).toBeDisabled();
+    }
+    await act(async () => settle(discoveryFor("Nearby room")));
+    expect(await screen.findByRole("heading", { name: "Nearby room" })).toBeInTheDocument();
+    expect(discover).toHaveBeenLastCalledWith({ query: "a quiet hotel room", radius: 1 });
+    expect(box).toHaveValue("an unsent draft");
+    await user.click(screen.getByRole("button", { name: en["card.details"] }));
+    expect(await screen.findByText("The nearby room answers this request.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: gateQuestion })).not.toBeInTheDocument();
+    expect(screen.queryByText(RESULT.reply)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: en["reach.far"] }));
+    expect(await screen.findByRole("heading", { name: "Further room" })).toBeInTheDocument();
+    expect(discover).toHaveBeenLastCalledWith({ query: "a quiet hotel room", radius: 3 });
+    await user.click(screen.getByRole("button", { name: en["card.details"] }));
+    expect(await screen.findByText("The further room answers this request.")).toBeInTheDocument();
+    expect(screen.queryByText("The nearby room answers this request.")).not.toBeInTheDocument();
+    const chat = within(screen.getByRole("region", { name: en["agent.stage"] }));
+    expect(chat.getAllByText("a quiet hotel room", { selector: "p" })).toHaveLength(1);
+    expect(agent).toHaveBeenCalledTimes(3);
+    for (const call of agent.mock.calls) {
+      expect(call).toEqual([[{ role: "user", content: "a quiet hotel room" }], {}]);
+    }
+    expect(box).toHaveValue("an unsent draft");
+    expect(approve).not.toHaveBeenCalled();
+  });
+
+  it.each(["empty", "error"] as const)(
+    "does not substitute fixture cards for an %s radius refresh",
+    async (outcome) => {
+      const discover = vi.spyOn(api, "discover").mockResolvedValueOnce(discoveryFor("Live room"));
+      if (outcome === "empty") {
+        discover.mockResolvedValueOnce({ matches: [], excluded: [], ranking_policy: "open" });
+      } else {
+        discover.mockRejectedValueOnce(new Error("Too many requests. Try again later."));
+      }
+      discover.mockResolvedValueOnce(discoveryFor("Further room"));
+      const agent = vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+      const user = setup();
+      await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+      expect(await screen.findByRole("heading", { name: "Live room" })).toBeInTheDocument();
+      const box = screen.getByRole("textbox", { name: en["agent.followUp"] });
+      await user.type(box, "an unsent draft");
+      await user.click(screen.getByRole("radio", { name: en["reach.local"] }));
+
+      expect(
+        await screen.findByText(outcome === "empty" ? en["reach.empty"] : "Too many requests. Try again later."),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Live room" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Hotel Krafft Basel" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: en["card.details"] })).not.toBeInTheDocument();
+      if (outcome === "error") expect(screen.queryByText(en["reach.empty"])).not.toBeInTheDocument();
+      expect(agent).not.toHaveBeenCalled();
+      expect(box).toHaveValue("an unsent draft");
+
+      await user.click(screen.getByRole("radio", { name: en["reach.far"] }));
+      expect(await screen.findByRole("heading", { name: "Further room" })).toBeInTheDocument();
+      expect(discover).toHaveBeenLastCalledWith({ query: en["agent.example.1"], radius: 3 });
+      expect(box).toHaveValue("an unsent draft");
+    },
+  );
+
+  it("clears the previous model result and hold as soon as a different search starts", async () => {
+    const { promise, resolve: settle } = Promise.withResolvers<AgentResult>();
+    vi.spyOn(api, "discover")
+      .mockResolvedValueOnce(discoveryFor("First room"))
+      .mockResolvedValueOnce(discoveryFor("Second room"));
+    const agent = vi.spyOn(api, "agent").mockResolvedValueOnce(RESULT).mockReturnValueOnce(promise);
+    const user = setup();
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await openDetails(user);
+    const box = screen.getByRole("textbox", { name: en["agent.followUp"] });
+    await user.type(box, "a room in Zürich{Enter}");
+    expect(await screen.findByRole("heading", { name: "Second room" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: gateQuestion })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: en["card.details"] }));
+    expect(screen.queryByText(RESULT.reply)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: en["agent.approve"] })).not.toBeInTheDocument();
+    expect(agent).toHaveBeenLastCalledWith([{ role: "user", content: "a room in Zürich" }], {});
+    await act(async () => settle({ reply: "This is the Zürich answer.", mode: "offline", steps: [], pending: null }));
+    expect(await screen.findByText("This is the Zürich answer.")).toBeInTheDocument();
+    expect(screen.queryByText(RESULT.reply)).not.toBeInTheDocument();
   });
 
   it("asks the agent and stops at the gate without booking", async () => {
