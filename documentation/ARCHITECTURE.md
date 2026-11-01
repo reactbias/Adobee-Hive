@@ -124,7 +124,7 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
 | `hub_connect` | Ask to be introduced to a business or person found in a search, and log the introduction. A public entry opens at once, one marked `needs_confirmation` waits for its owner's yes, and one shared only on the owner's initiative cannot be asked for |
 | `hub_score` | Record how an introduction actually went, after the real meeting: tenths of a star out of five, once, and only while the connection is still open. The only input to how far this Hive trusts another |
-| `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale |
+| `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale. Each row carries `stale_in_days` (whole days left, 0 on the last one) as well as the absolute `stale_at`, and `stale_soon` flags an open introduction with a week or less to go, so the deadline reminds the agent instead of the agent having to work it out |
 | `hub_standing` | What this Hive makes of its neighbours: published minus realised, lower is better, unproven when the evidence is thin |
 | `hub_registration` | What this Hive asks of someone who wants to join: policy, checks, proof types and an example document |
 | `hub_register` | Apply to join with one signed JSON document. Bring a public key and the user keeps the private half |
@@ -160,7 +160,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
 | `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
 | `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
-| `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
+| `GET /api/hub/connections` | Introductions waiting on a yes or on a score, each with the days it has left (`stale_in_days`, `stale_soon`) | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
 | `GET /api/folders/status` | Which folder link is in use, what was asked for, why they differ, what a read costs, and the honest line that on `local` both folders are on one disk. Names no server path | — |
 | `GET /api/folders/manifest` | The peer's folder as this link may see it: paths, sizes, digests, `readable`, and `withheld` as a **count**. Owner and viewer come from the bearer and there is no handle parameter, so there is nothing to enumerate | `Authorization: Bearer <link secret>` |

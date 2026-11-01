@@ -218,7 +218,12 @@ def hub_score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]
 def hub_connections(requester: str = "") -> dict[str, Any]:
     """List introductions still waiting on somebody: on an owner's yes, or on the person's score.
 
-    Use it to ask "how did it go with X?" before the connection goes stale and can no longer be scored."""
+    Use it to ask "how did it go with X?" before the connection goes stale and can no longer be scored. Each row
+    says how long it has left as well as when it runs out: `stale_in_days` counts whole days, 0 meaning today is
+    the last one, and `stale_soon` flags an open introduction with a week or less to go. An introduction nobody
+    scores closes unscored and is then worth nothing to anybody — a score after the real meeting is the only
+    evidence this Hive ever gets about the Hive an entry came from — so take a `stale_soon` row first. A request
+    still waiting on an owner's yes carries its own shorter window in `stale_in_days` and no flag."""
     return {
         "awaiting_rating": connections.awaiting_rating(requester),
         "awaiting_confirmation": connections.pending_confirmation(),
