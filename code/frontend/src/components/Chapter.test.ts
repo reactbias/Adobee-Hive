@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { canonicalHash, joinHash, joinHubIn, namesScreen, screenFor, SCREENS } from "./Chapter";
 
-// The screens are finding and offering, the two sides of every Card. They used to be called travel and
-// business, which named two kinds of person rather than two things a Card does, and read wrongly on a hub
-// carrying hairdressers and developers. The old names are still read, so a link already in the wild works.
+// The screens are finding, hiring and offering. They used to be called travel and business, which named two kinds
+// of person rather than two things a Card does, and read wrongly on a hub carrying hairdressers and developers.
+// The old names are still read, so a link already in the wild works.
 
 describe("which screen a hash asks for", () => {
-  it("is the two in the header, plus the network view beside them", () => {
-    expect(SCREENS).toEqual(["find", "offer"]);
+  it("is the three user journeys in the header", () => {
+    expect(SCREENS).toEqual(["find", "hr", "offer"]);
     expect(screenFor("#find")).toBe("find");
+    expect(screenFor("#hr")).toBe("hr");
     expect(screenFor("#offer")).toBe("offer");
     expect(screenFor("#network")).toBe("network");
   });

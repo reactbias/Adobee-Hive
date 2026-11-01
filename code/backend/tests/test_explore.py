@@ -9,6 +9,7 @@ from mcp import Client
 from app import hive, owner
 from app.domains import examples, explore
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 NOV = date(2026, 11, 2)
 
@@ -135,7 +136,7 @@ def test_explore_ask_over_mcp_never_returns_a_hold_id(client):
     async def run():
         async with Client(server) as c:
             res = await c.call_tool("explore_ask", {"question": "Register me for a course at Endress"})
-            return json.loads(res.content[0].text)
+            return tool_result(res)
 
     out = asyncio.run(run())
     assert out["pending"]["needs"] == "the person's approval in the Hive app" and "id" not in out["pending"]

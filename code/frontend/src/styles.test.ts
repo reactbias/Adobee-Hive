@@ -10,6 +10,17 @@ const rule = (selector: string) => {
 };
 
 describe("styles", () => {
+  // The find screen clears every frame's background, and the stage's text is light in both colour schemes.
+  it("keeps the agent stage dark on the find screen, so its light text can be read", () => {
+    expect(rule(".screen-find .chat-stage.frame")).toMatch(/var\(--stage\)/);
+  });
+
+  // At the 125 % zoom the pitch uses, a wrapped roster left the conversation 135 px of the screen.
+  it("keeps the roster beside the results to one line, so the conversation keeps the screen", () => {
+    expect(rule(".journey-side .roster ul")).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rule(".journey-side .roster-meta")).toMatch(/flex-wrap:\s*nowrap/);
+  });
+
   it("keeps a Try example readable on hover, over the dark hover of every other button", () => {
     // button:hover:not(:disabled) paints buttons dark; an example has to win that with its own light background.
     const hover = rule(".example:hover:not(:disabled)");

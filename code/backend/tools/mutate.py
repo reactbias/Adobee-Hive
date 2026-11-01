@@ -70,6 +70,9 @@ SUITE = [
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
     "tests/test_discover_identity.py",
+    "tests/test_discover_relevance.py",
+    # After the relevance tests: its tie test publishes a card that matches their nonsense query.
+    "tests/test_search_words.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
@@ -81,6 +84,8 @@ SUITE = [
     "tests/test_introduction_authority.py",
     "tests/test_federated_blocks.py",
     "tests/test_federated_facts.py",
+    "tests/test_mcp_refusals.py",
+    "tests/test_sharing_enforced.py",
 ]
 
 
@@ -311,9 +316,34 @@ CURATED: list[Mutant] = [
         '"bookable": True,',
     ),
     Mutant(
+        "hive.py",
+        "the relevance threshold goes, so every door answers every query with the whole hub again",
+        "    if ask_had_content and not include_irrelevant:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "reputation counts as relevance, so four well-reviewed hotels answer a nonsense query",
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity")',
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity",'
+        ' "verified_reviews", "attestations")',
+    ),
+    Mutant(
+        "hive.py",
+        "a browse is thresholded too, so 'show me what is on this hub' answers with nobody",
+        "return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)",
+        "return True",
+    ),
+    Mutant(
+        "hive.py",
+        "the counts stop being reported, so a caller cannot tell an empty answer from a filtered one",
+        '"matched": len(matches),',
+        '"matched": considered,',
+    ),
+    Mutant(
         "semantic.py",
         "the similarity floor goes, so every card is a little bit like every query and ranking is noise",
-        "SIMILARITY_FLOOR = 0.25",
+        "SIMILARITY_FLOOR = 0.20",
         "SIMILARITY_FLOOR = 0.0",
     ),
     Mutant(
@@ -321,6 +351,48 @@ CURATED: list[Mutant] = [
         "the concept table stops being consulted, so semantic search is substring search again",
         'bag += [(f"c:{concept}", CONCEPT_WEIGHT) for concept in concepts]',
         "bag += []",
+    ),
+    Mutant(
+        "semantic.py",
+        "the tokeniser is a list of remembered letters again, so French and Italian queries find nothing",
+        'LETTERS = re.compile(r"[^\\W\\d_]+")',
+        'LETTERS = re.compile(r"[a-zäöü]+")',
+    ),
+    Mutant(
+        "semantic.py",
+        "nothing is folded before tokenising, so an accent or a capital hides a word from both paths",
+        'folded = FRENCH_JAI.sub(" ", fold(text))',
+        'folded = FRENCH_JAI.sub(" ", text)',
+    ),
+    Mutant(
+        "semantic.py",
+        "the stopword list stops being folded, so every umlaut function word is unreachable again",
+        "    fold(word)\n    for word in",
+        "    word\n    for word in",
+    ),
+    Mutant(
+        "hive.py",
+        "the literal path gets its own short stopword list back, so filler words are evidence again",
+        "STOPWORDS = semantic.STOPWORDS",
+        'STOPWORDS = frozenset({"book", "basel", "hotel", "near", "under", "with", "that"})',
+    ),
+    Mutant(
+        "hive.py",
+        "the literal search stops folding the card, so a folded query term cannot match an accented card",
+        'text = semantic.fold(" ".join(_side_texts(card, side)))',
+        'text = " ".join(_side_texts(card, side)).lower()',
+    ),
+    Mutant(
+        "hive.py",
+        "any word is a literal term again, so a two-letter accident is worth ten points",
+        "MIN_TERM_LENGTH = 4",
+        "MIN_TERM_LENGTH = 1",
+    ),
+    Mutant(
+        "hive.py",
+        "a tie on points is settled by whatever order the cards came back in, not by the closer match",
+        'matches.sort(key=lambda m: (m["score"], closeness.get(m["id"], 0.0)), reverse=True)',
+        'matches.sort(key=lambda m: m["score"], reverse=True)',
     ),
     Mutant(
         "hive.py",
@@ -567,6 +639,36 @@ CURATED: list[Mutant] = [
         "a grant may name a pattern again, so one write opens a folder the owner listed one file of",
         'if not path or "*" in path or "?" in path:',
         "if not path:",
+    ),
+    Mutant(
+        "hive.py",
+        "discovery stops reading the owner's sharing flag, so a held entity is searchable again",
+        "if not sharing.searchable(entity_sharing, None):",
+        "if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "a closed channel's value is signed into the public card after all",
+        'k: v for k, v in (card.get("contact") or {}).items() if flags.get(k) not in (sharing.PUSH, sharing.NEVER)',
+        'k: v for k, v in (card.get("contact") or {}).items()',
+    ),
+    Mutant(
+        "hive.py",
+        "the served contact block stops redacting, so an older card hands out what it closed",
+        "if sharing.searchable(default, flags.get(str(channel)))",
+        "if True",
+    ),
+    Mutant(
+        "hive.py",
+        "a person card defaults to public, so an introduction stops being theirs to grant",
+        'fallback = sharing.CONFIRM if card.get("kind") in CONSENT_FIRST_KINDS else sharing.PUBLIC',
+        "fallback = sharing.PUBLIC",
+    ),
+    Mutant(
+        "federation.py",
+        "a held entity relayed by a peer is served here, so the owner's flag stops at the hub boundary",
+        "elif not sharing.searchable(hive.sharing_default(card), None):",
+        "elif False:",
     ),
     Mutant(
         "federation.py",
@@ -817,8 +919,50 @@ CURATED: list[Mutant] = [
     Mutant(
         "mcp_server.py",
         "publish works without a token: any agent that can reach /mcp/ can rewrite any claimed card",
-        'return {"error": refused} if refused else None',
-        "return None",
+        "    if refused := owner.editable(_owner_token(ctx)):\n        raise ToolError(refused)",
+        "    return",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "an owner edit declined for want of a token reads as a success again",
+        "raise ToolError(refused)",
+        'return {"error": refused}  # type: ignore[return-value]',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank requester, so an introduction is recorded under nobody",
+        'if not (requester or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank entity_id instead of saying where an id comes from",
+        'if not (entity_id or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "a local introduction stops saying what its state means and what to do next",
+        '"says": _says(row, entity_id)',
+        '"says": ""',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "a budget refusal reads as a success again, so an agent acts on an answer it never got",
+        "raise ToolError(over)  # the budget the REST route spends, before this hub calls any peer",
+        'return {"error": over}  # type: ignore[return-value]',
+    ),
+    Mutant(
+        "hub.py",
+        "a remote introduction drops the deadline and the score, as it did before two hubs showed it",
+        'f" {_next_step(row)}"\n        )',
+        '""\n        )',
+    ),
+    Mutant(
+        "hub.py",
+        "a waiting request claims somebody was notified, which nothing here does",
+        'f" recorded and waiting for it. Nobody is sent a message: it sits in this hub\'s list until"',
+        'f" recorded and waiting for it. Its owner has been notified and will answer, probably from"',
     ),
     Mutant(
         "hive.py",

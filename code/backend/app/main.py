@@ -310,11 +310,20 @@ async def hive_discover(
     budget_ms: float = Query(federation.DEFAULT_BUDGET_MS, ge=0, le=20_000),
     seen: list[str] | None = SEEN_QUERY,
     looking_for: str = "offers",
+    include_irrelevant: bool = Query(False, description="Also return entities the query earned nothing from"),
 ) -> dict[str, Any]:
     """Search the Hive, and with radius above 0 its peer Hives too; radius 0 is this Hive only, as before.
 
     looking_for is which side of the market the caller is on: "offers" (the default) finds whoever provides the
     thing asked for, "needs" whoever wants what the caller provides, "any" both.
+
+    The answer carries `matched` (how many answered the question) over `considered` (how many entities were
+    ranked to get them), so a caller can tell a hit from a miss without counting the list and without the
+    old advice to "threshold on score > 0 yourself", which never worked: four Basel hotels score 1-2 on
+    every query there is, from reputation alone and with an empty `why`. Entities the query earned nothing
+    from are left out, so `matched: 0` means nothing matched — unless the ask carried nothing at all, which
+    is a browse and still returns everyone. `include_irrelevant=true` restores the old unfiltered ranking
+    for a caller that was relying on it.
 
     This is also how one Hive forwards a query to another: a hop passes the radius it has left, the time budget
     left and the hubs the query has already visited (seen), which is how loops in the peer graph are cut.
@@ -343,13 +352,27 @@ async def hive_discover(
             "looking_for": looking_for,
         },
     )
-    return await asyncio.to_thread(
+    found = await asyncio.to_thread(
         _hive_call,
         hive.discover,
         **constraints,
         radius=radius,
         budget_ms=budget_ms,
         seen=seen,
+    )
+    if seen:
+        # A peer forwarded this, and the hub that asked will threshold and rank the merged answer itself.
+        # Filtering here as well would hide rows from its scorer, which is what decides them.
+        return found
+    return hive.only_relevant(
+        found,
+        hive.asks_anything(
+            constraints["query"],
+            constraints["features"],
+            constraints["near"],
+            constraints["max_price_chf"],
+        ),
+        include_irrelevant,
     )
 
 

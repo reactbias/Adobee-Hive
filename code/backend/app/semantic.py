@@ -56,18 +56,25 @@ EMBEDDINGS = "embeddings"
 #: at each candidate floor:
 #:
 #:     floor   0.00   0.05   0.10   0.15   0.20   0.25   0.30   0.40
-#:     first  10/41  11/41  12/41  12/41  15/41  19/41  20/41  16/41
-#:     top 3  20/41  27/41  27/41  29/41  32/41  30/41  27/41  17/41
+#:     first  21/41  21/41  21/41  22/41  24/41  23/41  23/41  19/41
+#:     top 3  29/41  30/41  30/41  32/41  33/41  30/41  29/41  19/41
 #:
-#: Two things in that table. **No floor at all is near the worst setting there is** — every card is a little
-#: like every query, the component pays everybody, and it ranks nothing; that is the whole reason this constant
-#: exists. And the curve has a plateau rather than a peak: 0.25 is the top of first-place *and* top-three taken
-#: together, 0.30 buys one more first place at the cost of three top-threes, and above that the cross-language
-#: matches this was built for — an English query against a card written in German — start falling under it.
+#: Two things in that table. **No floor at all is still the worst end of the useful range** — every card is a
+#: little like every query, the component pays everybody, and it ranks by almost nothing; that is the whole
+#: reason this constant exists. And 0.20 is now the peak of first-place *and* top-three together, where it
+#: used to be 0.25.
+#:
+#: It moved because the tokeniser did. The floor compares *normalised* bags, so dropping filler words from
+#: both the query and the card changes every cosine in the corpus: there is less shared nothing to dilute a
+#: real overlap, so genuine pairs sit higher and the line that separates them belongs lower. A constant
+#: chosen by measurement has to be re-measured when the thing it measures changes — `tools/eval_search.py
+#: --sweep` prints this table on the 73-entity corpus, and the version of it above is the 61-entity one from
+#: `tools/eval_answer_key.py`. Above 0.30 the cross-language matches this was built for — an English query
+#: against a card written in German — start falling under it, which has not changed.
 #:
 #: `tools/eval_search.py --floor` prints the pairs on either side of the line, and `tests/test_semantic.py`
 #: pins both edges: the pairs it must catch, and the pairs it must never reach.
-SIMILARITY_FLOOR = 0.25
+SIMILARITY_FLOOR = 0.20
 
 #: How much of a readable reason a hit quotes back from the owner's own line.
 SNIPPET_CHARS = 72
@@ -92,10 +99,72 @@ COMPOUND_MIN_PART = 4
 #: to contain five concepts is noise, not a five-way match.
 COMPOUND_MAX_PARTS = 2
 
+
+def fold(text: str) -> str:
+    """Lower-case and strip accents, so "Zürich" and "Zurich" are one word and "ß" is "ss".
+
+    Public because it is half of a comparison: whatever folds a query has to fold the text the query is
+    compared against, or folding makes matching *worse* — a query folded to "cafe" stops being a substring
+    of an unfolded "Café". `hive.py` folds both sides of its literal search with this.
+    """
+    folded = unicodedata.normalize("NFKD", text.lower().replace("ß", "ss"))
+    return "".join(c for c in folded if not unicodedata.combining(c))
+
+
+#: Stopwords that name a place. `hive.asks_anything` needs them apart: a query of only these is a browse.
+PLACE_NAMES = frozenset("basel bern zurich zuerich luzern geneva genf schweiz switzerland swiss".split())
+
 #: Function words, units and place names: they are in every card, so they say nothing about what it offers.
 #: Place names are dropped for the same reason `domains/explore.py` ignores them — "near Basel" is not a topic.
+#:
+#: This is now the *only* such list — `hive.STOPWORDS` is an alias of it, and `content_words` is the only
+#: tokeniser — so a gap here is a gap in both search paths at once. Three kinds of gap were found by typing
+#: plain sentences at it rather than keywords, and all three were closed-class words nobody had got round to:
+#: the interrogatives ("where", "wo", "où", "dove" — a question word is in every question and tells you
+#: nothing), the possessives and object pronouns ("my", "meine", "ma", "mia"), and the inflected forms of
+#: light verbs whose other forms were already here ("suche" was, "sucht" and "suchen" were not; "macht" was
+#: not, which is how a roofer became the only answer to a question about a slow Python simulation).
+#:
+#: What does *not* belong here is a word that says something about the errand. "hotel", "room", "book" and
+#: "check" sat in the old `hive.STOPWORDS` and are deliberately not here: they are generic, but a card that
+#: offers a room really does differ from one that does not, and the answer key measures the difference.
+#:
+#: Every entry is passed through `fold()`, because every word looked up in it has been. That is not
+#: housekeeping: the German entries were written in ASCII transliteration ("fuer", "moechte", "koennen"),
+#: and folding "für" gives "fur", not "fuer" — so the whole umlaut half of the German function words was
+#: in the list and unreachable from any query that actually spelled them. Both spellings are listed and
+#: both fold into it, so "fuer" and "für" are one word here as they are everywhere else.
 STOPWORDS = frozenset(
-    """
+    fold(word)
+    for word in """
+    fuer für moechte möchte moechten möchten koennen können koennte könnte muessen müssen muesste müsste
+    ueber über waehrend während haette hätte waere wäre waeren wären duerfen dürfen darf naechste nächste
+    groesser grösser spaeter später zurueck zurück fuers fürs ueberhaupt überhaupt
+    hello hey greetings regards cheers welcome sorry kindly
+    bonjour bonsoir salut merci bienvenue desole désolé
+    hallo hoi gruezi grüezi gruetzi grüetzi guete danke bitte servus tschuess tschüss
+    ciao buongiorno buonasera buonanotte grazie prego salve arrivederci scusi
+    pourrait pourrais pourriez pourrions puisse serait seraient aurait auriez aurais
+    voudrais voudrait voudriez aimerais aimerait faudrait doive puissent
+    wuerde würde wuerden würden wuerdest würdest koennten könnten moechtest möchtest
+    potrebbe potrei potremmo potrebbero vorrebbe vorremmo avrei sarebbe dovrebbe
+    where what who when why how which whose whom whether here there
+    wo was wer wen wem wann warum wieso weshalb wie welche welcher welches welchen wohin woher
+    mein meine meinen meinem meiner meines dein deine deinen unser unsere unseren ihre ihren ihrem
+    mich mir dich dir uns euch ihm ihnen man jemanden jemandem niemand
+    machen macht machst gemacht machte tun tut getan werden wird wurde worden sollen soll muss muessen
+    koennen kann koennte will wollen wollte moechten brauchen braucht gebraucht
+    brauchte braeuchte bräuchte suchen sucht gesucht
+    finden findet gefunden bin bist seid dass weil aber denn doch wenn als dieser diese dieses diesen
+    durch gegen ueber zwischen hinter neben seit wegen beim vom viele wenige alle allen
+    ou est que qui quoi quand comment pourquoi quel quelle quels quelles dont
+    mon ma mes ton ta tes notre nos votre vos son sa ses leur leurs moi toi lui eux
+    cherchons cherchez chercher cherchait veux veut voulons vouloir besoins faire fait faites
+    peux peut pouvons pouvoir dois doit devons trouver trouve as ont avons avez etre suis sommes etes
+    dove cosa chi quando come perche quale quali cui
+    mio mia miei mie tuo tua nostro nostra vostro loro me te noi voi
+    cerchiamo cercare cerca cercando voglio vogliamo volere faccio fatto
+    posso puo possiamo potere devo dobbiamo trovare trovo ho hai hanno abbiamo essere sono siete
     a an the and or of for to in on at by with without from into over under near about that this these those
     is are was were be been being have has had do does did can could would should will shall may might must
     it its they them their you your we our us i me my mine he she his her as not no nor but if then than so
@@ -260,15 +329,43 @@ CONCEPTS: dict[str, str] = {
 }
 
 
-def _fold(text: str) -> str:
-    """Lower-case and strip accents, so "Zürich" and "Zurich" are one word and "ß" is "ss"."""
-    folded = unicodedata.normalize("NFKD", text.lower().replace("ß", "ss"))
-    return "".join(c for c in folded if not unicodedata.combining(c))
+#: A run of letters in any script, as the thing a tokeniser should cut text into.
+#:
+#: `[^\W\d_]` is "a word character that is neither a digit nor an underscore", which Python's `re` reads
+#: against the full Unicode letter property. It is written as a negated class rather than as a list of
+#: letters on purpose: the version that *was* a list, `[a-zäöü]`, is how "café" came to tokenise to nothing
+#: and every French and Italian query to silence. A list of letters is a list of the languages someone
+#: remembered, and this corpus is deliberately four of them. `fold()` has already removed the accents by the
+#: time this runs, so this mostly catches what folding does not decompose — but it is the class that decides
+#: whether an unfolded alphabet is text or whitespace, and "every alphabet" is the only defensible answer.
+LETTERS = re.compile(r"[^\W\d_]+")
+
+#: French "j'ai" is a verb form and "AI" is a topic, and both tokenise to `ai`. Only the elided form says which,
+#: so it goes before the cut on non-letters, and `ai` itself cannot be a stopword.
+FRENCH_JAI = re.compile(r"\bj['’]ai\b")
+
+
+def content_words(text: str, min_length: int = 2) -> list[str]:
+    """The content words of a piece of text: folded, letters only, stopwords and short words dropped.
+
+    The one tokeniser. Both search paths call it — `semantic.py` for the bags it compares and `hive.py` for
+    the terms it looks for literally — so that a word is a word, and a filler word is a filler word, exactly
+    once. They disagreed before: this list of stopwords against a 21-word one in `hive.py`, which is why
+    "where", "someone" and "pour" were evidence a card answered a question, and this folding tokeniser
+    against `[a-zäöü]+`, which is why a German or French query found almost nothing. Two lists mean two
+    answers, and the one the caller gets depends on which path happened to score it.
+
+    `min_length` is the only thing a caller may vary, because the two paths pay differently for a word:
+    literal containment of a short word is nearly free to hit by accident and is worth 10 points, so
+    `hive.py` asks for longer words than the similarity bag does.
+    """
+    folded = FRENCH_JAI.sub(" ", fold(text))
+    return [w for w in LETTERS.findall(folded) if len(w) >= min_length and w not in STOPWORDS]
 
 
 def _words(text: str) -> list[str]:
-    """The content words of a piece of text: folded, letters only, stopwords and single letters dropped."""
-    return [w for w in re.findall(r"[a-z]+", _fold(text)) if len(w) > 1 and w not in STOPWORDS]
+    """The content words used to build a bag: everything over one letter."""
+    return content_words(text, 2)
 
 
 #: Derivational suffixes stripped to reach a stem, after the plural is taken off. Deliberately short:
@@ -311,7 +408,7 @@ def _concept_index() -> dict[str, tuple[str, ...]]:
     index: dict[str, set[str]] = {}
     for concept, words in CONCEPTS.items():
         for word in words.split():
-            index.setdefault(stem(_fold(word)), set()).add(concept)
+            index.setdefault(stem(fold(word)), set()).add(concept)
     return {key: tuple(sorted(value)) for key, value in index.items()}
 
 

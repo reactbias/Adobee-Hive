@@ -32,6 +32,7 @@ from mcp import Client
 from app import config, connections, db, folder_keys, folders, hive, hub, owner, sharing
 from app.domains import hr
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 GUEST = "mara@example.com"
 STRANGER = "someone-else@example.com"
@@ -62,7 +63,7 @@ def clean_slate(client, monkeypatch):
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 
