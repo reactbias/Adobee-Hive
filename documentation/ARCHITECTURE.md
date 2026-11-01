@@ -177,10 +177,12 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hub/registration` | The admission policy and the exact document to send | — |
 | `POST /api/hub/register` | Apply to join. A refusal is 200 with `state: rejected`, not a 4xx | rate limit |
 | `GET /api/hub/register/{application_id}` | Check on an application | — |
-| `POST /api/hub/register/{application_id}/withdraw` | Withdraw before a decision | — |
+| `GET /api/hub/register/{application_id}/withdrawal` | The document to sign to withdraw this application, and its canonical bytes | — |
+| `POST /api/hub/register/{application_id}/withdraw` | Withdraw your own application before a decision. An id is a lookup, not authority: needs a signed action under the key the application registered, or the capability the submission returned once, in `X-Application-Key`. Fails closed | applicant proof |
 | `GET /api/hub/directory` | Hives to choose between, instances.social style | — |
 | `GET /api/admin/applications` | The admission queue; `state=pending` is what waits on a person | — |
 | `POST /api/admin/applications/{application_id}` | Admit or refuse; a refusal needs a reason | `X-Admin-Token` |
+| `POST /api/admin/applications/{application_id}/withdraw` | Withdraw an application as the operator. Recorded as the operator's act, never as the applicant's consent | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities` | Every entity this hub carries: id, name, kind, claimed, rating and count, published at | `X-Admin-Token`, fails closed |
 | `GET /api/admin/entities/{entity_id}` | One entity in full: the signed card, its offers and needs, contact with the sharing flag that applies to each channel, its trust block, its signature state, and whether it is blocked | `X-Admin-Token`, fails closed |
 | `POST /api/admin/entities/{entity_id}/remove` | Stop carrying an entity: out of discovery, not bookable, signed history kept. A reason is required | `X-Admin-Token`, fails closed |

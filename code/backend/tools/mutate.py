@@ -73,6 +73,7 @@ SUITE = [
     "tests/test_local_calibration.py",
     "tests/test_home_hub_row.py",
     "tests/test_requester_identity.py",
+    "tests/test_withdrawal_authority.py",
 ]
 
 
@@ -505,6 +506,54 @@ CURATED: list[Mutant] = [
         "an application that brings a key need not sign, so the key is just a claim",
         'return False, "an application that brings a public key must be signed with the private half"',
         'return True, "unsigned"',
+    ),
+    Mutant(
+        "registration.py",
+        "an application can be withdrawn with no proof at all, by anybody who knows its id",
+        "        raise RegistrationError(_no_proof(row))",
+        "        proof = BY_CAPABILITY",
+    ),
+    Mutant(
+        "registration.py",
+        "a wrong withdrawal capability is accepted, so the hash check is decorative",
+        "        if not guard.secret_matches(fingerprint(key), stored):",
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "a withdrawal signature is accepted without being checked against the registered key",
+        '        if not hive.verify(withdrawal_statement(row["id"], nonce, expires), signature, registered):',
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "an expired withdrawal signature still works, so a captured one works for ever",
+        "        if _expired(expires):",
+        "        if False:",
+    ),
+    Mutant(
+        "registration.py",
+        "an unreadable expiry is read as a live window instead of a closed one",
+        "        return True\n    if when.tzinfo is not None:",
+        "        return False\n    if when.tzinfo is not None:",
+    ),
+    Mutant(
+        "registration.py",
+        "the withdrawal transition stops being conditional, so admission and withdrawal both win",
+        '" WHERE id = ? AND state = ?",\n            [WITHDRAWN, _now(), proof, reason, app_id, PENDING],',
+        '" WHERE id = ?",\n            [WITHDRAWN, _now(), proof, reason, app_id],',
+    ),
+    Mutant(
+        "registration.py",
+        "an operator withdrawal is credited to the applicant, so the row claims a consent nobody gave",
+        '        if proof == BY_OPERATOR\n        else f"withdrawn by the applicant',
+        '        if False\n        else f"withdrawn by the applicant',
+    ),
+    Mutant(
+        "registration.py",
+        "the capability is minted for an application that brought its own key, weakening both",
+        '    secret = secrets.token_urlsafe(WITHDRAW_SECRET_BYTES) if state == PENDING and not public_key else ""',
+        "    secret = secrets.token_urlsafe(WITHDRAW_SECRET_BYTES)",
     ),
     Mutant(
         "registration.py",

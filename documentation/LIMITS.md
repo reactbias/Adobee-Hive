@@ -81,6 +81,20 @@ refuse honest callers and admit anybody who guessed its shape. Per-owner authori
 answerable at all is a hub vouching for its own member
 ([#159](https://github.com/reactbias/Adobee-Hive/issues/159)), because a hub can vouch for a member
 and cannot vouch for a string.
+**Withdrawing an application is proved; being the person who applied is not.** An application id is
+a lookup and no longer a mutation credential
+([#108](https://github.com/reactbias/Adobee-Hive/issues/108)): withdrawal takes a signed action under
+the key the application registered, or a capability the submission returned once for an application
+whose key the hub holds, or the operator through their own route — and the row credits whichever of
+the three it actually was, so it can no longer read "withdrawn by the applicant" about an act the
+applicant knew nothing about.
+
+What is proved is key possession or secret possession, which is not identity. A signature says
+whoever holds that private key asked; a capability says whoever read the submission's answer asked.
+The capability is the weaker half and is honest about it: over MCP the submission's answer lands in
+the agent's transcript, so anything that can read that transcript can withdraw the application until
+it is decided. There is no revocation and no rollover — bringing your own `public_key` avoids the
+problem rather than mitigating it, and the operator's route is the way out if it happens.
 
 **Calibration does not reach the search rank.** A federated result is ranked
 `local_relevance × hub_path_trust × hop_decay`, and `hub_path_trust` comes from `reputation.py` — declared versus

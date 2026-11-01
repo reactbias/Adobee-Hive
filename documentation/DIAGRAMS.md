@@ -373,13 +373,15 @@ flowchart LR
     direction TB
     J1["GET /api/hub/directory · GET /api/hub/registration"]:::door
     J2["POST /api/hub/register"]:::door
-    J3["GET /api/hub/register/{application_id} · POST /api/hub/register/{application_id}/withdraw"]:::door
+    J3["GET /api/hub/register/{application_id} · GET /api/hub/register/{application_id}/withdrawal"]:::door
+    J4["POST /api/hub/register/{application_id}/withdraw"]:::held
   end
 
   ADMN([Hub operator]) --> ADMD
   subgraph ADMD["Administration · the admin panel, or curl"]
     direction TB
     D0["POST /api/admin/login · POST /api/admin/logout"]:::held
+    D0b["POST /api/admin/applications/{application_id}/withdraw"]:::held
     D1["GET /api/admin/overview · /api/admin/settings · /api/admin/neighbours"]:::door
     D2["GET /api/admin/blocklist"]:::door
     D3["POST /api/admin/blocklist · DELETE /api/admin/blocklist/{kind}/{subject}"]:::held

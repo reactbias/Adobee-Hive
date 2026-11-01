@@ -1235,10 +1235,64 @@ def hub_application(application_id: str) -> dict[str, Any]:
     return _hive_call(registration.get, application_id)
 
 
+class WithdrawBody(BaseModel):
+    """An applicant proving a withdrawal they signed. The capability goes in a header, not here."""
+
+    signature: str = Field(
+        "",
+        max_length=400,
+        description="Base64, over the canonical JSON of the document GET …/withdrawal returns",
+    )
+    nonce: str = Field("", max_length=200, description="The nonce from that document; part of what was signed")
+    expires: str = Field("", max_length=64, description="The expiry from that document; part of what was signed")
+
+
+#: The withdrawal capability, declared as a real header so /docs renders an input box for it.
+#: A header and not a body field on purpose — see `registration.KEY_HEADER`.
+ApplicationKey = Annotated[
+    str | None,
+    Header(
+        alias=registration.KEY_HEADER,
+        description="The capability POST /api/hub/register returned once, for a hub-custody application.",
+    ),
+]
+
+
+@app.get("/api/hub/register/{application_id}/withdrawal")
+def hub_withdrawal_document(application_id: str) -> dict[str, Any]:
+    """The document to sign to withdraw this application, and its exact canonical bytes.
+
+    Offered so an applicant's client signs what this hub will check instead of guessing at the
+    canonical form. Public: it carries a nonce and an expiry and nothing secret, and it is worth
+    nothing to anybody who cannot sign it with the key the application registered.
+    """
+    row = _hive_call(registration.get, application_id)
+    return {"application": row["id"], "state": row["state"], **registration.withdrawal_to_sign(row["id"])}
+
+
 @app.post("/api/hub/register/{application_id}/withdraw")
-def hub_withdraw(application_id: str) -> dict[str, Any]:
-    """Withdraw an application before it has been decided."""
-    return _hive_call(registration.withdraw, application_id)
+def hub_withdraw(
+    application_id: str, body: WithdrawBody | None = None, x_application_key: ApplicationKey = None
+) -> dict[str, Any]:
+    """Withdraw your own application before it has been decided. Needs proof that it is yours.
+
+    An application id is how anybody looks an application up, so it is not authority to change one.
+    An application that brought a `public_key` is withdrawn with a **signed action** under that key
+    (`GET …/withdrawal` gives the document); one whose key this hub holds is withdrawn with the
+    **capability** the submission returned once, in the `X-Application-Key` header. Neither
+    configured means neither works, and the application is left alone: this route fails closed.
+
+    An operator withdrawing somebody else's application is a different act and has its own route.
+    """
+    body = body or WithdrawBody()
+    return _hive_call(
+        registration.withdraw,
+        application_id,
+        key=x_application_key or "",
+        signature=body.signature,
+        nonce=body.nonce,
+        expires=body.expires,
+    )
 
 
 @app.get("/api/admin/applications")
@@ -1251,3 +1305,14 @@ def admin_applications(state: str = "") -> dict[str, Any]:
 def admin_decide(application_id: str, body: DecisionBody, _: str = Depends(admin_only)) -> dict[str, Any]:
     """Admit or refuse a pending application. A refusal needs a reason, and the applicant is told it."""
     return _hive_call(registration.decide, application_id, body.admit, reason=body.reason)
+
+
+@app.post("/api/admin/applications/{application_id}/withdraw")
+def admin_withdraw(application_id: str, credential: str = Depends(admin_only)) -> dict[str, Any]:
+    """Withdraw a pending application as the operator: an administrative act, recorded as one.
+
+    Separate from the applicant's route on purpose. The row is credited to the hub operator and says
+    the applicant did not ask, because a ledger that reads "withdrawn by the applicant" about an act
+    the applicant knew nothing about is worse than the missing check it came from.
+    """
+    return _hive_call(registration.withdraw, application_id, by_operator=credential)
