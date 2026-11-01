@@ -9,6 +9,7 @@ import OwnerPanel from "./panels/OwnerPanel";
 import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
 import BackendStatus from "./components/BackendStatus";
+import ThemeToggle from "./components/ThemeToggle";
 import { canonicalHash, screenFor, SCREENS, type ScreenId } from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
@@ -96,6 +97,7 @@ function Header({
                 </button>
               ))}
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>

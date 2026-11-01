@@ -198,6 +198,49 @@ describe("card view", () => {
     expect(scene?.hits.map((h) => h.card.name)).toEqual(["Elektro Mattenhof"]);
   });
 
+  it("carries the signed card through untouched, beside the normalised one and never instead of it", () => {
+    // #172: an introduction to an entity this hub does not carry is checked against the key that entity's
+    // own hub pinned, and an Ed25519 signature covers the exact canonical JSON. readHubCard re-orders and
+    // coerces, so the drawn card can never be the one that is sent.
+    const signed = {
+      id: "elektro-mattenhof",
+      name: "Elektro Mattenhof",
+      description: "Fuse boxes and house wiring.",
+      rating: 4.2,
+      signature: "ed25519:abc",
+      published_at: "2026-10-30T09:00:00",
+    };
+    const scene = sceneFromDiscovery(
+      "an electrician for a broken fuse box",
+      [
+        {
+          id: "elektro-mattenhof",
+          score: 16,
+          score_breakdown: { semantic: 16 },
+          card: signed as never,
+          provenance: { path: ["bern", "basel"], origin: "bern" },
+        },
+      ],
+      { "elektro-mattenhof": signed },
+    );
+    const hit = scene?.hits[0];
+    // The same object, not a copy and not a normalisation of it.
+    expect(hit?.signedCard).toBe(signed);
+    // The drawn card is the normalised one, and the two are not the same thing.
+    expect(hit?.card).not.toBe(signed);
+    expect(hit?.card.rating).toBe(42);
+    expect((hit?.signedCard as unknown as { rating: number }).rating).toBe(4.2);
+  });
+
+  it("carries no signed card for a row the hub did not attach one to", () => {
+    const scene = sceneFromDiscovery(
+      "a quiet hotel",
+      [{ id: "hotel-rheinblick", score: 9, score_breakdown: { offers_needs: 9 } }],
+      { "hotel-rheinblick": { id: "hotel-rheinblick", name: "Hotel Rheinblick", description: "", rating: null } },
+    );
+    expect(scene?.hits[0].signedCard).toBeUndefined();
+  });
+
   it("keeps every row when the hub scored nothing, rather than showing an empty page", () => {
     const scene = sceneFromDiscovery("anything", [{ id: "a", score: 0, why: [] }], {
       a: { id: "a", name: "A", description: "", rating: null },

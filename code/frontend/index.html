@@ -9,6 +9,15 @@
     />
     <link rel="icon" href="/brand/favicon.svg" />
     <title>Adobee Hive</title>
+    <!-- An explicit light/dark choice has to be on <html> before the stylesheet paints, or a reader who chose
+         dark sees a white page flash first. Nothing is written here: with no stored choice the attribute stays
+         off and the stylesheet's prefers-color-scheme rule decides, as it does without script at all. -->
+    <script>
+      try {
+        var t = localStorage.getItem("adobee-theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
