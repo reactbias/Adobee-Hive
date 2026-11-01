@@ -339,6 +339,9 @@ flowchart LR
     M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
     M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
     M6[hub_registration · hub_register · hub_directory]:::door
+    M7[hive_owner_card]:::door
+    M8[hive_owner_propose · hive_owner_publish]:::held
+    M7 -. "X-Owner-Token on the connection" .-> M8
   end
 
   AGT --> HUBD
@@ -432,7 +435,10 @@ flowchart LR
   end
 ```
 
-Clay marks the calls that act on a person's yes: Approve, or the owner's Publish.
+Clay marks the calls that act on a person's yes: Approve, or the owner's Publish. The owner's three MCP
+tools are the same three doors for an agent working on its person's behalf: `hive_owner_card` reads (and
+needs nothing), `hive_owner_propose` and `hive_owner_publish` need the owner token in the `X-Owner-Token`
+header of the MCP connection and refuse without it, on a hub that has set one and on a hub that has not.
 
 ## 6. How far to look: a federated search
 

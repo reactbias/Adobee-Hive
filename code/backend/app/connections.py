@@ -73,6 +73,7 @@ DECLINED = "declined"
 MIN_STARS, MAX_STARS = 0, 50  # tenths of a star: 43 is 4.3 stars
 STALE_AFTER_DAYS = 30  # a human has this long to score a meeting before the row closes unscored
 CONFIRM_WITHIN_DAYS = 7  # an unanswered request expires sooner than an unrated meeting
+STALE_SOON_DAYS = 7  # an open row with this long or less left is worth asking about now
 
 
 class ConnectionError_(ValueError):
@@ -131,12 +132,27 @@ def _row(r: tuple) -> dict[str, Any]:
         "note",
         "folder_link",
     )
-    out: dict[str, Any] = {}
-    for key, value in zip(keys, r, strict=True):
-        out[key] = value.isoformat() if isinstance(value, datetime) else value
+    raw = dict(zip(keys, r, strict=True))
+    out: dict[str, Any] = {k: v.isoformat() if isinstance(v, datetime) else v for k, v in raw.items()}
     out["rating_stars"] = stars(out["rating"])
     out["published_rating_stars"] = stars(out["published_rating"])
+    # `stale_at` alone makes every reader do date arithmetic to find out whether it still has time,
+    # and an agent that gets that wrong either nags a person about nothing or lets the one piece of
+    # evidence this hub's trust layer runs on expire unscored. So the row says it.
+    left = out["stale_in_days"] = _days_left(raw["stale_at"])
+    out["stale_soon"] = out["state"] == OPEN and left is not None and left <= STALE_SOON_DAYS
     return out
+
+
+def _days_left(stale_at: Any) -> int | None:
+    """Whole days until this row's deadline: 0 on its last day, None when it has none.
+
+    Which deadline depends on the state: the score window for an open introduction, the owner's
+    answer window for one still waiting on their yes. Both are `stale_at`, and both run out.
+    """
+    if not isinstance(stale_at, datetime):
+        return None
+    return max(0, (stale_at - _now()).days)
 
 
 SELECT = (

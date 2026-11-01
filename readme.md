@@ -188,7 +188,7 @@ async def main():
 asyncio.run(main())
 ```
 
-For CV discovery, switch to person/skills queries after loading the corpus. Call `list_tools()` for the live schemas. Relevant groups are `hive_discover`/`hive_get_card`, `hub_directory`, `hub_connect`/`hub_connections`, and `hr_find_people`/`hr_request_intro`. Booking, standing-request and Explore/Scout tools are also registered; the [tool inventory](documentation/ARCHITECTURE.md#mcp-tools-mcp-streamable-http) describes them. Tool refusals can be structured `error` results; do not assume every completed MCP call succeeded.
+For CV discovery, switch to person/skills queries after loading the corpus. Call `list_tools()` for the live schemas. Relevant groups are `hive_discover`/`hive_get_card`, `hub_directory`, `hub_connect`/`hub_connections`, and `hr_find_people`/`hr_request_intro`. Booking, standing-request and Explore/Scout tools are also registered, and an agent acting for an entity that is itself on the hub has `hive_owner_card`/`hive_owner_propose`/`hive_owner_publish` to read and change that entity's own card without leaving MCP (the owner token is a header on the connection, `X-Owner-Token`, and the two write tools refuse without it); the [tool inventory](documentation/ARCHITECTURE.md#mcp-tools-mcp-streamable-http) describes them all. Tool refusals can be structured `error` results; do not assume every completed MCP call succeeded.
 
 **There is no folder-list/read/grant MCP tool on this snapshot.** `hr_request_intro` records a request and returns `pending_consent`; it does not release a CV. `hub_connect` can return a folder manifest, but not a network-readable file capability. Do not bypass these gaps by calling the server's filesystem directly from a remote client.
 

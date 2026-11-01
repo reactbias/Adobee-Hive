@@ -126,7 +126,7 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `hive_wait` | When nothing fits and the traveller wants to be told: leave an anonymous standing request; returns an id and a secret token |
 | `hub_connect` | Ask to be introduced to a business or person found in a search, and log the introduction. A public entry opens at once, one marked `needs_confirmation` waits for its owner's yes, and one shared only on the owner's initiative cannot be asked for |
 | `hub_score` | Record how an introduction actually went, after the real meeting: tenths of a star out of five, once, and only while the connection is still open. The only input to how far this Hive trusts another |
-| `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale |
+| `hub_connections` | Introductions still waiting on an owner's yes or on a person's score, so an agent can ask before one goes stale. Each row carries `stale_in_days` (whole days left, 0 on the last one) as well as the absolute `stale_at`, and `stale_soon` flags an open introduction with a week or less to go, so the deadline reminds the agent instead of the agent having to work it out |
 | `hub_standing` | What this Hive makes of its neighbours: published minus realised, lower is better, unproven when the evidence is thin |
 | `hub_registration` | What this Hive asks of someone who wants to join: policy, checks, proof types and an example document |
 | `hub_register` | Apply to join with one signed JSON document. Bring a public key and the user keeps the private half |
@@ -136,6 +136,9 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
+| `hive_owner_card` | One card as its owner sees it: the signed card, its bookings or hand-offs, the demand it missed, what agents did with it in the last 7 days, and who is waiting for a change. The same answer as `GET /api/owner/{card_id}` — guest names come through as initials unless the connection carries the owner token, and nothing else is withheld |
+| `hive_owner_propose` | A plain-language change to the owner's own card to a proposed card and a field-by-field diff, in EN/DE/FR/IT. Publishes nothing: the diff is what the agent shows its person. A change over one of the published ceilings is refused here, naming the ceiling and the size |
+| `hive_owner_publish` | Sign and publish the proposed card the owner said yes to, as a new version; waiting agents get signed offers. Identity fields keep their values. **Fails closed**: the owner token must arrive in the `X-Owner-Token` header of the MCP connection, and a hub with no `OWNER_EDIT_TOKEN` set publishes nothing over MCP at all |
 
 Agents can find the endpoint from `/.well-known/hive.json`. How a search reaches another hub and how a hub is
 measured: [FEDERATION.md](FEDERATION.md). How an entity gets into a hub in the first place:
@@ -159,7 +162,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `POST /api/hub/connections/{connection_id}/score` | Score an introduction after the real meeting, once | — |
 | `POST /api/hub/connections/{connection_id}/confirm` | The owner says yes to an introduction | — |
 | `POST /api/hub/connections/{connection_id}/decline` | The owner says no; it never becomes a rating | — |
-| `GET /api/hub/connections` | Introductions waiting on a yes or on a score | — |
+| `GET /api/hub/connections` | Introductions waiting on a yes or on a score, each with the days it has left (`stale_in_days`, `stale_soon`) | — |
 | `GET /api/hub/standing` | This hub's view of its neighbours, best calibrated first | — |
 | `GET /api/folders/status` | Which folder link is in use, what was asked for, why they differ, what a read costs, and the honest line that on `local` both folders are on one disk. Names no server path | — |
 | `GET /api/folders/manifest` | The peer's folder as this link may see it: paths, sizes, digests, `readable`, and `withheld` as a **count**. Owner and viewer come from the bearer and there is no handle parameter, so there is nothing to enumerate | `Authorization: Bearer <link secret>` |
@@ -221,6 +224,12 @@ Every request carries the app's language as `Accept-Language`; `/api/agent`, `/a
 second opinion answer in it.
 
 Rulesets, standing requests and "what was promised" are agent features, so they are MCP tools only (see above).
+The three owner routes are the other way round — they have MCP tools *as well*, so an owner's own agent never has
+to leave the protocol to look after their entry: `hive_owner_card`, `hive_owner_propose`, `hive_owner_publish`.
+All six paths go through `owner.py`, and the read guard is one function (`owner.overview`) so the two surfaces
+cannot drift into different ideas of what an owner may read. What differs is the write guard, on purpose: a REST
+route with no `OWNER_EDIT_TOKEN` set is open, as it has always been, while the MCP tools refuse — see
+[LIMITS.md](LIMITS.md#running-a-hub).
 
 ## Trust by design
 

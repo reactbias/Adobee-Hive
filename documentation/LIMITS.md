@@ -128,6 +128,17 @@ verification here", and the same match's `federated_score` drops from 4.39 to 0.
 hubs if it has already happened. Reproduced twice; see
 [SEARCH_API.md](SEARCH_API.md#where-the-docs-and-the-code-disagree).
 
+**One shared owner token, and two different doors.** `OWNER_EDIT_TOKEN` is one secret for every card on the hub:
+it proves its holder may edit *a* card here, never that they own *this* one, so holding it is holding every card
+([#135](https://github.com/reactbias/Adobee-Hive/issues/135)). On top of that the two surfaces guard it
+differently, which is deliberate and worth knowing. The REST routes under `/api/owner/` treat an unset
+`OWNER_EDIT_TOKEN` as "the check is off" and are open on a hub that has not set one — the owner studio on a
+laptop, as it has always been. The three `hive_owner_*` MCP tools fail closed instead: with no token set they
+publish nothing at all, and they refuse a wrong or missing one, because `/mcp/` can be reached from anywhere
+`/.well-known/hive.json` can be read. So **a deployed hub sets `OWNER_EDIT_TOKEN`**, and a hub that has not set
+one answers `hive_owner_card` and refuses the other two. Reading an owner's view needs no token on either
+surface and shows guest names as initials without one.
+
 **One shared password, no audit trail.** `ADMIN_PASSWORD` is a single secret for the whole hub, like the owner
 token. There are no operator accounts, so an admitted or refused application records `decided_by: "admin"` and
 nothing about which person decided it. Sessions are bearer tokens in `sessionStorage`.

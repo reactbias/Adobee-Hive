@@ -28,9 +28,29 @@ _signed_out: dict[str, int] = {}
 _signed_out_lock = threading.Lock()
 
 
+def secret_matches(given: str, expected: str) -> bool:
+    """True when `given` is `expected`, compared in constant time. An unset `expected` matches nothing.
+
+    The strict half of the pair: a caller that has no `Request` to raise an `HTTPException` at asks
+    this instead. An MCP tool reads its credential off the transport rather than off a FastAPI
+    request, and a write that can arrive from anywhere wants the unset secret to refuse everybody —
+    the line `require_admin` draws for the blocklist, for the same reason.
+    """
+    return bool(expected) and hmac.compare_digest(given, expected)
+
+
+def secret_ok(given: str, expected: str) -> bool:
+    """True when `given` matches `expected`, or when no `expected` is configured: the check is off.
+
+    What `require_secret` decides, as a value rather than an exception, so a caller without a
+    `Request` makes the same decision from the same code.
+    """
+    return not expected or secret_matches(given, expected)
+
+
 def require_secret(request: Request, header: str, expected: str) -> None:
     """Reject the request unless `header` matches `expected`. An empty `expected` means the check is off."""
-    if expected and not hmac.compare_digest(request.headers.get(header, ""), expected):
+    if not secret_ok(request.headers.get(header, ""), expected):
         raise HTTPException(403, f"Missing or wrong {header}.")
 
 
@@ -132,15 +152,16 @@ class RateLimiter:
         self.hits: dict[str, deque[float]] = defaultdict(deque)
         self.lock = threading.Lock()
 
-    def check(self, request: Request, key: str = "") -> None:
+    def check(self, request: Request | None = None, key: str = "") -> None:
         """Count one call, or raise 429 when the client or the backend is over. The 429 says when to try again.
 
         `key` counts against something other than the caller's IP. A folder read is limited per
         *link*, because the link is what the hub granted and an IP is not: one agent behind a
         shared address must not spend another's budget, and moving address must not refill it.
+        An MCP tool has no `Request` at all and always brings its own `key`.
         """
         now = time.monotonic()
-        client = key or (request.client.host if request.client else "unknown")
+        client = key or (request.client.host if request and request.client else "unknown")
         with self.lock:
             for key in (client, "*"):
                 hits = self.hits[key]
@@ -167,6 +188,19 @@ class RateLimiter:
         client = key or (request.client.host if request.client else "unknown")
         with self.lock:
             self.hits.pop(client, None)
+
+
+def over_budget(limiter: RateLimiter, key: str) -> str:
+    """Count one call against `limiter` and return why it is refused, or "" when it may run.
+
+    The same budget the REST routes spend, for a caller with nowhere to raise an `HTTPException`:
+    an MCP tool answers with an `error` its agent can read instead of a status code.
+    """
+    try:
+        limiter.check(key=key)
+    except HTTPException as err:
+        return str(err.detail)
+    return ""
 
 
 # One budget for everything that may call Claude: agent runs and owner edit proposals.

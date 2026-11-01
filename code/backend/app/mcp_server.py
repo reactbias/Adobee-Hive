@@ -4,12 +4,13 @@ Mounted at /mcp (Streamable HTTP). Any MCP client can connect, e.g. Claude Deskt
 Claude's MCP connector, or our own agent in app/agent.py.
 """
 
+from collections.abc import Mapping
 from typing import Any
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
-from . import admin, connections, domains, hive, hub, registration, rulesets, waiting
+from . import admin, config, connections, domains, guard, hive, hub, owner, registration, rulesets, waiting
 
 server = MCPServer(
     name="Adobee Hive",
@@ -24,7 +25,10 @@ server = MCPServer(
         "If nothing fits and the user wants to be told, hive_wait leaves an anonymous standing request. "
         "To reach a person rather than book a room, use hub_connect: some entries open at once and some wait "
         "for their owner's yes. After the real meeting has happened, hub_score records how it actually went, "
-        "which is the only thing that teaches this Hive which other Hives to believe."
+        "which is the only thing that teaches this Hive which other Hives to believe. "
+        "If the person you work for is on this Hive themselves, their entry is yours to look after: "
+        "hive_owner_card reads it as they see it, hive_owner_propose turns what they tell you into a diff, and "
+        "hive_owner_publish signs that diff into the live card once they have said yes to it."
     ),
 )
 
@@ -214,7 +218,12 @@ def hub_score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]
 def hub_connections(requester: str = "") -> dict[str, Any]:
     """List introductions still waiting on somebody: on an owner's yes, or on the person's score.
 
-    Use it to ask "how did it go with X?" before the connection goes stale and can no longer be scored."""
+    Use it to ask "how did it go with X?" before the connection goes stale and can no longer be scored. Each row
+    says how long it has left as well as when it runs out: `stale_in_days` counts whole days, 0 meaning today is
+    the last one, and `stale_soon` flags an open introduction with a week or less to go. An introduction nobody
+    scores closes unscored and is then worth nothing to anybody — a score after the real meeting is the only
+    evidence this Hive ever gets about the Hive an entry came from — so take a `stale_soon` row first. A request
+    still waiting on an owner's yes carries its own shorter window in `stale_in_days` and no flag."""
     return {
         "awaiting_rating": connections.awaiting_rating(requester),
         "awaiting_confirmation": connections.pending_confirmation(),
@@ -259,6 +268,101 @@ def hub_register(
         registration.apply,
         {"entity": entity, "public_key": public_key, "proofs": proofs or [], "invite": invite, "signature": signature},
     )
+
+
+# ---------------------------------------------------------------- the owner's own three tools
+#
+# The owner's credential rides the **transport**, in the same `X-Owner-Token` header the REST routes
+# read, and never an argument: an argument is written into the agent's transcript, into its client's
+# tool log and into whatever the model keeps of the turn, and a shared secret in four places is not
+# one. `mcp==2.3.0` hands a tool its request headers through `Context.headers`, so the header is
+# readable without leaving the protocol. On a transport that carries no headers at all — stdio, or
+# this repo's own in-process agent — the token arrives empty and the edit tools refuse, which is the
+# right way round.
+
+
+def _owner_token(ctx: Context) -> str:
+    """The owner token this call carried, or "". Header names are compared without regard to case.
+
+    Nothing else ever reads it, nothing logs it and no tool puts it in an answer: it is compared
+    against this hub's secret in constant time (`guard.secret_matches`) and dropped.
+    """
+    headers: Mapping[str, str] = ctx.headers or {}
+    return next((v for k, v in headers.items() if k.lower() == owner.TOKEN_HEADER.lower()), "")
+
+
+def _refused_edit(ctx: Context) -> dict[str, Any] | None:
+    """The refusal an owner edit gets when this call carries no usable owner token, else None."""
+    refused = owner.editable(_owner_token(ctx))
+    return {"error": refused} if refused else None
+
+
+@server.tool()
+def hive_owner_card(card_id: str, ctx: Context) -> dict[str, Any]:
+    """Read one card the way its owner sees it, which is more than hive_get_card shows anybody else.
+
+    On top of the signed card: the bookings it has taken or the hand-offs it has made, the demand it was in the
+    running for and lost (`missed_demand`, the asks it did not fit), what agents did with it over the last seven
+    days (`last_7_days`), and the standing requests waiting for a change like the one you may be about to make.
+
+    Read it before proposing anything: `missed_demand` is the list of sentences the card could have answered and
+    did not, and it is the best evidence you will get for what to change. Needs no token — a guest's name comes
+    through as initials ("M. K.") unless this connection carries the owner's, and nothing else is withheld.
+    """
+    return _safe(owner.overview, card_id, _owner_token(ctx))
+
+
+@server.tool()
+def hive_owner_propose(card_id: str, instruction: str, ctx: Context) -> dict[str, Any]:
+    """Turn a plain-language change to your person's own card into a proposed card and a diff. Publishes nothing.
+
+    Say what changed the way they said it to you — "dogs are welcome now, and the standard double is 150" — in
+    any of English, German, French or Italian. You get back `proposed` (the whole card as it would be), `changes`
+    (one row per field, with `before` and `after`), and a one-line `summary`. The card on the hub is untouched:
+    show `changes` to your person, in their words, and ask. `hive_owner_publish` is the yes.
+
+    `mode` in the answer says who did the editing. A hub with no model key falls back to a rule-based editor and
+    answers `mock`: it understands "add <tag>", "remove <tag>" and "<room name> <price>" in those four
+    languages and nothing else, so read `changes` rather than assuming the instruction was understood — an empty
+    `changes` means it was not, and the `summary` says so.
+
+    `description` is the card's pitch to agents like you, so write it for discovery: say what the business
+    actually offers, in the words someone would search for. Nothing here reads it for tone — the only thing that
+    can refuse it is its size.
+
+    Needs the owner token on this connection (the `X-Owner-Token` header). A change that would pass one of this
+    hub's published ceilings (`hub_registration` lists all 24) is refused here, naming the ceiling and the size
+    that passed it, rather than looking fine and failing at publish. id, slug and kind cannot be changed at all.
+    """
+    if refused := _refused_edit(ctx):
+        return refused
+    if config.LLM_ENABLED and (over := guard.over_budget(guard.llm_calls, f"owner:{card_id}")):
+        return {"error": over}  # the same model budget the REST route spends, counted per card
+    out = _safe(owner.propose, card_id, instruction)
+    if "error" in out:
+        return out
+    if too_big := owner.refusal(out["proposed"]):
+        return {"error": f"This hub will not publish that change: {too_big}. Shorten it and propose again."}
+    return out
+
+
+@server.tool()
+def hive_owner_publish(card_id: str, proposed: dict[str, Any], ctx: Context) -> dict[str, Any]:
+    """Publish the card hive_owner_propose returned, once your person has seen the diff and said yes.
+
+    Pass `proposed` back exactly as you received it. The hub re-signs it with the owner's key and gives it the
+    next version number, so the agent that reads it next verifies the new card against the key pinned for this id
+    in `/.well-known/hive.json` — a published change that no longer verifies would be worse than no change at
+    all, so the signature is never carried over. id, slug and kind keep the values they have, whatever the
+    proposal says, and the old versions are kept so an existing booking can still show what it was promised.
+
+    Returns the published card with its new `trust.signature` and `version`, and sends a signed offer to anyone
+    whose standing request this change now fits. Needs the owner token on this connection (the `X-Owner-Token`
+    header): without it nothing is published. Do not call it on a diff nobody agreed to.
+    """
+    if refused := _refused_edit(ctx):
+        return refused
+    return _safe(owner.apply, card_id, proposed)
 
 
 @server.tool()
