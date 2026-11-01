@@ -58,7 +58,7 @@ describe("the app", () => {
     expect(document.querySelectorAll("header.nav .themes button")).toHaveLength(3);
   });
 
-  it("is two screens, one per person, switched in the header by hash", async () => {
+  it("is three screens, finding, offering and hiring, switched in the header by hash", async () => {
     render(
       <I18nProvider>
         <App />
@@ -67,9 +67,10 @@ describe("the app", () => {
 
     const tabs = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
     const links = tabs.getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#offer"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#offer", "#hire"]);
     expect(links[0]).toHaveTextContent(en["chapter.find"]);
     expect(links[1]).toHaveTextContent(en["chapter.offer"]);
+    expect(links[2]).toHaveTextContent(en["chapter.hire"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
 
     // The finding screen first; the offering one is there but not on show.

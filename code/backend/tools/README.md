@@ -193,3 +193,10 @@ Two things it deliberately does not do:
 `calibration.score` as three readings a person can tell apart — with the under-promising one scoring
 better than the over-promising one — and the whole chain end to end against a **real second hub in a
 subprocess**, because every fake-based version of this passed while `published_rating` was `NULL`.
+
+## Hiring
+
+The presentation samples (a terminal narration and a one-page viewer) are in `code/backend/samples/`, not here.
+The real screen is **Hiring** in the app: [HIRING.md](../../../documentation/HIRING.md).
+
+- `cv_to_vault.py` turns CV analyzer JSON into the vaults in `testdata/candidates`.

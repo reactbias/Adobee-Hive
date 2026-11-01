@@ -5,9 +5,9 @@ import type { ReactNode, RefObject } from "react";
 // room this week is looking for a designer the next. The header switches between them by hash; App.tsx keeps
 // both mounted so a booking survives a look at the other side.
 
-export type ScreenId = "find" | "offer" | "network";
-/** The two screens in the header. The network view is a third, reached from the footer. */
-export const SCREENS: ScreenId[] = ["find", "offer"];
+export type ScreenId = "find" | "offer" | "hire" | "network";
+/** The three screens in the header: finding, offering, hiring. The network view is a fourth, reached from the footer. */
+export const SCREENS: ScreenId[] = ["find", "offer", "hire"];
 
 /**
  * The hash names these screens used to carry, read and never written.
@@ -22,7 +22,7 @@ const RENAMED: Record<string, ScreenId> = { travel: "find", business: "offer" };
 export function screenFor(hash: string): ScreenId {
   const name = hash.replace(/^#/, "");
   const screen = RENAMED[name] ?? name;
-  return screen === "offer" || screen === "network" ? screen : "find";
+  return screen === "offer" || screen === "hire" || screen === "network" ? screen : "find";
 }
 
 /**
@@ -55,7 +55,7 @@ export function namesScreen(hash: string): boolean {
   const name = hash.replace(/^#/, "");
   if (!name) return false;
   const screen = RENAMED[name] ?? name;
-  return screen === "find" || screen === "offer" || screen === "network";
+  return screen === "find" || screen === "offer" || screen === "hire" || screen === "network";
 }
 
 /** The same hash as the app would write it, or "" when it is already written that way. */

@@ -1072,6 +1072,90 @@ export interface AdminSession {
   expires_in: number;
 }
 
+// --- Hiring: a posting, the people it fits, and their agents (POST /api/hr/*) ---------------------------------
+
+export type HiringKind = "must" | "nice" | "role";
+export type HiringRequirement = { label: string; options: string[]; kind: HiringKind; related: string[] };
+export type HiringJobRead = {
+  title: string;
+  requirements: HiringRequirement[];
+  min_years: number | null;
+  location: string | null;
+  languages: string[];
+  remote_ok: boolean;
+  parsed_by: string;
+};
+/** One line of a card (or of a shared file) that speaks to one requirement, and how it was found. */
+export type HiringEvidence = {
+  requirement: string;
+  kind: HiringKind;
+  strength: number;
+  how: "literal" | "related" | "partial" | "similar" | "none";
+  covered: boolean;
+  matched?: string;
+  field?: string;
+  quote?: string;
+  source?: string;
+};
+export type HiringMatch = {
+  id: string;
+  name: string;
+  headline: string;
+  description: string;
+  score: number;
+  musts_met: number;
+  musts_total: number;
+  evidence: HiringEvidence[];
+  gaps: string[];
+  years: { stated: number | null; note: string };
+  not_stated: string[];
+  signature_valid: boolean;
+};
+export type HiringShortlist = {
+  job: HiringJobRead;
+  matches: HiringMatch[];
+  excluded: { id: string; name: string; why_not: string[]; score: number }[];
+  considered: number;
+  ranking_policy: string;
+};
+export type HiringQuote = { text: string; source: string };
+export type HiringTurn = {
+  question: string;
+  about: string;
+  answer: { text: string; support: "direct" | "related" | "weak" | "none"; strength: number; quotes: HiringQuote[] };
+};
+export type HiringConsent = {
+  state: "granted" | "awaiting_consent" | "declined" | "no_folder";
+  why: string;
+  granted?: string[];
+};
+export type HiringRanked = {
+  id: string;
+  name: string;
+  rank: number;
+  stage1_score: number;
+  score: number;
+  verdict: string;
+  status: string;
+  musts_met: number;
+  musts_total: number;
+  strengths: string[];
+  gaps: string[];
+  years: { stated: number | null; note: string };
+  consent: HiringConsent;
+  read?: string[];
+  transcript?: HiringTurn[];
+};
+export type HiringInterview = {
+  job: HiringJobRead;
+  recruiter: string;
+  ranking: HiringRanked[];
+  excluded: HiringShortlist["excluded"];
+  summary: string;
+  next_step: string;
+  ranking_policy: string;
+};
+export type Screening = "yes" | "ask" | "no";
 export const api = {
   health,
   /** Search the Hive. Without a radius the answer is this Hive's own cards, exactly as before. */
@@ -1095,6 +1179,15 @@ export const api = {
   ask: (question: string, mood: Mood | null, pick = false) =>
     post<AskResult>("/api/ask", pick ? { question, mood, pick } : { question, mood }),
   scout: (question: string) => post<ScoutResult>("/api/ask/scout", { question }),
+  hiringShortlist: (job: string, limit = 8) => post<HiringShortlist>("/api/hr/shortlist", { job, limit }),
+  hiringInterview: (job: string, limit = 5) => post<HiringInterview>("/api/hr/interview", { job, limit }),
+  /** A person's own answer to screening interviews. Takes the owner token when the hub sets one. */
+  hiringScreening: (id: string, screening: Screening) =>
+    post<{ card_id: string; screening: Screening }>(
+      `/api/hr/screening/${encodeURIComponent(id)}`,
+      { screening },
+      ownerHeaders(),
+    ),
   askApprove: (id: string) => post<Handoff>("/api/ask/approve", { id }),
   activity: (after = 0) => call<ActivityFeed>(`/api/activity?after=${after}`),
 

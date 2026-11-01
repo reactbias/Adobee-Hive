@@ -4,9 +4,11 @@ Owned by the HR workflows lane. This is the working skeleton to build on, not th
 
 - Built: the `person` card kind, `hr_find_people` (skills match with reasons, like stays discovery) and
   `hr_request_intro` (recorded for the person, who decides).
-- Next: seed fictional people, a person view and studio in the frontend, the person's yes/no on an intro,
-  CV import into a card. (`hive.discover` lists person cards now — they are found by what they offer and need
-  like anyone else — so a seeded person is public presence, and only their contact stays behind consent.)
+- Built beside it, in `recruit.py`: `hr_shortlist` and `hr_interview` search people by a whole job posting and
+  let a recruiter's agent question theirs (`talent.py`, `interview.py`); CV import is `code/cv_analyzer`.
+- Next: a person view and studio in the frontend, and the person's yes/no on an intro and on a screening.
+  (`hive.discover` lists person cards now — they are found by what they offer and need like anyone else — so a
+  seeded person is public presence, and only their contact stays behind consent.)
 
 Rules that make this safe to show (keep them):
 - Consent first. Contact details are never part of a person card. A company agent can only ask for an
