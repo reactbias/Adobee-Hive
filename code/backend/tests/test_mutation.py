@@ -297,7 +297,8 @@ def test_an_empty_module_list_checks_nothing_and_still_passes():
     assert done.returncode == 0, done.stdout + done.stderr
     assert "Nothing to check" in done.stdout
     assert "Curated mutants" not in done.stdout, "an empty list must not fall back to the full set"
-    assert "Mutants: 0 curated of 61" in done.stdout, "and it has to say so, not pass in silence"
+    total = len(_mutate().CURATED)
+    assert f"Mutants: 0 curated of {total}" in done.stdout, "and it has to say so, not pass in silence"
 
 
 def test_the_mode_and_the_count_are_always_printed():
