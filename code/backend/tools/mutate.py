@@ -68,6 +68,7 @@ SUITE = [
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
+    "tests/test_owner_mcp.py",
 ]
 
 
@@ -530,6 +531,36 @@ CURATED: list[Mutant] = [
         "a relayed card that failed its signature check is no longer held against the carrier",
         'def record_invalid(hub_id: str, cards: int = 1, card_id: str = "") -> None:',
         'def record_invalid(hub_id: str, cards: int = 1, card_id: str = "") -> None:\n    return',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "publish works without a token: any agent that can reach /mcp/ can rewrite any claimed card",
+        'return {"error": refused} if refused else None',
+        "return None",
+    ),
+    Mutant(
+        "hive.py",
+        "a published card keeps the old version's signature, so every change breaks verify_pinned",
+        "signature = base64.b64encode(key.sign(canonical(card))).decode()",
+        'signature = (existing or {}).get("signature", "")',
+    ),
+    Mutant(
+        "owner.py",
+        "a hub with no owner token set accepts an edit from anybody instead of refusing everybody",
+        "    if not config.OWNER_EDIT_TOKEN:\n        return (",
+        "    if False:\n        return (",
+    ),
+    Mutant(
+        "owner.py",
+        "a guest's name is handed to anyone who asks for the owner's view without the token",
+        "    if not guard.secret_ok(token, config.OWNER_EDIT_TOKEN):",
+        "    if False:",
+    ),
+    Mutant(
+        "owner.py",
+        "an owner edit is answered as published without ever being signed or stored",
+        "    card = hive.publish(_strip(proposed))",
+        "    card = _strip(proposed)",
     ),
 ]
 

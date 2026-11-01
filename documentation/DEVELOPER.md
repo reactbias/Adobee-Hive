@@ -97,7 +97,7 @@ All settings are environment variables in `code/.env` (gitignored; template in `
 | `LLM_PROVIDER` | empty | `openai`, `claude` or `offline`. Empty picks OpenAI if its key is set, then Claude, then offline. `offline` forces the scripted planner even with a key |
 | `AGENT_MAX_TURNS` | `10` | Caps each agent run |
 | `LLM_CALLS_PER_CLIENT_HOUR`, `LLM_CALLS_TOTAL_HOUR` | `30`, `300` | Cost guard on calls that may reach a model |
-| `OWNER_EDIT_TOKEN`, `DEMO_RESET_TOKEN` | empty | When set, owner edits need `X-Owner-Token` and a reset needs `X-Demo-Token`. Leave empty locally |
+| `OWNER_EDIT_TOKEN`, `DEMO_RESET_TOKEN` | empty | When set, owner edits need `X-Owner-Token` and a reset needs `X-Demo-Token`. Leave empty locally for the owner studio — but the three owner MCP tools below fail closed, so set `OWNER_EDIT_TOKEN` to try an agent editing its own card |
 | `HIVE_MCP_URLS` | empty | Comma-separated MCP URLs of other Hives the agent searches too |
 | `DUCKDB_PATH` | `code/backend/data/abh.duckdb` | Where the data lives |
 | `DATABASE_URL` | empty | Optional Postgres: the DuckDB file is restored from it on boot and saved after each write, so data survives redeploys |
@@ -146,7 +146,7 @@ outside `t()`. How to write tests first: [CONTRIBUTING.md](../CONTRIBUTING.md#te
 
 ```bash
 cd code/backend && source .venv/bin/activate
-python tools/mutate.py                  # the 71 curated mutants; all must die
+python tools/mutate.py                  # the 76 curated mutants; all must die
 python tools/mutate.py --modules app/semantic.py,app/hive.py   # only these modules
 python tools/mutate.py --random 8       # seeded random operator and constant flips
 python tools/mutate.py --all
@@ -156,11 +156,11 @@ Each mutant breaks one line, runs the suite, and restores the file. A mutant the
 missing assertion, printed with the line to look at. Exit code is the survivor count, so CI gates on it.
 
 There is no way to know whether the tests notice a break except to run them against it, so the cost is
-71 × one suite run. Four mutants are checked at a time, each in its own throwaway copy of the tree: a full
-local run measured 19m34s sequentially and 6m28s with four workers, same 71 mutants, same
-`No survivors.` On a runner the whole job is about eight minutes. CI goes further and checks only the modules
-a pull request touched, keeping all 71 for every push to main — `--modules app/calibration.py` is three
-mutants and 43s. It stays a separate CI job rather than part of
+one suite run per mutant. Four are checked at a time, each in its own throwaway copy of the tree: measured
+over the 71 mutants there were when this was written, a full local run took 19m34s sequentially and 6m28s
+with four workers, same mutants, same `No survivors.` On a runner the whole job is about eight minutes. CI
+goes further and checks only the modules a pull request touched, keeping every one of them for each push to
+main — `--modules app/calibration.py` is three mutants and 43s. It stays a separate CI job rather than part of
 `backend` so a survivor reads as "the tests have a hole", not "the build is broken".
 
 Your checkout is never mutated — the copies are — and they are deleted on the way out, including on
@@ -198,6 +198,26 @@ curl -s http://localhost:8000/mcp/ \
 
 Every result says whether it is `claimed` by its subject and whether it is `bookable`: an unclaimed card was
 compiled from public information, so it can only be handed off to the business's own site after a person's yes.
+
+**An agent looking after its own person's card** has the three owner tools: `hive_owner_card` (the owner's view,
+no token needed, guest names as initials without one), `hive_owner_propose` (plain words in, a diff out, nothing
+published) and `hive_owner_publish` (the diff becomes the live, re-signed card). The owner token goes in the
+`X-Owner-Token` **header of the connection**, never in an argument, and the two write tools refuse without it —
+including on a hub that has no `OWNER_EDIT_TOKEN` set, so start the backend with one to try them:
+
+```bash
+export OWNER_TOKEN=$(python -c 'import secrets; print(secrets.token_hex(16))')
+OWNER_EDIT_TOKEN=$OWNER_TOKEN uvicorn app.main:app --reload       # from code/backend
+curl -s http://localhost:8000/mcp/ \
+  -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hive_owner_propose",
+       "arguments":{"card_id":"hotel-gare","instruction":"add dog-friendly, standard double 150"}}}'
+```
+
+`changes` in the answer is what an agent shows its person before anything moves; publishing takes `proposed`
+back unchanged. Worked examples of all three, with the refusals:
+[SEARCH_API.md](SEARCH_API.md#the-owners-own-three-tools--hive_owner_card-hive_owner_propose-hive_owner_publish).
 
 **With Python**, a whole booking: discover, check availability, book. Save it as `book.py` and run it with the
 backend's virtual environment active (it has the `mcp` package). Use dates in the future.

@@ -589,7 +589,7 @@ key.
 ### The MCP surface
 
 Mounted at `/mcp/`, Streamable HTTP, **stateless** — so plain `curl` works with no session
-handshake. 21 tools. Verified:
+handshake. 24 tools. Verified:
 
 ```bash
 curl -s http://127.0.0.1:8521/mcp/ -H 'Content-Type: application/json' \
@@ -602,6 +602,7 @@ hive_discover  hive_what_was_promised  hive_rulesets  hive_get_card  hive_check_
 hive_book  hive_cancel  hive_review  hive_wait  hive_check_waiting
 hr_find_people  hr_request_intro  explore_ask  hive_scout
 hub_connect  hub_score  hub_connections  hub_standing  hub_registration  hub_register  hub_directory
+hive_owner_card  hive_owner_propose  hive_owner_publish
 ```
 
 Calling the search tool:
@@ -620,6 +621,121 @@ The result carries `structuredContent` with exactly the REST shape — 20 matche
 `hive_discover` over MCP takes `query`, `kind`, `near`, `max_price_chf`, `features`, `check_in`,
 `check_out`, `guests`, `ruleset`, `radius`, `looking_for`. It **does not** take `budget_ms` or
 `seen` — they are REST-only, for hops.
+
+### The owner's own three tools — `hive_owner_card`, `hive_owner_propose`, `hive_owner_publish`
+
+Everything above is for an agent looking at somebody else's entry. These three are for an agent
+looking after **its own person's** entry, so it never has to drop out of MCP to change the one thing
+an owner most needs to change. They are the three REST routes under `/api/owner/`, tool for route,
+and they go through the same `app/owner.py`.
+
+The credential is a **header on the connection**, `X-Owner-Token`, exactly the header the REST routes
+read. It is deliberately not an argument: an argument is written into the agent's transcript, its
+client's tool log and whatever the model keeps of the turn, and a shared secret in four places is not
+a secret. `mcp==2.3.0` hands a tool its request headers (`Context.headers`), so this costs nothing in
+protocol terms — and on a transport that carries no headers at all (stdio, an in-process client) the
+token arrives empty and the two write tools refuse, which is the right way round.
+
+**`hive_owner_card`** needs no token. It answers exactly what `GET /api/owner/{card_id}` answers,
+the same six keys:
+
+```bash
+curl -s http://127.0.0.1:8480/mcp/ -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hive_owner_card",
+       "arguments":{"card_id":"hotel-gare"}}}'
+```
+
+```
+card  bookings  handoffs  missed_demand  last_7_days  waiting
+```
+
+`card` is the full signed Card. `missed_demand` is the asks this entry was in the running for and lost,
+which is the best evidence an agent will get for what to change. Without the token a guest's name comes
+through as initials (`"M. K."`) and **nothing else is withheld** — the same degradation as the REST
+route, so an agent is never locked out of looking.
+
+**`hive_owner_propose`** takes a plain-language `instruction` and publishes nothing. Keep the token in
+the environment rather than in the command, so it stays out of your shell history:
+
+```bash
+export OWNER_TOKEN=…   # whatever this hub's operator set as OWNER_EDIT_TOKEN
+
+curl -s http://127.0.0.1:8480/mcp/ -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hive_owner_propose",
+       "arguments":{"card_id":"hotel-gare","instruction":"add dog-friendly, standard double 150"}}}'
+```
+
+```json
+{
+  "card_id": "hotel-gare",
+  "proposed": { "…": "the whole card as it would be" },
+  "changes": [
+    { "field": "features",      "before": ["late check-in", "…"], "after": ["late check-in", "…", "dog-friendly"] },
+    { "field": "policies.pets", "before": "No pets",              "after": "Dogs welcome" },
+    { "field": "units",         "before": [{ "id": "std", "price_chf": 189 }], "after": [{ "id": "std", "price_chf": 150 }] }
+  ],
+  "summary": "Mock mode: added dog-friendly, Standard double now CHF 150",
+  "summary_items": [{ "code": "added", "tag": "dog-friendly" }, { "code": "price", "unit": "Standard double", "price_chf": 150 }],
+  "mode": "mock"
+}
+```
+
+`changes` is the point: it is what the agent shows its person before anything moves, one row per
+field, nested fields as dotted paths. `mode` is `mock` with no model key and the vendor's name with
+one — the offline editor understands *add*, *remove* and `<unit> <price>` in English, German, French
+and Italian, so the flow works with no key at all. Keep `proposed` exactly as it arrives; it is what
+publishing takes back.
+
+**`hive_owner_publish`** signs it:
+
+```bash
+curl -s http://127.0.0.1:8480/mcp/ -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
+  -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hive_owner_publish",
+       "arguments":{"card_id":"hotel-gare","proposed":{ … }}}}'
+```
+
+The answer is the published Card, at `version: 2`, with a **new** `trust.signature`. Verified against
+the key `/.well-known/hive.json` pins for `hotel-gare`: the signature is new, the key is unchanged,
+and the card verifies. A published change that stopped verifying would be the worst outcome this path
+could have, so the signature is never carried over from the previous version. Two tests in
+`tests/test_owner_mcp.py` check it, one of them on a proposal that changes nothing visible at all.
+
+`id`, `slug` and `kind` keep the values they already have whatever the proposal says, and every old
+version is kept, so a booking made last week can still show what it was promised
+(`hive_what_was_promised`).
+
+#### What a refusal looks like
+
+Every refusal is a normal result with an `error` string — not a transport error — and says what to do
+next. Real answers from a running hub:
+
+| What you did | What comes back |
+| --- | --- |
+| Propose or publish with no `X-Owner-Token` on the connection, or the wrong one | `Missing or wrong X-Owner-Token. Your person's hub gave them an owner token: put it in the X-Owner-Token header of this MCP connection and call again. It is a header and not an argument on purpose — an argument would be written into this conversation.` |
+| The same, against a hub with no `OWNER_EDIT_TOKEN` set | `This hub has no OWNER_EDIT_TOKEN set, so it takes no card edits over MCP from anybody. Its operator sets one and gives it to the card's owner; tell your person that is what is missing. Reading the owner's view of the card needs no token and still works.` |
+| Publish a card whose `description` is 2400 characters | `` `description` is at most 2000 characters; this one is 2400 `` |
+| Edit a card the scout compiled from a website | `This card is unclaimed. Only the business can claim and edit it.` |
+
+The second row is the one place these tools are **stricter** than the REST routes they mirror, and it
+is deliberate: `guard.require_secret` treats an unset secret as "the check is off", which is right for
+the owner studio on a laptop and wrong for a write that can arrive from anywhere `/mcp/` can be
+reached. `guard.require_admin` already drew that line for the blocklist. So **a hub that wants owner
+edits over MCP sets `OWNER_EDIT_TOKEN`**; one that has not set it serves `hive_owner_card` and refuses
+the other two. It is still one shared token for every card on the hub — that limit is
+[#135](https://github.com/reactbias/Adobee-Hive/issues/135) and this did not fix it.
+
+Sizes are the published ceilings, all 24 of them (`hub_registration`, and the table under
+[How much room an entry has](#how-much-room-an-entry-has)). Nothing reads a field for content:
+`description` gets 2000 characters because it **is** the entry's pitch to an agent, and writing it
+well for discovery is the product working. The only thing that can refuse it is its length, and the
+refusal names the ceiling and the actual size, because "too long" is not something anybody can act on.
+A proposal over a ceiling is refused at `hive_owner_propose` as well, so an agent does not show its
+person a diff that will be refused after they have said yes.
 
 ---
 
@@ -1194,6 +1310,7 @@ what is documented above.
 | Signup, the checks, the policy document | `code/backend/app/registration.py` |
 | REST routes | `code/backend/app/main.py` |
 | MCP tools | `code/backend/app/mcp_server.py`, `code/backend/app/domains/` |
+| The owner's own three tools, and the token on the connection | `code/backend/app/owner.py`, `code/backend/app/guard.py` (`secret_matches`, `secret_ok`), `code/backend/tests/test_owner_mcp.py` |
 | The corpus, the answer key, the near-misses | [`testdata/README.md`](../testdata/README.md) |
 | Building a Card from a folder, and the visibility parser | `code/backend/tools/seed_vaults.py` |
 | The three-folder fixture | `code/backend/tools/serve_folders.py`, `code/backend/tests/test_serve_folders.py` |

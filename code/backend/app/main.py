@@ -502,20 +502,13 @@ def activity_feed(
 @app.get("/api/owner/{card_id}")
 def owner_overview(card_id: str, request: Request) -> dict[str, Any]:
     """Return the owner studio data for one card. Without the owner token, guest names show as initials."""
-    overview = _hive_call(hive.owner_overview, card_id)
-    overview["waiting"] = waiting.owner_view(card_id)
-    try:
-        guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
-    except HTTPException:
-        for booking in overview["bookings"]:
-            booking["guest_name"] = hive.mask_name(booking["guest_name"] or "")
-    return overview
+    return _hive_call(owner.overview, card_id, request.headers.get(owner.TOKEN_HEADER, ""))
 
 
 @app.post("/api/owner/{card_id}/propose")
 async def owner_propose(card_id: str, body: OwnerEdit, request: Request) -> dict[str, Any]:
     """Turn the owner's words into a proposed card and a diff. Nothing is published yet."""
-    guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
     if config.LLM_ENABLED:
         guard.llm_calls.check(request)
     return await asyncio.to_thread(_hive_call, owner.propose, card_id, body.instruction)
@@ -524,7 +517,7 @@ async def owner_propose(card_id: str, body: OwnerEdit, request: Request) -> dict
 @app.post("/api/owner/{card_id}/publish")
 def owner_publish(card_id: str, body: OwnerApply, request: Request) -> dict[str, Any]:
     """Sign and publish the card the owner approved."""
-    guard.require_secret(request, "X-Owner-Token", config.OWNER_EDIT_TOKEN)
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
     return _hive_call(owner.apply, card_id, body.proposed)
 
 

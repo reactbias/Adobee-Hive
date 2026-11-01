@@ -9,9 +9,14 @@ import logging
 import re
 from typing import Any
 
-from . import config, hive, limits, llm, waiting
+from . import config, guard, hive, limits, llm, waiting
 
 log = logging.getLogger(__name__)
+
+#: The header an owner's credential arrives in, on a REST request and on an MCP connection alike.
+#: It is never a parameter: a tool argument is written into the agent's transcript and its client's
+#: logs, and a shared secret that has been written down in two places is no longer one secret.
+TOKEN_HEADER = "X-Owner-Token"
 
 EDIT_SCHEMA = {
     "type": "object",
@@ -61,6 +66,63 @@ def _owned(card_id: str) -> dict[str, Any]:
     if not card["trust"]["claimed"]:  # compiled from a public website; only the business itself could claim it
         raise hive.HiveError("This card is unclaimed. Only the business can claim and edit it.")
     return card
+
+
+def editable(token: str) -> str:
+    """Why this hub will not take an edit from the holder of `token`, as a sentence, or "" when it will.
+
+    An edit **fails closed**: a hub with no `OWNER_EDIT_TOKEN` set refuses every caller rather than
+    accepting from any of them. `guard.require_secret` treats an unset secret as "the check is off",
+    which is right for the owner studio's own REST routes — a person on their own machine, on a hub
+    that has not been given a token yet — and wrong for a write that can arrive from anywhere the
+    MCP endpoint can be reached, which is everywhere `/.well-known/hive.json` can be read. The same
+    line `guard.require_admin` draws for the blocklist, for the same reason.
+
+    Both sentences say what to do next, and neither repeats the token back: whatever arrived here is
+    either this hub's secret or somebody's guess at it, and both belong only in the request.
+    """
+    if not config.OWNER_EDIT_TOKEN:
+        return (
+            "This hub has no OWNER_EDIT_TOKEN set, so it takes no card edits over MCP from anybody. "
+            "Its operator sets one and gives it to the card's owner; tell your person that is what is "
+            "missing. Reading the owner's view of the card needs no token and still works."
+        )
+    if not guard.secret_matches(token, config.OWNER_EDIT_TOKEN):
+        return (
+            f"Missing or wrong {TOKEN_HEADER}. Your person's hub gave them an owner token: put it in "
+            f"the {TOKEN_HEADER} header of this MCP connection and call again. It is a header and not "
+            "an argument on purpose — an argument would be written into this conversation."
+        )
+    return ""
+
+
+def overview(card_id: str, token: str = "") -> dict[str, Any]:
+    """What the owner of one card sees: the card, its bookings or hand-offs, missed demand, who is waiting.
+
+    Without this hub's owner token a guest's name is reduced to initials and everything else is
+    unchanged, so an entry can be read before anybody is asked for a credential. One function, so
+    the REST route and the MCP tool cannot drift into two different ideas of what an owner may read.
+    """
+    view = hive.owner_overview(card_id)
+    view["waiting"] = waiting.owner_view(card_id)
+    if not guard.secret_ok(token, config.OWNER_EDIT_TOKEN):
+        for booking in view["bookings"]:
+            booking["guest_name"] = hive.mask_name(booking["guest_name"] or "")
+    return view
+
+
+def refusal(proposed: dict[str, Any]) -> str:
+    """Why `hive.publish` would refuse this proposed card — the ceiling and the size that passed it — or "".
+
+    `limits.vet` is the one function both publishing doors call, so asking it here is asking the
+    same question the publish will ask, one step earlier: an agent is told that a 2400-character
+    description is 400 over before it shows its person a diff it cannot publish.
+    """
+    try:
+        limits.vet(_strip(proposed))
+    except limits.LimitError as err:
+        return str(err)
+    return ""
 
 
 def propose(card_id: str, instruction: str) -> dict[str, Any]:

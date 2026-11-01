@@ -134,6 +134,9 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
+| `hive_owner_card` | One card as its owner sees it: the signed card, its bookings or hand-offs, the demand it missed, what agents did with it in the last 7 days, and who is waiting for a change. The same answer as `GET /api/owner/{card_id}` — guest names come through as initials unless the connection carries the owner token, and nothing else is withheld |
+| `hive_owner_propose` | A plain-language change to the owner's own card to a proposed card and a field-by-field diff, in EN/DE/FR/IT. Publishes nothing: the diff is what the agent shows its person. A change over one of the published ceilings is refused here, naming the ceiling and the size |
+| `hive_owner_publish` | Sign and publish the proposed card the owner said yes to, as a new version; waiting agents get signed offers. Identity fields keep their values. **Fails closed**: the owner token must arrive in the `X-Owner-Token` header of the MCP connection, and a hub with no `OWNER_EDIT_TOKEN` set publishes nothing over MCP at all |
 
 Agents can find the endpoint from `/.well-known/hive.json`. How a search reaches another hub and how a hub is
 measured: [FEDERATION.md](FEDERATION.md). How an entity gets into a hub in the first place:
@@ -219,6 +222,12 @@ Every request carries the app's language as `Accept-Language`; `/api/agent`, `/a
 second opinion answer in it.
 
 Rulesets, standing requests and "what was promised" are agent features, so they are MCP tools only (see above).
+The three owner routes are the other way round — they have MCP tools *as well*, so an owner's own agent never has
+to leave the protocol to look after their entry: `hive_owner_card`, `hive_owner_propose`, `hive_owner_publish`.
+All six paths go through `owner.py`, and the read guard is one function (`owner.overview`) so the two surfaces
+cannot drift into different ideas of what an owner may read. What differs is the write guard, on purpose: a REST
+route with no `OWNER_EDIT_TOKEN` set is open, as it has always been, while the MCP tools refuse — see
+[LIMITS.md](LIMITS.md#running-a-hub).
 
 ## Trust by design
 
