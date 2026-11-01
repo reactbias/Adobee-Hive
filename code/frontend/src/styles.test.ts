@@ -31,6 +31,21 @@ describe("styles", () => {
     expect(css).toMatch(/\.owner-grid \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 
+  // A past ask is a whole sentence in a flex item; `min-width: auto` made a 345 px screen scroll sideways.
+  it("lets a long past ask be clipped rather than widen the page", () => {
+    expect(rule(".past-asks .chips > li")).toMatch(/min-width:\s*0/);
+    const chip = rule(".past-asks .chip");
+    expect(chip).toMatch(/max-width:\s*min\(28rem, 100%\)/);
+    expect(chip).toMatch(/text-overflow:\s*ellipsis/);
+  });
+
+  // `button:hover:not(:disabled)` paints every button dark; a chip has to win that or its label goes unreadable.
+  it("keeps a past ask readable on hover", () => {
+    const hover = rule(".past-asks .chip:hover:not(:disabled)");
+    expect(hover).toMatch(/background:\s*var\(--surface-2\)/);
+    expect(hover).toMatch(/color:\s*var\(--ink\)/);
+  });
+
   it("keeps the search bar on screen, and wraps a long request inside it", () => {
     expect(rule(".search-top")).toMatch(/position:\s*sticky/);
     expect(rule(".search-top")).toMatch(/top:\s*var\(--nav-h\)/);
