@@ -237,7 +237,15 @@ def hub_connect(
     because a visitor who said nothing is not a member — which is what the ledger used to record.
 
     Verifying a card from a peer means fetching that peer's key registry, so this spends the same budget
-    `POST /api/hub/connect` spends; a refusal names it and says when to try again."""
+    `POST /api/hub/connect` spends; a refusal names it and says when to try again.
+
+    Ask **your own** hub for an introduction to something a peer carries, rather than going to the peer and
+    asserting a name there. This hub then tells the peer on your behalf, so the peer knows a member of another
+    hub asked and the row this hub will learn from stays here, where the search found the match — a score weeks
+    later is the only evidence a hub ever gets about a peer, and one recorded somewhere else is evidence this
+    hub did the work for and lost. The answer's `forwarded` says what the peer made of it; a peer that cannot
+    be reached changes nothing about the introduction recorded here. Nothing stops you walking to the peer
+    instead: `hub_directory` gives you every peer's URL. It just costs this hub the record."""
     if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
         return {"error": over}  # refused before this hub fetches any peer's key registry
     return _safe(

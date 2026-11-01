@@ -26,11 +26,14 @@ nothing trustworthy from a booking; it learns from a person saying, weeks later,
 from __future__ import annotations
 
 import base64
+import logging
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from . import blocklist, calibration, config, connections, folder_keys, folders, guard, hive, owner, sharing
+
+log = logging.getLogger(__name__)
 
 
 class HubError(ValueError):
@@ -106,6 +109,33 @@ def _local(ask: dict[str, Any]) -> dict[str, Any]:
     return hive.discover(**ask)
 
 
+def _carried_by(entity_id: str) -> str:
+    """A sentence naming which peers this hub has heard carry `entity_id`, or "" when it knows of none.
+
+    Appended to the refusals above, because "not on this hub" is a dead end and this hub is not
+    actually ignorant: its own peer book says which of its neighbours publishes a key for that id,
+    and with what URL (#159). An agent that reads this knows where to ask next instead of guessing,
+    and the hint costs nothing — it is a local read of what the background asking already collected.
+
+    Deliberately a hint rather than a redirect. The hub is not vouching for the entity or for the
+    peer; whatever card comes back still has to pass `_verified_remote` here, or `federation._verified`
+    on a search. And it is honest about not knowing: a peer this hub has not heard from yet publishes
+    no keys it can see, so it is simply left out rather than guessed at.
+    """
+    from . import federation  # local: federation imports hive, and hive must load first
+
+    carriers = federation.carriers_of(entity_id)
+    if not carriers:
+        return ""
+    named = "; ".join(f"{c['hub']}{' at ' + c['url'] if c['url'] else ''}" for c in carriers)
+    one = carriers[0]
+    return (
+        f". This hub's peer book says {entity_id} is carried by {named}."
+        f" Search there, or at radius 1 from here, and pass the signed card it returns with"
+        f" target_hub={one['hub']!r}"
+    )
+
+
 def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str, Any]:
     """A card for an entity this hub does not carry, or a refusal that names why it was not taken.
 
@@ -125,7 +155,7 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
         raise HubError(
             f"{entity_id} is not on this hub. An introduction to an entity on a peer needs the signed card the"
             " search returned for it, passed as `card`, plus `target_hub`: this hub verifies it against the key"
-            " that entity's own hub pinned rather than trusting whoever carried it"
+            " that entity's own hub pinned rather than trusting whoever carried it" + _carried_by(entity_id)
         )
     if str(offered.get("id") or "") != entity_id:
         raise HubError(
@@ -135,7 +165,7 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
     if not target_hub:
         raise HubError(
             f"{entity_id} is not on this hub, so an introduction to it needs `target_hub`: the hub id the search"
-            " said it came from, which is where its pinned key is read from"
+            " said it came from, which is where its pinned key is read from" + _carried_by(entity_id)
         )
     pins = federation.pinned_keys_of(target_hub)
     if not pins:
@@ -185,6 +215,87 @@ def requester_origin(requester: str, claimed: str = "") -> tuple[str, str]:
     return "", connections.BY_NOBODY
 
 
+#: Whether this hub tells the carrying peer about an introduction it recorded for one of its members.
+#: On by default: the peer learning that a member of another hub asked is the whole point (#159), and
+#: a hub that would rather not can turn it off. See `_forward`.
+FORWARD_INTRODUCTIONS = config.FORWARD_INTRODUCTIONS
+
+#: What one forward costs us when the peer is slow. Short on purpose: the local record is the thing
+#: that matters and it is already written by the time this runs, so a peer must not be able to hold
+#: the requester's answer.
+FORWARD_TIMEOUT_S = config.FORWARD_TIMEOUT_S
+
+
+def _peer_url(hub_id: str) -> str:
+    """The URL of a peer by hub id, from this hub's own peer book, or "" if it does not know one.
+
+    From configuration or an admin-authenticated change (`peers.py`), never from a request: this is
+    the same rule `pinned_keys_of` follows, and it is what stops a caller naming a `target_hub` whose
+    "URL" is somewhere it wants this hub to make requests to.
+    """
+    from . import federation
+
+    return next((row["url"] for row in federation.peer_rows() if row["hub"] == hub_id and row["url"]), "")
+
+
+def _forward(row: dict[str, Any], entity_id: str, target_hub: str, card: Any) -> dict[str, Any]:
+    """Tell the hub that carries `entity_id` that one of our members asked to be introduced.
+
+    **The record, not the mechanism.** An agent is not stranded without this: `GET /api/hub/directory`
+    gives it every peer with a working URL, and `provenance.path` names the origin, so it can walk to
+    the peer and connect there itself. What it loses by doing that is the thing this exists for — the
+    peer records the introduction and *this* hub, whose search found the match, never learns of it.
+    Weeks later a score is the only evidence a hub ever gets about a peer, so an introduction recorded
+    somewhere else is evidence this hub did the work for and then threw away. Forwarding keeps the row
+    where the search happened and lets the peer know as well.
+
+    Which way round the two rows are: ours is the one calibration reads, with the carrying hub's claim
+    frozen on it (`published_rating`). Theirs is a note that a member of ours asked, carrying
+    `requester_hub` — and the peer records that as a *claim*, because this is an unauthenticated
+    hub-to-hub call. There is no hub identity key to sign it with; `/.well-known/hive.json` publishes
+    per-entity `owner_keys` and nothing for the hub itself. So the peer is strictly better informed
+    than before, when the requester asserted a name and the peer recorded it as one of its own
+    members (#158) — and it still cannot *prove* the hub that called is the hub it says it is. That
+    limit is the unanchored hub id already named in SECURITY.md, and it is written down rather than
+    papered over.
+
+    Best effort, always. The local row is written before this runs and is never rolled back by it: a
+    peer that is unreachable, slow, or refuses outright leaves `forwarded` saying what happened and
+    changes nothing else. A hub whose neighbour is down must still be able to record what its own
+    member asked for.
+    """
+    import httpx
+
+    url = _peer_url(target_hub)
+    if not url:
+        return {"sent": False, "why": f"this hub has no URL for {target_hub} on its own peer list"}
+    body = {
+        "requester": row["requester"],
+        "entity_id": entity_id,
+        "requester_hub": config.HIVE_HUB_ID,
+        "target_hub": target_hub,
+        "card": card if isinstance(card, dict) else None,
+    }
+    try:
+        with httpx.Client(timeout=FORWARD_TIMEOUT_S) as http:
+            answer = http.post(f"{url.rstrip('/')}/api/hub/connect", json=body)
+            answer.raise_for_status()
+            theirs = answer.json()
+    except Exception as err:  # a peer's bad day is not this hub's failure to record
+        log.info("forwarding an introduction to %s failed: %s", target_hub, err)
+        return {"sent": False, "to": target_hub, "url": url, "why": f"{type(err).__name__}: {err}"}
+    return {
+        "sent": True,
+        "to": target_hub,
+        "url": url,
+        "connection": str(theirs.get("id") or ""),
+        "state": str(theirs.get("state") or ""),
+        # What the peer made of our claim about our own member. `claimed` is the honest answer and the
+        # one to expect; anything else means the peer knows this requester some other way.
+        "requester_proof": str(theirs.get("requester_proof") or ""),
+    }
+
+
 def connect(
     requester: str,
     entity_id: str,
@@ -193,12 +304,19 @@ def connect(
     target_hub: str = "",
     via_hub: str = "",
     card: Any = None,
+    forward: bool = True,
 ) -> dict[str, Any]:
     """Ask to be introduced to something, on this hub or on a peer, and log the introduction.
 
     Refused outright for a blocked entity, for a blocked hub, and for an item its owner marked
     `push` or `never` — those are the owner's to send, not anyone's to request. An entity this hub
     does not carry needs its signed card and its hub id with the request; see `_verified_remote`.
+
+    For an entity on a peer this hub also **tells that peer**, on its member's behalf, so the peer
+    knows a member of another hub asked while the row calibration reads stays here, where the search
+    happened (`_forward`). Best effort: a peer that cannot be reached leaves `forwarded` saying so
+    and nothing else changes. `forward=False` turns it off for one call, which is what the receiving
+    hub passes so a forward cannot forward again.
     """
     entity_id = (entity_id or "").strip()
     if not entity_id:
@@ -278,6 +396,8 @@ def connect(
     # `hub.score` and a requester's withdrawal need (#107).
     key = folder_keys.mint(link["id"], who, pending_ok=True)
     out = {**row, "folder": folders.manifest(them, who), "folder_key": key}
+    if remote and forward and FORWARD_INTRODUCTIONS:
+        out["forwarded"] = _forward(row, entity_id, target_hub, card)
     if remote:
         # Said in the answer, not only in the row: an introduction to somebody on another hub is one
         # this hub recorded and cannot complete. Its owner's yes happens where its owner is, and

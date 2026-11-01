@@ -63,6 +63,21 @@ by a key `hive.publish` generates and keeps in `hive_keys`, and that is the key 
 server, for the demo* — registration narrows the gap by pinning who applied, it does not close it. Owner-held
 signing keys are in [VISION.md](VISION.md#beyond-the-weekend).
 
+**An introduction can be asked for through your own hub, but your own hub cannot prove it is itself.**
+An agent that finds something a peer carries can ask *its* hub for the introduction, and that hub
+tells the peer on its member's behalf
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)). The point is the record, not the
+mechanism: the row calibration reads stays on the hub whose search found the match, with the carrying
+hub's claim frozen on it, and the peer learns that a member of another hub asked. Walking to the peer
+instead was always possible — `GET /api/hub/directory` gives every peer a working URL — and it is
+exactly what loses the hub the only evidence it ever gets about that peer.
+
+What the forward cannot do is prove who is calling. There is no hub identity key to sign it with, so
+the receiving hub records `requester_hub` as a claim and anyone who can reach its port can send the
+same call naming any hub. That is the unanchored hub id already in SECURITY.md, seen from the other
+side. The forward is also best effort by design: a peer that is down leaves `forwarded` saying so and
+never costs this hub the record of what its own member asked for.
+
 **Nobody has to prove who is asking for an introduction.** `requester` is a string on
 `POST /api/hub/connect` and on the `hub_connect` MCP tool, and this hub has no accounts to check it
 against. So an introduction can be created under any name by anyone who can reach the port, and the

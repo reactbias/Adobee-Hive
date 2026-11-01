@@ -548,6 +548,15 @@ class ConnectBody(BaseModel):
             " an entity this hub carries, whose own copy always wins"
         ),
     )
+    forward: bool = Field(
+        True,
+        description=(
+            "For an entity on a peer: also tell that peer, so it knows a member of another hub asked while the"
+            " row calibration reads stays here. Best effort — a peer that cannot be reached leaves `forwarded`"
+            " saying so and changes nothing else. One hub passes false to the next, so a forward never forwards"
+            " again"
+        ),
+    )
 
 
 class ScoreBody(BaseModel):
@@ -593,6 +602,7 @@ def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
         target_hub=body.target_hub,
         via_hub=body.via_hub,
         card=body.card,
+        forward=body.forward,
     )
 
 
