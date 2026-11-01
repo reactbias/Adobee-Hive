@@ -39,7 +39,7 @@ os.environ.setdefault("DUCKDB_PATH", str(Path(tempfile.mkdtemp(prefix="eval-sear
 os.environ.setdefault("DATABASE_URL", "")
 sys.path.insert(0, str(ROOT))
 
-from app import blocklist, db, hive, hive_seed, semantic  # noqa: E402  (after DUCKDB_PATH, on purpose)
+from app import blocklist, db, hive, hive_seed, removals, semantic  # noqa: E402  (after DUCKDB_PATH, on purpose)
 
 #: The fallback scoring set: query, which side of the market it is on, and the entities that should answer it.
 #: Read off the vault folders as a person would read them — "who here cuts hair?" — and deliberately mixed:
@@ -116,6 +116,7 @@ def corpus() -> list[str]:
     db.init()
     hive.init()
     blocklist.init()
+    removals.init()
     hive_seed.seed_if_empty()
     seed = _seed_vaults()
     published = []
