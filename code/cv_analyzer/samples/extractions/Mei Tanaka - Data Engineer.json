@@ -1,0 +1,164 @@
+{
+  "document": {
+    "id": 9,
+    "file": "Mei Tanaka - Data Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Mei Tanaka",
+      "email": "mei.tanaka@example.com",
+      "phone": "+65 5550 4040",
+      "location": "Singapore",
+      "country": "Singapore",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Data engineer specializing in designing batch and streaming data pipelines on GCP.",
+    "current_job_title": "Senior Data Engineer",
+    "career_level": "Senior",
+    "total_years_experience": 8.5,
+    "job_categories": [
+      "Data Engineering"
+    ],
+    "industry_sectors": [
+      "Technology",
+      "Retail"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Senior Data Engineer",
+        "job_category": "Data Engineering",
+        "company": "Lion Analytics",
+        "industry": "Technology",
+        "location": "Singapore",
+        "country": "Singapore",
+        "employment_type": "Full-time",
+        "start_date": "2020-05",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": null,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built Python/Apache Beam pipelines on GCP (BigQuery, Dataflow) handling 5 TB/day",
+          "Introduced data quality checks that reduced failed loads"
+        ],
+        "achievements": [
+          "Designed pipelines handling 5 TB/day on GCP",
+          "Reduced failed data loads by 60% through data quality checks"
+        ]
+      },
+      {
+        "job_title": "Data Engineer",
+        "job_category": "Data Engineering",
+        "company": "Tokyo Retail Systems",
+        "industry": "Retail",
+        "location": "Tokyo",
+        "country": "Japan",
+        "employment_type": "Full-time",
+        "start_date": "2018-04",
+        "end_date": "2020-04",
+        "is_current": false,
+        "duration_months": null,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Maintained ETL jobs in Python and SQL",
+          "Migrated on-prem Hadoop jobs to GCP"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "MSc Information Science",
+        "degree_level": "Master",
+        "field_of_study": "Information Science",
+        "institution": "University of Tokyo",
+        "country": "Japan",
+        "start_date": null,
+        "graduation_date": "2018",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Master",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "SQL",
+      "BigQuery",
+      "Dataflow",
+      "Airflow",
+      "Docker",
+      "GCP"
+    ],
+    "soft_skills": [],
+    "software_and_tools": [],
+    "languages": [
+      {
+        "language": "Japanese",
+        "proficiency": "native"
+      },
+      {
+        "language": "English",
+        "proficiency": "fluent"
+      }
+    ],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced data engineer with strong GCP expertise",
+      "Hands-on building high-volume batch and streaming pipelines",
+      "Background in both analytics and retail domains",
+      "Master’s degree in Information Science",
+      "Working experience in Japan and Singapore"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [
+      {
+        "key": "work_permit",
+        "value": "Singapore Employment Pass",
+        "section": "Additional"
+      }
+    ],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 2,
+    "companies": [
+      "Lion Analytics",
+      "Tokyo Retail Systems"
+    ],
+    "avg_tenure_months": 51.5,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [],
+    "computed_years_experience": 8.6,
+    "countries_worked": [
+      "Singapore",
+      "Japan"
+    ],
+    "worked_multiple_countries": true,
+    "latest_graduation_year": 2018,
+    "years_since_graduation": 8,
+    "highest_education_level": "Master",
+    "max_team_size_managed": null,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4433,
+    "completion_tokens": 589
+  }
+}

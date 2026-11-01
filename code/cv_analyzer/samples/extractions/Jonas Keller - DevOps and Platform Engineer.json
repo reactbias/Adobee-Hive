@@ -1,0 +1,170 @@
+{
+  "document": {
+    "id": 7,
+    "file": "Jonas Keller - DevOps and Platform Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Jonas Keller",
+      "email": "jonas.keller@example.com",
+      "phone": "+49 30 555 03 30",
+      "location": "Berlin, Germany",
+      "country": "Germany",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Platform engineer focused on automating cloud infrastructure using Terraform and Kubernetes, with Python for tooling.",
+    "current_job_title": "Platform Engineer",
+    "career_level": "Mid",
+    "total_years_experience": 6.7,
+    "job_categories": [
+      "DevOps",
+      "Software Engineering"
+    ],
+    "industry_sectors": [
+      "Technology"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Platform Engineer",
+        "job_category": "DevOps",
+        "company": "Spree Cloud GmbH",
+        "industry": "Technology",
+        "location": "Berlin",
+        "country": "Germany",
+        "employment_type": null,
+        "start_date": "2021-07",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": 63,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Run 30+ microservices on Kubernetes (EKS)",
+          "Built self-service pipelines in Python",
+          "Managed AWS infrastructure as code with Terraform"
+        ],
+        "achievements": [
+          "Reduced cloud cost by 22% through Terraform-managed AWS infrastructure"
+        ]
+      },
+      {
+        "job_title": "DevOps Engineer",
+        "job_category": "DevOps",
+        "company": "Kreuzberg Systems",
+        "industry": "Technology",
+        "location": "Berlin",
+        "country": "Germany",
+        "employment_type": null,
+        "start_date": "2018-01",
+        "end_date": "2020-03",
+        "is_current": false,
+        "duration_months": 27,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Introduced CI/CD with Jenkins and Docker",
+          "Automated database backups and monitoring"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "BSc Informatics",
+        "degree_level": "Bachelor",
+        "field_of_study": "Informatics",
+        "institution": "TU Berlin",
+        "country": "Germany",
+        "start_date": null,
+        "graduation_date": "2017",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Bachelor",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "Terraform",
+      "Kubernetes",
+      "AWS",
+      "Docker",
+      "Jenkins",
+      "Linux",
+      "SQL",
+      "CI/CD"
+    ],
+    "soft_skills": [],
+    "software_and_tools": [
+      "AWS",
+      "Docker",
+      "Jenkins",
+      "Linux",
+      "SQL",
+      "Kubernetes",
+      "Terraform"
+    ],
+    "languages": [],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "DevOps and platform engineering focus",
+      "Strong experience with AWS and Kubernetes",
+      "Infrastructure as code with Terraform",
+      "CI/CD implementation with Jenkins and Docker",
+      "Experience running microservices in production"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [
+      {
+        "key": "career_break",
+        "value": "Career break April 2020 - June 2021: travelling and caring for a family member.",
+        "section": "Additional"
+      }
+    ],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 2,
+    "companies": [
+      "Spree Cloud GmbH",
+      "Kreuzberg Systems"
+    ],
+    "avg_tenure_months": 45.5,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [
+      {
+        "from": "2020-03",
+        "to": "2021-07",
+        "months": 15
+      }
+    ],
+    "computed_years_experience": 7.6,
+    "countries_worked": [
+      "Germany"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2017,
+    "years_since_graduation": 9,
+    "highest_education_level": "Bachelor",
+    "max_team_size_managed": null,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4433,
+    "completion_tokens": 588
+  }
+}

@@ -1,0 +1,185 @@
+{
+  "document": {
+    "id": 13,
+    "file": "Tobias Brunner - Senior Backend Engineer.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Tobias Brunner",
+      "email": null,
+      "phone": null,
+      "location": "Zurich, Switzerland",
+      "country": "Switzerland",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Backend engineer building scalable cloud services in Python with a focus on reliability and clean APIs.",
+    "current_job_title": "Senior Backend Engineer",
+    "career_level": "Senior",
+    "total_years_experience": 10.1,
+    "job_categories": [
+      "Software Engineering"
+    ],
+    "industry_sectors": [
+      "Financial Services",
+      "Technology"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Senior Backend Engineer",
+        "job_category": "Software Engineering",
+        "company": "Alpine Payments AG",
+        "industry": "Financial Services",
+        "location": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": "2020-02",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": 80,
+        "team_size_managed": 3,
+        "responsibilities": [
+          "Designed Python microservices on AWS (ECS, Lambda, S3) processing high transaction volumes",
+          "Introduced CI/CD with GitHub Actions and Terraform",
+          "Mentored 3 junior engineers"
+        ],
+        "achievements": [
+          "Designed Python microservices on AWS (ECS, Lambda, S3) processing 2M transactions/day",
+          "Cut deployment time from 40 to 8 minutes by introducing CI/CD with GitHub Actions and Terraform"
+        ]
+      },
+      {
+        "job_title": "Software Engineer",
+        "job_category": "Software Engineering",
+        "company": "SwissLogix GmbH",
+        "industry": "Technology",
+        "location": "Basel, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": "2016-09",
+        "end_date": "2020-01",
+        "is_current": false,
+        "duration_months": 40,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Built REST APIs with Flask and PostgreSQL",
+          "Containerised services with Docker and Kubernetes"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "MSc Computer Science",
+        "degree_level": "Master",
+        "field_of_study": "Computer Science",
+        "institution": "ETH Zurich",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2016",
+        "grade": null,
+        "honors": []
+      },
+      {
+        "degree": "BSc Computer Science",
+        "degree_level": "Bachelor",
+        "field_of_study": "Computer Science",
+        "institution": "University of Basel",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2014",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Master",
+    "certifications": [],
+    "technical_skills": [
+      "Python",
+      "REST APIs",
+      "Microservices",
+      "PostgreSQL",
+      "Docker",
+      "Kubernetes",
+      "AWS",
+      "Terraform",
+      "CI/CD"
+    ],
+    "soft_skills": [
+      "Mentoring"
+    ],
+    "software_and_tools": [
+      "Flask",
+      "GitHub Actions",
+      "AWS ECS",
+      "AWS Lambda",
+      "AWS S3"
+    ],
+    "languages": [
+      {
+        "language": "German",
+        "proficiency": "native"
+      },
+      {
+        "language": "English",
+        "proficiency": "C1"
+      }
+    ],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced backend engineer focused on Python and microservices",
+      "Strong background in AWS-based cloud architectures and containerisation",
+      "Proven impact on deployment efficiency and reliability through CI/CD and Terraform",
+      "Experience in payments/financial services and technology sectors",
+      "Advanced education in computer science (MSc) from Swiss universities"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [],
+      "notes": null
+    },
+    "additional_info": [
+      {
+        "key": "spoken_languages_detail",
+        "value": "German (native), English (C1)",
+        "section": "Additional"
+      }
+    ],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 2,
+    "companies": [
+      "Alpine Payments AG",
+      "SwissLogix GmbH"
+    ],
+    "avg_tenure_months": 61.0,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [],
+    "computed_years_experience": 10.2,
+    "countries_worked": [
+      "Switzerland"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2016,
+    "years_since_graduation": 10,
+    "highest_education_level": "Master",
+    "max_team_size_managed": 3,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4466,
+    "completion_tokens": 734
+  }
+}

@@ -33,6 +33,7 @@ from . import (
     hive,
     hive_seed,
     hub,
+    interview,
     limits,
     mcp_server,
     owner,
@@ -44,9 +45,10 @@ from . import (
     semantic,
     services,
     simulate,
+    talent,
     waiting,
 )
-from .domains import explore, scout
+from .domains import explore, recruit, scout
 
 logging.basicConfig(level=logging.INFO)
 
@@ -588,6 +590,58 @@ def owner_publish(card_id: str, body: OwnerApply, request: Request) -> dict[str,
     """Sign and publish the card the owner approved."""
     guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
     return _hive_call(owner.apply, card_id, body.proposed)
+
+
+# ---------------------------------------------------------------- hiring: a posting, the people, their agents
+
+
+class HiringJob(BaseModel):
+    """A job posting as text: a title, then requirements. Limits are the ones the MCP tools apply."""
+
+    job: str = Field(min_length=1, max_length=talent.MAX_POSTING)
+    limit: int = Field(8, ge=1, le=20)
+    expand: bool = Field(False, description="Let the configured model add related terms. Rules still do the matching")
+
+
+class HiringInterview(HiringJob):
+    """A posting and the recruiter's agent that will question each shortlisted candidate's agent."""
+
+    limit: int = Field(5, ge=1, le=10)
+    recruiter: str = Field("hiring-agent", min_length=1, max_length=100)
+
+
+class HiringScreening(BaseModel):
+    """A person's answer to screening interviews, as they would set it in `agent.md`."""
+
+    screening: Literal["yes", "ask", "no"]
+
+
+@app.post("/api/hr/shortlist")
+async def hr_shortlist(body: HiringJob, request: Request) -> dict[str, Any]:
+    """Read a job posting and rank the person cards on this hub against it, with the evidence for each."""
+    if body.expand and services.enabled():
+        guard.llm_calls.check(request)
+    return await asyncio.to_thread(_hive_call, recruit.shortlist, body.job, body.limit, body.expand)
+
+
+@app.post("/api/hr/interview")
+async def hr_interview(body: HiringInterview, request: Request) -> dict[str, Any]:
+    """Shortlist, then the recruiter's agent questions each candidate's agent and the candidates are ranked.
+
+    There is no approval in the body, on purpose: a person's yes is theirs (their folder's `agent.md`, or
+    `POST /api/hr/screening/{card_id}`), never the asking agent's.
+    """
+    if body.expand and services.enabled():
+        guard.llm_calls.check(request)
+    job = await asyncio.to_thread(_hive_call, recruit.read_posting, body.job, body.expand)
+    return await asyncio.to_thread(_hive_call, interview.run, job, recruiter=body.recruiter, limit=body.limit)
+
+
+@app.post("/api/hr/screening/{card_id}")
+def hr_screening(card_id: str, body: HiringScreening, request: Request) -> dict[str, Any]:
+    """Say yes, ask or no to screening interviews for one person. Takes the owner token when the hub sets one."""
+    guard.require_secret(request, owner.TOKEN_HEADER, config.OWNER_EDIT_TOKEN)
+    return _hive_call(interview.set_screening, card_id, body.screening)
 
 
 # ---------------------------------------------------------------- the hub itself

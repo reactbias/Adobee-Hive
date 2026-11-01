@@ -1245,49 +1245,52 @@ def book(
         raise HiveError(f"guest_name is required, at most {MAX_NAME} characters.")
     if not 1 <= guests <= MAX_GUESTS or len(notes) > MAX_TEXT:
         raise HiveError(f"guests must be 1 to {MAX_GUESTS}; notes at most {MAX_TEXT} characters.")
-    card = get_card(card_id)
-    # An entity the hub withdrew is not bookable. Checked here rather than at the REST door only,
-    # so MCP, the card page and the agent all get the same answer.
-    carried(card["id"])
-    free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}
-    if unit_id not in free:
-        raise HiveError(f"{unit_id} is not available for {guests} guest(s) from {check_in} to {check_out}.")
-    unit = free[unit_id]
-    if expected_terms is not None and expected_terms != unit["terms"]:
-        # Checked against the same read of the card the booking is then signed from, so what is compared is what is
-        # booked: an edit landing after this line does not change this booking's price or its pinned version.
-        raise HiveError(f"The terms of {unit_id} changed after they were approved, so nothing was booked.")
-    booking_id = "bk_" + db.new_id()
-    payload = {
-        "booking_id": booking_id,
-        "card_id": card["id"],
-        "unit_id": unit_id,
-        "check_in": check_in,
-        "check_out": check_out,
-        "guests": guests,
-        "total_chf": unit["total_chf"],
-        "card_version": card["version"],
-        "card_digest": card_digest(card),
-    }
-    receipt = _sign_receipt(card["id"], payload)
-    with db.write() as cur:
-        cur.execute(
-            "INSERT INTO hive_bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)",
-            [
-                booking_id,
-                card["id"],
-                unit_id,
-                guest_name,
-                guests,
-                check_in,
-                check_out,
-                unit["total_chf"],
-                agent,
-                notes,
-                receipt,
-                db.now(),
-            ],
-        )
+    # Whether a room is free and taking it are one operation. Apart, every caller who checks before the first insert
+    # sees the last room free and books it: eight callers got seven bookings for one room (#103).
+    with db.exclusive():
+        card = get_card(card_id)
+        # An entity the hub withdrew is not bookable. Checked here rather than at the REST door only,
+        # so MCP, the card page and the agent all get the same answer.
+        carried(card["id"])
+        free = {u["id"]: u for u in _units_free(card, check_in, check_out, guests)}
+        if unit_id not in free:
+            raise HiveError(f"{unit_id} is not available for {guests} guest(s) from {check_in} to {check_out}.")
+        unit = free[unit_id]
+        if expected_terms is not None and expected_terms != unit["terms"]:
+            # Checked against the same read of the card the booking is then signed from, so what is compared is what
+            # is booked: an edit landing after this line does not change this booking's price or its pinned version.
+            raise HiveError(f"The terms of {unit_id} changed after they were approved, so nothing was booked.")
+        booking_id = "bk_" + db.new_id()
+        payload = {
+            "booking_id": booking_id,
+            "card_id": card["id"],
+            "unit_id": unit_id,
+            "check_in": check_in,
+            "check_out": check_out,
+            "guests": guests,
+            "total_chf": unit["total_chf"],
+            "card_version": card["version"],
+            "card_digest": card_digest(card),
+        }
+        receipt = _sign_receipt(card["id"], payload)
+        with db.write() as cur:
+            cur.execute(
+                "INSERT INTO hive_bookings VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)",
+                [
+                    booking_id,
+                    card["id"],
+                    unit_id,
+                    guest_name,
+                    guests,
+                    check_in,
+                    check_out,
+                    unit["total_chf"],
+                    agent,
+                    notes,
+                    receipt,
+                    db.now(),
+                ],
+            )
     _log(card["id"], "booked", f"{unit['name']} {check_in}..{check_out} via {agent}")
     return {
         "status": "confirmed",
@@ -1415,7 +1418,8 @@ def owner_overview(card_id: str) -> dict[str, Any]:
             "ORDER BY created_at DESC LIMIT 50",
             [card["id"]],
         ).fetchall()
-    titles = {i["id"]: i["title"] for i in card.get("offers", []) + card.get("events", [])}
+    # A card built from a folder lists offers by title alone, so an entry with no id is not a hand-off target.
+    titles = {i["id"]: i.get("title", i["id"]) for i in card.get("offers", []) + card.get("events", []) if "id" in i}
     handoffs = [{"item": titles.get(item_id, item_id), "created_at": at} for item_id, at in handed]
     return {
         "card": card,

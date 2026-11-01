@@ -63,6 +63,19 @@ def write() -> Iterator[duckdb.DuckDBPyConnection]:
             storage.snapshot(config.DUCKDB_PATH.read_bytes())
 
 
+@contextmanager
+def exclusive() -> Iterator[None]:
+    """Keep every other thread out of the database for a check and the write it decides.
+
+    `cursor` and `write` each guard one scope, so a write can rest on a check another thread has since made untrue.
+    They still work inside this, each with its own cursor, because the lock is reentrant. It is not a transaction: a
+    failure undoes nothing, so make the one write the last thing that can fail. The whole process waits meanwhile, so
+    no network in here.
+    """
+    with _lock:
+        yield
+
+
 def rows(cur: duckdb.DuckDBPyConnection) -> list[dict[str, Any]]:
     """Return the cursor's result as a list of dicts keyed by column name."""
     cols = [d[0] for d in cur.description]

@@ -482,13 +482,17 @@ def main() -> int:
     ap.add_argument("--hub-id", default="", help="only seed vaults whose home is this hub")
     ap.add_argument("--only", nargs="*", default=[], help="vault folder names")
     ap.add_argument("--keys", default="", help="directory to keep keypairs in, so re-runs are the same owner")
+    ap.add_argument(
+        "--vaults", default=str(VAULTS), help="a folder of vaults to seed instead, e.g. testdata/candidates"
+    )
     args = ap.parse_args()
 
-    if not VAULTS.exists():
-        print(f"no vaults at {VAULTS}")
+    root = Path(args.vaults)
+    if not root.exists():
+        print(f"no vaults at {root}")
         return 1
 
-    vaults = sorted(v for v in VAULTS.iterdir() if v.is_dir())
+    vaults = sorted(v for v in root.iterdir() if v.is_dir())
     if args.only:
         vaults = [v for v in vaults if v.name in args.only]
     if args.hub_id:

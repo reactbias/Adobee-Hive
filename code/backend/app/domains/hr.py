@@ -2,6 +2,10 @@
 
 Owned by the HR workflows lane. This is the working skeleton to build on, not the finished flow:
 
+- Built: the `person` card kind, skills matching, consented introductions, and the MCP CV exchange.
+- Built beside it, in `recruit.py`: `hr_shortlist` and `hr_interview` search people by a whole job posting and
+  let a recruiter's agent question theirs (`talent.py`, `interview.py`); CV import is `code/cv_analyzer`.
+- Next: seed fictional people, a person view and studio in the frontend, and a Hiring_Hub upload adapter.
 - Built: the `person` card kind, skills matching, consented introductions, the MCP CV exchange, and the upload to
   a Hiring Hub. `panels/HRPanel.tsx` plays this flow as a labelled script; it calls none of these tools.
 - Next: seed fictional people, a person view and studio in the frontend, and a way for a candidate to hold their

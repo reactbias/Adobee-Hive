@@ -133,7 +133,7 @@ different relationships:
 | Use case | The card | The agents | Status |
 | --- | --- | --- | --- |
 | **Stays** | A hotel or café: rooms, prices, policies | A traveller's agent finds, compares and books | Built end to end |
-| **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`) |
+| **Work** | A person: skills, languages, availability, no contact data | A company's agent finds people and asks for an introduction; the person decides | Starter built (`app/domains/hr.py`); search by job posting and agent-to-agent screening built (`app/talent.py`, `app/interview.py`) |
 | **Ask** | Any business: offers, events, news. Six real ones as unclaimed public-info cards | A person asks a question; actions wait for their yes | Built (chapter 1, the same agent chat; `app/domains/explore.py`) |
 | Events, shops, services | Tickets, stock, appointments | Same pattern | Next |
 

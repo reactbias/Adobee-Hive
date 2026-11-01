@@ -5,9 +5,9 @@ import type { ReactNode, RefObject } from "react";
 // looking for a designer the next. Hiring sits between them. The header switches by hash; App.tsx keeps them all
 // mounted so a booking survives a look at another screen.
 
-export type ScreenId = "find" | "hr" | "offer" | "network";
-/** The traveller and HR screens share the journey header; the network view is reached from the footer. */
-export const SCREENS: ScreenId[] = ["find", "hr", "offer"];
+export type ScreenId = "find" | "hr" | "offer" | "hire" | "network";
+/** The traveller, HR, offering and hiring screens share the header; the network view is reached from the footer. */
+export const SCREENS: ScreenId[] = ["find", "hr", "offer", "hire"];
 
 /**
  * The hash names these screens used to carry, read and never written.
@@ -22,7 +22,7 @@ const RENAMED: Record<string, ScreenId> = { travel: "find", business: "offer" };
 export function screenFor(hash: string): ScreenId {
   const name = hash.replace(/^#/, "");
   const screen = RENAMED[name] ?? name;
-  return screen === "hr" || screen === "offer" || screen === "network" ? screen : "find";
+  return screen === "hr" || screen === "offer" || screen === "hire" || screen === "network" ? screen : "find";
 }
 
 /**
@@ -55,7 +55,7 @@ export function namesScreen(hash: string): boolean {
   const name = hash.replace(/^#/, "");
   if (!name) return false;
   const screen = RENAMED[name] ?? name;
-  return screen === "find" || screen === "hr" || screen === "offer" || screen === "network";
+  return screen === "find" || screen === "hr" || screen === "offer" || screen === "hire" || screen === "network";
 }
 
 /** The same hash as the app would write it, or "" when it is already written that way. */

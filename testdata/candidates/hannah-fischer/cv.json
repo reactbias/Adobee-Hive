@@ -1,0 +1,164 @@
+{
+  "document": {
+    "id": 16,
+    "file": "Hannah Fischer - Marketing Manager.pdf",
+    "pages": 1
+  },
+  "extraction": {
+    "contact": {
+      "full_name": "Hannah Fischer",
+      "email": null,
+      "phone": null,
+      "location": "Zurich, Switzerland",
+      "country": "Switzerland",
+      "website": null
+    },
+    "social_links": [],
+    "professional_summary": "Marketing manager with 8 years of experience in B2B campaigns, brand strategy and content marketing.",
+    "current_job_title": "Marketing Manager",
+    "career_level": "Senior",
+    "total_years_experience": 10.2,
+    "job_categories": [
+      "Marketing",
+      "Management"
+    ],
+    "industry_sectors": [
+      "Consumer Goods",
+      "Marketing"
+    ],
+    "work_experience": [
+      {
+        "job_title": "Marketing Manager",
+        "job_category": "Marketing",
+        "company": "Zurich Consumer Goods AG",
+        "industry": "Consumer Goods",
+        "location": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": "2019-03",
+        "end_date": "Present",
+        "is_current": true,
+        "duration_months": 91,
+        "team_size_managed": 4,
+        "responsibilities": [
+          "Managed a CHF 1.5M annual campaign budget",
+          "Grew organic traffic through SEO and content strategy",
+          "Led a team of 4"
+        ],
+        "achievements": [
+          "Grew organic traffic by 70%",
+          "Managed a CHF 1.5M annual campaign budget"
+        ]
+      },
+      {
+        "job_title": "Marketing Specialist",
+        "job_category": "Marketing",
+        "company": "Brandhaus GmbH",
+        "industry": "Marketing",
+        "location": "Zurich, Switzerland",
+        "country": "Switzerland",
+        "employment_type": null,
+        "start_date": "2016-08",
+        "end_date": "2019-02",
+        "is_current": false,
+        "duration_months": 31,
+        "team_size_managed": null,
+        "responsibilities": [
+          "Planned and executed email campaigns",
+          "Planned and executed social campaigns"
+        ],
+        "achievements": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "BA Business Administration",
+        "degree_level": "Bachelor",
+        "field_of_study": "Business Administration",
+        "institution": "University of St. Gallen",
+        "country": "Switzerland",
+        "start_date": null,
+        "graduation_date": "2016",
+        "grade": null,
+        "honors": []
+      }
+    ],
+    "highest_education_level": "Bachelor",
+    "certifications": [],
+    "technical_skills": [
+      "SEO",
+      "Content marketing"
+    ],
+    "soft_skills": [],
+    "software_and_tools": [
+      "Google Analytics",
+      "HubSpot",
+      "Excel"
+    ],
+    "languages": [
+      {
+        "language": "German",
+        "proficiency": "native"
+      },
+      {
+        "language": "English",
+        "proficiency": "C2"
+      },
+      {
+        "language": "French",
+        "proficiency": "B2"
+      }
+    ],
+    "projects": [],
+    "publications_or_patents": [],
+    "volunteer_work": [],
+    "awards": [],
+    "continuous_learning": [],
+    "key_takeaways": [
+      "Experienced B2B marketing professional",
+      "Strong focus on SEO and content marketing",
+      "Proven results in traffic growth and budget management",
+      "Experience managing small marketing teams",
+      "Background in business administration"
+    ],
+    "quality": {
+      "generic_phrases": [],
+      "unsubstantiated_skills": [
+        "Brand strategy"
+      ],
+      "notes": null
+    },
+    "additional_info": [],
+    "custom_fields": [],
+    "cv_language": "English"
+  },
+  "derived": {
+    "num_jobs": 2,
+    "companies": [
+      "Zurich Consumer Goods AG",
+      "Brandhaus GmbH"
+    ],
+    "avg_tenure_months": 61.5,
+    "short_tenures": [],
+    "num_short_tenures": 0,
+    "employment_gaps": [],
+    "computed_years_experience": 10.2,
+    "countries_worked": [
+      "Switzerland"
+    ],
+    "worked_multiple_countries": false,
+    "latest_graduation_year": 2016,
+    "years_since_graduation": 10,
+    "highest_education_level": "Bachelor",
+    "max_team_size_managed": 4,
+    "contact_complete": true,
+    "contact_missing": [],
+    "has_linkedin": false,
+    "has_github": false
+  },
+  "usage": {
+    "model": "gpt-5.1",
+    "prompt_tokens": 4432,
+    "completion_tokens": 586
+  }
+}

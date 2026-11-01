@@ -6,11 +6,12 @@ import { canonicalHash, joinHash, joinHubIn, namesScreen, screenFor, SCREENS } f
 // The old names are still read, so a link already in the wild works.
 
 describe("which screen a hash asks for", () => {
-  it("is the three user journeys in the header", () => {
-    expect(SCREENS).toEqual(["find", "hr", "offer"]);
+  it("is the user journeys in the header, plus the network view beside them", () => {
+    expect(SCREENS).toEqual(["find", "hr", "offer", "hire"]);
     expect(screenFor("#find")).toBe("find");
     expect(screenFor("#hr")).toBe("hr");
     expect(screenFor("#offer")).toBe("offer");
+    expect(screenFor("#hire")).toBe("hire");
     expect(screenFor("#network")).toBe("network");
   });
 
@@ -37,6 +38,7 @@ describe("writing a hash the way the app writes it", () => {
     // "" means there is nothing to rewrite, so the address is never touched for its own sake.
     expect(canonicalHash("#find")).toBe("");
     expect(canonicalHash("#offer")).toBe("");
+    expect(canonicalHash("#hire")).toBe("");
     expect(canonicalHash("#network")).toBe("");
     expect(canonicalHash("")).toBe("");
     expect(canonicalHash("#nothing-here")).toBe("");
