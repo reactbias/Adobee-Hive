@@ -8,6 +8,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 
 from . import admin, config, connections, domains, guard, hive, hub, owner, registration, rulesets, waiting
@@ -87,7 +88,7 @@ def hive_discover(
         radius,
         looking_for=looking_for,
     )
-    return found if "error" in found or not ruleset else _safe(rulesets.apply, found, ruleset)
+    return _safe(rulesets.apply, found, ruleset) if ruleset else found
 
 
 @server.tool()
@@ -185,22 +186,48 @@ def http_app():
 
 @server.tool()
 def hub_connect(
-    requester: str,
-    entity_id: str,
+    requester: str = "",
+    entity_id: str = "",
     target_hub: str = "",
     via_hub: str = "",
     card: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Ask to be introduced to a business or person found in a search, and log the introduction.
 
+    `requester` is the label this introduction is recorded under and the one the other side sees: your
+    person's name as they would introduce themselves, or your own agent name if you are asking on your own
+    account. Free text, and this hub does not verify it — nothing here proves you are who it says, and it is
+    stored as given, so do not put anything in it your person would not want the other side to read.
+
+    `entity_id` is the `id` of a match from hive_discover, not its name.
+
     An entry marked public opens at once; one marked `needs_confirmation` waits for its owner's yes; one its
-    owner shares only on their own initiative cannot be asked for at all. Returns the connection and its state.
-    Keep the connection id: it is what hub_score needs later.
+    owner shares only on their own initiative cannot be asked for at all. Returns the connection and its state,
+    and `says`, which is a sentence for your person: what the state means, whether anyone has to act, and what
+    to call next. Keep `id`: it is what hub_score needs later, and a connection nobody scores teaches this Hive
+    nothing.
+
+    Nobody is sent a message. A request waiting on an owner's yes sits in this hub's own list until that owner
+    (or their agent) looks at it, so do not tell your person they have been notified. hub_connections is where
+    you check back.
 
     For an entity on **another** hub, pass the signed `card` the federated search returned for it and
     `target_hub`, the hub id its provenance names. This hub verifies that card against the key that hub pinned
     for it and refuses it otherwise; an introduction to a remote entity is recorded here and its owner's yes,
     if it needs one, happens on their own hub."""
+    # Checked here rather than left to the schema: a missing argument otherwise comes back as a page of
+    # pydantic, which tells an agent which field is wrong and nothing about what belongs in it.
+    if not (requester or "").strip():
+        raise ToolError(
+            "hub_connect needs `requester`: the name this introduction is recorded under and the one the other"
+            " side sees — your person's name as they would introduce themselves, or your agent name if you are"
+            " asking on your own account. It is free text and this hub does not verify it."
+        )
+    if not (entity_id or "").strip():
+        raise ToolError(
+            "hub_connect needs `entity_id`: the `id` of a match from hive_discover, not its name. Search first,"
+            " then pass the id of the entry your person chose."
+        )
     return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub, card=card)
 
 
@@ -291,10 +318,14 @@ def _owner_token(ctx: Context) -> str:
     return next((v for k, v in headers.items() if k.lower() == owner.TOKEN_HEADER.lower()), "")
 
 
-def _refused_edit(ctx: Context) -> dict[str, Any] | None:
-    """The refusal an owner edit gets when this call carries no usable owner token, else None."""
-    refused = owner.editable(_owner_token(ctx))
-    return {"error": refused} if refused else None
+def _refuse_edit(ctx: Context) -> None:
+    """Raise the refusal an owner edit gets when this call carries no usable owner token.
+
+    Raised rather than returned, so the result is marked `isError` like any other refusal. An edit
+    that was declined must never read as an edit that was made.
+    """
+    if refused := owner.editable(_owner_token(ctx)):
+        raise ToolError(refused)
 
 
 @server.tool()
@@ -334,15 +365,12 @@ def hive_owner_propose(card_id: str, instruction: str, ctx: Context) -> dict[str
     hub's published ceilings (`hub_registration` lists all 24) is refused here, naming the ceiling and the size
     that passed it, rather than looking fine and failing at publish. id, slug and kind cannot be changed at all.
     """
-    if refused := _refused_edit(ctx):
-        return refused
+    _refuse_edit(ctx)
     if config.LLM_ENABLED and (over := guard.over_budget(guard.llm_calls, f"owner:{card_id}")):
-        return {"error": over}  # the same model budget the REST route spends, counted per card
+        raise ToolError(over)  # the same model budget the REST route spends, counted per card
     out = _safe(owner.propose, card_id, instruction)
-    if "error" in out:
-        return out
     if too_big := owner.refusal(out["proposed"]):
-        return {"error": f"This hub will not publish that change: {too_big}. Shorten it and propose again."}
+        raise ToolError(f"This hub will not publish that change: {too_big}. Shorten it and propose again.")
     return out
 
 
@@ -360,8 +388,7 @@ def hive_owner_publish(card_id: str, proposed: dict[str, Any], ctx: Context) -> 
     whose standing request this change now fits. Needs the owner token on this connection (the `X-Owner-Token`
     header): without it nothing is published. Do not call it on a diff nobody agreed to.
     """
-    if refused := _refused_edit(ctx):
-        return refused
+    _refuse_edit(ctx)
     return _safe(owner.apply, card_id, proposed)
 
 

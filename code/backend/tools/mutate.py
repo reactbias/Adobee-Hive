@@ -69,6 +69,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
+    "tests/test_mcp_refusals.py",
 ]
 
 
@@ -535,8 +536,38 @@ CURATED: list[Mutant] = [
     Mutant(
         "mcp_server.py",
         "publish works without a token: any agent that can reach /mcp/ can rewrite any claimed card",
-        'return {"error": refused} if refused else None',
-        "return None",
+        "    if refused := owner.editable(_owner_token(ctx)):\n        raise ToolError(refused)",
+        "    return",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "an owner edit declined for want of a token reads as a success again",
+        "raise ToolError(refused)",
+        'return {"error": refused}  # type: ignore[return-value]',
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank requester, so an introduction is recorded under nobody",
+        'if not (requester or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "mcp_server.py",
+        "hub_connect takes a blank entity_id instead of saying where an id comes from",
+        'if not (entity_id or "").strip():',
+        "if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "a local introduction stops saying what its state means and what to do next",
+        '"says": _says(row, entity_id, flag)',
+        '"says": ""',
+    ),
+    Mutant(
+        "hub.py",
+        "a waiting request claims somebody was notified, which nothing here does",
+        'f" recorded and waiting for it. Nobody is sent a message: it sits in this hub\'s list until"',
+        'f" recorded and waiting for it. Its owner has been notified and will answer, probably from"',
     ),
     Mutant(
         "hive.py",

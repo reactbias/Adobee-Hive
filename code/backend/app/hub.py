@@ -110,9 +110,11 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
 
     if not isinstance(offered, dict) or not offered:
         raise HubError(
-            f"{entity_id} is not on this hub. An introduction to an entity on a peer needs the signed card the"
-            " search returned for it, passed as `card`, plus `target_hub`: this hub verifies it against the key"
-            " that entity's own hub pinned rather than trusting whoever carried it"
+            f"{entity_id} is not carried by {config.HIVE_HUB_ID}, the hub this call reached. An introduction to"
+            " an entity on a peer needs the signed card the search returned for it, passed as `card`, plus"
+            " `target_hub`: this hub verifies it against the key that entity's own hub pinned rather than"
+            " trusting whoever carried it. If you did not search at a radius above 0, search again with one"
+            " and pass the `card` and `provenance.origin` the match carries"
         )
     if str(offered.get("id") or "") != entity_id:
         raise HubError(
@@ -121,8 +123,9 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
         )
     if not target_hub:
         raise HubError(
-            f"{entity_id} is not on this hub, so an introduction to it needs `target_hub`: the hub id the search"
-            " said it came from, which is where its pinned key is read from"
+            f"{entity_id} is not carried by {config.HIVE_HUB_ID}, so an introduction to it needs `target_hub`:"
+            " the hub id the search said it came from (`provenance.origin` on the match), which is where its"
+            " pinned key is read from"
         )
     pins = federation.pinned_keys_of(target_hub)
     if not pins:
@@ -199,7 +202,7 @@ def connect(
     # is still `requested` here, so there is no key to give yet — it is minted when the owner says
     # yes, which is `connections.confirm`'s moment and not this one.
     key = folder_keys.mint(link["id"], who) if link["state"] == folders.ESTABLISHED else None
-    out = {**row, "folder": folders.manifest(them, who), "folder_key": key}
+    out = {**row, "folder": folders.manifest(them, who), "folder_key": key, "says": _says(row, entity_id, flag)}
     if remote:
         # Said in the answer, not only in the row: an introduction to somebody on another hub is one
         # this hub recorded and cannot complete. Its owner's yes happens where its owner is, and
@@ -217,6 +220,34 @@ def connect(
             )
         )
     return out
+
+
+def _says(row: dict[str, Any], entity_id: str, flag: str) -> str:
+    """One sentence a caller can read to its person: what the state means and what happens next.
+
+    The answer used to be a record and nothing else — `state: "open"` with `target_hub: ""` and a
+    `stale_at` three weeks out — and a user test asked the fair question: open meaning what, is the
+    person notified, and why is target_hub blank when I just connected to somebody. So the record
+    says it. In particular it does not claim a notification: nothing here sends one, and a request
+    waits in this hub's own list until the owner or their agent looks.
+    """
+    waiting = row["state"] == connections.REQUESTED
+    left = row.get("stale_in_days")
+    deadline = f" It runs out in {left} days" if isinstance(left, int) else ""
+    if waiting:
+        return (
+            f"{entity_id} is on {config.HIVE_NAME} and shares this only with their say-so, so the introduction is"
+            f" recorded and waiting for it. Nobody is sent a message: it sits in this hub's list until"
+            f" {entity_id} or their agent looks, which you can watch with hub_connections.{deadline}, and then"
+            " the request is closed unanswered."
+        )
+    return (
+        f"{entity_id} is on {config.HIVE_NAME}, this hub, which is why target_hub and via_hub are empty — there"
+        f" was no other hub in it. Their card is published as freely connectable, so the introduction is open"
+        f" already and nobody has to agree to anything. Contact them with what the card gives you.{deadline},"
+        " after which it can no longer be scored — so once the two have actually met, call hub_score with this"
+        " connection's id, which is the only thing that teaches this Hive anything."
+    )
 
 
 def score(connection_id: str, rating: int, note: str = "") -> dict[str, Any]:

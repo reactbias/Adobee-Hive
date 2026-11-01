@@ -16,6 +16,7 @@ from mcp import Client
 
 from app import config, federation, hive, reputation
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 ASK = {"kind": "hotel", "features": ["dog-friendly"], "check_in": "2027-03-10", "check_out": "2027-03-12"}
 
@@ -192,7 +193,7 @@ def net(monkeypatch):
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 

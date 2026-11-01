@@ -8,6 +8,7 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from app import blocklist, config, db, hive, registration
+from tests.mcp_result import tool_result
 
 #: Ids these tests register. Admission publishes into the shared index, so they are cleared
 #: between tests or the availability check fails on the leftovers of the previous one.
@@ -304,8 +305,8 @@ def test_an_agent_can_read_the_rules_and_apply_over_mcp(client):
 
     async def go():
         async with Client(server) as c:
-            rules = (await c.call_tool("hub_registration", {})).structured_content
-            applied = (await c.call_tool("hub_register", {"entity": _application()["entity"]})).structured_content
+            rules = tool_result(await c.call_tool("hub_registration", {}))
+            applied = tool_result(await c.call_tool("hub_register", {"entity": _application()["entity"]}))
             return rules, applied
 
     rules, applied = asyncio.run(go())
