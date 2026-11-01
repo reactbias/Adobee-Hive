@@ -68,8 +68,10 @@ SUITE = [
     "tests/test_admin_peers.py",
     "tests/test_admin_services.py",
     "tests/test_semantic_search.py",
-    "tests/test_search_words.py",
     "tests/test_discover_identity.py",
+    "tests/test_discover_relevance.py",
+    # After the relevance tests: its tie test publishes a card that matches their nonsense query.
+    "tests/test_search_words.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
@@ -299,6 +301,31 @@ CURATED: list[Mutant] = [
         '"bookable": True,',
     ),
     Mutant(
+        "hive.py",
+        "the relevance threshold goes, so every door answers every query with the whole hub again",
+        "    if ask_had_content and not include_irrelevant:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "reputation counts as relevance, so four well-reviewed hotels answer a nonsense query",
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity")',
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity",'
+        ' "verified_reviews", "attestations")',
+    ),
+    Mutant(
+        "hive.py",
+        "a browse is thresholded too, so 'show me what is on this hub' answers with nobody",
+        "return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)",
+        "return True",
+    ),
+    Mutant(
+        "hive.py",
+        "the counts stop being reported, so a caller cannot tell an empty answer from a filtered one",
+        '"matched": len(matches),',
+        '"matched": considered,',
+    ),
+    Mutant(
         "semantic.py",
         "the similarity floor goes, so every card is a little bit like every query and ranking is noise",
         "SIMILARITY_FLOOR = 0.20",
@@ -319,8 +346,8 @@ CURATED: list[Mutant] = [
     Mutant(
         "semantic.py",
         "nothing is folded before tokenising, so an accent or a capital hides a word from both paths",
-        "return [w for w in LETTERS.findall(fold(text)) if len(w) >= min_length and w not in STOPWORDS]",
-        "return [w for w in LETTERS.findall(text) if len(w) >= min_length and w not in STOPWORDS]",
+        'folded = FRENCH_JAI.sub(" ", fold(text))',
+        'folded = FRENCH_JAI.sub(" ", text)',
     ),
     Mutant(
         "semantic.py",

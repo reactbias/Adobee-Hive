@@ -42,10 +42,19 @@ absent dates are not filled with the planner's default weekend. Generic transpor
 stay generic. This is a lexical intent boundary, not a general parser; API/MCP callers should supply structured
 constraints when available.
 
-**Reputation is paid without a relevance test.** A match's score adds `reputation.business_points` — verified
-reviews and attestations — whatever the query was. An entity that fails no hard constraint can therefore rank on
-review points alone, above a less-reviewed entity that actually offers the thing asked for. The constraint
-component was fixed for the same class of bug (it is now earned, never granted); this one is not.
+**Reputation is still paid without a relevance test; it can no longer pass for an answer.** A match's score
+adds `reputation.business_points` — verified reviews and attestations — whatever the query was, so four Basel
+hotels score 1-2 on every query there is, including a nonsense one. The doors no longer present those rows as
+results: `GET /api/hive/discover` and `hive_discover` filter on `hive.relevance`, the five components the ask
+itself earned, and report `matched` over `considered`. What is **not** fixed is the ranking *among* entities
+that did earn something — a well-reviewed one still gets its points on top, so it can outrank a less-reviewed
+one that offers more of what was asked for. `hive.discover()` in-process is also unfiltered by design: the eval
+tools and `federation.py`'s scorer read the whole ranked list.
+
+**"Nothing matched" only tests the words when nothing else was asked.** Any `near`, date, price or feature that
+earns points counts as an answer, so `asdfghjkl` near Basel SBB still returns three hotels. The agent's own run is
+unfiltered too and still offers a "best fit" for a nonsense request. A query naming only a place is treated as a
+browse without checking that the hub's cards are in that place, so "Basel" on the Bern hub lists Bern.
 
 **Identity stripping is a REST-door rule, so the MCP door does not get it.** `_discovery_stay` in `main.py`
 parses an explicit stay request and removes a declared guest name before ranking, which is what stopped a Kenya

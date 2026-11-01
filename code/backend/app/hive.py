@@ -574,6 +574,97 @@ RANKING_POLICY = (
     "offers or needs, then relevance, proximity, verified reviews, attestations. No paid placement."
 )
 
+#: The score components the *question* earned, as against what the entity earned over time.
+#:
+#: This split is the whole of "did anything actually match?". `reputation.business_points` pays an entity for
+#: verified reviews and attestations whatever was asked, so the **total** cannot answer that question: four
+#: Basel hotels score 1-2 on *every* query, including `asdfghjkl qwertz` and the empty one, with an empty
+#: `why` — and "threshold on score > 0 yourself", which is what this hub told its callers to do, does not
+#: work because of exactly those rows. These five components are the ones a caller can honestly threshold on.
+RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity")
+
+
+def relevance(match: dict[str, Any]) -> float:
+    """How much of a match's score the question itself earned. Zero means it answered nothing.
+
+    An entity can score without answering anything — reputation is paid on every query — so this, not
+    `score`, is the test of whether a result is a result.
+    """
+    breakdown = match.get("score_breakdown") or {}
+    return sum(breakdown.get(name) or 0 for name in RELEVANCE_COMPONENTS)
+
+
+def asks_anything(
+    query: str = "",
+    features: list[str] | None = None,
+    near: str | None = None,
+    max_price_chf: float | None = None,
+) -> bool:
+    """Whether the caller gave the hub something to match on at all.
+
+    The difference between a search and a browse, and the reason the threshold is not applied blindly. An
+    empty ask is a legitimate "show me what is on this hub", and the honest answer to it is everything;
+    an ask with words or constraints in it has something to be relevant *to*, and an entity that is
+    relevant to none of it is not an answer to it. Without this distinction a thresholded hub would answer
+    "show me everyone" with nobody.
+
+    Deliberately tested on the raw query rather than on its tokens: a query made only of filler words is
+    still a question somebody asked, and "nothing on this hub answers that" is the honest reply to it, not
+    the whole directory. A place name is the exception: it is a stopword, so it could never earn anything,
+    and a hub that answers "Basel" with "nothing here" is wrong about itself. Naming only a place is a
+    browse. The hub does not check that its cards are in that place; see LIMITS.md.
+    """
+    text = (query or "").strip()
+    names_only_a_place = not semantic.content_words(text) and bool(
+        semantic.PLACE_NAMES.intersection(semantic.LETTERS.findall(semantic.fold(text)))
+    )
+    return bool((text and not names_only_a_place) or features or near or max_price_chf is not None)
+
+
+def only_relevant(found: dict[str, Any], ask_had_content: bool, include_irrelevant: bool = False) -> dict[str, Any]:
+    """Drop the matches the question earned nothing from, and say how many answered out of how many ranked.
+
+    This is what makes "nothing matched" a state this hub can be in. Before it, a nonsense query returned
+    all 73 entities with `matches: 73, excluded: 0` and four Basel hotels at the top on reputation alone
+    with an empty `why` — and no field anywhere said that nothing had matched, so a caller could not tell a
+    hit from a miss. The advice this hub gave instead, "threshold on `score > 0` yourself", does not work:
+    those four hotels score 1-2 on every query there is, including the empty one.
+
+    Hence `relevance` rather than `score`. Reputation is paid on every query, so it cannot be part of the
+    test for whether a query was answered; the five components the ask itself earned can.
+
+    Skipped for a browse (`ask_had_content` false — see `asks_anything`), because everything really is the
+    answer to a question with nothing in it, and `include_irrelevant=True` turns it off for a caller that
+    wants the unfiltered ranking back. It is a parameter rather than a policy for that reason: an open
+    ranking does not get to decide on a caller's behalf what they are allowed to see.
+
+    Applied at the doors, not inside `discover`: `main.py` for REST and `mcp_server.py` for MCP. The core
+    keeps answering with the whole ranked list, because the answer key and `federation.py` read it and a core
+    that returned fewer matches than it found would make every measurement taken over it a different
+    measurement. The same reasoning put `limits.bound_answer`'s ceiling at the MCP door.
+
+    What this is *not* is a response-size cap — that is `limits.bound_answer`. The two compose, and in the
+    right order: the threshold removes the rows that answered nothing, which on a federated search are
+    also the expensive ones, because every match carries a full inline card. Thresholding first means the
+    ceiling spends its budget on matches instead of on filler.
+
+    The inline `card` stays on the matches that survive, because the connect path reads it out of the
+    search result (#146/#172). Fewer rows is what makes that affordable, not dropping the card.
+    """
+    matches = found.get("matches") or []
+    considered = len(matches)
+    if ask_had_content and not include_irrelevant:
+        matches = [m for m in matches if relevance(m) > 0]
+    return {
+        **found,
+        "matches": matches,
+        # How many answered the question. This is the count to show a user, and `matched: 0` is the
+        # "nothing matched" this hub could not say before.
+        "matched": len(matches),
+        # And how many entities were ranked to get them, so the first number has a denominator.
+        "considered": considered,
+    }
+
 
 #: The shortest query word the literal search will look for. Literal containment pays 10 points a word on the
 #: offers side, and a three-letter word is inside some card's prose by accident far more often than on
@@ -817,6 +908,13 @@ def discover(
     radius is the hop limit across peer Hives: 0, the default, is this Hive only; 1 adds its direct peers, 2
     theirs, up to federation.MAX_RADIUS. budget_ms is the whole query's time budget and seen lists the hubs it
     has already visited (loop prevention); both only matter above radius 0. See federation.py.
+
+    This returns every entity that failed no *hard* constraint, ranked, including the ones the query earned
+    nothing from — deliberately, because the ranking, the answer key in `testdata/` and the app all want the
+    whole list, and a core that quietly returned fewer matches than it found would make every measurement
+    taken over it a different measurement. Deciding which of them is worth showing is a door's job:
+    `relevance` and `only_relevant` are the test and the filter, and `main.py` and `mcp_server.py` apply
+    them. See `only_relevant` for why `score > 0` is not that test.
     """
     if looking_for not in LOOKING_FOR:
         raise HiveError(f"looking_for must be one of {', '.join(LOOKING_FOR)}, not {looking_for!r}")

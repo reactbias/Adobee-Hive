@@ -357,8 +357,9 @@ and the exact field ceilings, so read those from the hub rather than hard-coding
 - `offers` and `needs` are the index; `kind` is only a filter, and `looking_for=offers|needs|any` chooses which
   side of the market to search. A hub carries a tavern, a developer and an electrician side by side, so nothing
   downstream may assume a narrow domain.
-- Hard constraints decide **eligibility**; free-text relevance decides **ranking, not inclusion**. `matches` can
-  contain zero-score entries, so threshold it yourself and read `score_breakdown`, `why` and `excluded`.
+- Hard constraints decide **eligibility**, and an entity the ask earned nothing from is left out, so `matched: 0`
+  means nothing answered. Pass `include_irrelevant=true` for the full ranking, and read `score_breakdown`, `why`
+  and `excluded`.
 - A local match is a summary — fetch its Card by id. A **federated** match already includes its signed `card`, so
   do not ask the answering hub for a remote id. Show `provenance.path` origin-first; a user must never be unable
   to tell whose directory answered.
