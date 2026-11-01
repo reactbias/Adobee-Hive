@@ -47,7 +47,7 @@ The core knows cards, trust, events and bookings. A use case adds a card kind an
 | Domain | Card kind | Tools | Where |
 | --- | --- | --- | --- |
 | Stays | `hotel`, `cafe` | `hive_*` | `mcp_server.py` (the first domain, kept in place) |
-| HR (starter) | `person` | `hr_find_people`, `hr_request_intro` | `domains/hr.py`; people are in `hive_discover` too, their contact never is |
+| HR | `person` | `hr_find_people`, `hr_request_intro`, `hr_decide_intro`, `hr_grant_cv`, `hr_read_cv`, `hr_create_job`, `hr_submit_cv` | `domains/hr.py`; person cards are public, introductions and CV files require consent |
 | Explore | `adventure`, `service`, `industrial`, `software`, `event` | `explore_ask` | `domains/explore.py`, cards in `domains/examples.py` |
 | Scout | any kind found on the web (`taxi`, ...) | `hive_scout` | `domains/scout.py`: web search, verifier, unclaimed cards `w-*` |
 
@@ -136,6 +136,11 @@ Two screens sit beside that story rather than inside it, because neither belongs
 | `explore_ask` | Answer a question from the cards that cover it (none if nothing does, counted as demand; `clarify` names what a request still has to say, such as a taxi's route and time), with reasons for what was left out and the mood the person chose; an action comes back as needing the person's approval in the app |
 | `hive_scout` | When no card answers: find real businesses on the public web (OpenAI web search, else OpenStreetMap), verify each against its own site, add the verified ones as unclaimed cards with source and checks |
 | `hr_request_intro` | Ask to meet a person; recorded for them, nothing shared until they consent |
+| `hr_decide_intro` | Accept or decline an HR introduction using the candidate-side transport credential or owner token |
+| `hr_grant_cv` | Grant the connected HR agent access to one candidate file, using the candidate side of the folder link |
+| `hr_read_cv` | Read a granted candidate CV through MCP, returning its folder metadata and base64 file content |
+| `hr_create_job` | Create a Hiring Hub position from an HR job requirement JSON document |
+| `hr_submit_cv` | Upload a candidate CV that was granted on a folder link to an existing Hiring Hub position |
 | `hive_owner_card` | One card as its owner sees it: the signed card, its bookings or hand-offs, the demand it missed, what agents did with it in the last 7 days, and who is waiting for a change. The same answer as `GET /api/owner/{card_id}` — guest names come through as initials unless the connection carries the owner token, and nothing else is withheld |
 | `hive_owner_propose` | A plain-language change to the owner's own card to a proposed card and a field-by-field diff, in EN/DE/FR/IT. Publishes nothing: the diff is what the agent shows its person. A change over one of the published ceilings is refused here, naming the ceiling and the size |
 | `hive_owner_publish` | Sign and publish the proposed card the owner said yes to, as a new version; waiting agents get signed offers. Identity fields keep their values. **Fails closed**: the owner token must arrive in the `X-Owner-Token` header of the MCP connection, and a hub with no `OWNER_EDIT_TOKEN` set publishes nothing over MCP at all |

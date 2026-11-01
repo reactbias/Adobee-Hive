@@ -306,6 +306,7 @@ const fr: Record<Key, string> = {
   "nav.chapters": "Parcours",
   "nav.network": "Réseau de hubs",
   "chapter.find": "Trouver et réserver",
+  "chapter.hr": "Recruter avec des agents",
   "chapter.offer": "Pour les commerces",
   "chapter.business.lead":
     "{name} : dites ce qui a changé, avec vos mots. La nouvelle version est signée et en ligne aussitôt.",
@@ -321,6 +322,22 @@ const fr: Record<Key, string> = {
   "chapter.business.leadUnclaimed":
     "{name} n'a pas revendiqué sa carte. Elle a été composée à partir d'informations publiques.",
   "owner.unclaimed": "Seule l'entreprise peut revendiquer cette carte et la modifier.",
+  "hr.eyebrow": "Passage au Hiring Hub",
+  "hr.title": "Trouver la bonne personne",
+  "hr.lead":
+    "Votre agent RH et l'agent d'une candidate ou d'un candidat peuvent découvrir, obtenir le consentement et partager un CV avant que le Hiring Hub ne prenne le relais.",
+  "hr.job.title": "Intitulé du poste",
+  "hr.job.description": "Besoin du poste",
+  "hr.start": "Interroger les agents",
+  "hr.chat.recruiter": "Équipe de recrutement",
+  "hr.meta": "MCP sur HTTPS · échange de CV avec consentement",
+  "hr.chat.summary":
+    "L'agent de la personne candidate a partagé cv.pdf après consentement. Le fichier est en attente pour ce poste dans le Hiring Hub.",
+  "hr.handoff.eyebrow": "Un seul relais",
+  "hr.handoff.title": "Ouvrir le Hiring Hub",
+  "hr.handoff.body": "Le CV est associé à ce besoin. Continuez dans le Hiring Hub pour examiner la candidature.",
+  "hr.handoff.open": "Ouvrir le Hiring Hub",
+  "hr.handoff.sent": "Le Hiring Hub est ouvert dans un nouvel onglet.",
   // The live activity feed (?demo)
   "activity.eyebrow": "Outils de présentation · En coulisses",
   "activity.title": "Ce que font les agents.",
