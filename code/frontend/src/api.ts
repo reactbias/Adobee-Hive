@@ -589,6 +589,12 @@ export interface ConnectRequest {
   entity_id: string;
   target_hub?: string;
   via_hub?: string;
+  /**
+   * For an entity on another hub: the signed card the federated search returned, passed through byte for
+   * byte. The hub verifies it against the key that entity's own hub pinned, so a normalised or re-ordered
+   * copy fails the signature check. It is ignored for an entity this hub carries.
+   */
+  card?: Card;
 }
 /** A hub's calibration as the score left it. Lower `error` is better; negative means it undersold. */
 export interface HubStanding {
