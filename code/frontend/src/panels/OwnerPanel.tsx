@@ -151,7 +151,7 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
   const policies = Object.entries(card?.policies ?? {}).slice(0, 4);
 
   const tabs = (
-    <div className="tabs" role="tablist" aria-label={t("chapter.business")}>
+    <div className="tabs" role="tablist" aria-label={t("chapter.offer")}>
       {(["owner", "demand"] as Tab[]).map((id) => (
         <button
           key={id}
@@ -169,7 +169,7 @@ export default function OwnerPanel({ initial = "hotel-rheinblick" }: { initial?:
   );
 
   return (
-    <section id="business" className="screen screen-business" aria-labelledby="business-title">
+    <section id="offer" className="screen screen-business" aria-labelledby="business-title">
       <div className="screen-head spread">
         <div className="stack tight">
           <h1 id="business-title">

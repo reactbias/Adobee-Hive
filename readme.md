@@ -110,7 +110,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. The default is the build's own hub; **Change Hive** opens the finder. `#travel`, `#business` and `#network` switch screens; `?admin` opens administration and needs locally configured admin credentials. The backend status strip separates reachability from configured planner mode; “model configured” is not a successful quota/billing check. Default startup seeds fictional hotels and public-info example cards, not the full person/CV corpus.
+Open http://localhost:5173. The default is the build's own hub; **Change Hive** opens the finder. `#find`, `#offer` and `#network` switch screens (`#travel` and `#business`, the names they used to carry, still open the same screens); `?admin` opens administration and needs locally configured admin credentials. The backend status strip separates reachability from configured planner mode; “model configured” is not a successful quota/billing check. Default startup seeds fictional hotels and public-info example cards, not the full person/CV corpus.
 
 Vite proxies `/api`, `/mcp` and `/.well-known` to `http://localhost:8000`. For a backend on another port, set `VITE_DEV_BACKEND` when starting Vite. `VITE_API_URL` is a browser build-time default; a selected hub's URL overrides it. Pointing the browser at another hub must change the actual API target, not only its label.
 

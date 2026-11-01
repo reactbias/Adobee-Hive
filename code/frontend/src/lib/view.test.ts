@@ -14,10 +14,12 @@ describe("which view an address asks for", () => {
 
   it("is not decided by the hash, which only ever names a place on the app's page", () => {
     expect(viewIn("?demo")).toBe("app");
-    expect(isHybrid("?admin", "#travel")).toBe(true);
+    expect(isHybrid("?admin", "#find")).toBe(true);
     expect(isHybrid("?admin", "")).toBe(false);
     expect(isHybrid("?admin", "#")).toBe(false);
-    expect(isHybrid("?demo", "#travel")).toBe(false);
+    expect(isHybrid("?demo", "#find")).toBe(false);
+    // A name the screens used to carry is still a hash, so it still makes `?admin` a hybrid.
+    expect(isHybrid("?admin", "#travel")).toBe(true);
   });
 });
 
@@ -53,11 +55,11 @@ describe("taking a parameter out of an address", () => {
   });
 
   it("keeps the anchor when the view is not changing", () => {
-    expect(without(new URL("http://host/?hub=a#travel"), "hub")).toBe("/#travel");
+    expect(without(new URL("http://host/?hub=a#find"), "hub")).toBe("/#find");
   });
 
   it("drops the anchor when it belonged to a page nobody is looking at", () => {
-    expect(without(new URL("http://host/?admin#travel"), "admin", false)).toBe("/");
-    expect(without(new URL("http://host/?admin&demo#travel"), "admin", false)).toBe("/?demo");
+    expect(without(new URL("http://host/?admin#find"), "admin", false)).toBe("/");
+    expect(without(new URL("http://host/?admin&demo#find"), "admin", false)).toBe("/?demo");
   });
 });

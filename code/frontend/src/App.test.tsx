@@ -65,12 +65,12 @@ describe("the app", () => {
 
     const tabs = within(screen.getByRole("navigation", { name: en["nav.chapters"] }));
     const links = tabs.getAllByRole("link");
-    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#travel", "#business"]);
-    expect(links[0]).toHaveTextContent(en["chapter.travel"]);
-    expect(links[1]).toHaveTextContent(en["chapter.business"]);
+    expect(links.map((a) => a.getAttribute("href"))).toEqual(["#find", "#offer"]);
+    expect(links[0]).toHaveTextContent(en["chapter.find"]);
+    expect(links[1]).toHaveTextContent(en["chapter.offer"]);
     expect(links[0]).toHaveAttribute("aria-current", "page");
 
-    // The traveller's screen first; the business's is there but not on show.
+    // The finding screen first; the offering one is there but not on show.
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(en["find.title"]);
     expect(screen.queryByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") })).toBeNull();
     // Nothing is drawn until an endpoint returns it: no empty stage, no empty log.
@@ -79,7 +79,7 @@ describe("the app", () => {
 
     const scrollTo = vi.fn();
     window.scrollTo = scrollTo as unknown as typeof window.scrollTo;
-    window.location.hash = "#business";
+    window.location.hash = "#offer";
     window.dispatchEvent(new HashChangeEvent("hashchange"));
     expect(
       await screen.findByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") }),
@@ -92,7 +92,7 @@ describe("the app", () => {
   });
 
   it("opens the business screen on the card, with the city's demand one tab away", () => {
-    window.history.replaceState(null, "", "/#business");
+    window.history.replaceState(null, "", "/#offer");
     render(
       <I18nProvider>
         <App />
@@ -137,7 +137,7 @@ describe("the app", () => {
     expect(screen.getByRole("radio", { name: en["reach.local"] })).toBeInTheDocument();
     unmount();
 
-    window.history.replaceState(null, "", "/?demo#business");
+    window.history.replaceState(null, "", "/?demo#offer");
     render(
       <I18nProvider>
         <App />
@@ -437,6 +437,35 @@ describe("the address and the view agree", () => {
       </I18nProvider>,
     );
 
+  it("opens a link written with the name a screen used to carry, and writes the new one back", async () => {
+    // `#travel` and `#business` were pasted into chats and slides before the screens were renamed. They open
+    // what they always opened; the address is then written the way the app writes it, so a URL copied back out
+    // of the browser carries the name that is staying. Nothing the app emits uses an old name.
+    window.history.replaceState(null, "", "/#business");
+    app();
+
+    expect(
+      await screen.findByRole("heading", { name: en["chapter.business.title"].replace(/\*/g, "") }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe("#offer"));
+  });
+
+  it("keeps the query untouched while rewriting an old screen name", async () => {
+    window.history.replaceState(null, "", "/?demo#travel");
+    app();
+
+    expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
+    await waitFor(() => expect(window.location.hash).toBe("#find"));
+    expect(window.location.search).toBe("?demo");
+  });
+
+  it("leaves a current name alone rather than rewriting the address for its own sake", async () => {
+    window.history.replaceState(null, "", "/#network");
+    app();
+
+    await waitFor(() => expect(window.location.hash).toBe("#network"));
+  });
+
   it("still opens the hub's own panel with ?admin", () => {
     window.history.replaceState(null, "", "/?admin");
     app();
@@ -449,7 +478,7 @@ describe("the address and the view agree", () => {
     expect(screen.getByLabelText(en["admin.password"])).toBeInTheDocument();
 
     // What a click on the nav's "Agent network" does: the hash changes, the query does not.
-    window.history.replaceState(null, "", "/?admin#travel");
+    window.history.replaceState(null, "", "/?admin#find");
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     expect(await screen.findByLabelText(en["agent.intent"])).toBeInTheDocument();
@@ -458,7 +487,7 @@ describe("the address and the view agree", () => {
   });
 
   it("resolves a pasted hybrid address to one view rather than both", async () => {
-    window.history.replaceState(null, "", "/?admin#travel");
+    window.history.replaceState(null, "", "/?admin#find");
     app();
 
     // Admin was asked for, so admin is what renders; the anchor belonged to a page nobody is looking at.
@@ -483,7 +512,7 @@ describe("the address and the view agree", () => {
     window.history.replaceState(null, "", "/?demo&admin");
     app();
 
-    window.history.replaceState(null, "", "/?demo&admin#business");
+    window.history.replaceState(null, "", "/?demo&admin#offer");
     window.dispatchEvent(new HashChangeEvent("hashchange"));
 
     await waitFor(() => expect(window.location.search).toBe("?demo"));
@@ -492,14 +521,14 @@ describe("the address and the view agree", () => {
 
   it("goes back to the finder, not to a hybrid, when the hub is dropped", async () => {
     sessionStorage.setItem("adobee-hub", "a");
-    window.history.replaceState(null, "", "/?hub=a&demo#travel");
+    window.history.replaceState(null, "", "/?hub=a&demo#find");
     app();
 
     await userEvent.click(screen.getByRole("button", { name: en["finder.change"] }));
 
     expect(await screen.findByRole("heading", { name: en["finder.title"] })).toBeInTheDocument();
     expect(window.location.search).toBe("?demo");
-    expect(window.location.hash).toBe("#travel");
+    expect(window.location.hash).toBe("#find");
   });
 
   it("follows the back button instead of leaving the view behind", async () => {
