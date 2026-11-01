@@ -181,4 +181,3 @@ def test_mcp_peer_card_reads_spend_the_federated_budget_only_after_a_local_miss(
     refused = _mcp("hive_get_card", {"card_id": "svenja-aebi"})
     assert "Try again in" in refused["error"]
     assert len(zurich.asks) == asked
-
