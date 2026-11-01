@@ -53,7 +53,9 @@ describe("the app", () => {
 
     const status = screen.getByRole("region", { name: en["status.title"] });
     expect(document.querySelector("header.nav")?.contains(status)).toBe(false);
-    expect(document.querySelector("header.nav .nav-end")?.textContent).toBe("ENDEFRIT");
+    // The header carries the reader's own preferences and nothing else: four languages and the scheme.
+    expect(document.querySelector("header.nav .locales")?.textContent).toBe("ENDEFRIT");
+    expect(document.querySelectorAll("header.nav .themes button")).toHaveLength(3);
   });
 
   it("is two screens, one per person, switched in the header by hash", async () => {

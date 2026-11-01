@@ -76,6 +76,31 @@
   --radius-lg: 24px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --lift: 0 1px 2px rgba(22, 24, 29, 0.04), 0 16px 40px -16px rgba(22, 24, 29, 0.12);
+
+  --dk-bg: #0d0f13;
+  --dk-surface: #15191f;
+  --dk-surface-2: #1e232c;
+  --dk-sunk: #070809;
+  --dk-ink: #f3f4f6;
+  --dk-ink-2: #b4b9c4;
+  --dk-ink-3: #8f95a1;
+  --dk-line: #2b303a;
+  --dk-line-strong: #3c424e;
+  --dk-accent: #f2b63c;
+  --dk-accent-ink: #f2b63c;
+  --dk-accent-tint: #3a2c10;
+  --dk-accent-bright: #f2b63c;
+  /* Lifted off the page, so the agents keep a stage to talk on rather than dissolving into it. */
+  --dk-stage: #1b1f27;
+  --dk-stage-2: #252a34;
+  --dk-good: #46c08a;
+  --dk-bad: #ff8f7a;
+  /* A primary button is still the ink filled in; at night the ink is nearly white, so its label is the page. */
+  --dk-on-ink: #0d0f13;
+  --dk-ink-hover: #d8dbe1;
+  --dk-bg-frosted: rgba(13, 15, 19, 0.84);
+  /* A shadow on a dark page is cast by the page, not by slate, and has to be deeper to be seen at all. */
+  --dk-lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
 }
 
 /* At night the page becomes the stage.
@@ -90,37 +115,63 @@
  * Honey needs no second value at night — --accent, --accent-ink and --accent-bright are one colour on a dark
  * page, which is what "lifted so it reads at night" means.
  *
- * Guarded the way the pitch deck guards its own dark block, so an explicit light choice still wins.
+ * The palette is declared once, here, and switched on by the two rules below: the reader's operating system, and
+ * an explicit choice of dark. `--dk-*` are inert until one of those rules maps them onto the real tokens, so
+ * there is one place to change a dark colour and no second copy to drift.
  */
+/* Following the operating system, which is what an address with no stored choice does. Guarded the way the
+   pitch deck guards its own dark block, so choosing light explicitly still wins over a dark OS. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-
-    --bg: #0d0f13;
-    --surface: #15191f;
-    --surface-2: #1e232c;
-    --sunk: #070809;
-    --ink: #f3f4f6;
-    --ink-2: #b4b9c4;
-    --ink-3: #8f95a1;
-    --line: #2b303a;
-    --line-strong: #3c424e;
-    --accent: #f2b63c;
-    --accent-ink: #f2b63c;
-    --accent-tint: #3a2c10;
-    --accent-bright: #f2b63c;
-    /* Lifted off the page, so the agents keep a stage to talk on rather than dissolving into it. */
-    --stage: #1b1f27;
-    --stage-2: #252a34;
-    --good: #46c08a;
-    --bad: #ff8f7a;
-    /* A primary button is still the ink filled in; at night the ink is nearly white, so its label is the page. */
-    --on-ink: #0d0f13;
-    --ink-hover: #d8dbe1;
-    --bg-frosted: rgba(13, 15, 19, 0.84);
-    /* A shadow on a dark page is cast by the page, not by slate, and has to be deeper to be seen at all. */
-    --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+    --bg: var(--dk-bg);
+    --surface: var(--dk-surface);
+    --surface-2: var(--dk-surface-2);
+    --sunk: var(--dk-sunk);
+    --ink: var(--dk-ink);
+    --ink-2: var(--dk-ink-2);
+    --ink-3: var(--dk-ink-3);
+    --line: var(--dk-line);
+    --line-strong: var(--dk-line-strong);
+    --accent: var(--dk-accent);
+    --accent-ink: var(--dk-accent-ink);
+    --accent-tint: var(--dk-accent-tint);
+    --accent-bright: var(--dk-accent-bright);
+    --stage: var(--dk-stage);
+    --stage-2: var(--dk-stage-2);
+    --good: var(--dk-good);
+    --bad: var(--dk-bad);
+    --on-ink: var(--dk-on-ink);
+    --ink-hover: var(--dk-ink-hover);
+    --bg-frosted: var(--dk-bg-frosted);
+    --lift: var(--dk-lift);
   }
+}
+
+/* Chosen, whatever the operating system says. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: var(--dk-bg);
+  --surface: var(--dk-surface);
+  --surface-2: var(--dk-surface-2);
+  --sunk: var(--dk-sunk);
+  --ink: var(--dk-ink);
+  --ink-2: var(--dk-ink-2);
+  --ink-3: var(--dk-ink-3);
+  --line: var(--dk-line);
+  --line-strong: var(--dk-line-strong);
+  --accent: var(--dk-accent);
+  --accent-ink: var(--dk-accent-ink);
+  --accent-tint: var(--dk-accent-tint);
+  --accent-bright: var(--dk-accent-bright);
+  --stage: var(--dk-stage);
+  --stage-2: var(--dk-stage-2);
+  --good: var(--dk-good);
+  --bad: var(--dk-bad);
+  --on-ink: var(--dk-on-ink);
+  --ink-hover: var(--dk-ink-hover);
+  --bg-frosted: var(--dk-bg-frosted);
+  --lift: var(--dk-lift);
 }
 
 /* ---------- Base ---------- */
@@ -867,6 +918,29 @@ th.end {
 .locales {
   display: flex;
   gap: 2px;
+}
+/* Beside the language buttons and built like them: the scheme is a preference, not a feature. */
+.themes {
+  display: flex;
+  gap: 2px;
+}
+.themes button {
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0 4px;
+  font-size: var(--t-sm);
+  line-height: 1;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--ink-3);
+}
+.themes button:hover:not(:disabled) {
+  background: none;
+  color: var(--ink);
+}
+.themes button.on {
+  color: var(--accent-ink);
 }
 .locales button {
   min-height: 28px;
@@ -4202,6 +4276,7 @@ button.onboard-back {
  * on source order over the three rules that pin these to 32 px.
  */
 @media (pointer: coarse) {
+  .themes button,
   .nav-hub,
   .footer-hive .nav-hub,
   .footer-hive a.nav-hub,

@@ -2,6 +2,10 @@
 const en = {
   // Shell
   "nav.language": "Language",
+  "theme.label": "Colour scheme",
+  "theme.system": "Follow my system",
+  "theme.light": "Light",
+  "theme.dark": "Dark",
   "nav.live": "Live model configured",
   "nav.offline": "Offline planner",
   "nav.down": "Backend unreachable",
