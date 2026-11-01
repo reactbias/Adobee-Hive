@@ -155,6 +155,49 @@ describe("card view", () => {
     expect(scene?.hits[0].found?.why).toEqual(["offers mara"]);
   });
 
+  it("draws nothing when the hub paid every row for its reputation alone", () => {
+    // A hub of hotels, asked for an electrician: verified reviews, attestations and a valid signature
+    // are paid whatever was asked, so the whole hub comes back scoring 1 or 2. Drawing those reads as
+    // "found some junk" instead of "no Hive within this reach has one", which looks like a broken search.
+    const reputationOnly = (attestations: number) => ({
+      constraints: 0,
+      text_relevance: 0,
+      offers_needs: 0,
+      semantic: 0,
+      proximity: 0,
+      attestations,
+    });
+    const card = (id: string, name: string) => ({ id, name, description: "", rating: null, units: [] });
+    const scene = sceneFromDiscovery(
+      "an electrician for a broken fuse box",
+      [
+        { id: "hotel-rheinblick", score: 2, score_breakdown: reputationOnly(2) },
+        { id: "messe-loft", score: 1, score_breakdown: reputationOnly(1) },
+      ],
+      {
+        "hotel-rheinblick": card("hotel-rheinblick", "Hotel Rheinblick"),
+        "messe-loft": card("messe-loft", "Messe Loft"),
+      },
+    );
+    expect(scene).toBeNull();
+  });
+
+  it("keeps what the hub paid for the request itself, and drops what it did not", () => {
+    const card = (id: string, name: string) => ({ id, name, description: "", rating: null, units: [] });
+    const scene = sceneFromDiscovery(
+      "an electrician for a broken fuse box",
+      [
+        { id: "elektro-mattenhof", score: 16, score_breakdown: { semantic: 16, attestations: 0 } },
+        { id: "hotel-rheinblick", score: 2, score_breakdown: { semantic: 0, offers_needs: 0, attestations: 2 } },
+      ],
+      {
+        "elektro-mattenhof": card("elektro-mattenhof", "Elektro Mattenhof"),
+        "hotel-rheinblick": card("hotel-rheinblick", "Hotel Rheinblick"),
+      },
+    );
+    expect(scene?.hits.map((h) => h.card.name)).toEqual(["Elektro Mattenhof"]);
+  });
+
   it("keeps every row when the hub scored nothing, rather than showing an empty page", () => {
     const scene = sceneFromDiscovery("anything", [{ id: "a", score: 0, why: [] }], {
       a: { id: "a", name: "A", description: "", rating: null },

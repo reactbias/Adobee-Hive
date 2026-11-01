@@ -127,30 +127,97 @@ describe("traveller agent", () => {
     const send = screen.getByRole("button", { name: en["agent.send"] });
     expect(box.compareDocumentPosition(chip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(chip.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // Federation is a presenter tool: a visitor searches the Hive in front of them.
-    expect(screen.queryByRole("radio", { name: en["reach.local"] })).not.toBeInTheDocument();
+    // Federation is the product, so how far to search is on the bar for every visitor.
+    expect(screen.getByRole("radio", { name: en["reach.local"] })).toBeInTheDocument();
 
     await user.click(send);
     expect(await screen.findByRole("textbox", { name: en["agent.followUp"] })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en["try.tavern"] })).toBeInTheDocument();
   });
 
-  it("searches this hub only until a presenter chooses to look further (?demo)", async () => {
-    window.history.replaceState(null, "", "/?demo");
+  it("shows every visitor how far to search, and starts at the neighbours", async () => {
+    // Federation is the product. A control only a presenter can see, defaulting to this Hive alone,
+    // made the whole of it invisible from the browser.
     const discover = vi.spyOn(api, "discover").mockResolvedValue({ matches: [], excluded: [], ranking_policy: "" });
     vi.spyOn(api, "agent").mockResolvedValue(RESULT);
     const user = setup();
 
-    expect(screen.getByRole("radio", { name: en["reach.local"] })).toBeChecked();
+    expect(screen.getByRole("radio", { name: en["reach.near"] })).toBeChecked();
     await user.click(screen.getByRole("button", { name: en["agent.send"] }));
-    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 0 }));
+    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 1 }));
 
     await user.click(screen.getByRole("button", { name: en["agent.newTrip"] }));
-    await user.click(screen.getByRole("radio", { name: en["reach.far"] }));
-    expect(screen.getByRole("radio", { name: en["reach.far"] })).toBeChecked();
-    await user.type(screen.getByRole("textbox", { name: en["agent.intent"] }), "a quiet hotel{Enter}");
-    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 3 }));
-    window.history.replaceState(null, "", "/");
+    // New trip starts over at the same reach a first search does, never back inside one Hive.
+    expect(screen.getByRole("radio", { name: en["reach.near"] })).toBeChecked();
+  });
+
+  it("re-asks the request on screen when the reach changes, rather than the next one typed", async () => {
+    // A neighbour has the electrician; this Hive has hotels, which earn a point or two for their
+    // attestations whatever was asked. Those are not a result.
+    const neighbour = {
+      id: "elektro-mattenhof",
+      name: "Elektro Mattenhof",
+      description: "Fuse boxes and house wiring.",
+      score: 16,
+      score_breakdown: { text_relevance: 0, offers_needs: 0, semantic: 16, attestations: 0 },
+      provenance: { path: ["bern", "basel"] },
+    };
+    const hotel = {
+      id: "hotel-rheinblick",
+      name: "Hotel Rheinblick",
+      description: "By the Rhine.",
+      score: 2,
+      score_breakdown: { text_relevance: 0, offers_needs: 0, semantic: 0, attestations: 2 },
+    };
+    const discover = vi.spyOn(api, "discover").mockImplementation(
+      async (query = {}) =>
+        ({
+          matches: query.radius ? [neighbour, hotel] : [hotel],
+          excluded: [],
+          ranking_policy: "open",
+        }) as never,
+    );
+    vi.spyOn(api, "card").mockRejectedValue(new Error("offline"));
+    vi.spyOn(api, "agent").mockResolvedValue(RESULT);
+    const user = setup();
+
+    const box = screen.getByRole("textbox", { name: en["agent.intent"] });
+    await user.clear(box);
+    await user.type(box, "an electrician for a broken fuse box{Enter}");
+    expect(await screen.findByRole("heading", { name: "Elektro Mattenhof" })).toBeInTheDocument();
+    expect(discover).toHaveBeenLastCalledWith(expect.objectContaining({ radius: 1 }));
+    // The hub's own hotels scored only for their reputation, so they are not drawn as answers.
+    expect(screen.queryByRole("heading", { name: "Hotel Rheinblick" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: en["reach.local"] }));
+
+    // The same question, asked again at the new reach — not held for whatever is typed next.
+    expect(discover).toHaveBeenLastCalledWith({ query: "an electrician for a broken fuse box", radius: 0 });
+    expect(await screen.findByText(en["reach.empty"])).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Elektro Mattenhof" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Hotel Rheinblick" })).not.toBeInTheDocument();
+  });
+
+  it("closes and reopens details while the agent is still working, asking it only once", async () => {
+    // The old guard refused to open while busy, without saying so: one click closed the panel and
+    // the next did nothing at all, which is what made the button look broken.
+    let settle: (result: AgentResult) => void = () => {};
+    vi.spyOn(api, "agent").mockReturnValue(new Promise<AgentResult>((resolve) => (settle = resolve)));
+    const user = setup();
+
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    const details = await screen.findByRole("button", { name: en["card.details"] });
+
+    await user.click(details);
+    expect(details).toHaveAttribute("aria-pressed", "true");
+    await user.click(details);
+    expect(details).toHaveAttribute("aria-pressed", "false");
+    await user.click(details);
+    expect(details).toHaveAttribute("aria-pressed", "true");
+    expect(api.agent).toHaveBeenCalledTimes(1);
+
+    await act(async () => settle(RESULT));
+    expect(await screen.findByRole("heading", { name: gateQuestion })).toBeInTheDocument();
   });
 
   it("asks the agent and stops at the gate without booking", async () => {

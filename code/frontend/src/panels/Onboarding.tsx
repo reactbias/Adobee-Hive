@@ -442,10 +442,13 @@ function OutcomeView({
   outcome,
   onAgain,
   onUse,
+  onAnother,
 }: {
   outcome: ApplicationOutcome;
   onAgain: () => void;
   onUse: () => void;
+  /** Back to the list of Hives: the only way on when this one did not admit the applicant. */
+  onAnother: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -467,8 +470,19 @@ function OutcomeView({
       </ul>
       <p className="muted small">{t("onboard.outcome.english")}</p>
       <div className="row">
-        {outcome.state === "admitted" && <button onClick={onUse}>{t("onboard.outcome.use")}</button>}
-        {outcome.state === "rejected" && <button onClick={onAgain}>{t("onboard.outcome.again")}</button>}
+        {/* Only an admission may offer this Hive: saying "use it" after a refusal, or while a person is
+            still reading the application, would not be true. Then another Hive is the way on, and it
+            leads rather than hides in a quiet link. */}
+        {outcome.state === "admitted" ? (
+          <button onClick={onUse}>{t("onboard.outcome.use")}</button>
+        ) : (
+          <button onClick={onAnother}>{t("onboard.outcome.another")}</button>
+        )}
+        {outcome.state === "rejected" && (
+          <button className="quiet" onClick={onAgain}>
+            {t("onboard.outcome.again")}
+          </button>
+        )}
       </div>
     </section>
   );
@@ -568,20 +582,32 @@ export default function Onboarding({
   }
 
   const title = t("onboard.title", { hub: hub.name || hub.hub });
+  // Hoisted above every branch below: the way out of joining a Hive belongs to the panel, not to one
+  // of its states. The outcome branch rendered its own section without it, so an applicant a Hive
+  // refused could reach neither the Hive list nor any other Hive without reloading the page.
+  const back = (
+    <button type="button" className="quiet onboard-back" onClick={onBack}>
+      {t("onboard.back")}
+    </button>
+  );
   if (outcome)
     return (
       <section className="onboard stack">
+        {back}
         <h1>{title}</h1>
-        <OutcomeView outcome={outcome} onAgain={() => setOutcome(null)} onUse={() => onUse(hub.hub)} />
+        <OutcomeView
+          outcome={outcome}
+          onAgain={() => setOutcome(null)}
+          onUse={() => onUse(hub.hub)}
+          onAnother={onBack}
+        />
       </section>
     );
 
   const types = policy?.proof_types.length ? policy.proof_types : PROOF_TYPES;
   return (
     <section className="onboard stack">
-      <button type="button" className="quiet onboard-back" onClick={onBack}>
-        {t("onboard.back")}
-      </button>
+      {back}
       <h1>{title}</h1>
       <p>{t("onboard.lead")}</p>
 

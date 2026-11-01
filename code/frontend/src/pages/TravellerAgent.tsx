@@ -67,9 +67,14 @@ export default function TravellerAgent({
   // The hubs are being asked; the agent is not involved yet.
   const [searching, setSearching] = useState(false);
   // How far the hubs are asked: this one only until the person chooses further.
-  const [radius, setRadius] = useState(0);
+  // Reach starts at the neighbours, not at this Hive alone. Federation is the point of the
+  // product, and a first search that cannot leave the hub makes it look like it does not work.
+  const [radius, setRadius] = useState(1);
   // Counts introductions asked for from a result, so the "How did it go?" panel reads them again.
   const [introduced, setIntroduced] = useState(0);
+  // The chosen reach holds nothing for this request: an answer, not an error, so the next move is
+  // to look further rather than to retry.
+  const [reachEmpty, setReachEmpty] = useState(false);
   const [error, setError] = useState("");
   const [rating, setRating] = useState(5);
   const [reviewText, setReviewText] = useSample(["agent.review.sample"]);
@@ -107,12 +112,7 @@ export default function TravellerAgent({
     if (!live && !mirror && named && askResult) return askCards(text, `${askResult.question} ${text}`, true);
     // The hubs answer first. The folders are only for when that call cannot be made.
     if (!live && !mirror) {
-      setSearching(true);
-      setError("");
-      const drawn = await hubScene(text, radius)
-        .catch(() => null)
-        .then((found) => found ?? sceneFor(text))
-        .finally(() => setSearching(false));
+      const drawn = await drawFromHubs(text, radius);
       if (drawn) {
         setScene(drawn);
         setDetails(false);
@@ -288,13 +288,43 @@ export default function TravellerAgent({
     void send(scene.query, history.slice(0, -1), rulesOff, true);
   }
 
+  /** What the hubs answer for this request at this reach, or the folders when the call cannot be made. */
+  async function drawFromHubs(text: string, reach: number): Promise<Scene | null> {
+    setSearching(true);
+    setError("");
+    setReachEmpty(false);
+    return hubScene(text, reach)
+      .catch(() => null)
+      .then((found) => found ?? sceneFor(text))
+      .finally(() => setSearching(false));
+  }
+
+  /**
+   * A new reach re-asks the request already on screen. Setting the state alone left the old reach's
+   * results sitting there and applied the new reach to the *next* question typed, so the control
+   * looked like it did nothing — and federation is the whole point of the product.
+   */
+  async function changeReach(next: number) {
+    if (next === radius || busy || searching) return;
+    setRadius(next);
+    // Whatever is being asked about: the drawn request, or the last thing said to the agent.
+    const query = scene?.query ?? [...history].reverse().find((m) => m.role === "user")?.content ?? "";
+    if (!query) return;
+    const drawn = await drawFromHubs(query, next);
+    setScene(drawn);
+    setDetails(false);
+    // Stale results from the old reach are worse than none: say that this reach holds nothing.
+    setReachEmpty(!drawn);
+  }
+
   function openDetails() {
     if (!scene) return;
     if (details) {
       setDetails(false);
       return;
     }
-    if (busy) return;
+    // Opening while the agent is still working is allowed. Refusing silently here is what made the
+    // button look broken: it closed, and then the next click did nothing at all.
     setDetails(true);
     // The log and the chat start together. Neither waits for the other.
     void pullLog();
@@ -314,7 +344,10 @@ export default function TravellerAgent({
     setNearby(null);
     setReviewed("");
     setError("");
-    setRadius(0);
+    setReachEmpty(false);
+    // Back to the reach a first search starts at. Resetting to 0 would quietly undo the default and
+    // put the next trip back inside one Hive.
+    setRadius(1);
   }
 
   async function leaveReview() {
@@ -528,7 +561,12 @@ export default function TravellerAgent({
             }
           />
           {/* Federation and the manipulation demo are presenter tools: one Hive is what a visitor searches. */}
-          {demoMode() && <Reach radius={radius} disabled={busy || searching} onChange={setRadius} />}
+          <Reach radius={radius} disabled={busy || searching} onChange={(next) => void changeReach(next)} />
+          {reachEmpty && (
+            <p className="muted small" role="status">
+              {t("reach.empty")}
+            </p>
+          )}
           {demoMode() && (
             <details className="stress">
               <summary className="eyebrow">{t("agent.test.eyebrow")}</summary>
@@ -571,7 +609,7 @@ export default function TravellerAgent({
         <div className={scene && details ? "journey split" : "journey"}>
           {scene && (
             <GeneratedStage
-              key={scene.query}
+              key={`${scene.query}:${radius}`}
               scene={scene}
               onDetails={openDetails}
               detailsOpen={details}

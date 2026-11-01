@@ -406,6 +406,7 @@ export function readHubCard(raw: unknown): HiveCard | null {
 type DiscoverMatch = {
   id: string;
   score?: number;
+  score_breakdown?: Record<string, number>;
   claimed?: boolean;
   bookable?: boolean;
   why?: string[];
@@ -414,10 +415,29 @@ type DiscoverMatch = {
   sharing?: string;
 };
 
-// The hub lists every entity it carries; a zero score means nothing in the request touched it.
+// What the hub paid a match for *this* request. The rest of a score is reputation — verified
+// reviews, attestations, a valid signature — which every card on the hub carries whatever was
+// asked, so a hub of hotels answers "electrician" with hotels scoring 1 or 2 and nothing else.
+const RELEVANCE = ["constraints", "text_relevance", "offers_needs", "semantic", "proximity"] as const;
+
+/** The relevance half of a score breakdown, or null when the hub sent none this code can read. */
+function earned(match: DiscoverMatch): number | null {
+  const parts = match.score_breakdown;
+  if (!parts) return null;
+  const read = RELEVANCE.map((key) => parts[key]).filter((part): part is number => typeof part === "number");
+  return read.length ? read.reduce((a, b) => a + b, 0) : null;
+}
+
+// The hub lists every entity it carries, so the screen thresholds itself: a row the request never
+// touched is not a result. Drawing it turns "no Hive within this reach has one" into "found some
+// junk", which is what made an empty search look like a broken one.
 const scored = (matches: DiscoverMatch[]) => {
-  const related = matches.filter((m) => typeof m.score !== "number" || m.score > 0);
-  return related.length ? related : matches;
+  const related = matches.filter((m) => {
+    const relevance = earned(m);
+    return relevance === null ? typeof m.score !== "number" || m.score > 0 : relevance > 0;
+  });
+  // No breakdown anywhere in the answer: an older hub, or a hand-written row. Take it as given.
+  return related.length || matches.some((m) => earned(m) !== null) ? related : matches;
 };
 
 /** One row per discover match, using the card the hub returned for that id. */
