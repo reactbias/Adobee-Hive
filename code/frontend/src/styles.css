@@ -30,6 +30,17 @@
   --stage-bad: #ff8f7a;
   --good: #1f7a4d;
   --bad: #b3261e;
+  /* Text and icons on an ink-filled control. Not plain white: in dark mode --ink is nearly white, so a
+     literal #fff here would paint white on white. */
+  --on-ink: #ffffff;
+  --ink-hover: #2a2d35;
+  /* The sticky header, frosted over whatever scrolls under it. Follows --bg, so it cannot stay white. */
+  --bg-frosted: rgba(255, 255, 255, 0.84);
+  /* One focus ring, honey at three weights: the control itself, the wide ring on the search bar, and the
+     midpoint of the microphone's pulse. Honey at low alpha reads on white and on the stage alike. */
+  --ring: rgba(217, 154, 30, 0.18);
+  --ring-wide: rgba(217, 154, 30, 0.16);
+  --ring-pulse: rgba(217, 154, 30, 0.08);
 
   --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* Headlines use the text face, heavier: one voice, no italics. */
@@ -58,11 +69,58 @@
   /* The sticky header's height: each chapter fills the screen below it. */
   --nav-h: 64px;
 
+  color-scheme: light;
+
   --radius: 16px;
   --radius-sm: 12px;
   --radius-lg: 24px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --lift: 0 1px 2px rgba(22, 24, 29, 0.04), 0 16px 40px -16px rgba(22, 24, 29, 0.12);
+}
+
+/* At night the page becomes the stage.
+ *
+ * The product already had a dark surface with a palette someone designed: the agent stage, where BRAND.md says
+ * "the same honey is lifted to --accent-bright so it reads at night". So this is not a second scheme invented
+ * alongside the first — it is the stage, spread to the whole page, with the stage itself lifted one step so the
+ * agents still talk on a surface that sits above everything else. Measured in L*: the stage stands 7.4 above the
+ * page and 3.1 above a card, where ~3 is the smallest step the eye reads as a separate plane.
+ *
+ * Every pair here was checked: the quietest text on the busiest surface is 4.78:1, and nothing is below WCAG AA.
+ * Honey needs no second value at night — --accent, --accent-ink and --accent-bright are one colour on a dark
+ * page, which is what "lifted so it reads at night" means.
+ *
+ * Guarded the way the pitch deck guards its own dark block, so an explicit light choice still wins.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #0d0f13;
+    --surface: #15191f;
+    --surface-2: #1e232c;
+    --sunk: #070809;
+    --ink: #f3f4f6;
+    --ink-2: #b4b9c4;
+    --ink-3: #8f95a1;
+    --line: #2b303a;
+    --line-strong: #3c424e;
+    --accent: #f2b63c;
+    --accent-ink: #f2b63c;
+    --accent-tint: #3a2c10;
+    --accent-bright: #f2b63c;
+    /* Lifted off the page, so the agents keep a stage to talk on rather than dissolving into it. */
+    --stage: #1b1f27;
+    --stage-2: #252a34;
+    --good: #46c08a;
+    --bad: #ff8f7a;
+    /* A primary button is still the ink filled in; at night the ink is nearly white, so its label is the page. */
+    --on-ink: #0d0f13;
+    --ink-hover: #d8dbe1;
+    --bg-frosted: rgba(13, 15, 19, 0.84);
+    /* A shadow on a dark page is cast by the page, not by slate, and has to be deeper to be seen at all. */
+    --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+  }
 }
 
 /* ---------- Base ---------- */
@@ -76,6 +134,9 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  /* Not only body: the overscroll area above and below the page is painted from html, and a dark OS
+     shows a white band there when only body is coloured. */
+  background: var(--bg);
 }
 body {
   margin: 0;
@@ -371,7 +432,7 @@ button,
   border-radius: 999px;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -383,7 +444,7 @@ button,
 }
 button:hover:not(:disabled),
 .btn:hover {
-  background: #2a2d35;
+  background: var(--ink-hover);
 }
 button.ghost,
 .btn.ghost {
@@ -443,7 +504,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 154, 30, 0.18);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 textarea {
   min-height: 112px;
@@ -478,7 +539,7 @@ label {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--bg-frosted);
   backdrop-filter: saturate(1.4) blur(16px);
   -webkit-backdrop-filter: saturate(1.4) blur(16px);
   border-bottom: 1px solid var(--line);
@@ -1372,7 +1433,7 @@ th.end {
   border-color: var(--accent);
   box-shadow:
     var(--lift),
-    0 0 0 4px rgba(217, 154, 30, 0.16);
+    0 0 0 4px var(--ring-wide);
 }
 .search-top .composer.bar label {
   position: absolute;
@@ -1785,7 +1846,7 @@ button.quiet.small {
 }
 .composer textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 154, 30, 0.16);
+  box-shadow: 0 0 0 3px var(--ring-wide);
 }
 /* Under the box: how to send on the left, the actions on the right. */
 .composer-bar {
@@ -1843,8 +1904,8 @@ button.mic.listening,
 button.mic.listening:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(217, 154, 30, 0.18);
+  color: var(--on-ink);
+  box-shadow: 0 0 0 4px var(--ring);
   animation: listen 1.4s ease-in-out infinite;
 }
 button.mic.blocked {
@@ -1856,7 +1917,7 @@ button.mic.blocked {
 }
 @keyframes listen {
   50% {
-    box-shadow: 0 0 0 8px rgba(217, 154, 30, 0.08);
+    box-shadow: 0 0 0 8px var(--ring-pulse);
   }
 }
 .examples .rows {
@@ -4131,4 +4192,27 @@ button.onboard-back {
   border-top: 0;
   background: transparent;
   padding: var(--s6) 0 var(--s8);
+}
+
+/* Touch targets.
+ *
+ * BRAND.md promises that "on touch screens every control has a 44 px target". The footer's chrome did not
+ * keep it: the two Hive controls sat at 32 px and the B6 bee at 15 px, measured in Chrome at 360 px. The
+ * marks stay exactly the size they are — only the area a thumb can hit grows. Last in the file so it wins
+ * on source order over the three rules that pin these to 32 px.
+ */
+@media (pointer: coarse) {
+  .nav-hub,
+  .footer-hive .nav-hub,
+  .footer-hive a.nav-hub,
+  .footer-hive button.nav-hub {
+    min-height: 44px;
+  }
+  .b6-perch {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
