@@ -807,6 +807,7 @@ const en = {
   "folder.title": "What {name} shares with you",
   "folder.linked": "You have a link to this folder, so you see more than the published card said.",
   "folder.unlinked": "No link yet, so this is only what the published card already said.",
+  "folder.away": "Their folder lives on {hub}, not here, so this hub cannot show you what is in it.",
   "folder.nothing": "This folder has nothing in it for you to see.",
   "folder.look": "Look again",
   "folder.take": "Download",

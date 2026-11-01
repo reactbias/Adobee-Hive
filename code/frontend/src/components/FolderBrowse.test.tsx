@@ -119,4 +119,18 @@ describe("browsing a peer's folder", () => {
     expect(screen.getByText(en["folder.unlinked"])).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: en["folder.take"] })).not.toBeInTheDocument();
   });
+
+  // hub.connect computes the manifest against this hub's own folder root, so an entity on a peer comes back
+  // with an empty one. "Nothing in it" would be a claim about their folder that this hub cannot make.
+  it("says a remote folder is on the other hub rather than calling it empty", () => {
+    render(
+      <I18nProvider>
+        <FolderBrowse folder={{ ...FOLDER, files: [], withheld: 0 }} secret="sec-ret" name="Lena" away="bern" />
+      </I18nProvider>,
+    );
+    expect(screen.getByText(en["folder.away"].replace("{hub}", "bern"))).toBeInTheDocument();
+    expect(screen.queryByText(en["folder.nothing"])).not.toBeInTheDocument();
+    // The link is real and this hub still has nothing to show, so "you see more than the card said" would lie.
+    expect(screen.queryByText(en["folder.linked"])).not.toBeInTheDocument();
+  });
 });

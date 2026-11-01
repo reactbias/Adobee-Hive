@@ -658,13 +658,18 @@ export interface Connection {
   /**
    * The peer's folder as this link may see it, handed over with the introduction itself.
    *
-   * Present for an entity this hub carries: `hub.connect` fills it from `folders.manifest` on the local
-   * branch only, and a remote introduction comes back without it, because the folder is on the other hub's
-   * disk. So browsing a folder is a local-connect feature today, not a federated one.
+   * Always present, and **empty for a remote entity**: `hub.connect` computes it from `folders.manifest`
+   * against this hub's own folder root, and an entity on a peer keeps its folder on that peer's disk. So
+   * browsing a folder is a local-connect feature today, and `remote` is what tells the two cases apart —
+   * "nothing in it" and "not on this hub" are different sentences.
    */
   folder?: FolderManifest;
-  /** The bearer for that folder, sent once and never again. See `FolderKey`. */
-  folder_key?: FolderKey;
+  /** The bearer for that folder, sent once and never again. `null` until a `confirm` owner says yes. */
+  folder_key?: FolderKey | null;
+  /** True when the entity is carried by another hub, so this hub recorded the introduction and cannot complete it. */
+  remote?: boolean;
+  /** Which hub carries it, when `remote`. */
+  origin_hub?: string;
 }
 export interface Connections {
   /** Open and unscored, the one about to go stale first. */

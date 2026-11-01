@@ -71,7 +71,12 @@ export default function Connect({
             them for an entity it carries itself and leaves them out for a remote one, so nothing is drawn
             where there is nothing to draw. The secret stays in this component's state. */}
         {made.folder && made.folder_key?.secret && (
-          <FolderBrowse folder={made.folder} secret={made.folder_key.secret} name={name} />
+          <FolderBrowse
+            folder={made.folder}
+            secret={made.folder_key.secret}
+            name={name}
+            away={made.remote ? made.origin_hub || made.target_hub || "" : ""}
+          />
         )}
       </div>
     );

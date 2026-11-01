@@ -809,6 +809,7 @@ const fr: Record<Key, string> = {
   "folder.title": "Ce que {name} partage avec vous",
   "folder.linked": "Vous avez un lien vers ce dossier : vous voyez donc plus que ce que la carte annonçait.",
   "folder.unlinked": "Pas encore de lien : voici seulement ce que la carte annonçait déjà.",
+  "folder.away": "Leur dossier se trouve sur {hub}, pas ici : ce hub ne peut pas vous en montrer le contenu.",
   "folder.nothing": "Ce dossier ne contient rien à voir pour vous.",
   "folder.look": "Regarder à nouveau",
   "folder.take": "Télécharger",

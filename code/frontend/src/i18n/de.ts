@@ -818,6 +818,7 @@ const de: Record<Key, string> = {
   "folder.title": "Was {name} mit Ihnen teilt",
   "folder.linked": "Sie haben eine Verbindung zu diesem Ordner und sehen daher mehr, als die Karte sagte.",
   "folder.unlinked": "Noch keine Verbindung: Das ist nur, was die Karte ohnehin schon sagte.",
+  "folder.away": "Ihr Ordner liegt auf {hub}, nicht hier; dieser Hub kann Ihnen seinen Inhalt nicht zeigen.",
   "folder.nothing": "In diesem Ordner gibt es für Sie nichts zu sehen.",
   "folder.look": "Nochmals nachsehen",
   "folder.take": "Herunterladen",

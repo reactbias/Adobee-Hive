@@ -812,6 +812,7 @@ const it: Record<Key, string> = {
   "folder.title": "Che cosa {name} condivide con lei",
   "folder.linked": "Ha un collegamento a questa cartella, quindi vede più di quanto diceva la card.",
   "folder.unlinked": "Nessun collegamento ancora: questo è solo quanto la card diceva già.",
+  "folder.away": "La loro cartella si trova su {hub}, non qui: questo hub non può mostrarle che cosa contiene.",
   "folder.nothing": "In questa cartella non c'è nulla da vedere per lei.",
   "folder.look": "Guarda di nuovo",
   "folder.take": "Scarica",

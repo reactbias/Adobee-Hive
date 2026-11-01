@@ -27,12 +27,18 @@ export default function FolderBrowse({
   folder,
   secret,
   name,
+  away = "",
 }: {
   folder: FolderManifest;
   /** `folder_key.secret` from the introduction. The only time that secret exists outside a hash. */
   secret: string;
   /** The entity as the person saw it named, so the heading is about somebody rather than an id. */
   name: string;
+  /**
+   * The hub that carries the entity, when it is not this one. An entity on a peer keeps its folder on that
+   * peer's disk, so the manifest comes back empty here — which is "not on this hub", not "empty folder".
+   */
+  away?: string;
 }) {
   const { t, intl } = useI18n();
   const [shown, setShown] = useState<FolderManifest>(folder);
@@ -74,9 +80,11 @@ export default function FolderBrowse({
         </button>
       </div>
       <h4>{t("folder.title", { name })}</h4>
-      <p className="muted small">{t(shown.linked ? "folder.linked" : "folder.unlinked")}</p>
+      {/* What a link buys is "more than the card said", which is only true where the files are. For a remote
+          entity the link is real and this hub still has nothing to show, so that line would over-claim. */}
+      {!away && <p className="muted small">{t(shown.linked ? "folder.linked" : "folder.unlinked")}</p>}
       {shown.files.length === 0 ? (
-        <p className="muted">{t("folder.nothing")}</p>
+        <p className="muted">{away ? t("folder.away", { hub: away }) : t("folder.nothing")}</p>
       ) : (
         <ul className="rows compact folder-rows">
           {shown.files.map((file) => (
