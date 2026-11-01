@@ -53,8 +53,6 @@ These are the current named assignments; they supersede older workstream/next-de
 
 #### Andrey
 
-- **JSON fuzzy-search focus:** [#151 filler-word false matches](https://github.com/reactbias/Adobee-Hive/issues/151), [#152 irrelevant/nonsense queries still look successful](https://github.com/reactbias/Adobee-Hive/issues/152), [#153 German/French relevance](https://github.com/reactbias/Adobee-Hive/issues/153). Coordinate response/UI implications with Tobi and Ole; preserve existing consumers.
-- **Acceptance review:** [#95 Basel hotel query/ranking](https://github.com/reactbias/Adobee-Hive/issues/95) already has merged normalization work; identify any remaining relevance criteria instead of repeating it.
 - **Alternative, paired with Tobi:** [#173 discover and safely hand off to an owner-supplied hotel MCP](https://github.com/reactbias/Adobee-Hive/issues/173). Agree the real provider contract and approval gate before implementation; see [provider handoff](#a-hotel-advertises-its-own-booking-mcp).
 
 #### Saad and Emily
@@ -106,7 +104,7 @@ For Saad/Emily: the supplied [architecture diagram](diagrams/05-current-architec
 For Andrey and Tobi:
 
 - `offers`/`needs` are the market-side index; `kind` is an optional filter. Use `looking_for=offers|needs|any` deliberately. Do not make every service or CV search a hotel search.
-- Hard constraints determine eligibility. Free-text relevance determines ranking, **not inclusion**: `matches` can contain zero-score entries and reputation points do not prove a content match. Inspect `score_breakdown`, `why` and `excluded`; choose an appropriate relevance policy in the consumer.
+- Hard constraints determine eligibility. An entity the ask earned nothing from is left out, and `matched: 0` means nothing answered; `include_irrelevant=true` returns the full ranking. Reputation points do not prove a content match, so inspect `score_breakdown`, `why` and `excluded`.
 - REST recognizes explicit room requests and reuses the stay parser; explicit parameters win. MCP uses its explicit tool parameters, not that REST text-normalization step. Supply structured dates, guests, budget and features when their correctness matters.
 - `radius=0` is local; positive radius searches configured peers, up to three hops. REST additionally exposes `budget_ms` and `seen`. The presenter reach control already passes radius; broader browser search controls remain incomplete.
 - A local match is a summary: fetch its Card by ID. A federated match includes its signed `card`; do not fetch a remote ID from the answering hub's local card endpoint. Show origin-first `provenance.path` and retain `origin_url`/source identity. The remaining browser handover is [#172](https://github.com/reactbias/Adobee-Hive/issues/172): send that signed Card with a cross-hub introduction.

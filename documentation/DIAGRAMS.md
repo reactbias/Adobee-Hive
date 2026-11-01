@@ -343,7 +343,7 @@ flowchart LR
     M1[hive_discover · hive_rulesets · hive_get_card · hive_check_availability]:::door
     M2[hive_book · hive_what_was_promised · hive_cancel · hive_review]:::door
     M3[hive_wait · hive_check_waiting]:::door
-    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro]:::door
+    M4[explore_ask · hive_scout · hr_find_people · hr_request_intro · hr_decide_intro · hr_grant_cv · hr_read_cv · hr_create_job · hr_submit_cv]:::door
     M5[hub_connect · hub_score · hub_connections · hub_standing]:::door
     M6[hub_registration · hub_register · hub_directory]:::door
     M7[hive_owner_card]:::door

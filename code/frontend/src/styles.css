@@ -4273,6 +4273,43 @@ button.onboard-back {
   padding: var(--s6) 0 var(--s8);
 }
 
+/* ---------- What you asked before ---------- */
+
+.past-asks {
+  margin: var(--s4) 0 0;
+}
+.past-asks .chips {
+  margin: var(--s2) 0 0;
+  max-width: 100%;
+}
+/* A past ask can be a whole sentence. Without `min-width: 0` the flex item refuses to shrink below its text
+   and a long request pushed the page 540 px wider than a 345 px screen. Measured in Chrome. */
+.past-asks .chips > li {
+  min-width: 0;
+  max-width: 100%;
+}
+/* A chip here is a button, so it has to beat `button:hover:not(:disabled)`, which paints every button dark —
+   the chip's own background and border lose to it on specificity and the label went unreadable. */
+.past-asks .chip {
+  max-width: min(28rem, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.past-asks .chip:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+.past-asks .fine {
+  margin: var(--s2) 0 0;
+}
+@media (pointer: coarse) {
+  .past-asks .chip {
+    min-height: 44px;
+  }
+}
+
 /* ---------- A peer's folder, browsed without an agent ---------- */
 
 .folder-browse {

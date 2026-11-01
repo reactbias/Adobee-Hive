@@ -44,6 +44,12 @@ SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
 DEMO_RESET_TOKEN = os.getenv("DEMO_RESET_TOKEN", "")  # when set, /api/demo/reset needs it as X-Demo-Token
 OWNER_EDIT_TOKEN = os.getenv("OWNER_EDIT_TOKEN", "")  # when set, owner edits need it as X-Owner-Token
 
+# Optional Hiring Hub integration. The API key is read only from the process environment and is never
+# placed in a candidate folder, card, MCP argument, log or response.
+HIRING_HUB_URL = os.getenv("HIRING_HUB_URL", "").rstrip("/")
+HIRING_HUB_API_KEY = os.getenv("HIRING_HUB_API_KEY", "")
+HIRING_HUB_TIMEOUT_S = float(os.getenv("HIRING_HUB_TIMEOUT_S", "10"))
+
 # Running the hub itself: the blocklist and the neighbour list. Unlike the owner token this one
 # fails closed — an unset ADMIN_TOKEN refuses every write rather than leaving the blocklist open.
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
