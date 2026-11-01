@@ -3,11 +3,12 @@
 ## mutate.py — does the suite actually notice?
 
 Coverage proves a line ran. It does not prove a test would fail if that line were wrong.
-`mutate.py` makes deliberate changes to the fourteen modules the design rests on — `app/hive.py`,
-`federation.py`, `registration.py`, `limits.py`, `connections.py`, `reputation.py`,
-`calibration.py`, `folders.py`, `sharing.py`, `peers.py`, `services.py`, `semantic.py`,
-`removals.py` and `audit.py` — runs the suite, and reports every change that **survived**, because
-a surviving mutant is a missing assertion, named and located. There are 61 curated mutants.
+`mutate.py` makes deliberate changes to the sixteen modules the design rests on — `app/hive.py`,
+`registration.py`, `federation.py`, `folders.py`, `limits.py`, `connections.py`, `folder_keys.py`,
+`reputation.py`, `peers.py`, `services.py`, `calibration.py`, `main.py`, `sharing.py`,
+`semantic.py`, `removals.py` and `audit.py` — runs the suite, and reports every change that
+**survived**, because a surviving mutant is a missing assertion, named and located. There are 71
+curated mutants.
 
 ```bash
 cd code/backend && source .venv/bin/activate
@@ -26,9 +27,9 @@ out, including on SIGINT, SIGTERM and SIGHUP.
 ### Why it costs what it costs
 
 A mutant can only be proved dead by running the tests against it, so one run is
-(mutants) × (one suite run) — 61 × about 20s. Measured on a 20-core laptop: **11m46s** one at a
-time, **4m06s** with four workers, same 61 mutants and the same `No survivors.` Two things keep
-that waitable:
+(mutants) × (one suite run) — 71 × about 20s. Measured on a 20-core laptop: **19m34s**
+one at a time, **6m28s** with four workers, same 71 mutants and the same `No survivors.`
+Two things keep that waitable:
 
 - **Four at a time.** Mutants are independent, but a mutant is applied by *editing the source in
   place*, so two cannot share a tree: the second would read the first's edit. Each worker gets its
@@ -37,13 +38,16 @@ that waitable:
   running this on — and because a copy works with no `.git` at all and leaves nothing to prune if
   the process is killed. The copies sit under a `mkdtemp`, so one left behind by a `kill -9` is
   nowhere an import, a linter or the next run could mistake for source.
-- **`--modules` on a pull request.** A diff that touches `semantic.py` does not need the other
-  fifty-nine mutants re-proved; they were proved on main and nothing they touch has changed.
+- **`--modules` on a pull request.** A diff that touches `semantic.py` does not need every other
+  mutant re-proved; they were proved on main and nothing they touch has changed.
 
 What it deliberately does **not** do is narrow the *tests* per mutant. That is the biggest single
 win left and the one that can quietly weaken the harness: a mutant that was only ever killed by a
 test the narrowing excluded would start "surviving", or stop being asked at all. Every mutant that
-runs runs all 15 files in `SUITE`.
+runs runs every file in `SUITE`.
+
+On a GitHub runner the whole job is **7m28s** for all 71, and a pull request that touches one
+module is a fraction of that. It was 32m11s on PR #146.
 
 `--workers` is a dial; the 120s suite timeout is not. It is a hang detector with six times the
 headroom a green run needs, and raising it to make a red run go green would hide the thing it is
@@ -80,10 +84,10 @@ A `mutation` job runs after `backend`, with four workers, in one of two modes:
 
 - **On a pull request, the modules the diff touched.** The job diffs `code/backend/app/**.py`
   against the merge base and passes the result to `--modules`. A pull request touching only
-  `semantic.py` checks 2 mutants instead of 61. A pull request that touches `tools/mutate.py` or
+  `semantic.py` checks 2 mutants instead of 71. A pull request that touches `tools/mutate.py` or
   `tests/test_mutation.py` gets the full set instead, so a new or edited mutant is never merged
   unproved.
-- **On a push to main, all 61.** Main is never left permanently unchecked, whatever the pull
+- **On a push to main, all 71.** Main is never left permanently unchecked, whatever the pull
   requests skipped on the way in.
 
 Either way the job prints its mode and its mutant count, in the log and in the job summary, before

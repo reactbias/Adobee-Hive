@@ -146,7 +146,7 @@ outside `t()`. How to write tests first: [CONTRIBUTING.md](../CONTRIBUTING.md#te
 
 ```bash
 cd code/backend && source .venv/bin/activate
-python tools/mutate.py                  # the 61 curated mutants; all must die
+python tools/mutate.py                  # the 71 curated mutants; all must die
 python tools/mutate.py --modules app/semantic.py,app/hive.py   # only these modules
 python tools/mutate.py --random 8       # seeded random operator and constant flips
 python tools/mutate.py --all
@@ -156,10 +156,10 @@ Each mutant breaks one line, runs the suite, and restores the file. A mutant the
 missing assertion, printed with the line to look at. Exit code is the survivor count, so CI gates on it.
 
 There is no way to know whether the tests notice a break except to run them against it, so the cost is
-61 × one suite run. Four mutants are checked at a time, each in its own throwaway copy of the tree: a full
-local run measured 11m46s sequentially and 4m06s with four workers, same 61 mutants, same `No survivors.`
-CI goes further and checks only the modules a pull request touched, keeping all 61 for every push to main —
-`--modules app/calibration.py` is three mutants and 33s. It stays a separate CI job rather than part of
+71 × one suite run. Four mutants are checked at a time, each in its own throwaway copy of the tree: a full
+local run measured 19m34s sequentially and 6m28s with four workers, same 71 mutants, same
+`No survivors.` CI goes further and checks only the modules a pull request touched, keeping all 71 for every
+push to main — `--modules app/calibration.py` is three mutants and 43s. It stays a separate CI job rather than part of
 `backend` so a survivor reads as "the tests have a hole", not "the build is broken".
 
 Your checkout is never mutated — the copies are — and they are deleted on the way out, including on
