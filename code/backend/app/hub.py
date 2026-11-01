@@ -13,7 +13,8 @@ What an agent can do:
   once, a `confirm` item waits for the owner's yes, and a `push` item cannot be asked for at all.
   Either way the introduction is logged. An entity this hub does not carry is connected to on the
   strength of the signed card the search returned, verified here against the key its *own* hub
-  pinned — never on the carrier's word.
+  pinned — never on the carrier's word. Who is *asking* is the weaker half: see `requester_origin`,
+  which records what the hub established rather than assuming the asker is one of its own.
 - `score` the introduction afterwards, once the human has actually met whoever it was. An
   introduction to an entity this hub carries itself is scored against this hub's *own* claim about
   it, so a hub can be measured by its own members' meetings and not only by its peers'.
@@ -148,6 +149,39 @@ def _verified_remote(entity_id: str, offered: Any, target_hub: str) -> dict[str,
     return offered
 
 
+def requester_origin(requester: str, claimed: str = "") -> tuple[str, str]:
+    """Where the requester is from, and what that answer is worth. Never this hub by default.
+
+    `requester_hub` used to default to `config.HIVE_HUB_ID` — the hub *receiving* the request. So an
+    agent from Zurich asking Basel for an introduction was written into Basel's ledger as a Basel
+    member, and nothing downstream could tell a member from a visitor from an invention. These rows
+    are the input to `calibration.py`, which is what ranks a hub in federated search, so the default
+    was quietly putting words in a stranger's mouth inside the trust model's own evidence (#158).
+
+    Three answers, and the hub only ever gives the one it can stand behind:
+
+    - **member**: this hub carries an entity with that id, so it is answering for somebody it
+      already vouches for. The only one of the three that is a *check* rather than a record — and
+      note what it does not prove: that the caller *is* that member. See `limits` below.
+    - **claimed**: the caller named a hub. Recorded as what it is, a string, and discountable by
+      anyone reading the ledger.
+    - **none**: nobody said anything. The honest answer, and the one the old default replaced with a
+      false one.
+
+    `limits`: even `member` is a check on the *name*, not on the caller. This hub has no per-owner
+    credential (#135), so "an entity by this id is on this hub" is the whole of what is established.
+    That is why the proof is recorded on the row rather than used as a permission: a reader can
+    discount a claim, but a gate built on one would be a gate that is not there.
+    """
+    name = (requester or "").strip()
+    if name and hive.get_record(name) is not None:
+        return config.HIVE_HUB_ID, connections.BY_MEMBER
+    claimed = (claimed or "").strip()
+    if claimed:
+        return claimed, connections.BY_CLAIM
+    return "", connections.BY_NOBODY
+
+
 def connect(
     requester: str,
     entity_id: str,
@@ -216,10 +250,12 @@ def connect(
     who, them = folders.handle_for(requester), folders.handle_for(entity_id)
     link = folders.open_link(who, them, auto_accept=flag == sharing.PUBLIC, by=them)
     published = _published_rating(held)
+    from_hub, proof = requester_origin(requester, requester_hub)
     row = connections.request(
         requester,
         entity_id,
-        requester_hub=requester_hub or config.HIVE_HUB_ID,
+        requester_hub=from_hub,
+        requester_proof=proof,
         target_hub=target_hub,
         via_hub=via_hub or target_hub,
         sharing=flag,

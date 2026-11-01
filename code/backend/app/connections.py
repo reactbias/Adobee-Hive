@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS hub_connections (
     state VARCHAR NOT NULL,
     requester VARCHAR NOT NULL,
     requester_hub VARCHAR,
+    requester_proof VARCHAR,
     target VARCHAR NOT NULL,
     target_hub VARCHAR,
     via_hub VARCHAR,
@@ -63,6 +64,19 @@ CREATE TABLE IF NOT EXISTS hub_connections (
     folder_link VARCHAR
 );
 """
+
+#: How the hub established the requester's home hub on this row, which is never the same question as
+#: what the row *says* it is. `requester_hub` is a name; this is what that name is worth.
+#:
+#: - `member`: this hub carries an entity by that id, so it can answer for them itself.
+#: - `claimed`: the caller said so and nothing checked it. A string, recorded as a string.
+#: - `none`: nobody said anything. Not "this hub" — a visitor who said nothing is not a member.
+#:
+#: Worth the column because these rows are the input to `calibration.py`, and a trust model whose
+#: own ledger cannot tell a member from a stranger is measuring something it has not identified
+#: (#158). Nothing here raises a refusal; it records what is known, so a reader can discount it.
+BY_MEMBER, BY_CLAIM, BY_NOBODY = "member", "claimed", "none"
+REQUESTER_PROOFS = (BY_MEMBER, BY_CLAIM, BY_NOBODY)
 
 REQUESTED = "requested"
 OPEN = "open"
@@ -93,6 +107,8 @@ def init() -> None:
         held = {r[1] for r in cur.execute("PRAGMA table_info('hub_connections')").fetchall()}
         if "folder_link" not in held:
             cur.execute("ALTER TABLE hub_connections ADD COLUMN folder_link VARCHAR")
+        if "requester_proof" not in held:
+            cur.execute("ALTER TABLE hub_connections ADD COLUMN requester_proof VARCHAR")
 
 
 def _now() -> datetime:
@@ -120,6 +136,7 @@ def _row(r: tuple) -> dict[str, Any]:
         "state",
         "requester",
         "requester_hub",
+        "requester_proof",
         "target",
         "target_hub",
         "via_hub",
@@ -156,7 +173,7 @@ def _days_left(stale_at: Any) -> int | None:
 
 
 SELECT = (
-    "SELECT id, created_at, state, requester, requester_hub, target, target_hub, via_hub, sharing, "
+    "SELECT id, created_at, state, requester, requester_hub, requester_proof, target, target_hub, via_hub, sharing, "
     "published_rating, opened_at, stale_at, rated_at, rating, note, folder_link FROM hub_connections"
 )
 
@@ -200,6 +217,7 @@ def request(
     target: str,
     *,
     requester_hub: str = "",
+    requester_proof: str = BY_NOBODY,
     target_hub: str = "",
     via_hub: str = "",
     sharing: str = "",
@@ -215,6 +233,10 @@ def request(
     `published_rating` is what the carrying hub said this entity was worth, in tenths of a star,
     frozen here. Later honesty is measured against this number and not against whatever the hub
     claims by the time the human gets round to scoring.
+
+    `requester_hub` is a name and `requester_proof` is what that name is worth: anything this
+    function is not handed is recorded as `none`, never as this hub. A row is allowed to say it does
+    not know who asked; it is not allowed to say a visitor was a member.
     """
     if not requester or not target:
         raise ConnectionError_("a connection needs both a requester and a target")
@@ -227,14 +249,16 @@ def request(
     stale_at = now + timedelta(days=CONFIRM_WITHIN_DAYS if needs_confirmation else STALE_AFTER_DAYS)
     with db.write() as cur:
         cur.execute(
-            "INSERT INTO hub_connections (id, created_at, state, requester, requester_hub, target, target_hub,"
-            " via_hub, sharing, published_rating, opened_at, stale_at, folder_link) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO hub_connections (id, created_at, state, requester, requester_hub, requester_proof,"
+            " target, target_hub, via_hub, sharing, published_rating, opened_at, stale_at, folder_link)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [
                 cid,
                 now,
                 state,
                 requester,
                 requester_hub,
+                requester_proof if requester_proof in REQUESTER_PROOFS else BY_NOBODY,
                 target,
                 target_hub,
                 via_hub,

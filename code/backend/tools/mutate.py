@@ -72,6 +72,7 @@ SUITE = [
     "tests/test_budgets.py",
     "tests/test_local_calibration.py",
     "tests/test_home_hub_row.py",
+    "tests/test_requester_identity.py",
 ]
 
 
@@ -642,6 +643,30 @@ CURATED: list[Mutant] = [
         "a local introduction is attributed to nobody, so calibration never counts it",
         "    if not remote and not target_hub:",
         "    if False:",
+    ),
+    Mutant(
+        "hub.py",
+        "a visitor who said nothing is labelled a member of the hub they are visiting",
+        '    return "", connections.BY_NOBODY',
+        "    return config.HIVE_HUB_ID, connections.BY_MEMBER",
+    ),
+    Mutant(
+        "hub.py",
+        "a caller buys membership of this hub by claiming it, so the ledger cannot be read at all",
+        "        return claimed, connections.BY_CLAIM",
+        "        return claimed, connections.BY_MEMBER",
+    ),
+    Mutant(
+        "hub.py",
+        "a claim overrides what the hub can see for itself, so a member can disown their own hub",
+        "    if name and hive.get_record(name) is not None:",
+        "    if False:",
+    ),
+    Mutant(
+        "connections.py",
+        "an invented proof value is written to the ledger as itself",
+        "                requester_proof if requester_proof in REQUESTER_PROOFS else BY_NOBODY,",
+        "                requester_proof,",
     ),
 ]
 

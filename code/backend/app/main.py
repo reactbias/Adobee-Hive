@@ -529,6 +529,15 @@ class ConnectBody(BaseModel):
 
     requester: str = Field(..., min_length=1, max_length=200, description="Who is asking, as their hub knows them")
     entity_id: str = Field(..., min_length=1, max_length=200, description="What they want to be connected to")
+    requester_hub: str = Field(
+        "",
+        max_length=200,
+        description=(
+            "The hub the requester is a member of, when it is not this one. Recorded as a claim and"
+            " not checked — the answer's `requester_proof` says which. Left out, the row says `none`"
+            " rather than naming this hub, because a visitor who said nothing is not a member"
+        ),
+    )
     target_hub: str = Field("", max_length=200, description="The hub id that carries it, if not this one")
     via_hub: str = Field("", max_length=200)
     card: dict[str, Any] | None = Field(
@@ -569,12 +578,18 @@ def hub_connect(body: ConnectBody, request: Request) -> dict[str, Any]:
     and `target_hub`, the hub id its provenance names. This hub checks that card against the key
     that hub pinned for it and refuses it otherwise — an introduction is this hub's to record even
     when the entity is not its own, but who the entity *is* is never taken on the carrier's word.
+
+    Who is **asking** is not proven at all, and the answer says so rather than implying otherwise:
+    `requester_proof` is `member` when this hub carries an entity by that id, `claimed` when the
+    caller named a `requester_hub`, and `none` when nobody said anything. It is never `member`
+    because of something in the request.
     """
     guard.federated.check(request)
     return _hive_call(
         hub.connect,
         body.requester,
         body.entity_id,
+        requester_hub=body.requester_hub,
         target_hub=body.target_hub,
         via_hub=body.via_hub,
         card=body.card,

@@ -63,6 +63,25 @@ by a key `hive.publish` generates and keeps in `hive_keys`, and that is the key 
 server, for the demo* — registration narrows the gap by pinning who applied, it does not close it. Owner-held
 signing keys are in [VISION.md](VISION.md#beyond-the-weekend).
 
+**Nobody has to prove who is asking for an introduction.** `requester` is a string on
+`POST /api/hub/connect` and on the `hub_connect` MCP tool, and this hub has no accounts to check it
+against. So an introduction can be created under any name by anyone who can reach the port, and the
+rows that result are the input `calibration.py` reads — the measurement that orders the hub
+directory. A hub's own evidence is writable by strangers, and that is worth saying before a jury
+rather than after.
+
+What changed with [#158](https://github.com/reactbias/Adobee-Hive/issues/158) is that the ledger
+stopped claiming more than it knows. `requester_hub` used to default to `config.HIVE_HUB_ID` — the
+hub *receiving* the request — so an agent from Zurich asking Basel was recorded as a Basel member.
+Now the hub records `requester_proof`: `member` when it carries an entity by that id, `claimed` when
+the caller named a hub, `none` when nobody said anything, and never `member` because of something in
+the request. The proof gates nothing, deliberately: a gate keyed on an unauthenticated string would
+refuse honest callers and admit anybody who guessed its shape. Per-owner authorization is
+[#135](https://github.com/reactbias/Adobee-Hive/issues/135); the step that makes the question
+answerable at all is a hub vouching for its own member
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)), because a hub can vouch for a member
+and cannot vouch for a string.
+
 **Calibration does not reach the search rank.** A federated result is ranked
 `local_relevance × hub_path_trust × hop_decay`, and `hub_path_trust` comes from `reputation.py` — declared versus
 observed vetting, paid placement, availability, latency, cards that failed verification here. The sharper

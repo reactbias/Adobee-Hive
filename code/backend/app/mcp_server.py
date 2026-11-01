@@ -201,6 +201,7 @@ def hub_connect(
     requester: str,
     entity_id: str,
     ctx: Context,
+    requester_hub: str = "",
     target_hub: str = "",
     via_hub: str = "",
     card: dict[str, Any] | None = None,
@@ -216,11 +217,24 @@ def hub_connect(
     for it and refuses it otherwise; an introduction to a remote entity is recorded here and its owner's yes,
     if it needs one, happens on their own hub.
 
+    `requester_hub` is the hub your person is a member of, if it is not this one. Pass it and the row records it
+    as a **claim**: this hub cannot check it, and the answer's `requester_proof` says `claimed` so nobody reads
+    it as more than that. Leave it out and the row says `none`. It is never filled in with this hub's own id,
+    because a visitor who said nothing is not a member — which is what the ledger used to record.
+
     Verifying a card from a peer means fetching that peer's key registry, so this spends the same budget
     `POST /api/hub/connect` spends; a refusal names it and says when to try again."""
     if over := guard.admit_mcp(guard.federated, ctx, charge_in_process=True):
         return {"error": over}  # refused before this hub fetches any peer's key registry
-    return _safe(hub.connect, requester, entity_id, target_hub=target_hub, via_hub=via_hub, card=card)
+    return _safe(
+        hub.connect,
+        requester,
+        entity_id,
+        requester_hub=requester_hub,
+        target_hub=target_hub,
+        via_hub=via_hub,
+        card=card,
+    )
 
 
 @server.tool()
