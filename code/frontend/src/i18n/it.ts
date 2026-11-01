@@ -821,10 +821,13 @@ const it: Record<Key, string> = {
   "folder.withheld": "Altri {n} percorsi non sono elencati affatto. L'hub ne manda il numero, mai i nomi.",
   "folder.refused": "Quel file non è stato consegnato. Ogni rifiuto è identico, non c'è altro da dire.",
   "requests.title": "In attesa del suo sì",
+  "requests.count": "In attesa del suo sì ({n})",
+  "requests.new": "Nuovo",
   "requests.from": "{who} chiede di essere presentato",
   "requests.accept": "Accetta",
   "requests.decline": "Rifiuta",
   "requests.accepted": "Accettato. Ora si potrà valutare com'è andata.",
   "requests.refused": "Rifiutato. Non diventerà mai un voto.",
+  "requests.unreachable": "Non siamo riusciti a chiedere all'hub chi sta aspettando. Non è un no.",
 };
 export default it;

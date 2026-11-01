@@ -816,11 +816,14 @@ const en = {
   "folder.withheld": "{n} more paths are not listed at all. The hub sends their number, never their names.",
   "folder.refused": "That file was not handed over. Every refusal looks the same, so there is nothing more to say.",
   "requests.title": "Waiting for your yes",
+  "requests.count": "Waiting for your yes ({n})",
+  "requests.new": "New",
   "requests.from": "{who} asked to be introduced",
   "requests.accept": "Accept",
   "requests.decline": "Decline",
   "requests.accepted": "Accepted. They can now score how it goes.",
   "requests.refused": "Declined. It will never become a rating.",
+  "requests.unreachable": "We could not ask the hub who is waiting. This is not a no.",
 } as const;
 
 export type Key = keyof typeof en;
