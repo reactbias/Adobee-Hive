@@ -684,12 +684,16 @@ def admin_logout(x_admin_token: AdminToken = None) -> dict[str, bool]:
 
 
 @app.get("/api/hub/directory")
-def hub_directory() -> dict[str, Any]:
+def hub_directory(request: Request) -> dict[str, Any]:
     """Every Hive we know of, for a person choosing which one to join.
 
     Like instances.social for Mastodon: whether it is taking members, what it asks, what it carries, and
-    — which a Mastodon directory cannot offer — how honest its ratings have turned out to be."""
-    return admin.directory()
+    — which a Mastodon directory cannot offer — how honest its ratings have turned out to be.
+
+    This hub's own row needs an address, and the request is the only place one can honestly come from: a
+    process does not know what name a client used to reach it, and a row with a blank URL and a relative
+    apply link is one an agent cannot pass on. `HIVE_PUBLIC_URL` overrides it behind a proxy."""
+    return admin.directory(str(request.base_url))
 
 
 @app.get("/api/admin/overview")

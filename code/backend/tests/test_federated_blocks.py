@@ -97,6 +97,42 @@ def test_a_blocked_peer_is_asked_nothing_at_all(client, net):
     assert "blocked" in dropped["zurich"], dropped
 
 
+def test_a_blocked_peer_is_not_asked_again_once_its_answer_has_gone_stale(client, net):
+    """The pre-fetch check, on its own, with the cache not covering for it.
+
+    The test above asks the same question but cannot answer it: a profile read moments earlier is
+    still fresh, so `_profile` serves it from the book and makes no call either way. The mutant that
+    removes the pre-fetch check therefore survived a test written to catch it — the post-fetch
+    recheck caught the forwarded query, and nothing caught the fetch.
+
+    `PEER_STALE_AFTER_S` is 120 seconds, so on a hub that has been up a while this is the normal
+    case rather than a contrived one: the cached answer has expired and the read path would go and
+    ask again. A blocked peer must not be asked, and the identity to check it by is the one already
+    in the book, stale or not — a hub does not change its name by going quiet.
+    """
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    transport = net(zurich)
+    asyncio.run(federation.ask_peers(transport))  # its name is in the book
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(config, "PEER_STALE_AFTER_S", 0.0)  # and the answer has expired
+    try:
+        transport.profiles.clear()
+        assert "hotel-limmat" in _ids(hive.discover(**ASK, radius=1)), "stale means ask again, normally"
+        assert transport.profiles == [zurich.url], "the control: an unblocked stale peer is re-read"
+
+        blocklist.block(blocklist.HUB, "zurich", "spam")
+        transport.profiles.clear()
+        zurich.asks.clear()
+
+        found = hive.discover(**ASK, radius=1)
+    finally:
+        monkeypatch.undo()
+
+    assert transport.profiles == [], "the blocked peer's discovery document was fetched anyway"
+    assert zurich.asks == [], "and the query followed it"
+    assert "hotel-limmat" not in _ids(found)
+
+
 def test_a_peer_blocked_before_this_hub_ever_learned_its_name_is_caught_on_its_own_answer(client, net):
     """A URL is not an identity, so the first block check needs an id this hub already has.
 
