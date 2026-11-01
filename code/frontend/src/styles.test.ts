@@ -86,6 +86,34 @@ describe("styles", () => {
   // the header into a bar of its own below it, so there is no longer any status text in the header to
   // hide — measured in Chrome at 360px in German, the widest case, the header has 127px to spare. What
   // still has to hold is the two rules that give the header that room, so those are what is pinned now.
+  // Dark mode redefines the tokens; a colour written as a literal outside :root cannot follow. These pin the
+  // ones that would otherwise paint white on white the moment --ink stops being nearly black.
+  it("paints a primary action with a token, so the label follows the surface under it", () => {
+    const primary = rule("button,\n.btn");
+    expect(primary).toMatch(/background:\s*var\(--ink\)/);
+    expect(primary).toMatch(/color:\s*var\(--on-ink\)/);
+    expect(rule("button:hover:not(:disabled),\n.btn:hover")).toMatch(/background:\s*var\(--ink-hover\)/);
+  });
+
+  it("frosts the sticky header over whatever the page is, rather than over white", () => {
+    expect(rule(".nav")).toMatch(/background:\s*var\(--bg-frosted\)/);
+  });
+
+  it("has one focus ring, named, rather than the same honey written out at each control", () => {
+    expect(rule("input:focus,\ntextarea:focus,\nselect:focus")).toMatch(/box-shadow:[^;]*var\(--ring\)/);
+    expect(rule(".search-top .composer.bar:focus-within")).toMatch(/var\(--ring-wide\)/);
+    expect(rule(".composer textarea:focus")).toMatch(/var\(--ring-wide\)/);
+  });
+
+  it("writes no opaque white outside the tokens, where a dark page could not override it", () => {
+    // Translucent white is legitimate: it is the inset highlight on the dark agent stage, which stays dark in
+    // both schemes. An opaque white is a page surface, and a page surface has to be a token.
+    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const body = declarations.slice(declarations.indexOf("}", declarations.indexOf(":root {")) + 1);
+    const opaqueWhite = body.match(/:\s*(?:#fff\b|#ffffff\b|white\b)/gi) ?? [];
+    expect(opaqueWhite).toEqual([]);
+  });
+
   it("gives the phone header room: the chapters take their own row and the language buttons shrink", () => {
     expect(css).toMatch(
       /@media \(max-width: 900px\) \{[\s\S]*?\.nav-links \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?overflow-x: auto;/,

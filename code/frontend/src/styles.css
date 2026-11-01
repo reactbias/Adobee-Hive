@@ -30,6 +30,17 @@
   --stage-bad: #ff8f7a;
   --good: #1f7a4d;
   --bad: #b3261e;
+  /* Text and icons on an ink-filled control. Not plain white: in dark mode --ink is nearly white, so a
+     literal #fff here would paint white on white. */
+  --on-ink: #ffffff;
+  --ink-hover: #2a2d35;
+  /* The sticky header, frosted over whatever scrolls under it. Follows --bg, so it cannot stay white. */
+  --bg-frosted: rgba(255, 255, 255, 0.84);
+  /* One focus ring, honey at three weights: the control itself, the wide ring on the search bar, and the
+     midpoint of the microphone's pulse. Honey at low alpha reads on white and on the stage alike. */
+  --ring: rgba(217, 154, 30, 0.18);
+  --ring-wide: rgba(217, 154, 30, 0.16);
+  --ring-pulse: rgba(217, 154, 30, 0.08);
 
   --body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* Headlines use the text face, heavier: one voice, no italics. */
@@ -371,7 +382,7 @@ button,
   border-radius: 999px;
   border: 1px solid var(--ink);
   background: var(--ink);
-  color: #fff;
+  color: var(--on-ink);
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
@@ -383,7 +394,7 @@ button,
 }
 button:hover:not(:disabled),
 .btn:hover {
-  background: #2a2d35;
+  background: var(--ink-hover);
 }
 button.ghost,
 .btn.ghost {
@@ -443,7 +454,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 154, 30, 0.18);
+  box-shadow: 0 0 0 3px var(--ring);
 }
 textarea {
   min-height: 112px;
@@ -478,7 +489,7 @@ label {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: rgba(255, 255, 255, 0.84);
+  background: var(--bg-frosted);
   backdrop-filter: saturate(1.4) blur(16px);
   -webkit-backdrop-filter: saturate(1.4) blur(16px);
   border-bottom: 1px solid var(--line);
@@ -1372,7 +1383,7 @@ th.end {
   border-color: var(--accent);
   box-shadow:
     var(--lift),
-    0 0 0 4px rgba(217, 154, 30, 0.16);
+    0 0 0 4px var(--ring-wide);
 }
 .search-top .composer.bar label {
   position: absolute;
@@ -1785,7 +1796,7 @@ button.quiet.small {
 }
 .composer textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(217, 154, 30, 0.16);
+  box-shadow: 0 0 0 3px var(--ring-wide);
 }
 /* Under the box: how to send on the left, the actions on the right. */
 .composer-bar {
@@ -1843,8 +1854,8 @@ button.mic.listening,
 button.mic.listening:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 4px rgba(217, 154, 30, 0.18);
+  color: var(--on-ink);
+  box-shadow: 0 0 0 4px var(--ring);
   animation: listen 1.4s ease-in-out infinite;
 }
 button.mic.blocked {
@@ -1856,7 +1867,7 @@ button.mic.blocked {
 }
 @keyframes listen {
   50% {
-    box-shadow: 0 0 0 8px rgba(217, 154, 30, 0.08);
+    box-shadow: 0 0 0 8px var(--ring-pulse);
   }
 }
 .examples .rows {
