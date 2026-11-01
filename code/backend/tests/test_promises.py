@@ -39,7 +39,7 @@ def test_a_receipt_from_another_business_is_rejected(client):
 def test_a_cancelled_stay_cannot_be_reviewed(client):
     booking = _book("hotel-dreirosen", "dorm", "2027-02-07", "2027-02-08")
     hive.cancel(booking["booking_id"], booking["receipt"])
-    with pytest.raises(hive.HiveError, match="Only confirmed stays"):
+    with pytest.raises(hive.HiveError, match="Only confirmed bookings"):
         hive.review(booking["receipt"], 5, "never stayed")
 
 

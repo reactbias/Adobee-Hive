@@ -31,8 +31,8 @@ const it: Record<Key, string> = {
   "trust.signed": "Firmata dal titolare",
   "trust.invalid": "Firma non valida",
   "trust.attested": "{claim}, attestato",
-  "trust.reviews": "{avg} su {n} soggiorni verificati",
-  "trust.noReviews": "Nessun soggiorno verificato",
+  "trust.reviews": "{avg} su {n} prenotazioni verificate",
+  "trust.noReviews": "Nessuna recensione da prenotazioni verificate",
 
   "owner.business": "Attività",
   "owner.placeholder": "aggiungi sauna, oppure: da oggi cani benvenuti",
@@ -140,12 +140,12 @@ const it: Record<Key, string> = {
   "agent.fact.total": "Totale",
   "agent.fact.room": "Camera",
   "agent.receipt.eyebrow": "Confermato · ricevuta firmata",
-  "agent.receipt.signature": "Ricevuta firmata. Prova del soggiorno e unica chiave per una recensione.",
+  "agent.receipt.signature": "Ricevuta firmata. Prova della Sua prenotazione e unica chiave per una recensione.",
   "agent.review.title": "Dopo il soggiorno",
   "agent.review.rating": "Valutazione",
   "agent.review.sample": "Camera tranquilla, il cane ha adorato la passeggiata sul Reno.",
-  "agent.review.send": "Lascia una recensione verificata",
-  "agent.review.stored": "Recensione {id} salvata come soggiorno verificato.",
+  "agent.review.send": "Lascia una recensione legata alla prenotazione",
+  "agent.review.stored": "Recensione {id} salvata, confermata dalla Sua prenotazione.",
 
   // Group chat on the traveller page
   "chat.you": "Lei",

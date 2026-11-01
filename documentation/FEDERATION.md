@@ -116,7 +116,7 @@ consensus protocol, because a global reputation score is a thing to capture.
 
 What did it actually deliver? These signals already exist on `main` and keep their meaning:
 
-- reviews only from a signed booking receipt — no stay, no review,
+- reviews only from a signed booking receipt — no booking, no review,
 - attestations from third parties, each signed,
 - nothing purchasable.
 

@@ -18,7 +18,7 @@ until there is something to show:
 Nothing here writes to a database. Every step is an HTTP call a traveller's agent could make, which
 is the point: if any of it is broken the script fails here rather than on stage. In particular the
 peer's claim is produced the only way the product allows one to be produced — `hive.book` then
-`hive.review`, a verified stay with a signed receipt — because `hub._published_rating` reads
+`hive.review`, a booking-backed review with a signed receipt — because `hub._published_rating` reads
 `trust.verified_reviews.average` and nothing else can set it.
 
     python tools/seed_calibration.py --hub http://192.168.21.123:8420

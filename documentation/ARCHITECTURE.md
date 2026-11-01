@@ -12,7 +12,7 @@ Pictures of the hosting, a booking from question to receipt, a question about an
 
 | File | Responsibility |
 | --- | --- |
-| `hive.py` | Hive cards, Ed25519 signing and verification, attestations, discovery and ranking, availability, booking with signed receipts, proof-of-stay reviews, missed demand and the city demand map |
+| `hive.py` | Hive cards, Ed25519 signing and verification, attestations, discovery and ranking, availability, booking with signed receipts, booking-backed reviews, missed demand and the city demand map |
 | `hive_seed.py` | Six fictional Basel businesses (five hotels, one café) with distances and attestations |
 | `mcp_server.py` | The MCP server agents connect to |
 | `agent.py` | The traveller agent: an OpenAI or Claude tool loop over MCP, plus a scripted planner when no key is set. Verifies every card's signature itself and holds `hive_book` with its selected MCP source until approval; a removed source is refused, never replaced by the first configured Hive |
@@ -209,7 +209,7 @@ The web app's contract, in `code/backend/app/main.py`. Every running backend als
 | `GET /api/hive/cards/{card_id}/availability` | Free units and totals for `check_in`, `check_out`, `guests` | |
 | `POST /api/hive/cards/signed` | Store a card version its owner signed on their own node, exactly as signed. The first version pins the key, a later one must verify against it. This hub holds no key for that card, so it cannot edit or book it | `X-Owner-Token` |
 | `POST /api/hive/cards/{card_id}/book` | A person's direct booking, for a business's own site; returns a signed receipt | |
-| `POST /api/hive/reviews` | A proof-of-stay review; needs an unused booking receipt | |
+| `POST /api/hive/reviews` | A booking-backed review; needs an unused booking receipt | |
 | `POST /api/hive/verify` | Check a card as an agent would, against the owner's pinned key | |
 | `POST /api/hive/demo/forge/{card_id}` | Tamper demo: a copy re-signed by a stranger, which must fail | rate limit |
 | `GET /api/hive/demand` | The city demand map: what agents asked for, how often nobody could serve it | |
@@ -270,7 +270,7 @@ What each one still lacks: [LIMITS.md](LIMITS.md#separate-nodes).
 - **Offers.** An offer to a waiting agent has the same form, signed by the business; `hive.verify_statement` checks
   it against the pinned key. It holds no room: the agent still asks its human before `hive_book`.
 - **Transparent ranking.** No paid placement; the score breakdown and exclusion reasons are part of the response.
-- **Two levels of trust** (`reputation.py`). A *business* earns reputation from proof-of-stay reviews and
+- **Two levels of trust** (`reputation.py`). A *business* earns reputation from booking-backed reviews and
   attestations. A peer *Hive* earns a hub reputation, judged locally and subjectively by this hub alone: there is
   no global score and no consensus. New peers start low (trust on first use) and accrue slowly; a hub that
   declares paid placement, misses deadlines, or relays cards that fail verification here is downweighted, which

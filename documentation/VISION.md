@@ -30,8 +30,8 @@ Trust is built in, not bolted on:
   the owner's key pinned in the Hive's registry, so a scraped, tampered or re-signed copy is rejected.
 - **Attested by third parties.** Single claims like "dog-friendly" can be vouched for by someone else (a dog owners'
   club, the city). This is Adobe's Content Credentials idea applied to business facts instead of images.
-- **Reviewed only by real guests.** A booking returns a signed receipt, and only that receipt can leave a review.
-  Proof of stay, no fake reviews.
+- **Reviewed only with a real booking.** A booking returns a signed receipt, and only that receipt can leave a
+  review, once. It proves the booking, not that the guest arrived ([what that leaves open](LIMITS.md#trust)).
 - **Facts expire.** Each signed version says until when it holds (90 days in the prototype). A copy scraped last
   season goes out of date on its own, and agents leave out a card whose owner stopped re-signing it.
 - **Promises on file.** A receipt names the exact card version it was booked against, and the Hive keeps every
@@ -79,7 +79,7 @@ Instead of businesses guessing what agents want to read, agents tell small busin
 And the demand does not leave: a traveller whose agent found nothing can ask to be told. The owner sees "two agents
 are waiting for vegan breakfast", signs the change, and each waiting agent receives an offer signed by the business.
 No ad, no list of people, no spam: only agents that asked, once per business. A
-small player can compete on honest, signed facts and proof-of-stay reviews rather than on ad spend. The demand data
+small player can compete on honest, signed facts and booking-backed reviews rather than on ad spend. The demand data
 is aggregate and anonymous; it describes requests, not people.
 
 ## The agent forum: how agents will behave

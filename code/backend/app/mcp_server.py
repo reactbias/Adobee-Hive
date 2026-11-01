@@ -134,7 +134,7 @@ def hive_rulesets() -> dict[str, Any]:
 @server.tool()
 def hive_get_card(card_id: str) -> dict[str, Any]:
     """Read one business's full Hive card: offering, units and prices, policies, contact, and trust
-    (signature, public key, third-party attestations, proof-of-stay reviews)."""
+    (signature, public key, third-party attestations, booking-backed reviews)."""
     return _counted(_safe(hive.get_card, card_id), "read")
 
 
@@ -168,7 +168,7 @@ def hive_cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 
 @server.tool()
 def hive_review(receipt: str, rating: int, text: str) -> dict[str, Any]:
-    """Leave a verified review (1-5) for a stay. Requires the booking's signed receipt."""
+    """Leave a review (1-5) backed by a booking's signed receipt. It proves the booking, not that anyone stayed."""
     return _safe(hive.review, receipt, rating, text)
 
 

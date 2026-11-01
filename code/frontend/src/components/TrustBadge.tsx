@@ -1,7 +1,7 @@
 import type { Trust } from "../api";
 import { useI18n } from "../i18n";
 
-// How much a card can be trusted, as quiet status lines: signature, attested claims, verified stays.
+// How much a card can be trusted, as quiet status lines: signature, attested claims, reviews from verified bookings.
 export default function TrustBadge({ trust, compact = false }: { trust: Trust; compact?: boolean }) {
   const { t } = useI18n();
   const reviews = trust.verified_reviews;

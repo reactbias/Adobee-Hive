@@ -188,8 +188,9 @@ def hop_decay(hops: int) -> float:
 def business_points(trust: dict[str, Any]) -> dict[str, Any]:
     """The reputation points discovery gives one business: verified reviews, attestations, a valid signature.
 
-    Verified reviews come from proof of stay only (only guests with a signed booking receipt can review), so this
-    cannot be bought or brigaded. An invalid signature is not a low score but a disqualification.
+    Verified reviews need a signed booking receipt, one review per receipt. That proves a booking and not a stay,
+    and bookings are free, so a rating can still be inflated (LIMITS.md). An invalid signature is not a low score
+    but a disqualification.
     """
     reviews = trust["verified_reviews"]
     return {

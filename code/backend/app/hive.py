@@ -7,8 +7,8 @@ Trust model (all real, not mocked):
 - Provenance: every published card version is signed with the owner's Ed25519 key.
   Agents get the public key and verify the signature themselves.
 - Attestations: third parties (e.g. Basel Tourism) vouch for single claims.
-- Proof-of-stay reviews: a review needs the signed receipt of a completed booking,
-  so nobody can post reviews for a stay that never happened.
+- Booking-backed reviews: a review needs the signed receipt of a confirmed booking, one per
+  receipt. That proves the booking, not that the guest ever arrived.
 - Transparent ranking: discovery returns the score breakdown and the reasons a business
   matched or was excluded. No paid boosts.
 - Missed demand: every exclusion is logged so the owner sees what agents asked for.
@@ -912,7 +912,7 @@ def discover(
             "kind": card["kind"],
             "tagline": card.get("tagline"),
             # The three fields every entity in the protocol carries, hub or business. The rating is the
-            # verified-review average and stays None until a signed receipt produces one: no stay, no rating.
+            # verified-review average and stays None until a signed receipt produces one: no booking, no rating.
             "description": card.get("description") or "",
             "rating": trust["verified_reviews"]["average"],
             "rating_count": trust["verified_reviews"]["count"],
@@ -1085,7 +1085,7 @@ def cancel(booking_id: str, receipt: str) -> dict[str, Any]:
 
 
 def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
-    """Store a review for a completed booking. Each signed receipt can review once."""
+    """Store a review backed by a confirmed booking. Each signed receipt can review once."""
     if len(text) > MAX_TEXT:
         raise HiveError(f"Review text is at most {MAX_TEXT} characters.")
     try:
@@ -1099,16 +1099,18 @@ def review(receipt: str, rating: int, text: str) -> dict[str, Any]:
         status = cur.execute("SELECT status FROM hive_bookings WHERE id = ?", [payload["booking_id"]]).fetchone()
         dup = cur.execute("SELECT 1 FROM hive_reviews WHERE booking_id = ?", [payload["booking_id"]]).fetchone()
     if not status or status[0] != "confirmed":
-        raise HiveError("Only confirmed stays can be reviewed.")
+        raise HiveError("Only confirmed bookings can be reviewed.")
     if dup:
-        raise HiveError("This stay was already reviewed.")
+        raise HiveError("This booking was already reviewed.")
     rid = "rv_" + db.new_id()
     with db.write() as cur:
         cur.execute(
             "INSERT INTO hive_reviews VALUES (?, ?, ?, ?, ?, ?)",
             [rid, payload["card_id"], payload["booking_id"], rating, text[:1000], db.now()],
         )
-    return {"review_id": rid, "card_id": payload["card_id"], "verified_stay": True}
+    # `verified_stay` is always false because nothing here can make it true: the receipt proves a booking, which
+    # can be for next month, and a check-out date passing would not show that anyone came (#122, LIMITS.md).
+    return {"review_id": rid, "card_id": payload["card_id"], "verified_booking": True, "verified_stay": False}
 
 
 # ---------------------------------------------------------------- owner side

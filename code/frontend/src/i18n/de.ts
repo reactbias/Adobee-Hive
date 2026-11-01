@@ -31,8 +31,8 @@ const de: Record<Key, string> = {
   "trust.signed": "Vom Inhaber signiert",
   "trust.invalid": "Signatur ungültig",
   "trust.attested": "{claim}, bestätigt",
-  "trust.reviews": "{avg} aus {n} belegten Aufenthalten",
-  "trust.noReviews": "Noch keine belegten Aufenthalte",
+  "trust.reviews": "{avg} aus {n} belegten Buchungen",
+  "trust.noReviews": "Noch keine Bewertungen aus belegten Buchungen",
 
   "owner.business": "Betrieb",
   "owner.placeholder": "Sauna hinzufügen, oder: ab heute Hunde willkommen",
@@ -140,12 +140,12 @@ const de: Record<Key, string> = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Zimmer",
   "agent.receipt.eyebrow": "Bestätigt · Quittung signiert",
-  "agent.receipt.signature": "Signierte Quittung. Beleg des Aufenthalts und einziger Schlüssel zu einer Bewertung.",
+  "agent.receipt.signature": "Signierte Quittung. Beleg Ihrer Buchung und einziger Schlüssel zu einer Bewertung.",
   "agent.review.title": "Nach Ihrem Aufenthalt",
   "agent.review.rating": "Bewertung",
   "agent.review.sample": "Ruhiges Zimmer, der Hund liebte den Spaziergang am Rhein.",
-  "agent.review.send": "Belegte Bewertung abgeben",
-  "agent.review.stored": "Bewertung {id} als belegter Aufenthalt gespeichert.",
+  "agent.review.send": "Bewertung mit Buchungsbeleg abgeben",
+  "agent.review.stored": "Bewertung {id} gespeichert, belegt durch Ihre Buchung.",
 
   // Group chat on the traveller page
   "chat.you": "Sie",

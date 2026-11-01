@@ -158,6 +158,14 @@ cross-hub branch always received — and records this hub as the one that carrie
 its own members' meetings. What is still true: an entity nobody has reviewed has no claim to measure, so its
 introductions stay uncounted, and that is the honest answer rather than a number.
 
+**A review proves a booking, not a stay.** `hive.review` asks for the signed receipt of a confirmed booking, once
+per receipt, and that is all it can check. A booking for next month can be reviewed the moment it is made, and a
+review stays after its booking is cancelled. Bookings are free, because payment happens at the property, so a
+rating can be inflated by anyone willing to make them. So `verified_stay` in the answer is always `false`, and the
+rating counts reviews from bookings. A past check-out date would not change that: it says a date passed, not that
+anyone came. Telling the two apart needs evidence someone trusted issues, such as the business signing that the
+guest arrived. What counts, and who may issue it, is still open in [#122](https://github.com/reactbias/Adobee-Hive/issues/122).
+
 ## The folder link
 
 **It links two folders on one disk.** `app/folders.py` is the step between the index and the booking, and it is

@@ -48,7 +48,7 @@ The four principles always carry these names, in this order, in the app, the rea
 | --- | --- |
 | Signed facts | Every card carries the owner's signature; agents verify it and turn away any altered copy. |
 | Open ranking | Every result says why it won and why the others were left out. Placement cannot be bought. |
-| Proof of stay | Only a signed booking receipt can leave a review. No stay, no review. |
+| Proof of booking | Only a signed booking receipt can leave a review. No booking, no review. |
 | Your yes | Agents negotiate. People decide. Nothing is booked without your approval. |
 
 And one idea beyond them: **missed demand**, "agents write the business plan".

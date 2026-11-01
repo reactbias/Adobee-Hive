@@ -57,6 +57,7 @@ SUITE = [
     "tests/test_pitch.py",
     "tests/test_reputation.py",
     "tests/test_hive.py",
+    "tests/test_booking_backed_reviews.py",
     "tests/test_signed_cards.py",
     "tests/test_hub_trust.py",
     "tests/test_hub_api.py",
@@ -230,6 +231,18 @@ CURATED: list[Mutant] = [
         "a peer's exclusion stops saying whose words it is, so the hub appears to vouch for it",
         '"asserted_by": carrier["hub_id"],',
         '"asserted_by": "",',
+    ),
+    Mutant(
+        "hive.py",
+        "a receipt alone claims a completed stay again, for a guest who may never arrive",
+        '"verified_booking": True, "verified_stay": False}',
+        '"verified_booking": True, "verified_stay": True}',
+    ),
+    Mutant(
+        "hive.py",
+        "a cancelled booking can still be reviewed, so a rating rests on a booking nobody kept",
+        '    if not status or status[0] != "confirmed":',
+        "    if not status:",
     ),
     Mutant(
         "hive.py",

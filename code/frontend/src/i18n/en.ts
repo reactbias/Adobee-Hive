@@ -30,8 +30,8 @@ const en = {
   "trust.signed": "Signed by the owner",
   "trust.invalid": "Signature invalid",
   "trust.attested": "{claim}, attested",
-  "trust.reviews": "{avg} from {n} verified stays",
-  "trust.noReviews": "No verified stays yet",
+  "trust.reviews": "{avg} from {n} verified bookings",
+  "trust.noReviews": "No reviews from verified bookings yet",
 
   // The owner's side, under the chat
   "owner.business": "Business",
@@ -142,12 +142,12 @@ const en = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Room",
   "agent.receipt.eyebrow": "Confirmed · receipt signed",
-  "agent.receipt.signature": "Signed receipt. Proof of stay, and the only key to a review.",
+  "agent.receipt.signature": "Signed receipt. Proof of your booking, and the only key to a review.",
   "agent.review.title": "After your stay",
   "agent.review.rating": "Rating",
   "agent.review.sample": "Quiet room, the dog loved the river walk.",
-  "agent.review.send": "Leave a verified review",
-  "agent.review.stored": "Review {id} stored as a verified stay.",
+  "agent.review.send": "Leave a booking-backed review",
+  "agent.review.stored": "Review {id} stored, backed by your booking.",
 
   // Group chat on the traveller page
   "chat.you": "You",

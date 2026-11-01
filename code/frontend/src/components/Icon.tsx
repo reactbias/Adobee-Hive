@@ -8,7 +8,7 @@ const PATHS = {
   seal: [HEX, "M8.6 12.2l2.3 2.3 4.6-4.8"],
   // Ranked in the open: three bars of different height inside the cell.
   rank: [HEX, "M9 15v-3M12 15V9M15 15v-1.6"],
-  // Proof of stay: a receipt with a torn foot.
+  // Proof of booking: a receipt with a torn foot.
   receipt: ["M7 3.5h10v16.5l-1.7-1.2-1.6 1.2-1.7-1.2-1.6 1.2-1.7-1.2L7 20Z", "M9.5 8h5M9.5 11h5M9.5 14h3"],
   // Your yes: an open hand of agreement reduced to a check in a circle.
   yes: ["M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z", "M8.5 12.3l2.4 2.4 4.6-5"],

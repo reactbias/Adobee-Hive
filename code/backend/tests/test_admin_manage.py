@@ -60,7 +60,7 @@ def test_the_entity_list_counts_what_the_overview_counts(client, admin):
 
 
 def test_an_unrated_entity_reports_no_rating_rather_than_zero(client, admin):
-    """No stay, no rating. Zero would read as a bad business instead of a new one."""
+    """No booking, no rating. Zero would read as a bad business instead of a new one."""
     rows = client.get("/api/admin/entities", headers=ADMIN).json()["entities"]
     unrated = [r for r in rows if r["rating_count"] == 0]
     assert unrated, "the seed has entities nobody has reviewed"

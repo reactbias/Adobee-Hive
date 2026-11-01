@@ -318,7 +318,7 @@ def test_every_entity_carries_a_name_a_description_and_a_rating(client, net):
 
 
 def test_a_business_rating_stays_empty_until_a_signed_receipt_produces_one():
-    """No stay, no review, and therefore no rating. The field exists; it is simply not earned yet."""
+    """No booking, no review, and therefore no rating. The field exists; it is simply not earned yet."""
     fresh = [m for m in hive.discover(**ASK)["matches"] if m["rating_count"] == 0]
 
     assert fresh, "the seed should hold at least one business nobody has reviewed"

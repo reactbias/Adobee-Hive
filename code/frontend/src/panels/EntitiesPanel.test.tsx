@@ -40,7 +40,7 @@ const TRUST: Trust = {
   public_key: "Zm9vYmFyLXB1YmxpYy1rZXk",
   algorithm: "Ed25519 over canonical JSON (sorted keys, no spaces)",
   attestations: [{ claim: "dog-friendly", attested_by: "Basel Tourism" }],
-  verified_reviews: { count: 7, average: 4.3, recent: [], rule: "no stay, no review" },
+  verified_reviews: { count: 7, average: 4.3, recent: [], rule: "no booking, no review" },
   freshness_days: 1,
   claimed: true,
 };

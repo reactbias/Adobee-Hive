@@ -398,7 +398,7 @@ def hive_book(card_id: str, body: BookRequest) -> dict[str, Any]:
 
 @app.post("/api/hive/reviews")
 def hive_review(body: ReviewRequest) -> dict[str, Any]:
-    """Leave a proof-of-stay review."""
+    """Leave a booking-backed review."""
     return _hive_call(hive.review, body.receipt, body.rating, body.text)
 
 

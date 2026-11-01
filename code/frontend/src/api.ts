@@ -562,7 +562,7 @@ export interface HiveMatch {
   /** Every entity in the protocol carries a name, a description and a rating. */
   name: string;
   description: string;
-  /** The verified-review average, null until a signed receipt earns one: no stay, no rating. */
+  /** The verified-review average, null until a signed receipt earns one: no booking, no rating. */
   rating: number | null;
   rating_count: number;
   kind: string;
@@ -1089,7 +1089,10 @@ export const api = {
   cards: (kind?: string) => call<Card[]>(`/api/hive/cards${kind ? `?kind=${kind}` : ""}`),
   card: (id: string) => call<Card>(`/api/hive/cards/${id}`),
   review: (receipt: string, rating: number, text: string) =>
-    post<{ review_id: string }>("/api/hive/reviews", { receipt, rating, text }),
+    post<{ review_id: string; card_id: string; verified_booking: boolean; verified_stay: boolean }>(
+      "/api/hive/reviews",
+      { receipt, rating, text },
+    ),
   agent: (messages: { role: string; content: string }[], options: AgentOptions = {}) =>
     post<AgentResult>(`${agentBase()}/api/agent`, { messages, ...options }),
   approve: (pending: Pending) => post<Approval>(`${agentBase()}/api/agent/approve`, { pending }),

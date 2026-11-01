@@ -32,8 +32,8 @@ const fr: Record<Key, string> = {
   "trust.signed": "Signée par le propriétaire",
   "trust.invalid": "Signature invalide",
   "trust.attested": "{claim}, attesté",
-  "trust.reviews": "{avg} sur {n} séjours vérifiés",
-  "trust.noReviews": "Pas encore de séjour vérifié",
+  "trust.reviews": "{avg} sur {n} réservations vérifiées",
+  "trust.noReviews": "Pas encore d'avis issu d'une réservation vérifiée",
 
   "owner.business": "Commerce",
   "owner.placeholder": "ajouter sauna, ou : dès aujourd'hui, chiens bienvenus",
@@ -141,12 +141,12 @@ const fr: Record<Key, string> = {
   "agent.fact.total": "Total",
   "agent.fact.room": "Chambre",
   "agent.receipt.eyebrow": "Confirmé · reçu signé",
-  "agent.receipt.signature": "Reçu signé. La preuve du séjour, et la seule clé d'un avis.",
+  "agent.receipt.signature": "Reçu signé. La preuve de votre réservation, et la seule clé d'un avis.",
   "agent.review.title": "Après votre séjour",
   "agent.review.rating": "Note",
   "agent.review.sample": "Chambre calme, le chien a adoré la promenade au bord du Rhin.",
-  "agent.review.send": "Laisser un avis vérifié",
-  "agent.review.stored": "Avis {id} enregistré comme séjour vérifié.",
+  "agent.review.send": "Laisser un avis lié à la réservation",
+  "agent.review.stored": "Avis {id} enregistré, appuyé par votre réservation.",
 
   // Group chat on the traveller page
   "chat.you": "Vous",
