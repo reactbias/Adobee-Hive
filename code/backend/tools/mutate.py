@@ -345,8 +345,8 @@ CURATED: list[Mutant] = [
     Mutant(
         "semantic.py",
         "nothing is folded before tokenising, so an accent or a capital hides a word from both paths",
-        "return [w for w in LETTERS.findall(fold(text)) if len(w) >= min_length and w not in STOPWORDS]",
-        "return [w for w in LETTERS.findall(text) if len(w) >= min_length and w not in STOPWORDS]",
+        'folded = FRENCH_JAI.sub(" ", fold(text))',
+        'folded = FRENCH_JAI.sub(" ", text)',
     ),
     Mutant(
         "semantic.py",

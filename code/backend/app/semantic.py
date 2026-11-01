@@ -157,7 +157,7 @@ STOPWORDS = frozenset(
     ou est que qui quoi quand comment pourquoi quel quelle quels quelles dont
     mon ma mes ton ta tes notre nos votre vos son sa ses leur leurs moi toi lui eux
     cherchons cherchez chercher cherchait veux veut voulons vouloir besoins faire fait faites
-    peux peut pouvons pouvoir dois doit devons trouver trouve ai as ont avons avez etre suis sommes etes
+    peux peut pouvons pouvoir dois doit devons trouver trouve as ont avons avez etre suis sommes etes
     dove cosa chi quando come perche quale quali cui
     mio mia miei mie tuo tua nostro nostra vostro loro me te noi voi
     cerchiamo cercare cerca cercando voglio vogliamo volere faccio fatto
@@ -337,6 +337,10 @@ CONCEPTS: dict[str, str] = {
 #: whether an unfolded alphabet is text or whitespace, and "every alphabet" is the only defensible answer.
 LETTERS = re.compile(r"[^\W\d_]+")
 
+#: French "j'ai" is a verb form and "AI" is a topic, and both tokenise to `ai`. Only the elided form says which,
+#: so it goes before the cut on non-letters, and `ai` itself cannot be a stopword.
+FRENCH_JAI = re.compile(r"\bj['’]ai\b")
+
 
 def content_words(text: str, min_length: int = 2) -> list[str]:
     """The content words of a piece of text: folded, letters only, stopwords and short words dropped.
@@ -352,7 +356,8 @@ def content_words(text: str, min_length: int = 2) -> list[str]:
     literal containment of a short word is nearly free to hit by accident and is worth 10 points, so
     `hive.py` asks for longer words than the similarity bag does.
     """
-    return [w for w in LETTERS.findall(fold(text)) if len(w) >= min_length and w not in STOPWORDS]
+    folded = FRENCH_JAI.sub(" ", fold(text))
+    return [w for w in LETTERS.findall(folded) if len(w) >= min_length and w not in STOPWORDS]
 
 
 def _words(text: str) -> list[str]:
