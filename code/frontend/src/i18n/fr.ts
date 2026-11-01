@@ -3,6 +3,10 @@ import type { Key } from "./en";
 // Français de Suisse romande.
 const fr: Record<Key, string> = {
   "nav.language": "Langue",
+  "theme.label": "Jeu de couleurs",
+  "theme.system": "Suivre mon système",
+  "theme.light": "Clair",
+  "theme.dark": "Sombre",
   "nav.live": "Modèle en ligne configuré",
   "nav.offline": "Planificateur hors ligne",
   "nav.down": "Backend injoignable",
