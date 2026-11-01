@@ -78,6 +78,18 @@ export function Ask({ step, names }: { step: Step; names: Record<string, string>
           })}
         </p>
       );
+    case "hr_create_job":
+      return <p>{t("hr.ask.create", { title: String(i.title ?? "") })}</p>;
+    case "hr_find_people":
+      return <p>{t("hr.ask.find", { skills: (list(i.skills) as unknown as string[]).join(", ") })}</p>;
+    case "hub_connect":
+      return <p>{t("hr.ask.connect")}</p>;
+    case "hr_decide_intro":
+      return <p>{t("hr.ask.decide")}</p>;
+    case "hr_grant_cv":
+      return <p>{t("hr.ask.grant")}</p>;
+    case "hr_submit_cv":
+      return <p>{t("hr.ask.submit")}</p>;
     default:
       return <p>{step.tool}</p>;
   }
@@ -208,6 +220,18 @@ export function Reply({ step, chosen }: { step: Step; chosen?: string }) {
       return <Availability o={o} chosen={chosen} />;
     case "hive_book":
       return <p>{t("trace.reply.book", { id: String(o.booking_id ?? "") })}</p>;
+    case "hr_create_job":
+      return <p>{t("hr.reply.create")}</p>;
+    case "hr_find_people":
+      return <p>{t("hr.reply.find")}</p>;
+    case "hub_connect":
+      return <p>{t("hr.reply.connect")}</p>;
+    case "hr_decide_intro":
+      return <p>{t("hr.reply.decide")}</p>;
+    case "hr_grant_cv":
+      return <p>{t("hr.reply.grant")}</p>;
+    case "hr_submit_cv":
+      return <p>{t("hr.reply.submit")}</p>;
     default:
       return <p>{t("trace.reply.done")}</p>;
   }
