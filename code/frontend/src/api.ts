@@ -1111,8 +1111,10 @@ export const api = {
   /** Score an open introduction once, in tenths of a star (43 is 4.3). */
   score: (id: string, rating: number, note = "") =>
     post<ScoreOutcome>(`/api/hub/connections/${encodeURIComponent(id)}/score`, { rating, note }),
-  confirmConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}),
-  declineConnection: (id: string) => post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}),
+  confirmConnection: (id: string) =>
+    post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/confirm`, {}, ownerHeaders()),
+  declineConnection: (id: string) =>
+    post<Connection>(`/api/hub/connections/${encodeURIComponent(id)}/decline`, {}, ownerHeaders()),
   connections: ({ requester = "", target = "" }: { requester?: string; target?: string } = {}) => {
     const params = new URLSearchParams();
     if (requester) params.set("requester", requester);
