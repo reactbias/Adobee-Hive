@@ -69,11 +69,58 @@
   /* The sticky header's height: each chapter fills the screen below it. */
   --nav-h: 64px;
 
+  color-scheme: light;
+
   --radius: 16px;
   --radius-sm: 12px;
   --radius-lg: 24px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   --lift: 0 1px 2px rgba(22, 24, 29, 0.04), 0 16px 40px -16px rgba(22, 24, 29, 0.12);
+}
+
+/* At night the page becomes the stage.
+ *
+ * The product already had a dark surface with a palette someone designed: the agent stage, where BRAND.md says
+ * "the same honey is lifted to --accent-bright so it reads at night". So this is not a second scheme invented
+ * alongside the first — it is the stage, spread to the whole page, with the stage itself lifted one step so the
+ * agents still talk on a surface that sits above everything else. Measured in L*: the stage stands 7.4 above the
+ * page and 3.1 above a card, where ~3 is the smallest step the eye reads as a separate plane.
+ *
+ * Every pair here was checked: the quietest text on the busiest surface is 4.78:1, and nothing is below WCAG AA.
+ * Honey needs no second value at night — --accent, --accent-ink and --accent-bright are one colour on a dark
+ * page, which is what "lifted so it reads at night" means.
+ *
+ * Guarded the way the pitch deck guards its own dark block, so an explicit light choice still wins.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #0d0f13;
+    --surface: #15191f;
+    --surface-2: #1e232c;
+    --sunk: #070809;
+    --ink: #f3f4f6;
+    --ink-2: #b4b9c4;
+    --ink-3: #8f95a1;
+    --line: #2b303a;
+    --line-strong: #3c424e;
+    --accent: #f2b63c;
+    --accent-ink: #f2b63c;
+    --accent-tint: #3a2c10;
+    --accent-bright: #f2b63c;
+    /* Lifted off the page, so the agents keep a stage to talk on rather than dissolving into it. */
+    --stage: #1b1f27;
+    --stage-2: #252a34;
+    --good: #46c08a;
+    --bad: #ff8f7a;
+    /* A primary button is still the ink filled in; at night the ink is nearly white, so its label is the page. */
+    --on-ink: #0d0f13;
+    --ink-hover: #d8dbe1;
+    --bg-frosted: rgba(13, 15, 19, 0.84);
+    /* A shadow on a dark page is cast by the page, not by slate, and has to be deeper to be seen at all. */
+    --lift: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 40px -16px rgba(0, 0, 0, 0.7);
+  }
 }
 
 /* ---------- Base ---------- */
@@ -87,6 +134,9 @@
 }
 html {
   -webkit-text-size-adjust: 100%;
+  /* Not only body: the overscroll area above and below the page is painted from html, and a dark OS
+     shows a white band there when only body is coloured. */
+  background: var(--bg);
 }
 body {
   margin: 0;

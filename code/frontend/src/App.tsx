@@ -67,7 +67,12 @@ function Header({
               else rewrite(window.location.pathname + window.location.search);
             }}
           >
-            <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
+            {/* The mark is one clay line. BRAND.md keeps a lit-clay copy for dark grounds, and the swap
+                belongs here rather than in CSS: the stylesheet is not allowed to name the logo's colours. */}
+            <picture>
+              <source srcSet={`${import.meta.env.BASE_URL}brand/logo-light.svg`} media="(prefers-color-scheme: dark)" />
+              <img src={`${import.meta.env.BASE_URL}brand/logo.svg`} alt="" width={28} height={28} />
+            </picture>
             <span>Adobee Hive</span>
           </a>
           <nav className="nav-links" aria-label={t("nav.chapters")}>

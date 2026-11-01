@@ -114,6 +114,36 @@ describe("styles", () => {
     expect(opaqueWhite).toEqual([]);
   });
 
+  // Dark mode. The page becomes the agent stage, guarded the way the pitch deck guards its own dark block.
+  it("has a dark scheme that an explicit light choice still wins over", () => {
+    expect(css).toMatch(/@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme="light"\]\) \{/);
+  });
+
+  it("redefines the page in the dark block, not only the text on it", () => {
+    const dark = css.slice(css.indexOf("@media (prefers-color-scheme: dark)"));
+    const block = dark.slice(0, dark.indexOf("\n  }"));
+    // A half-converted scheme is worse than none: these are the tokens every surface and label reads from.
+    for (const token of ["--bg", "--surface", "--surface-2", "--sunk", "--ink", "--ink-2", "--ink-3", "--line"])
+      expect([token, block.includes(`${token}:`)]).toEqual([token, true]);
+    // The ones that would otherwise paint white on white, or cast a slate shadow onto a black page.
+    for (const token of ["--on-ink", "--ink-hover", "--bg-frosted", "--lift"])
+      expect([token, block.includes(`${token}:`)]).toEqual([token, true]);
+    // The stage lifts rather than staying put, or the agents dissolve into the page behind them.
+    expect(block).toMatch(/--stage:\s*#1b1f27/);
+  });
+
+  it("paints the page from html as well as body, so a dark OS leaves no white band", () => {
+    // The overscroll area above and below the document is painted from html.
+    expect(rule("html")).toMatch(/background:\s*var\(--bg\)/);
+    expect(rule("body")).toMatch(/background:\s*var\(--bg\)/);
+  });
+
+  it("tells the browser which scheme it is in, so native controls and scrollbars follow", () => {
+    expect(rule(":root")).toMatch(/color-scheme:\s*light/);
+    const dark = css.slice(css.indexOf("@media (prefers-color-scheme: dark)"));
+    expect(dark.slice(0, dark.indexOf("\n  }"))).toMatch(/color-scheme:\s*dark/);
+  });
+
   it("gives the phone header room: the chapters take their own row and the language buttons shrink", () => {
     expect(css).toMatch(
       /@media \(max-width: 900px\) \{[\s\S]*?\.nav-links \{[\s\S]*?grid-column: 1 \/ -1;[\s\S]*?overflow-x: auto;/,
