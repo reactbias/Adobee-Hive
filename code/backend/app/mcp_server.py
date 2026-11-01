@@ -156,7 +156,7 @@ def hive_rulesets() -> dict[str, Any]:
 @server.tool()
 def hive_get_card(ctx: Context, card_id: str, radius: int = 1) -> dict[str, Any]:
     """Read one business's full Hive card: offering, units and prices, policies, contact, and trust
-    (signature, public key, third-party attestations, proof-of-stay reviews).
+    (signature, public key, third-party attestations, booking-backed reviews).
 
     Works for an id this Hive found on a peer: if it does not carry the card itself it asks its peers for
     it, and the answer says in `trust.federation` which Hive it came from. radius 0 looks only at this Hive.

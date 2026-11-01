@@ -73,7 +73,7 @@ Four principles, all running in the prototype:
 | --- | --- |
 | **Signed facts** | Every Card version is Ed25519-signed. An agent checks it against the key pinned in the Card's own hub, so a relaying hub can withhold a Card but not forge one |
 | **Open ranking** | Every result carries its score breakdown and the reason the others were left out. There is no paid placement |
-| **Proof of stay** | Only a signed booking receipt can leave a review. The receipt proves a booking, not that the guest turned up |
+| **Booking-backed reviews** | Only a signed booking receipt can leave a review. The receipt proves a booking, not that the guest turned up |
 | **Your yes** | Agents search, compare and prepare. Our agent books only after one human click |
 
 And one idea beyond them, **missed demand**: a business sees what agents asked for and it could not offer, and a city
