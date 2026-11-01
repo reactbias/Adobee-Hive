@@ -42,6 +42,20 @@ describe("the app", () => {
     expect(hrefs.filter((h) => !h.startsWith("#") && !/^https?:/.test(h))).toEqual([]);
   });
 
+  it("keeps the backend status out of the header, in a bar of its own under it", async () => {
+    // The phone header used to hide the status text so four language buttons fitted beside it. They
+    // fit because the status is no longer in there at all; if it moves back, that room is gone.
+    render(
+      <I18nProvider>
+        <App />
+      </I18nProvider>,
+    );
+
+    const status = screen.getByRole("region", { name: en["status.title"] });
+    expect(document.querySelector("header.nav")?.contains(status)).toBe(false);
+    expect(document.querySelector("header.nav .nav-end")?.textContent).toBe("ENDEFRIT");
+  });
+
   it("is two screens, one per person, switched in the header by hash", async () => {
     render(
       <I18nProvider>

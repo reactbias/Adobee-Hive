@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, api, type ApplicationOutcome, type DirectoryHub } from "../api";
@@ -66,12 +66,14 @@ const outcome = (over: Partial<ApplicationOutcome> = {}): ApplicationOutcome => 
   ...over,
 });
 
-const show = (hub = home) =>
+const show = (hub = home, onBack = vi.fn()) => {
   render(
     <I18nProvider>
-      <Onboarding hub={hub} onBack={vi.fn()} onUse={vi.fn()} />
+      <Onboarding hub={hub} onBack={onBack} onUse={vi.fn()} />
     </I18nProvider>,
   );
+  return onBack;
+};
 
 const field = (name: string) => screen.getByRole("textbox", { name });
 
@@ -262,6 +264,37 @@ describe("joining a hive", () => {
     expect(document.querySelector(".error")).toBeNull();
     await userEvent.click(screen.getByRole("button", { name: en["onboard.outcome.again"] }));
     expect(field(en["onboard.card.name"])).toHaveValue("Lena Hofmann");
+  });
+
+  it("leaves the way back to the Hives open on every answer, refusal included", async () => {
+    // The outcome state used to render its own section without the back button, so an applicant one
+    // Hive refused could reach neither the Hive list nor another Hive without reloading the page.
+    vi.spyOn(api, "register").mockResolvedValue(outcome({ state: "rejected", reason: "no", next: "Try elsewhere." }));
+    const onBack = show();
+    await fromFolder();
+    await readyToSign();
+    await userEvent.click(screen.getByRole("button", { name: en["onboard.sign"] }));
+
+    expect(await screen.findByRole("heading", { name: en["onboard.outcome.rejected"] })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: en["onboard.back"] }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it("leads with another Hive when this one did not admit you, and never offers to use it", async () => {
+    for (const state of ["rejected", "pending"] as const) {
+      vi.spyOn(api, "register").mockResolvedValue(outcome({ state, reason: "not yet", next: "Wait or move on." }));
+      const onBack = show();
+      await fromFolder();
+      await readyToSign();
+      await userEvent.click(screen.getByRole("button", { name: en["onboard.sign"] }));
+
+      expect(await screen.findByRole("heading", { name: en[`onboard.outcome.${state}`] })).toBeInTheDocument();
+      // "Use this Hive" would not be true: the application was refused, or a person has yet to read it.
+      expect(screen.queryByRole("button", { name: en["onboard.outcome.use"] })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: en["onboard.outcome.another"] }));
+      expect(onBack).toHaveBeenCalled();
+      cleanup();
+    }
   });
 
   it("keeps the form when the hive cannot be reached, so nothing typed is lost", async () => {
