@@ -45,6 +45,7 @@ import hashlib
 import logging
 import mimetypes
 import re
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -89,6 +90,14 @@ VISIBILITIES: tuple[str, ...] = (PUBLIC, PUBLIC_SUMMARY, SHARED, PRIVATE, HIDDEN
 ADMITTED: frozenset[str] = frozenset({PUBLIC, PUBLIC_SUMMARY, SHARED})
 #: What the published Card lists. `shared` and `hidden` are omitted from it entirely.
 IN_CARD: frozenset[str] = frozenset({PUBLIC, PUBLIC_SUMMARY, PRIVATE})
+#: What the HTTP read surface will hand over bytes for — a narrower set than `ADMITTED` on purpose.
+#:
+#: A linked peer *sees* a `shared` file in the manifest, which is the folder link's whole point: the
+#: Card never admitted it existed. Reading it is a second question, and this hub answers no. The
+#: files it serves are the ones the owner already published a path for, so a read can never be the
+#: first time a byte of that file left the folder. `documentation/FOLDER_API.md` says so, and an
+#: owner who wants granted `shared` reads changes this one line rather than a route.
+SERVED: frozenset[str] = frozenset({PUBLIC, PUBLIC_SUMMARY})
 #: A path `visibility.md` says nothing about. Unchanged from when every vault was markdown, so a
 #: folder that never thought about visibility keeps the Card it had (tools/seed_vaults.py agrees).
 DEFAULT_VISIBILITY = PUBLIC_SUMMARY
@@ -104,8 +113,16 @@ DEFAULT_VISIBILITY = PUBLIC_SUMMARY
 #: shows is not hiding the saying of it.
 MARKER = "visibility.md"
 
+#: How much of a file is in memory at a time while it is served. 64 KiB is a page-aligned read
+#: that keeps a large PDF off the heap without turning a small markdown file into many syscalls.
+CHUNK_BYTES = 64 * 1024
+
 REQUESTED = "requested"
 ESTABLISHED = "established"
+#: A link its owner has withdrawn. Kept as a row rather than deleted: a link that was once real
+#: is a fact, and `folder_keys.resolve` reads this state on every request, so withdrawing one
+#: stops its reads on the next call rather than at a cache expiry.
+REVOKED = "revoked"
 
 #: A handle is an agent's name on a hub: an entity id (`hotel-krafft`) or an address
 #: (`mara@example.com`). ClaudeConnect validates a claimed bot handle with `^[a-z0-9_-]+$` and
@@ -219,6 +236,16 @@ def split_path(path: str) -> tuple[str, str]:
     if ".." in rel.split("/"):
         raise FolderError(f"{path!r} leaves the folder it names")
     return check_handle(handle), rel
+
+
+def _prefixes(rel: str) -> list[str]:
+    """Every parent of a relative path, outermost first: `"a/b/c.md"` -> `["a", "a/b"]`.
+
+    A symlinked *directory* hides a file whose own path is not a link, so checking the file alone is
+    not enough: the walk has to look at every segment above it too.
+    """
+    parts = [p for p in rel.split("/") if p]
+    return ["/".join(parts[: i + 1]) for i in range(len(parts) - 1)]
 
 
 def media_type(file: Path) -> str:
@@ -398,6 +425,20 @@ class LocalFolderLink:
         link = self.between(a, b)
         return bool(link and link["state"] == ESTABLISHED)
 
+    def revoke_link(self, link_id: str) -> dict[str, Any]:
+        """Withdraw a link. Every read it allowed stops with it; the row stays, marked.
+
+        Not a delete. A link that existed is a fact — a booking may be standing on it
+        (`connections.link_for`) — and a store that can be tidied cannot be audited. What changes is
+        the state, which is the thing `linked`, `can_read` and `folder_keys.resolve` all read.
+        """
+        link = self.get_link(link_id)
+        if link["state"] == REVOKED:
+            return link
+        with db.write() as cur:
+            cur.execute("UPDATE folder_links SET state = ? WHERE id = ?", [REVOKED, link_id])
+        return self.get_link(link_id)
+
     def links(self, handle: str, state: str = "") -> list[dict[str, Any]]:
         """Every link this handle is party to, newest first."""
         name = check_handle(handle)
@@ -471,6 +512,36 @@ class LocalFolderLink:
             for r in rows
         ]
 
+    def get_grant(self, grant_id: str) -> dict[str, Any]:
+        """One grant by id."""
+        with db.cursor() as cur:
+            row = cur.execute(
+                "SELECT id, owner, path, to_handle, link_id FROM folder_grants WHERE id = ?", [grant_id]
+            ).fetchone()
+        if row is None:
+            raise FolderError(f"no folder grant {grant_id!r}")
+        return {
+            "id": row[0],
+            "owner": row[1],
+            "path": row[2],
+            "ref": f"{row[1]}/{row[2]}" if row[2] else row[1],
+            "to": row[3],
+            "link": row[4],
+        }
+
+    def revoke_grant(self, grant_id: str) -> dict[str, Any]:
+        """Take one grant back. The row goes, because a grant is a capability and not a record.
+
+        The opposite choice from a link: a link is a relationship worth remembering, a grant is
+        permission that either holds now or does not. `can_read` reads this table directly, so a
+        removed row is a closed door on the next request with nothing to invalidate. What the
+        decision *was* lives in the audit ledger, where the owner can read it back.
+        """
+        grant = self.get_grant(grant_id)
+        with db.write() as cur:
+            cur.execute("DELETE FROM folder_grants WHERE id = ?", [grant_id])
+        return grant
+
     # --- reading ---------------------------------------------------------------------
 
     def _entries(self, handle: str) -> list[dict[str, Any]]:
@@ -488,6 +559,12 @@ class LocalFolderLink:
         for file in sorted(p for p in folder.rglob("*") if p.is_file()):
             rel = file.relative_to(folder).as_posix()
             if any(part.startswith(".") for part in rel.split("/")):
+                continue
+            # A symlink is a path that is in the folder pointing at a file that is not. `rglob` and
+            # `is_file` both follow it happily, so `ln -s /etc/passwd notes/x.md` would otherwise be
+            # listed, digested and served as one of the owner's own files. Not listed is not read:
+            # `can_read` looks the path up in this list, so skipping it here closes the read too.
+            if file.is_symlink() or any((folder / part).is_symlink() for part in _prefixes(rel)):
                 continue
             try:
                 body = file.read_bytes()
@@ -569,14 +646,47 @@ class LocalFolderLink:
             for g in self.grants(owner, peer)
         )
 
+    def entry(self, path: str) -> dict[str, Any] | None:
+        """What the owner's own listing says about one path, or None when it lists nothing there.
+
+        Says nothing about whether anyone may read it: that is `can_read`. A caller needs the size
+        and the media type *before* it decides how to serve the bytes, and asking for them must not
+        be a different question from asking whether the file exists.
+        """
+        owner, rel = split_path(path)
+        if not rel:
+            return None
+        return next((e for e in self._entries(owner) if e["path"] == rel), None)
+
     def read(self, path: str, handle: str) -> bytes:
         """The bytes, if that handle may have them. Raises rather than returning a hint otherwise."""
+        return b"".join(self.open_read(path, handle))
+
+    def open_read(self, path: str, handle: str, chunk: int = CHUNK_BYTES) -> Iterator[bytes]:
+        """The bytes in pieces, if that handle may have them: one read must not hold a worker.
+
+        The permission check happens here and not in the generator body, so a refusal is raised
+        when `open_read` is called rather than when the first chunk is pulled — a response whose
+        headers are already sent cannot become a 404.
+        """
         owner, rel = split_path(path)
         if not self.can_read(path, handle):
             raise FolderError(f"{check_handle(handle)} may not read {rel!r} from {owner}")
         folder = self.folder(owner)
         assert folder is not None  # can_read found an entry in it
-        return (folder / rel).read_bytes()
+        file = folder / rel
+        # Defence in depth behind `_entries`, which already leaves symlinks out of the listing. One
+        # check is a decision; two are a decision that survives somebody editing the other one.
+        if not file.resolve().is_relative_to(folder.resolve()):
+            raise FolderError(f"{rel!r} leaves the folder it names")
+        return _chunks(file, chunk)
+
+
+def _chunks(file: Path, chunk: int) -> Iterator[bytes]:
+    """Yield a file in pieces. Separate from `open_read` so the permission check is not deferred."""
+    with file.open("rb") as handle:
+        while piece := handle.read(max(1, chunk)):
+            yield piece
 
 
 def _link_row(row: tuple) -> dict[str, Any]:
@@ -695,6 +805,51 @@ def linked(a: str, b: str) -> bool:
 def manifest(owner: str, viewer: str) -> dict[str, Any]:
     """What one handle may see of another's folder on the configured link."""
     return link().manifest(owner, viewer)
+
+
+def get_link(link_id: str) -> dict[str, Any]:
+    """One link by id on the configured link."""
+    return link().get_link(link_id)
+
+
+def links(handle: str, state: str = "") -> list[dict[str, Any]]:
+    """Every link a handle is party to on the configured link, newest first."""
+    return link().links(handle, state)
+
+
+def grants(owner: str, to_handle: str = "") -> list[dict[str, Any]]:
+    """What an owner has granted on the configured link."""
+    return link().grants(owner, to_handle)
+
+
+def get_grant(grant_id: str) -> dict[str, Any]:
+    """One grant by id on the configured link."""
+    return link().get_grant(grant_id)
+
+
+def revoke_grant(grant_id: str) -> dict[str, Any]:
+    """Take one grant back on the configured link."""
+    return link().revoke_grant(grant_id)
+
+
+def revoke_link(link_id: str) -> dict[str, Any]:
+    """Withdraw a link on the configured link, and with it every read it allowed."""
+    return link().revoke_link(link_id)
+
+
+def entry(path: str) -> dict[str, Any] | None:
+    """The owner's own listing for one path on the configured link, or None."""
+    return link().entry(path)
+
+
+def read(path: str, handle: str) -> bytes:
+    """The bytes of one path on the configured link, if that handle may have them."""
+    return link().read(path, handle)
+
+
+def open_read(path: str, handle: str, chunk: int = CHUNK_BYTES) -> Iterator[bytes]:
+    """The bytes of one path in pieces on the configured link, if that handle may have them."""
+    return link().open_read(path, handle, chunk)
 
 
 def open_link(from_handle: str, to_handle: str, *, auto_accept: bool = False, by: str = "") -> dict[str, Any]:

@@ -218,6 +218,21 @@ async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] |
     return (await _ask(base_url, transport))["profile"]
 
 
+def pinned_keys_of(hub_id: str) -> dict[str, str]:
+    """The owner keys one peer published, from what the background asking already learned.
+
+    Read-only and never a fetch, like `peer_row`: a caller on a request path must not be made slow
+    by a peer. That matters most for `hub.connect`, which checks a card for an entity on another hub
+    and has to do it without a round trip.
+
+    The URL these keys came from is always one of this hub's own peer URLs — configuration or an
+    admin-authenticated change (`peers.py`) — never anything from a request. A hub id this hub has
+    not heard from yet gives `{}`, which callers must treat as *cannot be checked*, never as
+    *nothing to check*.
+    """
+    return {str(k): str(v) for k, v in ((_by_hub.get((hub_id or "").strip()) or {}).get("owner_keys") or {}).items()}
+
+
 def peer_row(base_url: str) -> dict[str, Any]:
     """What this hub knows about one peer, as data an interface can render.
 

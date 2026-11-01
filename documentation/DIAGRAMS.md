@@ -114,6 +114,7 @@ flowchart TB
   PRS[peers.py<br/>the peer list, stored: env is only the seed]:::mod
   SVC[services.py<br/>optional keys, write-only: in, never out]:::mod
   FLD[folders.py<br/>two agents link their folders: link · grant · read]:::mod
+  FLK[folder_keys.py<br/>who is asking: a secret bound to one link, hashed at rest]:::guard
   CNX[connections.py<br/>introductions logged, scored by a human later]:::mod
   CAL[calibration.py<br/>did a hub's ratings match what our people found]:::mod
   HUB[hub.py<br/>search · connect · score, the agent's door]:::mod
@@ -349,6 +350,21 @@ flowchart LR
     H4["GET /api/hub/connections · GET /api/hub/standing"]:::door
   end
 
+
+  subgraph FLDD["A linked folder, read over HTTP"]
+    direction TB
+    F1["GET /api/folders/status"]:::door
+    F2["GET /api/folders/manifest"]:::held
+    F3["GET /api/folders/file"]:::held
+    F4["POST /api/folders/keys"]:::held
+    F5["GET /api/folders/grants · POST /api/folders/grants"]:::held
+    F6["DELETE /api/folders/grants/{grant_id} · DELETE /api/folders/links/{link_id}"]:::held
+    F2 -. "Bearer link secret" .-> F3
+    F4 -. "Bearer link secret" .-> F5
+  end
+
+  AGT --> FLDD
+
   JOIN([Someone who wants to join]) --> REGD
   subgraph REGD["Joining a hub"]
     direction TB
@@ -583,5 +599,6 @@ find its test.
 | Where a result came from | `federation.py`, `TraceParts.tsx`, `provenance.ts` | `test_federation.py`, `TraceParts.test.tsx`, `provenance.test.ts` |
 | The network, live | `admin.py`, `calibration.py`, `NetworkPanel.tsx`, `network.ts` | `test_hub_api.py`, `NetworkPanel.test.tsx`, `network.test.ts` |
 | Folders linked, then booked | `folders.py`, `connections.py` | `test_folders.py`, `test_hub_trust.py` |
+| A linked folder read over HTTP | `folder_keys.py`, `main.py` | `test_folder_api.py` |
 | Data | `db.py`, `storage.py`, `hive_seed.py` | `test_persist.py` |
 | Hosting | `render.yaml`, `.github/workflows/` | CI on every PR |

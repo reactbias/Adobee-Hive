@@ -32,6 +32,13 @@ CC_HANDLE = os.getenv("CC_HANDLE", "")
 CC_TOKEN = os.getenv("CC_TOKEN", "")
 CC_TIMEOUT_S = float(os.getenv("CC_TIMEOUT_S", "2"))  # what one unreachable claudeconnect.io costs us
 
+# What one read off the folder surface may cost. A file larger than this is refused with 413 rather
+# than streamed: the corpus's largest file is a few hundred kilobytes, so a request for more than
+# this is a mistake or an attempt to hold a worker. Reads are also counted per link, per hour.
+FOLDER_READ_MAX_BYTES = int(os.getenv("FOLDER_READ_MAX_BYTES", str(25 * 1024 * 1024)))
+FOLDER_READS_PER_LINK_HOUR = int(os.getenv("FOLDER_READS_PER_LINK_HOUR", "600"))
+FOLDER_READS_TOTAL_HOUR = int(os.getenv("FOLDER_READS_TOTAL_HOUR", "6000"))
+
 CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",") if o.strip()]
 SEED_ON_EMPTY = os.getenv("SEED_ON_EMPTY", "true").lower() == "true"
 DEMO_RESET_TOKEN = os.getenv("DEMO_RESET_TOKEN", "")  # when set, /api/demo/reset needs it as X-Demo-Token
