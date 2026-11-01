@@ -148,3 +148,48 @@ folder is listed as a count and nothing else; a `hidden` one is not mentioned at
 
 Worked examples, and the expected answer to a question per folder so another team can tell whether
 their agent works: [documentation/SEARCH_API.md](../../../documentation/SEARCH_API.md).
+
+## seed_calibration.py — give a hub's peers something to be judged by
+
+On a fresh hub every place calibration appears says *"Unproven, no scored introductions yet"*: the
+directory (`InstancePicker`), the hub network (`#network`) and the admin peer table. That is correct
+and it shows nothing, because `calibration.MIN_EVIDENCE` is 3 and a hub holds no scored introductions
+until real people have been introduced and have come back to say how it went.
+
+This walks that chain for real, through the endpoints an agent would use, once per introduction:
+
+```
+on the peer:   POST /api/hive/cards/{id}/book   ->  a signed receipt
+on the peer:   POST /api/hive/reviews           ->  the peer's *claim*: a verified-review average
+on this hub:   POST /api/hub/connect            ->  freezes that claim onto the row as published_rating
+on this hub:   POST /api/hub/connections/{id}/score  ->  what our person actually found
+```
+
+```bash
+cd code/backend && source .venv/bin/activate
+python tools/seed_calibration.py --hub http://192.168.21.123:8420 --plan   # print, change nothing
+python tools/seed_calibration.py --hub http://192.168.21.123:8420          # peers from its directory
+python tools/seed_calibration.py --hub http://h:8420 --peer zurich=http://h:8421 --only zurich
+```
+
+Run it against each of the three LAN hubs in turn and every screen then shows three different
+readings. The profiles are chosen so one of them is **negative**: `bern` under-promises, claiming
+three stars and over-delivering every time, and a negative error earns a *better* standing than a
+perfect one costs. That is the part of the design nobody expects, and a demo that only ever shows
+hubs being punished has not shown it.
+
+Two things it deliberately does not do:
+
+- **It does not write to the database.** A published rating can only come from a reviewed stay, so
+  it books and reviews like a guest. If any part of the chain is broken the script fails here rather
+  than on stage — which is how the `published_rating` bug below was found.
+- **It does not seed the hub's own row.** An introduction to an entity the hub carries itself always
+  lands with `published_rating = NULL`, because `hub.connect` takes the stored card body whose trust
+  block has not been computed, so there is no `verified_reviews.average` to freeze. The home row in
+  the directory is therefore permanently "unproven" however much the hub is used. That is a bug in
+  the hub and is filed; until it is fixed, every hub shows two real numbers and one honest blank.
+
+`tests/test_seed_calibration.py` pins both halves: that the chosen numbers come out of the hub's own
+`calibration.score` as three readings a person can tell apart — with the under-promising one scoring
+better than the over-promising one — and the whole chain end to end against a **real second hub in a
+subprocess**, because every fake-based version of this passed while `published_rating` was `NULL`.
