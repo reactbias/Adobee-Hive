@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub } from "./api";
+import { api, chosenHub, chosenHubUrl, setChosenHub, type DirectoryHub } from "./api";
 import { LOCALES, LOCALE_NAMES, useI18n, type Locale } from "./i18n";
 import TravellerAgent from "./pages/TravellerAgent";
 import AdminPanel from "./panels/AdminPanel";
@@ -10,7 +10,15 @@ import NetworkPanel from "./panels/NetworkPanel";
 import B6Bee from "./components/B6Bee";
 import BackendStatus from "./components/BackendStatus";
 import ThemeToggle from "./components/ThemeToggle";
-import { canonicalHash, screenFor, SCREENS, type ScreenId } from "./components/Chapter";
+import {
+  canonicalHash,
+  joinHash,
+  joinHubIn,
+  namesScreen,
+  screenFor,
+  SCREENS,
+  type ScreenId,
+} from "./components/Chapter";
 import type { Key } from "./i18n/en";
 import { hubIn, isHybrid, viewIn, without } from "./lib/view";
 
@@ -109,8 +117,9 @@ function Header({
 export default function App() {
   // Which Hive the app runs against: "" is the build's own. `?hub=` in the address or a pick in this tab sets it.
   const [hub, setHub] = useState(() => hubFromUrl() || chosenHub());
-  // The finder is a view a person opens with Change Hive, never a gate on the way in.
-  const [choosing, setChoosing] = useState(false);
+  // The finder is a view a person opens with Change Hive, never a gate on the way in. A join hash lands here
+  // too: the Hive list is what sits behind an application.
+  const [choosing, setChoosing] = useState(() => Boolean(joinHubIn(here().hash)));
   // Read from the address rather than frozen at mount, so the view and the URL cannot drift apart.
   const [admin, setAdmin] = useState(adminMode);
   // The screen on show, from the hash. Both screens stay mounted, so a booking survives a look at the other.
@@ -119,7 +128,10 @@ export default function App() {
   const [business, setBusiness] = useState<string | undefined>(undefined);
   // Unknown until the selected backend answers; planner mode is tracked separately in the status display.
   const [reached, setReached] = useState<boolean | undefined>(undefined);
-  // The hive being applied to from the finder, if any. Not remembered: an application starts over on a reload.
+  // Which hive is being applied to: read from the address, so back, forward, a reload and a header link all
+  // move this view like any other. `joining` is only the directory row for that id, fetched when a reload
+  // arrives on the hash without one.
+  const [joinHub, setJoinHub] = useState(() => joinHubIn(here().hash));
   const [joining, setJoining] = useState<DirectoryHub | null>(null);
   const { t } = useI18n();
 
@@ -138,12 +150,50 @@ export default function App() {
     if (canonical) rewrite(here().pathname + here().search + canonical);
   }, []);
 
+  /** Leave an application: back to the Hive list, and take the join hash out of the address with it. */
+  const leaveJoin = useCallback(() => {
+    setJoining(null);
+    setJoinHub("");
+    setChoosing(true);
+    // Hand our own pushed entry back to the browser, so the stack stays honest and forward still works. A
+    // hash somebody pasted straight into the bar is not ours to pop, so that one is rewritten instead.
+    if ((window.history.state as { join?: boolean } | null)?.join) window.history.back();
+    else rewrite(here().pathname + here().search);
+  }, []);
+
+  // A reload, or a pasted link, arrives on a join hash with no directory row behind it. Resolve the id; a hub
+  // that is no longer in the directory falls back to the list rather than to a blank screen.
+  useEffect(() => {
+    if (!joinHub || joining?.hub === joinHub) return;
+    let gone = false;
+    api
+      .directory()
+      .then((directory) => {
+        if (gone) return;
+        const row = directory.hubs.find((candidate) => candidate.hub === joinHub);
+        if (row) setJoining(row);
+        else leaveJoin();
+      })
+      .catch(() => !gone && leaveJoin());
+    return () => {
+      gone = true;
+    };
+  }, [joinHub, joining, leaveJoin]);
+
   useEffect(() => {
     // The address is the one source of truth for the view, so back and forward change what is on screen.
     const sync = () => {
       setAdmin(adminMode());
       setScreen(screenFromHash());
       setHub((chosen) => chosen || hubFromUrl() || chosenHub());
+      // Including this one. An application used to outrank the router: the hash moved, the view did not, and
+      // a reload was the only way out of it.
+      const hash = here().hash;
+      setJoinHub(joinHubIn(hash));
+      if (namesScreen(hash)) {
+        setChoosing(false);
+        setJoining(null);
+      }
     };
     // A screen opens at its top. The browser has just scrolled to the anchor, which sits under the sticky
     // header; a screen is not an anchor on a long page, so that jump is undone.
@@ -182,23 +232,29 @@ export default function App() {
       </>
     );
 
-  if (choosing)
+  if (choosing || joinHub)
     return (
       <>
         <Header hub={hub} onHealth={setReached} />
         <main>
-          {joining ? (
-            <Onboarding
-              hub={joining}
-              onBack={() => setJoining(null)}
-              onUse={(picked) => {
-                const row = joining;
-                setChosenHub(picked, row && !row.home ? row.url || "" : "");
-                setJoining(null);
-                setHub(picked);
-                setChoosing(false);
-              }}
-            />
+          {/* While a reload resolves the hub its hash names, the page is the header and nothing else: one
+              round-trip, and the alternative is flashing the Hive list at somebody who asked for a form. */}
+          {joinHub ? (
+            joining && (
+              <Onboarding
+                hub={joining}
+                onBack={leaveJoin}
+                onUse={(picked) => {
+                  const row = joining;
+                  setChosenHub(picked, row && !row.home ? row.url || "" : "");
+                  setJoining(null);
+                  setJoinHub("");
+                  setHub(picked);
+                  setChoosing(false);
+                  rewrite(here().pathname + here().search);
+                }}
+              />
+            )
           ) : (
             <InstanceFinder
               onPick={(picked) => {
@@ -206,7 +262,13 @@ export default function App() {
                 setChoosing(false);
                 setReached(undefined);
               }}
-              onJoin={setJoining}
+              // Pushed, not replaced: the browser's back button is how most people cancel an application,
+              // and before this it took them out of the app altogether.
+              onJoin={(row) => {
+                setJoining(row);
+                setJoinHub(row.hub);
+                history.pushState({ join: true }, "", here().pathname + here().search + joinHash(row.hub));
+              }}
             />
           )}
         </main>
