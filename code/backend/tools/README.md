@@ -3,26 +3,56 @@
 ## mutate.py — does the suite actually notice?
 
 Coverage proves a line ran. It does not prove a test would fail if that line were wrong.
-`mutate.py` makes deliberate changes to the eight modules the design rests on — `app/hive.py`,
-`federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `registration.py`,
-`sharing.py` and `semantic.py` — runs the suite, and reports every change that **survived**, because
-a surviving mutant is a missing assertion, named and located. There are 35 curated mutants.
-`mutate.py` makes deliberate changes to the ten modules the design rests on — `app/hive.py`,
-`federation.py`, `reputation.py`, `calibration.py`, `connections.py`, `registration.py`,
-`sharing.py`, `semantic.py`, `limits.py` and `folders.py` — runs the suite, and reports every change
-that **survived**, because a surviving mutant is a missing assertion, named and located. There are
-51 curated mutants.
+`mutate.py` makes deliberate changes to the sixteen modules the design rests on — `app/hive.py`,
+`registration.py`, `federation.py`, `folders.py`, `limits.py`, `connections.py`, `folder_keys.py`,
+`reputation.py`, `peers.py`, `services.py`, `calibration.py`, `main.py`, `sharing.py`,
+`semantic.py`, `removals.py` and `audit.py` — runs the suite, and reports every change that
+**survived**, because a surviving mutant is a missing assertion, named and located. There are 71
+curated mutants.
 
 ```bash
 cd code/backend && source .venv/bin/activate
 python tools/mutate.py                   # every curated mutant
+python tools/mutate.py --workers 8       # how many to check at once (default: 4)
+python tools/mutate.py --modules app/semantic.py,app/hive.py   # only these modules
 python tools/mutate.py --random 12       # random operator and constant flips at real sites
 python tools/mutate.py --random 12 --seed 42   # reproduce a run
 python tools/mutate.py --all             # both
 ```
 
-Exit code is the number of survivors, so CI can gate on it. The source file is always restored,
-even when a run is interrupted.
+Exit code is the number of survivors, so CI can gate on it. Your checkout is never written to:
+the mutants are applied in throwaway copies of the tree, and the copies are deleted on the way
+out, including on SIGINT, SIGTERM and SIGHUP.
+
+### Why it costs what it costs
+
+A mutant can only be proved dead by running the tests against it, so one run is
+(mutants) × (one suite run) — 71 × about 20s. Measured on a 20-core laptop: **19m34s**
+one at a time, **6m28s** with four workers, same 71 mutants and the same `No survivors.`
+Two things keep that waitable:
+
+- **Four at a time.** Mutants are independent, but a mutant is applied by *editing the source in
+  place*, so two cannot share a tree: the second would read the first's edit. Each worker gets its
+  own `shutil.copytree` of the repo instead. A copy, not a `git worktree`, because a worktree
+  checks out a *commit* and would quietly mutate the last commit rather than the code you are
+  running this on — and because a copy works with no `.git` at all and leaves nothing to prune if
+  the process is killed. The copies sit under a `mkdtemp`, so one left behind by a `kill -9` is
+  nowhere an import, a linter or the next run could mistake for source.
+- **`--modules` on a pull request.** A diff that touches `semantic.py` does not need every other
+  mutant re-proved; they were proved on main and nothing they touch has changed.
+
+What it deliberately does **not** do is narrow the *tests* per mutant. That is the biggest single
+win left and the one that can quietly weaken the harness: a mutant that was only ever killed by a
+test the narrowing excluded would start "surviving", or stop being asked at all. Every mutant that
+runs runs every file in `SUITE`.
+
+On a GitHub runner the whole job is **about 8 minutes** for all 71 — 7m28s and 8m51s on the two
+runs measured — and a pull request that touches one module is a fraction of that. It was 32m11s on
+PR #146.
+
+`--workers` is a dial; the 120s suite timeout is not. It is a hang detector with six times the
+headroom a green run needs, and raising it to make a red run go green would hide the thing it is
+there to find.
 
 Run the suite with **no model key in your environment**. An `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
 exported in your shell makes the agent answer live, and the tests that pin what the offline planner
@@ -51,21 +81,36 @@ They are listed here rather than quietly dropped. Worth closing if the reasons b
 
 ### In CI
 
-A `mutation` job runs after `backend` on every pull request:
+A `mutation` job runs after `backend`, with four workers, in one of two modes:
 
-- **Curated mutants must all die.** They aim at invariants — the loop guard, the radius clamp, the
-  sign of the calibration error, a stale connection becoming scorable — so a survivor is a real
-  hole and the job fails.
-- **A seeded random pass** of eight flips runs alongside, seeded by the run number so a different
-  corner is probed each time while the log still says how to reproduce it. It is
-  `continue-on-error`, because a random mutant can surface a gap that predates the pull request
-  and blocking an unrelated change on it would only teach people to ignore the job.
+- **On a pull request, the modules the diff touched.** The job diffs `code/backend/app/**.py`
+  against the merge base and passes the result to `--modules`. A pull request touching only
+  `semantic.py` checks 2 mutants instead of 71. A pull request that touches `tools/mutate.py` or
+  `tests/test_mutation.py` gets the full set instead, so a new or edited mutant is never merged
+  unproved.
+- **On a push to main, all 71.** Main is never left permanently unchecked, whatever the pull
+  requests skipped on the way in.
+
+Either way the job prints its mode and its mutant count, in the log and in the job summary, before
+it runs anything. A green check that silently ran zero mutants would be worse than the slow job it
+replaced. If a pull request touches no backend module it says so in one line and passes.
+
+**Curated mutants must all die.** They aim at invariants — the loop guard, the radius clamp, the
+sign of the calibration error, a stale connection becoming scorable — so a survivor is a real hole
+and the job fails. **A seeded random pass** of eight flips runs on main, seeded by the run number
+so a different corner is probed each time while the log still says how to reproduce it. It is
+`continue-on-error`, because a random mutant can surface a gap that predates the change and
+blocking an unrelated pull request on it would only teach people to ignore the job.
 
 `tests/test_mutation.py` guards the harness itself: every file in `SUITE` exists, every curated
-mutant still matches its source, and every target module is covered by a file in `SUITE`. That
-last one exists because it already went wrong — the two hub test files were missing from `SUITE`,
-so eight hub mutants "survived" while the real tests caught every one of them. A mutation tool
-that reports a false all-clear is worse than none, so it is now a test.
+mutant still matches its source, every target module is covered by a file in `SUITE`, a worker copy
+carries everything the suite reads and sits outside the checkout, the harness refuses to mutate the
+real tree if it is ever handed it, every mutant still runs the whole `SUITE`, the parallel report is
+ordered by mutant and not by timing, and `--modules` cannot select nothing when it was given a
+module that has mutants. Two of those exist because they already went wrong — the two hub test files
+were missing from `SUITE`, so eight hub mutants "survived" while the real tests caught every one of
+them, and the first copy-based run was rooted at `code/backend` and lost the `testdata/` the suite
+reads. A mutation tool that reports a false all-clear is worse than none, so they are now tests.
 
 ### Adding a mutant
 

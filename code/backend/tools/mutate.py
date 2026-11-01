@@ -9,6 +9,18 @@ red. A mutant the tests still pass is a hole, named and located.
     python tools/mutate.py --random 12      # 12 random operator and constant flips
     python tools/mutate.py --random 12 --seed 7
     python tools/mutate.py --all            # both
+    python tools/mutate.py --workers 8      # how many mutants to check at once
+    python tools/mutate.py --modules app/semantic.py,app/hive.py   # only these modules
+
+Every mutant runs the whole SUITE, so the cost is (number of mutants) x (one suite run). Mutants
+are independent of each other, so they run N at a time. Each worker gets its own copy of the tree
+because a mutant is applied by editing the source in place: two workers in one tree would read each
+other's mutants. The real checkout is never written to at all.
+
+`--modules` is for the pull-request loop: a change to one module does not need every other
+mutant re-proved. CI passes the modules the PR touched and runs the full set on main, so main is
+never permanently unchecked. It filters *mutants*, never tests: every mutant that runs still runs
+the whole SUITE, so nothing that used to kill a mutant stops being asked.
 
 Exit code is the number of survivors, so CI can gate on it.
 """
@@ -16,13 +28,20 @@ Exit code is the number of survivors, so CI can gate on it.
 from __future__ import annotations
 
 import argparse
+import atexit
+import os
+import queue
 import random
 import re
+import shutil
 import signal
 import subprocess
 import sys
+import tempfile
+import threading
 import time
-from dataclasses import dataclass
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,11 +80,25 @@ class Mutant:
     find: str
     replace: str
     count: int = 1
+    #: What the report calls this one. Curated mutants are named by what they break; a random flip
+    #: is named by its site, because "federation.py:112" is the only useful handle it has.
+    label: str = ""
+    #: Random flips match a whole line by regular expression; curated ones are literal text.
+    regex: bool = False
 
     @property
     def path(self) -> Path:
-        """The module this mutant edits."""
+        """The module this mutant edits, in the real checkout."""
         return APP / self.file
+
+    def path_in(self, tree: Path) -> Path:
+        """The module this mutant edits, inside a worker's copy of the tree."""
+        return tree / "app" / self.file
+
+    @property
+    def title(self) -> str:
+        """The label, falling back to a trimmed reason for the curated mutants."""
+        return self.label or self.why[:46]
 
 
 # --- The curated mutants -------------------------------------------------------------
@@ -535,26 +568,144 @@ TARGETS = [
 ]
 
 
-#: The file currently holding a mutant, and the bytes to put back. A module global because a
-#: signal handler has nowhere else to look, and leaving a mutant behind is the worst outcome
-#: this tool has: the source breaks in a way that reads as a genuine failing test.
-_IN_FLIGHT: tuple[Path, str] | None = None
+# --- Worker trees --------------------------------------------------------------------
+# A mutant is applied by editing the source in place and putting it back afterwards, so two
+# mutants cannot share a tree: the second would read the first's edit, and the pair would be
+# reported as one. Every worker therefore gets its own copy of the tree.
+#
+# A copy rather than a `git worktree`: a worktree checks out a *commit*, so it would quietly
+# mutate and test the last commit instead of the working tree the developer is running this on —
+# a mutation report about code nobody has, which is the one kind of wrong answer this tool must
+# not give. A copy also needs no .git at all (Docker layer, tarball, release archive), and if this
+# process is killed there is nothing registered in someone else's repository to prune.
+
+#: Never copied into a worker tree: huge, machine-specific, or stale the moment it is copied.
+COPY_IGNORE = shutil.ignore_patterns(
+    ".git",
+    "__pycache__",
+    "*.pyc",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    "*.duckdb",
+    "*.duckdb.wal",
+)
 
 
-def _restore_in_flight() -> None:
-    """Put back whatever is mutated right now. Safe to call twice."""
-    global _IN_FLIGHT
-    if _IN_FLIGHT is not None:
-        path, original = _IN_FLIGHT
-        _IN_FLIGHT = None
+def copy_source() -> tuple[Path, Path]:
+    """What a worker copy has to contain, and where code/backend sits inside it.
+
+    The suite is not self-contained inside code/backend: tests/test_folders.py reads
+    testdata/vaults/ and tests/test_limits.py reads documentation/cards/README.md, both from the
+    repo root. A copy of code/backend alone goes red on those two before a single mutant is
+    applied, and the harness reports that as "the suite is already red" — true, but about the copy,
+    not the code. So the copy is rooted at the repo when the repo is there, and at code/backend
+    otherwise (a Docker layer that ships the backend alone).
+    """
+    repo = ROOT.parents[1]
+    if (repo / "testdata").is_dir():
+        return repo, ROOT.relative_to(repo)
+    return ROOT, Path(".")
+
+
+#: Where this run's worker copies live. Outside the checkout on purpose. A copy spends seconds at
+#: a time holding a mutant, and a copy left behind by a SIGKILL must not sit anywhere a later run,
+#: an import or a linter could mistake for source: live_mutants() reads only the real tree, and
+#: nothing under a mkdtemp is on anybody's path.
+_RUN_DIR: Path | None = None
+_RUN_LOCK = threading.Lock()
+
+
+def run_dir() -> Path:
+    """This run's private directory for worker copies, created on first use."""
+    global _RUN_DIR
+    with _RUN_LOCK:
+        if _RUN_DIR is None:
+            _RUN_DIR = Path(tempfile.mkdtemp(prefix="mutate-trees-")).resolve()
+            atexit.register(drop_run_dir)
+        return _RUN_DIR
+
+
+def drop_run_dir() -> None:
+    """Delete this run's worker copies. Safe to call twice, and from a signal handler."""
+    global _RUN_DIR
+    with _RUN_LOCK:
+        doomed, _RUN_DIR = _RUN_DIR, None
+    if doomed is not None:
+        shutil.rmtree(doomed, ignore_errors=True)
+
+
+def make_trees(workers: int) -> list[Path]:
+    """One independent copy of the tree per worker. Returns each copy's code/backend."""
+    source, backend = copy_source()
+    # Its own sub-directory per call, so a second call cannot land on the first call's w0.
+    where = Path(tempfile.mkdtemp(prefix="set-", dir=run_dir()))
+    trees = []
+    for i in range(workers):
+        dest = where / f"w{i}"
+        shutil.copytree(source, dest, ignore=COPY_IGNORE, symlinks=True)
+        trees.append((dest / backend).resolve())
+    return trees
+
+
+#: Every file holding a mutant right now, and the bytes to put back. A module global because a
+#: signal handler has nowhere else to look; a dict rather than a single entry because N workers
+#: each hold one. Leaving a mutant behind is the worst outcome this tool has: in the real tree it
+#: breaks the source in a way that reads as a genuine failing test, and in a worker copy it makes
+#: the next mutant in that copy a compound of two, which is just as silently wrong.
+_IN_FLIGHT: dict[Path, str] = {}
+_IN_FLIGHT_LOCK = threading.Lock()
+
+
+def _hold(path: Path, original: str) -> None:
+    """Record that `path` is mutated right now, and what to put back."""
+    with _IN_FLIGHT_LOCK:
+        _IN_FLIGHT[path] = original
+
+
+def _restore(path: Path) -> None:
+    """Put back one file, if it is still held. Safe to call twice."""
+    with _IN_FLIGHT_LOCK:
+        original = _IN_FLIGHT.pop(path, None)
+    if original is not None:
         path.write_text(original, encoding="utf-8")
 
 
+def _restore_in_flight() -> None:
+    """Put back every file that is mutated right now. Safe to call twice."""
+    with _IN_FLIGHT_LOCK:
+        held = list(_IN_FLIGHT.items())
+        _IN_FLIGHT.clear()
+    for path, original in held:
+        path.write_text(original, encoding="utf-8")
+
+
+#: The pytest children running right now. A signal ends them instead of orphaning N of them for
+#: another twenty seconds each, still writing into pipes nobody is reading.
+_CHILDREN: set[subprocess.Popen] = set()
+
+
 def _on_signal(signum, _frame):
-    """Restore, then die with the conventional code. `finally` does not run on SIGTERM."""
+    """Restore, end the children, delete the copies, then die with the conventional code.
+
+    `finally` does not run on SIGTERM. The handler is reset to the default first, so a second
+    signal from an impatient Ctrl-C kills us outright instead of re-entering this while we hold a
+    lock. `os._exit` because sys.exit would leave the thread pool's own atexit hook waiting for a
+    worker to finish its twenty-second pytest run — nothing is left mutated by then, so there is
+    nothing to wait for.
+    """
+    signal.signal(signum, signal.SIG_DFL)
     _restore_in_flight()
-    print(f"\n  interrupted ({signal.Signals(signum).name}); the source has been put back")
-    sys.exit(128 + signum)
+    for child in list(_CHILDREN):
+        child.kill()
+    drop_run_dir()
+    print(f"\n  interrupted ({signal.Signals(signum).name}); nothing was left mutated")
+    sys.stdout.flush()
+    os._exit(128 + signum)
 
 
 def live_mutants() -> list[Mutant]:
@@ -575,28 +726,42 @@ def live_mutants() -> list[Mutant]:
     return found
 
 
-def run_suite(timeout: int = 120, keep: list[str] | None = None) -> bool:
-    """True when the suite is green. A timeout counts as caught: the mutant hung it.
+#: One suite run is ~20s, so two minutes is six times over. It is a hang detector, not a budget:
+#: raising it to make a red run go green would hide exactly what the timeout is here to find.
+SUITE_TIMEOUT = 120
+
+
+def run_suite(tree: Path, timeout: int = SUITE_TIMEOUT, keep: list[str] | None = None) -> bool:
+    """True when the suite is green in `tree`. A timeout counts as caught: the mutant hung it.
+
+    `-x` stays: a mutant killed by the second test should not pay for the rest of the suite.
 
     `keep` collects pytest's own output for the one caller that needs it — the pre-flight, which
     reports "the suite is already red" and must be able to say which test. Without that, a red
     pre-flight in CI is a dead end: the harness swallows the only copy of the failure.
     """
+    child = subprocess.Popen(
+        [sys.executable, "-m", "pytest", "-x", "-q", "--no-header", "-p", "no:cacheprovider", *SUITE],
+        cwd=tree,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    _CHILDREN.add(child)
     try:
-        done = subprocess.run(
-            [sys.executable, "-m", "pytest", "-x", "-q", "--no-header", "-p", "no:cacheprovider", *SUITE],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        if keep is not None:
-            keep.append(f"pytest did not finish within {timeout}s")
-        return False
+        try:
+            out, err = child.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.communicate()
+            if keep is not None:
+                keep.append(f"pytest did not finish within {timeout}s")
+            return False
+    finally:
+        _CHILDREN.discard(child)
     if keep is not None:
-        keep.append((done.stdout or "") + (done.stderr or ""))
-    return done.returncode == 0
+        keep.append((out or "") + (err or ""))
+    return child.returncode == 0
 
 
 def apply(path: Path, find: str, replace: str, count: int, regex: bool = False) -> tuple[str, bool]:
@@ -613,32 +778,91 @@ def apply(path: Path, find: str, replace: str, count: int, regex: bool = False) 
     return original, bool(n)
 
 
-def check(label: str, why: str, path: Path, find: str, replace: str, count: int, regex: bool = False):
-    """Apply one mutant, run the suite, always put the file back."""
-    global _IN_FLIGHT
-    original, changed = apply(path, find, replace, count, regex)
+def _only_in_a_copy(path: Path) -> None:
+    """Refuse to mutate anything outside this run's worker copies.
+
+    Nothing should ever reach here with a path in the real checkout, so this is a last line rather
+    than a branch. Writing a mutant into the tree someone is working in is the one failure this
+    tool must not have, and "should never happen" is not a guarantee.
+    """
+    where = _RUN_DIR
+    if where is None or where not in path.resolve().parents:
+        raise RuntimeError(f"refusing to mutate {path}: outside this run's worker copies")
+
+
+@dataclass
+class Result:
+    """What one mutant did, and the lines to print when that mutant's turn comes round."""
+
+    mutant: Mutant
+    #: True when the suite stayed green, i.e. the mutant lived. None when it was not applied.
+    survived: bool | None
+    lines: list[str] = field(default_factory=list)
+
+
+def check(mutant: Mutant, tree: Path, timeout: int = SUITE_TIMEOUT) -> Result:
+    """Apply one mutant inside one worker copy, run the suite there, always put the file back.
+
+    Returns its lines instead of printing them. With N workers the output would otherwise
+    interleave mid-mutant and be unreadable; the caller prints each mutant's block in order.
+    """
+    path = mutant.path_in(tree)
+    if not path.exists():
+        return Result(mutant, None, [f"  SKIP  {mutant.file}: not present"])
+    _only_in_a_copy(path)
+    original, changed = apply(path, mutant.find, mutant.replace, mutant.count, mutant.regex)
     if not changed:
-        print(f"  SKIP  {label}: pattern not found ({find!r})")
-        return None
-    _IN_FLIGHT = (path, original)
+        return Result(mutant, None, [f"  SKIP  {mutant.title}: pattern not found ({mutant.find!r})"])
+    _hold(path, original)
     try:
-        green = run_suite()
+        green = run_suite(tree, timeout=timeout)
     finally:
-        _restore_in_flight()
-    if green:
-        print(f"  \033[31mSURVIVED\033[0m  {label}")
-        print(f"            {why}")
-        print(f"            {path.name}: {find!r} -> {replace!r}")
-    else:
-        print(f"  \033[32mkilled\033[0m    {label}")
-    return green  # green means the suite did not notice: the mutant lived
+        _restore(path)
+    if green:  # green means the suite did not notice: the mutant lived
+        return Result(
+            mutant,
+            True,
+            [
+                f"  \033[31mSURVIVED\033[0m  {mutant.title}",
+                f"            {mutant.why}",
+                f"            {path.name}: {mutant.find!r} -> {mutant.replace!r}",
+            ],
+        )
+    return Result(mutant, False, [f"  \033[32mkilled\033[0m    {mutant.title}"])
 
 
-def random_mutants(n: int, seed: int) -> list[tuple[str, str, Path, str, str]]:
+def run_mutants(mutants: list[Mutant], trees: list[Path], timeout: int = SUITE_TIMEOUT) -> list[Result]:
+    """Check every mutant, one per free worker copy, and print the report in a stable order.
+
+    The results come back in the order the mutants were listed, not the order the workers happened
+    to finish, and that is also the order they print in, so a parallel run reads exactly like a
+    sequential one. A worker is a thread because all it does is wait on a pytest process.
+    """
+    free: queue.Queue[Path] = queue.Queue()
+    for tree in trees:
+        free.put(tree)
+
+    def one(mutant: Mutant) -> Result:
+        tree = free.get()
+        try:
+            return check(mutant, tree, timeout=timeout)
+        finally:
+            free.put(tree)
+
+    results: list[Result] = []
+    with ThreadPoolExecutor(max_workers=len(trees), thread_name_prefix="mutant") as pool:
+        for future in [pool.submit(one, m) for m in mutants]:
+            result = future.result()
+            print("\n".join(result.lines), flush=True)
+            results.append(result)
+    return results
+
+
+def random_mutants(n: int, seed: int, targets: list[str] | None = None) -> list[Mutant]:
     """Pick n random operator or constant flips at real sites in the target modules."""
     rng = random.Random(seed)
     sites = []
-    for name in TARGETS:
+    for name in TARGETS if targets is None else targets:
         path = APP / name
         if not path.exists():
             continue
@@ -664,28 +888,127 @@ def random_mutants(n: int, seed: int) -> list[tuple[str, str, Path, str, str]]:
     for name, lineno, line, pattern, repl in sites[:n]:
         mutated_line = re.sub(pattern, repl, line, count=1)
         out.append(
-            (
-                f"{name}:{lineno}",
+            Mutant(
+                name,
                 f"{line.strip()[:70]}  ->  {mutated_line.strip()[:70]}",
-                APP / name,
                 re.escape(line),
                 mutated_line.replace("\\", "\\\\"),
+                label=f"{name}:{lineno}",
+                regex=True,
             )
         )
     return out
 
 
-def main() -> int:
-    """Run the mutants and report the survivors."""
+# --- Choosing which mutants to run ---------------------------------------------------
+# A pull request that touches one module does not need every other mutant re-proved: they
+# were proved on main and nothing they touch has changed. CI passes the modules the diff names and
+# runs the whole set on every push to main, so main is never permanently unchecked.
+#
+# This filters *mutants*, never tests. Each mutant that does run still runs the whole SUITE, so no
+# test that used to be able to kill a mutant stops being asked.
+
+
+def module_name(token: str) -> str:
+    """The app-relative module name that a flag or a diff line is naming.
+
+    Accepts every form the same file gets written in: `semantic.py`, `app/semantic.py`,
+    `code/backend/app/semantic.py`, `./code/backend/app/domains/hr.py`. Anything up to and
+    including the last `app/` component is a path to the backend, not part of the name.
+    """
+    parts = [p for p in token.strip().replace("\\", "/").split("/") if p not in ("", ".")]
+    if "app" in parts:
+        parts = parts[len(parts) - parts[::-1].index("app") :]
+    return "/".join(parts)
+
+
+def select_modules(mutants: list[Mutant], tokens: list[str]) -> tuple[list[Mutant], list[str]]:
+    """The mutants living in the named modules, and the names that have none.
+
+    Matching is deliberately generous — app-relative name first, then bare filename — because the
+    failure this flag must not have is selecting nothing while still looking like a pass. A name
+    that matches no mutant is handed back rather than dropped, so the caller says so out loud.
+    """
+    exact: dict[str, list[Mutant]] = {}
+    by_base: dict[str, list[Mutant]] = {}
+    for mutant in mutants:
+        exact.setdefault(mutant.file, []).append(mutant)
+        by_base.setdefault(Path(mutant.file).name, []).append(mutant)
+    wanted: set[str] = set()
+    without: list[str] = []
+    for token in tokens:
+        name = module_name(token)
+        if not name:
+            continue
+        if name in exact:
+            wanted.add(name)
+        elif Path(name).name in by_base:
+            wanted.update(m.file for m in by_base[Path(name).name])
+        else:
+            without.append(token)
+    return [m for m in mutants if m.file in wanted], without
+
+
+def default_workers() -> int:
+    """Four, or fewer on a smaller machine. Each worker is one whole pytest process."""
+    return max(1, min(4, os.cpu_count() or 1))
+
+
+def parser() -> argparse.ArgumentParser:
+    """The command line. Split out so the tests can pin what the defaults mean."""
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--random", type=int, default=0, metavar="N", help="also run N random flips")
     ap.add_argument("--seed", type=int, default=None, help="seed for --random (default: time-based)")
     ap.add_argument("--all", action="store_true", help="curated plus 12 random")
-    args = ap.parse_args()
+    ap.add_argument(
+        "--workers",
+        type=int,
+        default=default_workers(),
+        metavar="N",
+        help="how many mutants to check at once, each in its own copy of the tree (default: %(default)s)",
+    )
+    # Default None, not "": the two are different answers and CI asks both. No flag at all means
+    # the full set. The flag with an empty value means "the diff named no module with mutants",
+    # which must check nothing — if that read as "everything" the fast path would silently become
+    # the slow one, and if the inverse read as "nothing" a push to main would check nothing at all.
+    ap.add_argument(
+        "--modules",
+        default=None,
+        metavar="LIST",
+        help="only mutants in these modules, comma separated (e.g. app/semantic.py,app/hive.py)",
+    )
+    return ap
+
+
+def main() -> int:
+    """Run the mutants and report the survivors."""
+    args = parser().parse_args()
     for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, _on_signal)
     seed = args.seed if args.seed is not None else int(time.time())
     n_random = 12 if args.all else args.random
+    workers = max(1, args.workers)
+    want_curated = n_random == 0 or args.all or args.random == 0
+
+    # Which mutants, and said out loud. A green check that silently ran nothing is worse than a
+    # slow one, so the mode and the count go in the log before any work starts.
+    filtered = args.modules is not None
+    tokens = [t.strip() for t in (args.modules or "").split(",") if t.strip()]
+    curated, no_mutants = select_modules(CURATED, tokens) if filtered else (CURATED, [])
+    targets = sorted({m.file for m in curated}) if filtered else TARGETS
+    randoms = random_mutants(n_random, seed, targets) if n_random else []
+    if filtered:
+        print(f"Mode: only the modules named — {', '.join(tokens) if tokens else '(none)'}")
+        if no_mutants:
+            print(f"  no mutants aimed at: {', '.join(no_mutants)}")
+        print(f"Mutants: {len(curated) if want_curated else 0} curated of {len(CURATED)}, {len(randoms)} random.")
+        if not (want_curated and curated) and not randoms:
+            print("\nNothing to check: none of those modules has a mutant. Passing.")
+            return 0
+    else:
+        print(f"Mode: the full set — {len(CURATED)} curated mutants over every module.")
+        print(f"Mutants: {len(curated) if want_curated else 0} curated, {len(randoms)} random.")
+    print(f"Workers: {workers}\n")
 
     stray = live_mutants()
     if stray:
@@ -697,34 +1020,43 @@ def main() -> int:
         print("Restore those lines (git checkout the file, if it is tracked) and run again.")
         return len(stray)
 
+    started = time.monotonic()
+    trees = make_trees(workers)
+    print(f"Copied the tree {workers}x in {time.monotonic() - started:.1f}s; mutants run only in those copies.")
+
+    # In a copy, not the real tree: a faithful copy is the thing everything below depends on, so
+    # the pre-flight proves both at once — the suite is green, and the copy is complete enough to
+    # run it. A copy that lost a file the suite reads shows up here, once, not as a sea of survivors.
     print("Checking the suite is green before we start...")
     output: list[str] = []
-    if not run_suite(keep=output):
+    if not run_suite(trees[0], keep=output):
         print("The suite is already red. Fix that first; mutation results would be meaningless.")
         print("\n".join("    " + line for line in "\n".join(output).strip().splitlines()[-30:]))
         return 1
     print("Green.\n")
 
-    survivors = []
+    results: list[Result] = []
 
-    if n_random == 0 or args.all or args.random == 0:
-        print(f"Curated mutants ({len(CURATED)}) — the invariants the design rests on")
-        for m in CURATED:
-            if not m.path.exists():
-                print(f"  SKIP  {m.file}: not present")
-                continue
-            out = check(m.why[:46], m.why, m.path, m.find, m.replace, m.count)
-            if out:
-                survivors.append(m.why)
+    if want_curated:
+        print(f"Curated mutants ({len(curated)}) — the invariants the design rests on")
+        results += run_mutants(curated, trees)
         print()
 
-    if n_random:
-        print(f"Random mutants ({n_random}, seed {seed})")
-        for label, why, path, find, repl in random_mutants(n_random, seed):
-            out = check(label, why, path, find, repl, 1, regex=True)
-            if out:
-                survivors.append(f"{label}  {why}")
+    if randoms:
+        print(f"Random mutants ({len(randoms)}, seed {seed})")
+        results += run_mutants(randoms, trees)
         print()
+
+    drop_run_dir()
+    # The count is of mutants that were really applied, not of mutants planned. A pattern that has
+    # drifted prints SKIP and checks nothing, and "checked 71" over 71 skips is the false all-clear
+    # this whole tool exists to avoid.
+    ran = [r for r in results if r.survived is not None]
+    survivors = [f"{r.mutant.label}  {r.mutant.why}" if r.mutant.label else r.mutant.why for r in ran if r.survived]
+    elapsed = time.monotonic() - started
+    print(f"Checked {len(ran)} mutant(s) in {int(elapsed // 60)}m {elapsed % 60:04.1f}s with {workers} worker(s).")
+    if len(ran) < len(results):
+        print(f"  {len(results) - len(ran)} were skipped, so they proved nothing — look at the SKIP lines above.")
 
     if survivors:
         print(f"\033[31m{len(survivors)} mutant(s) survived\033[0m — the tests did not notice:")

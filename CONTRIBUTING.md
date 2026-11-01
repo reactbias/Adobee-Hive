@@ -56,13 +56,15 @@ or wipes data, it goes through `guard.py`.
 
 ## Mutation testing
 
-CI breaks the code on purpose after the tests pass, to check the tests notice. The 35 curated mutants in
+CI breaks the code on purpose after the tests pass, to check the tests notice. The 71 curated mutants in
 `code/backend/tools/mutate.py` must all fail the suite; a survivor fails the build and means a missing
-assertion, not a broken feature. Run it before you push a change to federation, reputation, calibration,
-connections, sharing or registration:
+assertion, not a broken feature. On a pull request CI checks only the mutants aimed at the modules your
+diff touches, and on every push to main it checks all of them. Run it before you push a change to
+federation, reputation, calibration, connections, sharing or registration:
 
 ```bash
-cd code/backend && python tools/mutate.py
+cd code/backend && python tools/mutate.py                              # all 71, four at a time
+cd code/backend && python tools/mutate.py --modules app/semantic.py    # just the ones you touched
 ```
 
 Adding a rule the design depends on? Add a mutant for it, so the rule cannot be quietly deleted later.

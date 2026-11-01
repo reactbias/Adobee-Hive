@@ -146,18 +146,26 @@ outside `t()`. How to write tests first: [CONTRIBUTING.md](../CONTRIBUTING.md#te
 
 ```bash
 cd code/backend && source .venv/bin/activate
-python tools/mutate.py                  # the 51 curated mutants; all must die
+python tools/mutate.py                  # the 71 curated mutants; all must die
+python tools/mutate.py --modules app/semantic.py,app/hive.py   # only these modules
 python tools/mutate.py --random 8       # seeded random operator and constant flips
 python tools/mutate.py --all
 ```
 
 Each mutant breaks one line, runs the suite, and restores the file. A mutant the tests still pass is a
 missing assertion, printed with the line to look at. Exit code is the survivor count, so CI gates on it.
-Takes about twelve minutes, because there is no way to know whether the tests notice a break except to run
-them against it — which is why it is a separate CI job rather than part of `backend`.
 
-Signals are restored on SIGINT, SIGTERM and SIGHUP, and a run refuses to start if a previous one left a
-mutant behind. Full notes, including the holes it has found and the three it has not closed:
+There is no way to know whether the tests notice a break except to run them against it, so the cost is
+71 × one suite run. Four mutants are checked at a time, each in its own throwaway copy of the tree: a full
+local run measured 19m34s sequentially and 6m28s with four workers, same 71 mutants, same
+`No survivors.` On a runner the whole job is about eight minutes. CI goes further and checks only the modules
+a pull request touched, keeping all 71 for every push to main — `--modules app/calibration.py` is three
+mutants and 43s. It stays a separate CI job rather than part of
+`backend` so a survivor reads as "the tests have a hole", not "the build is broken".
+
+Your checkout is never mutated — the copies are — and they are deleted on the way out, including on
+SIGINT, SIGTERM and SIGHUP. A run still refuses to start if an older in-place run left a mutant behind.
+Full notes, including the holes it has found and the three it has not closed:
 [code/backend/tools/README.md](../code/backend/tools/README.md).
 
 ## Be the agent: the MCP endpoint
