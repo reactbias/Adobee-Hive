@@ -1,6 +1,28 @@
-<p align="center"><img src="assets/brand/adobee-hive-wordmark.png" alt="Adobee Hive" width="420"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/adobee-hive-wordmark-light.png">
+    <img src="assets/brand/adobee-hive-wordmark.png" alt="Adobee Hive" width="420">
+  </picture>
+</p>
 
-<p align="center"><b>Websites are for humans. Hives are for agents.</b></p>
+<p align="center"><b>Buzzing with Autonomous Intelligence.</b></p>
+
+<p align="center">Websites are for humans. <b><i>Hives are for agents.</i></b></p>
+
+<p align="center">
+  <a href="https://github.com/reactbias/Adobee-Hive/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/reactbias/Adobee-Hive/ci.yml?branch=main&style=flat-square&label=CI"></a>
+  <a href="code/backend/tools/README.md"><img alt="Mutation gate: 78 curated mutants" src="https://img.shields.io/badge/mutation%20gate-78%20curated%20mutants-a24f2c?style=flat-square"></a>
+  <a href="code/backend/tests"><img alt="785 backend tests and 445 browser tests" src="https://img.shields.io/badge/tests-785%20backend%20%C2%B7%20445%20browser-16181d?style=flat-square"></a>
+  <a href="license.txt"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-d99a1e?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <img alt="Python 3.12" src="https://img.shields.io/badge/Python-3.12-3776ab?style=flat-square&logo=python&logoColor=white">
+  <img alt="Node 22" src="https://img.shields.io/badge/Node-22-5fa04e?style=flat-square&logo=nodedotjs&logoColor=white">
+  <img alt="MCP over Streamable HTTP" src="https://img.shields.io/badge/MCP-Streamable%20HTTP-6f42c1?style=flat-square">
+  <img alt="Runs without an API key" src="https://img.shields.io/badge/API%20key-not%20required-1f7a4d?style=flat-square">
+  <a href="https://reactbias.github.io/Adobee-Hive/"><img alt="Try the hosted demo" src="https://img.shields.io/badge/try%20it-hosted%20demo-a24f2c?style=flat-square"></a>
+</p>
 
 Adobee Hive is Team B6's entry for Adobe's **The Post-Website Business** challenge at BaselHack 2026. It answers
 one question: when a hotel's, café's or freelancer's **first visitor is an AI agent and not a person on a
@@ -62,9 +84,37 @@ The full argument, including why we think this is where the web goes either way,
 
 > On GitHub you find projects to work on. On Adobee Hive, agents find businesses and people to work with.
 
-## What actually works
+## What you get out of it
 
-Demonstrable now, on a checkout of `main`. Each row names the code that does it.
+Three people stand around this thing, and each of them gets something they cannot get from a website.
+
+**If you run a small business**, you get a presence that costs one document instead of a site: point a hub at a
+folder you already keep, check the Card it drafts, and sign. Agents can then find you, verify your prices against
+your own signature and book you, and you keep the guest — there is no aggregator in the middle taking a cut and
+owning the relationship. You also learn what you are *missing*: every request the hub could not answer is
+recorded, so you see that twelve agents asked for a dog-friendly room this week before you lose the thirteenth.
+Edit in plain words — "add sauna, the courtyard double is 165 francs" — read the diff, sign, and the change is
+live for every agent at once.
+
+**If you are building an agent**, you get a directory you do not have to scrape. One MCP endpoint, 24 tools,
+structured answers: search, fetch a signed Card, check availability, hold a booking, ask for an introduction. Your
+agent verifies every fact itself against a key published by the Card's own hub, so you are not trusting our
+server — and every result carries its score breakdown and the reason each other candidate lost, which is
+something a search box has never given you. No key, no contract and no sign-up to try it: point a client at
+`/mcp/` and start.
+
+**If you run a hub** — a town, a trade association, a chain — you get the front door back. Admission is yours to
+set (`open`, `vetted`, `invite`, `closed`), the search reaches your peers as far as the person asks it to, and a
+browser panel shows your queue, your entities, your blocklist and your neighbours. Your peers score you on
+whether your claims survived contact with their users, so honest vetting is the cheapest strategy available to
+you rather than a favour you do the network.
+
+And in every case: **the person says yes.** Nothing that commits someone — a booking, an introduction, a contact
+detail — happens without a human approving it, and they see every call the agent made before they do.
+
+## What works today
+
+Demonstrable now, on a checkout of `main`, and each row says where in the code to check it.
 
 | It does this | Where |
 | --- | --- |
@@ -161,7 +211,10 @@ folder handshake — are in [documentation/DIAGRAMS.md](documentation/DIAGRAMS.m
 [documentation/diagrams/](documentation/diagrams/README.md). A test fails CI if a new module, endpoint, MCP tool
 or panel is missing from either page.
 
-### Boundaries to keep straight
+<details>
+<summary><b>Boundaries to keep straight</b> — seven distinctions that save an afternoon each</summary>
+
+<br>
 
 - **Index versus files.** A Card is JSON with offers/needs, descriptions and optional folder metadata. Original
   PDFs, images and other bytes stay on disk; DuckDB and Postgres are not a file-sync service.
@@ -180,6 +233,8 @@ or panel is missing from either page.
   peer reputation are process-local. Use one backend worker.
 - **Admin versus ownership.** Operator writes fail closed without configured admin credentials. Owner checks are
   separate. Shared operator credentials are not individual owner accounts.
+
+</details>
 
 ### The two journeys
 
@@ -237,7 +292,10 @@ Vite proxies `/api`, `/mcp` and `/.well-known` to `http://localhost:8000`; set `
 another port. `VITE_API_URL` is only the build-time default for which hub a visitor talks to before they pick
 one — a selected hub's URL overrides it, per call.
 
-### Configuration that matters
+<details>
+<summary><b>Configuration that matters</b> — the eight settings worth knowing before the full list in <code>app/config.py</code></summary>
+
+<br>
 
 | Setting | Meaning |
 | --- | --- |
@@ -252,6 +310,8 @@ one — a selected hub's URL overrides it, per call.
 
 `code/.env.example` is a starting subset; `app/config.py` holds every setting. Never commit `.env`, DuckDB files,
 keys or personal data.
+
+</details>
 
 ### Three hubs on one machine
 
@@ -287,8 +347,12 @@ curl -fsS http://localhost:8000/api/hive/cards/hotel-rheinblick
 ```
 
 Live schemas are at `/docs` and `/openapi.json`, and `GET /api/hub/registration` publishes the admission policy
-and the exact field ceilings, so read those from the hub rather than hard-coding them. Four things that catch
-every new consumer:
+and the exact field ceilings, so read those from the hub rather than hard-coding them.
+
+<details>
+<summary>Four things that catch every new consumer</summary>
+
+<br>
 
 - `offers` and `needs` are the index; `kind` is only a filter, and `looking_for=offers|needs|any` chooses which
   side of the market to search. A hub carries a tavern, a developer and an electrician side by side, so nothing
@@ -299,6 +363,8 @@ every new consumer:
   do not ask the answering hub for a remote id. Show `provenance.path` origin-first; a user must never be unable
   to tell whose directory answered.
 - An unknown card id returns `400`, not `404`: every `HiveError` maps to `400`.
+
+</details>
 
 The full written spec, with real payloads and the scoring breakdown, is
 [SEARCH_API.md](documentation/SEARCH_API.md).
@@ -328,7 +394,12 @@ asyncio.run(main())
 Call `list_tools()` for the live schemas; the groups are `hive_discover`/`hive_get_card`,
 `hive_check_availability`/`hive_book`/`hive_cancel`/`hive_review`, `hub_directory`,
 `hub_connect`/`hub_connections`/`hub_standing`, `hub_registration`/`hub_register`, `hive_owner_*`, and the domain
-tools `hr_find_people`/`hr_request_intro`, `explore_ask` and `hive_scout`. Two rules that are not obvious:
+tools `hr_find_people`/`hr_request_intro`, `explore_ask` and `hive_scout`.
+
+<details>
+<summary>Two rules that are not obvious</summary>
+
+<br>
 
 - **A tool refusal can be a structured `error` result.** Do not assume a completed MCP call succeeded.
 - **Folder reads and grants are REST calls, not MCP tools.** `hub_connect` can return an inline manifest and a
@@ -336,7 +407,17 @@ tools `hr_find_people`/`hr_request_intro`, `explore_ask` and `hive_scout`. Two r
   per-path grant before reading non-public bytes. `hr_request_intro` records a request and returns
   `pending_consent` — it does not release a CV.
 
+</details>
+
 ### The Card
+
+One entity — a hotel, an electrician, a frontend developer — is one Card, and it is the only thing that crosses a
+hub boundary.
+
+<details>
+<summary>What is in it, and the two traps</summary>
+
+<br>
 
 Registration requires exactly `id`, `name` and `kind`; **guard every other read**, because the rest is optional
 and routinely absent. `id` is unique within a hub, not globally. Offers, needs, description, units, contact and
@@ -351,6 +432,8 @@ Do not mix the two access vocabularies: item sharing is `public`, `confirm`, `pu
 gaps remain ([#121](https://github.com/reactbias/Adobee-Hive/issues/121)), so these flags are not a blanket
 promise that every public API redacts personal data — which is one more reason the seed data is fictional.
 
+</details>
+
 Field-by-field reference and four real example documents:
 [documentation/cards/](documentation/cards/README.md) — a
 [business Card](documentation/cards/hotel-krafft.card.json), a
@@ -359,19 +442,29 @@ Field-by-field reference and four real example documents:
 
 ## How it is tested
 
-Around 790 backend tests, including an end-to-end booking over MCP and a federated search driven through an
-in-process transport, plus component tests for the browser. Lint, format, tests and the production build all run
-in CI on every pull request.
+**785 backend tests** — including an end-to-end booking over MCP and a federated search driven through an
+in-process transport — and **445 browser tests** across 45 files. Lint, format, both suites, a secret scan and
+the production build run in CI on every pull request, against a throwaway Postgres so the snapshot round trip
+runs against the real thing.
+
+Those are counts of tests, not a coverage percentage. **We have not measured coverage and do not quote one**,
+because the number we would rather be judged on is the next paragraph.
 
 Then CI does something less usual. Coverage proves a line ran; it does not prove a test would fail if that line
 were wrong. So after the ordinary tests pass, the **mutation gate deliberately breaks the code** and checks the
 suite notices: remove the loop guard that stops a federated search revisiting a hub, flip the sign of a hub's
-calibration error, let a stale introduction be scored, let a blocked entity back into a search. Every curated
-mutant must fail the tests, and a mutant nothing notices is a hole in the tests, named and located. It has already
-found four real ones — the clearest being an `HttpTransport` with no test at all, whose key parser every relayed
-card is verified against was never executed, because the fakes replaced it wholesale. Coverage could not see it:
-the line *was* covered, by a fake. The harness is itself tested, because a confident false all-clear is the one
-failure mode that makes such a tool worse than useless.
+calibration error, let a stale introduction be scored, let a blocked entity back into a search. There are **78
+curated mutants**, every one of them must fail the tests, and **CI fails the build if a single one survives** —
+a mutant nothing notices is a hole in the tests, named and located. A push to `main` runs the full set; a pull
+request runs the ones aimed at the modules it touched, plus a seeded random pass that is advisory.
+
+It has already found four real holes — the clearest being an `HttpTransport` with no test at all, whose key
+parser every relayed card is verified against was never executed, because the fakes replaced it wholesale.
+Coverage could not have seen it: the line *was* covered, by a fake. The harness is itself tested, because a
+confident false all-clear is the one failure mode that makes such a tool worse than useless.
+
+The CI badge at the top of this page reports the current state of both jobs, mutation gate included, and it is
+a live badge rather than a claim — if it is red, a mutant is surviving or a test is failing right now.
 
 How to run it, and what each mutant protects: [code/backend/tools/README.md](code/backend/tools/README.md).
 
