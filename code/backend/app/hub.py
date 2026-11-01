@@ -210,6 +210,9 @@ def connect(
         # reason again — the entity's folder is on its own hub, not on this disk).
         out["remote"] = True
         out["origin_hub"] = target_hub
+        # Appends rather than replaces: the remote case has its own thing to explain, and the caller
+        # still needs the part every introduction needs — the deadline, and the score afterwards.
+        # Found by running two hubs and reading the answer: the remote sentence had quietly dropped it.
         out["says"] = (
             f"{entity_id} is carried by {target_hub}, not by this hub. Its card was checked against the key"
             f" {target_hub} pinned for it. This hub has recorded the introduction"
@@ -218,6 +221,7 @@ def connect(
                 if flag == sharing.CONFIRM
                 else " and opened it."
             )
+            + f" {_next_step(row)}"
         )
     return out
 
@@ -231,22 +235,33 @@ def _says(row: dict[str, Any], entity_id: str, flag: str) -> str:
     says it. In particular it does not claim a notification: nothing here sends one, and a request
     waits in this hub's own list until the owner or their agent looks.
     """
-    waiting = row["state"] == connections.REQUESTED
-    left = row.get("stale_in_days")
-    deadline = f" It runs out in {left} days" if isinstance(left, int) else ""
-    if waiting:
+    if row["state"] == connections.REQUESTED:
         return (
             f"{entity_id} is on {config.HIVE_NAME} and shares this only with their say-so, so the introduction is"
             f" recorded and waiting for it. Nobody is sent a message: it sits in this hub's list until"
-            f" {entity_id} or their agent looks, which you can watch with hub_connections.{deadline}, and then"
-            " the request is closed unanswered."
+            f" {entity_id} or their agent looks, which you can watch with hub_connections. {_next_step(row)}"
         )
     return (
         f"{entity_id} is on {config.HIVE_NAME}, this hub, which is why target_hub and via_hub are empty — there"
         f" was no other hub in it. Their card is published as freely connectable, so the introduction is open"
-        f" already and nobody has to agree to anything. Contact them with what the card gives you.{deadline},"
-        " after which it can no longer be scored — so once the two have actually met, call hub_score with this"
-        " connection's id, which is the only thing that teaches this Hive anything."
+        f" already and nobody has to agree to anything: contact them with what the card gives you."
+        f" {_next_step(row)}"
+    )
+
+
+def _next_step(row: dict[str, Any]) -> str:
+    """The part every introduction needs, wherever the entity is: the deadline, and the score after.
+
+    Said once and appended to each case, local and remote alike. The remote sentence used to replace
+    the whole of `says` and so dropped it, which two real hubs showed and no fake would have.
+    """
+    left = row.get("stale_in_days")
+    runs_out = f" in {left} days" if isinstance(left, int) else f" on {row.get('stale_at')}"
+    if row["state"] == connections.REQUESTED:
+        return f"It runs out{runs_out}, after which the request is closed unanswered."
+    return (
+        f"It runs out{runs_out}, after which it can no longer be scored — so once the two have actually met, call"
+        " hub_score with this connection's id, which is the only thing that teaches this Hive anything."
     )
 
 

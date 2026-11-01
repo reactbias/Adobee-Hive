@@ -565,6 +565,12 @@ CURATED: list[Mutant] = [
     ),
     Mutant(
         "hub.py",
+        "a remote introduction drops the deadline and the score, as it did before two hubs showed it",
+        'f" {_next_step(row)}"\n        )',
+        '""\n        )',
+    ),
+    Mutant(
+        "hub.py",
         "a waiting request claims somebody was notified, which nothing here does",
         'f" recorded and waiting for it. Nobody is sent a message: it sits in this hub\'s list until"',
         'f" recorded and waiting for it. Its owner has been notified and will answer, probably from"',

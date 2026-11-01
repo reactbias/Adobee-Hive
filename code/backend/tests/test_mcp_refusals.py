@@ -20,12 +20,14 @@ most likely to get wrong are refused in words rather than in a schema dump; and 
 from __future__ import annotations
 
 import asyncio
+import base64
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from mcp import Client
 from mcp.server.mcpserver.exceptions import ToolError
 
-from app import config, connections, hive, hub
+from app import config, connections, federation, hive, hub
 from app.domains import base
 from app.mcp_server import server
 from tests.mcp_result import tool_result
@@ -43,6 +45,36 @@ def _call(tool: str, args: dict):
 
 def _text(result) -> str:
     return result.content[0].text if result.content else ""
+
+
+BERN, THEM = "bern", "elektro-mattenhof"
+
+
+def _remote_card() -> tuple[dict, dict[str, str]]:
+    """A card signed by a fresh key, plus the registry entry that pins that key for it.
+
+    The same construction `tests/test_cross_hub_connect.py` uses: never published into this hub's
+    index, because the point is an entity this hub does not carry.
+    """
+    key = Ed25519PrivateKey.generate()
+    public = base64.b64encode(key.public_key().public_bytes_raw()).decode()
+    body = {
+        "id": THEM,
+        "slug": THEM,
+        "kind": "service",
+        "name": "Elektro Mattenhof (fictional)",
+        "description": "Invented for the demo: electrical work in Bern.",
+        "offers": [{"title": "electrician"}],
+        "version": 1,
+    }
+    signature = base64.b64encode(key.sign(hive.canonical(body))).decode()
+    return {**body, "trust": {"signature": signature, "public_key": public}}, {THEM: public}
+
+
+def _peer_knows(pins: dict[str, str]) -> None:
+    """Teach this hub bern's key registry the way the background asking would have."""
+    federation.forget()
+    federation._by_hub[BERN] = {"hub_id": BERN, "owner_keys": pins}
 
 
 # ---------------------------------------------------------------- a failure is declared to be one
@@ -169,10 +201,22 @@ def test_the_sentence_is_on_the_rest_answer_too_because_it_is_one_hub_call(clien
     assert "says" in out and "hub_score" in out["says"]
 
 
-def test_a_remote_introduction_still_says_its_own_thing(client):
-    """The remote case already explained itself; adding the local one must not have replaced it."""
-    from app import blocklist  # noqa: PLC0415 - only needed to prove the remote branch is untouched
+def test_a_remote_introduction_keeps_its_own_sentence_and_the_next_step_too(client):
+    """Found by running two real hubs and reading the answer, which no fake would have shown.
 
-    assert blocklist is not None
+    The remote branch replaced the whole of `says` with its own explanation, so an introduction to
+    somebody on a peer came back without the one thing every introduction needs: that it expires,
+    and that `hub_score` afterwards is what any of this is for.
+    """
+    card, pins = _remote_card()
+    _peer_knows(pins)
+    out = hub.connect("Mara Keller", THEM, target_hub=BERN, card=card)
+
+    assert "carried by bern" in out["says"], "the remote explanation is still there"
+    assert "hub_score" in out["says"], "and so is the step that comes after"
+    assert "runs out" in out["says"]
+
+
+def test_a_remote_entity_with_no_target_hub_is_still_refused_in_words(client):
     with pytest.raises(hub.HubError, match="target_hub"):
         hub.connect("Mara Keller", "elektro-somewhere", card={"id": "elektro-somewhere"})
