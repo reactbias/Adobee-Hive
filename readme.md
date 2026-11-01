@@ -1,6 +1,6 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/adobee-hive-wordmark-light.png">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/adobee-hive-wordmark-light-v2.png">
     <img src="assets/brand/adobee-hive-wordmark-v2.png" alt="Adobee Hive" width="420">
   </picture>
 </p>
