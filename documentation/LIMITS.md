@@ -63,6 +63,69 @@ by a key `hive.publish` generates and keeps in `hive_keys`, and that is the key 
 server, for the demo* — registration narrows the gap by pinning who applied, it does not close it. Owner-held
 signing keys are in [VISION.md](VISION.md#beyond-the-weekend).
 
+**An introduction can be asked for through your own hub, but your own hub cannot prove it is itself.**
+An agent that finds something a peer carries can ask *its* hub for the introduction, and that hub
+tells the peer on its member's behalf
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)). The point is the record, not the
+mechanism: the row calibration reads stays on the hub whose search found the match, with the carrying
+hub's claim frozen on it, and the peer learns that a member of another hub asked. Walking to the peer
+instead was always possible — `GET /api/hub/directory` gives every peer a working URL — and it is
+exactly what loses the hub the only evidence it ever gets about that peer.
+
+What the forward cannot do is prove who is calling. There is no hub identity key to sign it with, so
+the receiving hub records `requester_hub` as a claim and anyone who can reach its port can send the
+same call naming any hub. That is the unanchored hub id already in SECURITY.md, seen from the other
+side. The forward is also best effort by design: a peer that is down leaves `forwarded` saying so and
+never costs this hub the record of what its own member asked for.
+
+**Nobody has to prove who is asking for an introduction.** `requester` is a string on
+`POST /api/hub/connect` and on the `hub_connect` MCP tool, and this hub has no accounts to check it
+against. So an introduction can be created under any name by anyone who can reach the port, and the
+rows that result are the input `calibration.py` reads — the measurement that orders the hub
+directory. A hub's own evidence is writable by strangers, and that is worth saying before a jury
+rather than after.
+
+What changed with [#158](https://github.com/reactbias/Adobee-Hive/issues/158) is that the ledger
+stopped claiming more than it knows. `requester_hub` used to default to `config.HIVE_HUB_ID` — the
+hub *receiving* the request — so an agent from Zurich asking Basel was recorded as a Basel member.
+Now the hub records `requester_proof`: `member` when it carries an entity by that id, `claimed` when
+the caller named a hub, `none` when nobody said anything, and never `member` because of something in
+the request. The proof gates nothing, deliberately: a gate keyed on an unauthenticated string would
+refuse honest callers and admit anybody who guessed its shape. Per-owner authorization is
+[#135](https://github.com/reactbias/Adobee-Hive/issues/135); the step that makes the question
+answerable at all is a hub vouching for its own member
+([#159](https://github.com/reactbias/Adobee-Hive/issues/159)), because a hub can vouch for a member
+and cannot vouch for a string.
+**Withdrawing an application is proved; being the person who applied is not.** An application id is
+a lookup and no longer a mutation credential
+([#108](https://github.com/reactbias/Adobee-Hive/issues/108)): withdrawal takes a signed action under
+the key the application registered, or a capability the submission returned once for an application
+whose key the hub holds, or the operator through their own route — and the row credits whichever of
+the three it actually was, so it can no longer read "withdrawn by the applicant" about an act the
+applicant knew nothing about.
+
+What is proved is key possession or secret possession, which is not identity. A signature says
+whoever holds that private key asked; a capability says whoever read the submission's answer asked.
+The capability is the weaker half and is honest about it: over MCP the submission's answer lands in
+the agent's transcript, so anything that can read that transcript can withdraw the application until
+it is decided. There is no revocation and no rollover — bringing your own `public_key` avoids the
+problem rather than mitigating it, and the operator's route is the way out if it happens.
+**An introduction's two decisions are authorised; the people behind them are not identified.** The
+owner's yes and the requester's score used to need nothing at all, so a caller who knew a connection
+id could fake a consent and spend somebody else's one final score
+([#107](https://github.com/reactbias/Adobee-Hive/issues/107)). Both doors now fail closed, and what
+they take is the strongest thing this hub has: a secret bound to one side of the folder link the row
+stands on, a signature under the key the target registered, or — for a decision only, never a score
+— this hub's hub-wide owner token.
+
+None of that is identity. A link secret says whoever holds it is that side of that link; a signature
+says whoever holds that private key answered. The secret is minted once and handed over in the
+connect answer, which over MCP means it is written into the agent's transcript, so anything that can
+read the transcript can score the introduction. The owner token is one secret for the whole hub, so
+it is recorded on the row as `owner token` rather than as the owner's own yes, and it buys nothing at
+the scoring door. Per-owner accounts
+([#135](https://github.com/reactbias/Adobee-Hive/issues/135)) are the fix for the last of those.
+
 **Calibration does not reach the search rank.** A federated result is ranked
 `local_relevance × hub_path_trust × hop_decay`, and `hub_path_trust` comes from `reputation.py` — declared versus
 observed vetting, paid placement, availability, latency, cards that failed verification here. The sharper

@@ -267,6 +267,47 @@ def test_the_hub_facade_still_screens_what_federation_already_screened(client, n
     assert "hotel-limmat" not in {m["id"] for m in served["matches"]}
 
 
+def test_a_blocked_hub_is_not_named_as_a_place_to_go(client, net):
+    """`carriers_of` (#159) points a refusal at the peer that pins the entity's key. Not a blocked one.
+
+    Naming it hands the asker the hub id and the URL, and the asker's next move is to query it — so
+    the hint would leak exactly what blocking the hub was meant to stop, one indirection further out.
+    The two features would otherwise disagree out loud: this hub refusing to talk to a peer while
+    telling its users to.
+    """
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    transport = net(zurich)
+    asyncio.run(federation.ask_peers(transport))
+    assert federation.carriers_of("hotel-limmat") == [{"hub": "zurich", "url": zurich.url}], "the control"
+
+    blocklist.block(blocklist.HUB, "zurich", "spam")
+
+    assert federation.carriers_of("hotel-limmat") == []
+
+
+def test_a_blocked_entity_gets_no_hint_either(client, net):
+    """An exclusion naming a blocked entity would be no better than a match; so would a hint."""
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    transport = net(zurich)
+    asyncio.run(federation.ask_peers(transport))
+    blocklist.block(blocklist.ENTITY, "hotel-limmat", "court order")
+
+    assert federation.carriers_of("hotel-limmat") == []
+
+
+def test_the_refusal_an_agent_reads_does_not_point_at_a_blocked_hub(client, net):
+    """End to end on the served path: `hub.connect` builds its refusal from `carriers_of`."""
+    zurich = FakeHive("zurich", cards=[_card("hotel-limmat", "Hotel Limmat (fictional)")])
+    transport = net(zurich)
+    asyncio.run(federation.ask_peers(transport))
+    blocklist.block(blocklist.HUB, "zurich", "spam")
+
+    with pytest.raises(hub.HubError) as refused:
+        hub.connect("Mara Keller", "hotel-limmat")
+
+    assert "zurich" not in str(refused.value), str(refused.value)
+
+
 # ---------------------------------------------------------------- and nothing of ours goes back out
 
 
