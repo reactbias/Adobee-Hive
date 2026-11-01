@@ -165,22 +165,6 @@ Open http://localhost:5173. The default is the build's own hub; **Change Hive** 
 
 Vite proxies `/api`, `/mcp` and `/.well-known` to `http://localhost:8000`. For a backend on another port, set `VITE_DEV_BACKEND` when starting Vite. `VITE_API_URL` is a browser build-time default; a selected hub's URL overrides it. Pointing the browser at another hub must change the actual API target, not only its label.
 
-### Or the LAN instance: three federated hubs, sign up from a phone
-
-`localhost` above is one hub, which cannot show federation and cannot be opened from anyone else's device. For
-that, `./lan.sh up` starts three peered hubs plus the app on this machine's LAN address and prints the join URL —
-no install on the other devices, laptop or phone. Ports: the app is fixed at `8440`, the hubs take the first free
-from `8420`. [DEVELOPER.md](documentation/DEVELOPER.md#three-hubs-on-one-machine-lansh) has the details.
-
-Two things that will otherwise cost you an hour:
-
-- **The address changes whenever the machine switches network**, and nothing looks broken when it does — the hubs
-  still answer and `./lan.sh check` still passes, while every link people were given and every peer URL points at
-  the old address. `check` compares against `.lan/state` and warns; the fix is `./lan.sh down && ./lan.sh up`.
-- **Venue wifi usually has client isolation**, which blocks device-to-device traffic at the access point where no
-  local config can reach it. Test from a second device early; if it fails, put everyone on a phone hotspot,
-  including this laptop.
-
 ### Configuration that matters
 
 | Setting | Meaning |
@@ -206,7 +190,7 @@ PORT_APP=8540 PORT_A=8520 PORT_B=8521 PORT_C=8522 ./lan.sh up
 
 The launcher seeds fictional vaults through registration, starts Basel/Zürich/Bern with separate databases and builds/proxies the app. Pin unused ports when another stack is already running; otherwise the hub ports can move. Read the URLs and logs it prints. It requires the venv at `code/backend/.venv`.
 
-**Only Ole/the current host operator should start or stop the shared LAN stack.** Do not reset or reseed the presentation instance as a test. `lan.sh` now checks ownership before it stops anything — a pid has to be a `uvicorn` or `vite` whose working directory is inside the calling checkout, which `down` and the app-port reclaim both apply, so another worktree's stack is named and left alone rather than killed. That makes the script safe; it does not make the shared instance your sandbox.
+**Only Ole/the current host operator should start or stop the shared LAN stack.** `lan.sh up` can reclaim its configured app port; choose a free one, not another team's live port. Do not reset or reseed the presentation instance as a test. The older warning in `SEARCH_API.md` about `down` sweeping every worktree is historical: current cleanup checks process working directories, but the shared instance is still not your sandbox.
 
 ## Integration contracts
 

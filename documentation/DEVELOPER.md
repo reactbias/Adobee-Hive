@@ -91,8 +91,16 @@ What it does, and why each part is the way it is:
   this repo run at once and share the `8420`–`8445` range, so a process that fails either test is named and left
   alone. `up` refuses and tells you to pin `PORT_APP` rather than reclaiming a port it does not own.
 
-If another device cannot reach it but this one can, the wifi has client isolation; use a phone hotspot and put
-every device on it.
+### Two things that otherwise cost an hour
+
+- **The address changes whenever the machine switches network**, and nothing looks broken when it does — the
+  hubs still answer and `./lan.sh check` still passes, while every link people were given and every peer URL
+  names the old address. `check` compares against `.lan/state` and warns. Next section.
+- **Venue wifi usually has client isolation**, which blocks device-to-device traffic at the access point, where
+  no local configuration can reach it. Nothing is misconfigured and nothing can be fixed on the laptop: every
+  service already binds `0.0.0.0` and the firewall is already off. Test from a second device early
+  (`./lan.sh check` prints the curl to run), and if it fails put everyone on a phone hotspot, this laptop
+  included.
 
 ### When the laptop changes network
 
