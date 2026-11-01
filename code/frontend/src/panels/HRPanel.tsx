@@ -11,7 +11,7 @@ const step = (...args: [string, Step["input"], Step["output"]]): Step => {
   return { tool, input, output };
 };
 
-export default function HRAgent() {
+export default function HRPanel() {
   const { t } = useI18n();
   const [title, setTitle] = useState("Python Engineer");
   const [description, setDescription] = useState("Build hiring tools for a growing product team in Basel.");
