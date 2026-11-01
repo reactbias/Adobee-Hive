@@ -805,6 +805,11 @@ const fr: Record<Key, string> = {
   "score.exact": "Merci. {hub} avait vu juste.",
   "score.thanks": "Merci. Votre note est enregistrée.",
   "score.standing": "Où cela place {hub} :",
+  "asks.title": "Ce que vous avez demandé avant",
+  "asks.again": "Redemander : {ask}",
+  "asks.forget": "Oublier tout cela",
+  "asks.only":
+    "Conservé dans ce navigateur uniquement. Le hub note qu'une recherche a eu lieu, jamais ce que vous avez tapé ni qui vous êtes.",
   "requests.title": "En attente de votre accord",
   "requests.from": "{who} demande une mise en relation",
   "requests.accept": "Accepter",
