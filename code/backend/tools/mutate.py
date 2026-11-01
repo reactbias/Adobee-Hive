@@ -69,6 +69,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
+    "tests/test_budgets.py",
 ]
 
 
@@ -106,6 +107,48 @@ class Mutant:
 # Each one is a bug a tired person could plausibly write at 3am, aimed at an invariant the
 # design depends on. If the suite does not catch these, the suite is decorative.
 CURATED: list[Mutant] = [
+    Mutant(
+        "guard.py",
+        "the MCP door stops spending, so a budget exhausted over REST lets MCP run the same work",
+        "    return over_budget(limiter, client)",
+        '    return ""',
+    ),
+    Mutant(
+        "guard.py",
+        "every MCP caller shares one bucket, so one address spends everybody's budget",
+        'return f"mcp:{host}" if host else IN_PROCESS',
+        "return IN_PROCESS",
+    ),
+    Mutant(
+        "guard.py",
+        "an in-process call is waved through whatever the policy says, so peer fan-out goes uncounted",
+        "if client == IN_PROCESS and not charge_in_process:",
+        "if client == IN_PROCESS:",
+    ),
+    Mutant(
+        "limits.py",
+        "a discovery answer is never cut, so one call can carry every card on the hub",
+        "    if len(matches) <= cap:\n        return found",
+        "    if True:\n        return found",
+    ),
+    Mutant(
+        "limits.py",
+        "the answer ceiling is lifted, so a caller can ask for an unbounded answer again",
+        "MAX_ANSWER_MATCHES = 50",
+        "MAX_ANSWER_MATCHES = 10_000",
+    ),
+    Mutant(
+        "limits.py",
+        "the limit clamp loses its floor, so limit=0 answers with nothing instead of something",
+        "cap = DEFAULT_ANSWER_MATCHES if limit is None else max(1, min(int(limit), MAX_ANSWER_MATCHES))",
+        "cap = DEFAULT_ANSWER_MATCHES if limit is None else min(int(limit), MAX_ANSWER_MATCHES)",
+    ),
+    Mutant(
+        "limits.py",
+        "a cut answer stops saying it was cut, so a client cannot tell it from the whole Hive",
+        '"truncated": True,',
+        '"truncated": False,',
+    ),
     Mutant(
         "federation.py",
         "a hop forwards its own radius, so the search never stops shrinking",
@@ -596,6 +639,7 @@ TARGETS = [
     "audit.py",
     "peers.py",
     "limits.py",
+    "guard.py",
 ]
 
 
