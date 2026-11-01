@@ -655,12 +655,15 @@ which is the best evidence an agent will get for what to change. Without the tok
 through as initials (`"M. K."`) and **nothing else is withheld** — the same degradation as the REST
 route, so an agent is never locked out of looking.
 
-**`hive_owner_propose`** takes a plain-language `instruction` and publishes nothing:
+**`hive_owner_propose`** takes a plain-language `instruction` and publishes nothing. Keep the token in
+the environment rather than in the command, so it stays out of your shell history:
 
 ```bash
+export OWNER_TOKEN=…   # whatever this hub's operator set as OWNER_EDIT_TOKEN
+
 curl -s http://127.0.0.1:8480/mcp/ -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -H 'X-Owner-Token: demo-owner-token' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hive_owner_propose",
        "arguments":{"card_id":"hotel-gare","instruction":"add dog-friendly, standard double 150"}}}'
 ```
@@ -691,7 +694,7 @@ publishing takes back.
 ```bash
 curl -s http://127.0.0.1:8480/mcp/ -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
-  -H 'X-Owner-Token: demo-owner-token' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hive_owner_publish",
        "arguments":{"card_id":"hotel-gare","proposed":{ … }}}}'
 ```

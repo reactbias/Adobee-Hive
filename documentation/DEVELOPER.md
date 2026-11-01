@@ -206,10 +206,11 @@ published) and `hive_owner_publish` (the diff becomes the live, re-signed card).
 including on a hub that has no `OWNER_EDIT_TOKEN` set, so start the backend with one to try them:
 
 ```bash
-OWNER_EDIT_TOKEN=demo-owner-token uvicorn app.main:app --reload   # from code/backend
+export OWNER_TOKEN=$(python -c 'import secrets; print(secrets.token_hex(16))')
+OWNER_EDIT_TOKEN=$OWNER_TOKEN uvicorn app.main:app --reload       # from code/backend
 curl -s http://localhost:8000/mcp/ \
   -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-  -H 'X-Owner-Token: demo-owner-token' \
+  -H "X-Owner-Token: $OWNER_TOKEN" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"hive_owner_propose",
        "arguments":{"card_id":"hotel-gare","instruction":"add dog-friendly, standard double 150"}}}'
 ```
