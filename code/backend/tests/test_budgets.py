@@ -17,7 +17,6 @@ is not a budget test.
 """
 
 import asyncio
-import json
 
 import httpx2
 import pytest
@@ -28,6 +27,7 @@ from app import config, guard, limits
 from app.domains import scout
 from app.main import app
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 SOMEONE = "203.0.113.9"
 SOMEBODY_ELSE = "198.51.100.4"
@@ -45,9 +45,7 @@ def _mcp(tool: str, args: dict, host: str = SOMEONE) -> dict:
         ):
             return await mcp.call_tool(tool, args)
 
-    result = asyncio.run(go())
-    assert not result.is_error, result.content[0].text
-    return json.loads(result.content[0].text)
+    return tool_result(asyncio.run(go()))
 
 
 def _mcp_in_process(tool: str, args: dict) -> dict:
@@ -57,9 +55,7 @@ def _mcp_in_process(tool: str, args: dict) -> dict:
         async with Client(server) as mcp:
             return await mcp.call_tool(tool, args)
 
-    result = asyncio.run(go())
-    assert not result.is_error, result.content[0].text
-    return json.loads(result.content[0].text)
+    return tool_result(asyncio.run(go()))
 
 
 @pytest.fixture
