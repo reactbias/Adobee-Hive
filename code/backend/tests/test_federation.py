@@ -216,13 +216,20 @@ def test_radius_zero_is_exactly_todays_answer(client):
         assert not {"provenance", "hops", "card", "federated_score"} & set(match)
 
 
+#: What a door's answer carries at radius 0. `matched` and `considered` are the relevance threshold's
+#: counts (see `hive.only_relevant`): both doors report them, at every radius, so they say nothing about
+#: how far a query travelled. The point of the assertions below is that nothing *federation*-specific
+#: appears when nothing was federated — that part is checked field by field in the test above.
+DOOR_FIELDS = {"matches", "excluded", "ranking_policy", "matched", "considered"}
+
+
 def test_radius_zero_is_the_default_over_mcp_and_rest(client):
     over_mcp = _mcp("hive_discover", ASK)
     assert over_mcp == _mcp("hive_discover", ASK | {"radius": 0})
-    assert set(over_mcp) == {"matches", "excluded", "ranking_policy"}
+    assert set(over_mcp) == DOOR_FIELDS
     rest = client.get("/api/hive/discover", params=ASK).json()
     assert {m["id"] for m in rest["matches"]} == {m["id"] for m in over_mcp["matches"]}
-    assert set(rest) == {"matches", "excluded", "ranking_policy"}
+    assert set(rest) == DOOR_FIELDS
 
 
 def test_a_negative_radius_cannot_reach_a_peer_at_any_layer(client, net):

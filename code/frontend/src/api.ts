@@ -737,11 +737,22 @@ export interface Discovery {
   matches: HiveMatch[];
   excluded: (HiveMatch & { why_not: string[] })[];
   ranking_policy: string;
+  /**
+   * How many entities the query actually earned something from. `matched: 0` means nothing matched,
+   * which is the honest empty state: the hub filters these rows out itself now, so a nonzero score
+   * with an empty `why` no longer reaches the client. Optional because a hub forwarding a peer's
+   * query answers unfiltered.
+   */
+  matched?: number;
+  /** How many entities were ranked to produce `matched`, so the count has a denominator. */
+  considered?: number;
   /** Only above radius 0. */
   federated_ranking_policy?: string;
   federation?: FederationReport;
 }
 export interface DiscoverQuery {
+  /** Ask for the unfiltered ranking, including entities the query earned nothing from. */
+  include_irrelevant?: boolean;
   query?: string;
   kind?: string;
   near?: string;

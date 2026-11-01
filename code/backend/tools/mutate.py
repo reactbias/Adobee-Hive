@@ -70,6 +70,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_search_words.py",
     "tests/test_discover_identity.py",
+    "tests/test_discover_relevance.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
     "tests/test_budgets.py",
@@ -297,6 +298,31 @@ CURATED: list[Mutant] = [
         "an unclaimed card reports itself as bookable, so a lead passes for a business that agreed",
         '"bookable": bool(card.get("units")) and trust["claimed"],',
         '"bookable": True,',
+    ),
+    Mutant(
+        "hive.py",
+        "the relevance threshold goes, so every door answers every query with the whole hub again",
+        "    if ask_had_content and not include_irrelevant:",
+        "    if False:",
+    ),
+    Mutant(
+        "hive.py",
+        "reputation counts as relevance, so four well-reviewed hotels answer a nonsense query",
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity")',
+        'RELEVANCE_COMPONENTS = ("constraints", "text_relevance", "offers_needs", "semantic", "proximity",'
+        ' "verified_reviews", "attestations")',
+    ),
+    Mutant(
+        "hive.py",
+        "a browse is thresholded too, so 'show me what is on this hub' answers with nobody",
+        'return bool((query or "").strip() or features or near or max_price_chf is not None)',
+        "return True",
+    ),
+    Mutant(
+        "hive.py",
+        "the counts stop being reported, so a caller cannot tell an empty answer from a filtered one",
+        '"matched": len(matches),',
+        '"matched": considered,',
     ),
     Mutant(
         "semantic.py",
