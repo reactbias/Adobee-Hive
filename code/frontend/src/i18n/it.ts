@@ -808,6 +808,11 @@ const it: Record<Key, string> = {
   "score.exact": "Grazie. {hub} aveva ragione.",
   "score.thanks": "Grazie. Il suo voto è registrato.",
   "score.standing": "Dove lascia {hub}:",
+  "asks.title": "Che cosa ha chiesto prima",
+  "asks.again": "Chiedi di nuovo: {ask}",
+  "asks.forget": "Dimentica tutto",
+  "asks.only":
+    "Conservato solo in questo browser. L'hub registra che una ricerca c'è stata, mai che cosa ha scritto né chi è.",
   "folder.eyebrow": "La loro cartella",
   "folder.title": "Che cosa {name} condivide con lei",
   "folder.linked": "Ha un collegamento a questa cartella, quindi vede più di quanto diceva la card.",

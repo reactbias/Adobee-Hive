@@ -814,6 +814,11 @@ const de: Record<Key, string> = {
   "score.exact": "Danke. {hub} lag genau richtig.",
   "score.thanks": "Danke. Ihre Bewertung ist gespeichert.",
   "score.standing": "Damit steht {hub} so da:",
+  "asks.title": "Was Sie vorher gefragt haben",
+  "asks.again": "Erneut fragen: {ask}",
+  "asks.forget": "Diese vergessen",
+  "asks.only":
+    "Nur in diesem Browser gespeichert. Der Hub hält fest, dass gesucht wurde, nie was Sie getippt haben oder wer Sie sind.",
   "folder.eyebrow": "Ihr Ordner",
   "folder.title": "Was {name} mit Ihnen teilt",
   "folder.linked": "Sie haben eine Verbindung zu diesem Ordner und sehen daher mehr, als die Karte sagte.",
