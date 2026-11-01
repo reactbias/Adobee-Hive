@@ -117,6 +117,15 @@ stack, is refused rather than trusted.
 
 ## Item sharing
 
+**What is enforced, and what the flags are not a promise of.** `hive.discover` withholds a `push` or
+`never` entity from the matches and from the near-misses alike, on the path REST and MCP both serve;
+`hive.publish` keeps a contact channel the owner closed out of the body it signs; `hive.public_contact`
+drops one on the way out of an older card; and a held entity a peer relayed is withheld here too. That
+is not a blanket promise that every public API redacts personal data — the index is public by design
+(`GET /api/hive/cards` returns every signed card with no credential, `/.well-known/hive.json` publishes
+every owner key), so these are rules about what the hub asserts about an entity that asked it not to,
+not about secrecy of the cards. Use fictional fixtures, not real CVs.
+
 **A card published before sharing was enforced can still carry a value its owner closed.**
 `hive.publish` now drops a contact channel marked `push` or `never` before it signs, and
 `hive.public_contact` drops one on the way out, so nothing is served from such a card — but the
