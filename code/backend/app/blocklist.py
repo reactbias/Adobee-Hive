@@ -14,10 +14,19 @@ Two kinds:
 
 A reason is required. An operator reading the list in six months has to be able to tell a spam
 block from a legal one, and "why is this hub missing" is a question the GUI must be able to answer.
+
+**Where it is enforced.** Nowhere here, which is the point: this module holds the list and the
+policy, and every path that serves a result applies it. `hive.discover` drops a blocked entity from
+the local answer, `federation` drops a blocked peer before any outbound call and a blocked entity or
+carrier chain from everything that arrives, `main.py` refuses to answer a query a blocked hub
+relayed, and `hub.py` screens the façade once more. An enforcement that lives in one layer is not an
+enforcement — a blocked business once stayed searchable for exactly that reason — so `screener()`
+exists to make the same check cheap enough to run in all of them.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -133,3 +142,30 @@ def filter_path(path: list[str]) -> str | None:
     """
     blocked = blocked_hubs()
     return next((hub for hub in path if hub in blocked), None)
+
+
+def screener() -> Callable[[str, Sequence[str]], str | None]:
+    """The whole block policy, read once, as one function a result set can be filtered with.
+
+    This exists because an enforcement that lives in one layer is not an enforcement. A blocked
+    business once stayed searchable because the filtering was in the hub façade and not in
+    `hive.discover`; the same shape of mistake then kept a blocked *peer* reachable and a blocked
+    *entity* arriving over an allowed peer, because federation did its own thing. One policy,
+    called from every path that serves a result, is the fix for the class rather than the instance.
+
+    Returns a callable that takes an entity id and the hubs that carried it, and answers with the
+    reason it may not be served, or `None` when it may. The reason is a sentence an operator or an
+    agent can read: a filter nobody can explain is indistinguishable from a bug.
+
+    The list is read once per call to `screener()` and not per result, so screening a federated
+    answer of fifty matches is two queries rather than a hundred.
+    """
+    entities, hubs = blocked_entities(), blocked_hubs()
+
+    def refusal(entity_id: str, path: Sequence[str] = ()) -> str | None:
+        if (entity_id or "").strip() in entities:
+            return f"{entity_id} is blocked on this hub"
+        carrier = next((str(hub) for hub in path if str(hub) in hubs), None)
+        return f"carried through {carrier}, which is blocked on this hub" if carrier else None
+
+    return refusal
