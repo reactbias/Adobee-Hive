@@ -69,6 +69,7 @@ SUITE = [
     "tests/test_semantic_search.py",
     "tests/test_limits.py",
     "tests/test_owner_mcp.py",
+    "tests/test_federated_blocks.py",
 ]
 
 
@@ -407,6 +408,48 @@ CURATED: list[Mutant] = [
         "if not path:",
     ),
     Mutant(
+        "federation.py",
+        "a blocked peer is asked who it is, so the query follows and it learns what we searched for",
+        "if known and known in blocked:",
+        "if known and False:",
+    ),
+    Mutant(
+        "federation.py",
+        "the block is not rechecked on the name a peer gave, so a blocked hub is forwarded the query",
+        'elif profile["hub_id"] in blocked:',
+        "elif False:",
+    ),
+    Mutant(
+        "federation.py",
+        "nothing that arrives is screened, so a blocked entity comes back through an allowed peer",
+        "        return not reason",
+        "        return True",
+    ),
+    Mutant(
+        "federation.py",
+        "the timer polls a blocked peer anyway, so an outbound call to it every PEER_ASK_SECONDS",
+        "urls = [url for url in peer_store.urls() if known_hub_id(url) not in blocked]",
+        "urls = peer_store.urls()",
+    ),
+    Mutant(
+        "blocklist.py",
+        "a blocked entity passes the screen, so an administrative block stops biting on arrivals",
+        'if (entity_id or "").strip() in entities:',
+        "if False:",
+    ),
+    Mutant(
+        "blocklist.py",
+        "a blocked carrier chain passes, so blocking a hub that relays for a blocked one does nothing",
+        'return f"carried through {carrier}, which is blocked on this hub" if carrier else None',
+        "return None",
+    ),
+    Mutant(
+        "main.py",
+        "a query a blocked hub relayed here is answered, so the block holds in one direction only",
+        "if carrier := blocklist.filter_path([str(h) for h in (seen or [])]):",
+        "if False:",
+    ),
+    Mutant(
         "sharing.py",
         "the looser of the two flags wins, so opening a default unseals closed items",
         "return max(flags, key=strictness)",
@@ -584,6 +627,7 @@ SWAPS = [
 ]
 TARGETS = [
     "federation.py",
+    "blocklist.py",
     "folders.py",
     "folder_keys.py",
     "reputation.py",

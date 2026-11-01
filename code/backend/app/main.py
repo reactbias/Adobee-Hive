@@ -321,6 +321,14 @@ async def hive_discover(
     """
     if radius:
         guard.federated.check(request)  # a far search costs this hub outbound calls to its peers
+    if carrier := blocklist.filter_path([str(h) for h in (seen or [])]):
+        # A block holds in both directions, and this is the outward one: nothing of ours goes to a
+        # blocked hub, including an answer. `seen` is the asking hub's own declaration of where the
+        # query has been, which is all an unauthenticated peer protocol has to offer — a blocked hub
+        # that lies about its trail was never stoppable at this layer, and that is a limit of the
+        # protocol rather than something this check pretends to cover. It does stop the honest case,
+        # which is the one that actually happens: a query relayed to us by a hub we have shut out.
+        raise HTTPException(403, f"This hub has blocked {carrier} and does not answer a query carried by it.")
     constraints = _discovery_stay(
         query,
         request.query_params,

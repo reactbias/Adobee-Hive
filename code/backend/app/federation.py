@@ -30,6 +30,12 @@ federated result is ranked `local_relevance × hub_path_trust × hop_decay`, wit
 What a peer says about businesses it excluded is carried along as the peer's own words, tagged with its
 provenance, and stays data: it is never read as an instruction (the agent's guard in `injection.py` scans it like
 any other tool result).
+
+An **administrative block** (`blocklist.py`) is honoured here, on the path the API actually serves, and not only
+in the `hub.py` façade that nothing on the read path goes through. A blocked peer is dropped before any outbound
+call — the profile fetch included, because that call and the query after it are how a shut-out hub used to learn
+what this hub's users were asking. A blocked entity, and any result whose carrier chain passes through a blocked
+hub, is removed from the matches *and* from the exclusions on the way in. One policy, both directions.
 """
 
 import asyncio
@@ -41,7 +47,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from . import config, hive, reputation
+from . import blocklist, config, hive, reputation
 
 log = logging.getLogger(__name__)
 
@@ -218,6 +224,16 @@ async def _load_profile(base_url: str, transport: Transport) -> dict[str, Any] |
     return (await _ask(base_url, transport))["profile"]
 
 
+def known_hub_id(base_url: str) -> str:
+    """The canonical hub id this peer URL last gave for itself, or "" when we have never been told.
+
+    A URL is not an identity. Two URLs can be one hub and a hub can move, so a hostname guessed from
+    a peer URL is not something a policy may be built on; only the `hub_id` the peer published in its
+    own discovery document is. `""` therefore means *we do not know yet*, never *it is nobody*.
+    """
+    return str(((_peers.get(base_url) or {}).get("profile") or {}).get("hub_id") or "")
+
+
 def pinned_keys_of(hub_id: str) -> dict[str, str]:
     """The owner keys one peer published, from what the background asking already learned.
 
@@ -274,7 +290,13 @@ async def ask_peers(transport: Transport | None = None) -> list[dict[str, Any]]:
     """
     from . import peers as peer_store
 
-    urls = peer_store.urls()
+    # A blocked peer is not asked, here as well as on the search path. "Nothing of ours goes to it"
+    # includes the timer: polling a hub this operator has shut out every PEER_ASK_SECONDS is an
+    # outbound call to it, and a steady one. A peer whose canonical id we have never learned is still
+    # asked, because there is nothing yet to check against the list — the identity has to come from
+    # somewhere, and it only ever comes from the peer's own discovery document.
+    blocked = blocklist.blocked_hubs()
+    urls = [url for url in peer_store.urls() if known_hub_id(url) not in blocked]
     if urls:
         await asyncio.gather(*[_ask(url, transport or DEFAULT_TRANSPORT) for url in urls])
     return peer_rows()
@@ -307,11 +329,35 @@ async def _choose_peers(
     from . import peers as peer_store  # local: peers.py is about which peers exist, this about who they are
 
     urls = peer_store.urls()
-    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in urls])
-    peers, skipped = [], []
-    for url, profile in zip(urls, profiles, strict=False):
+    blocked = blocklist.blocked_hubs()
+    # An administrative block is checked **before** any outbound work, and again on the identity the
+    # peer itself returns. Both, because the first check can only use an identity this hub already
+    # had, and the second one cannot stop a request that has already gone out. Reading a peer's
+    # discovery document is itself a call to it, and the query would follow, which is how a blocked
+    # hub used to learn what this hub's users were searching for even though it was shut out.
+    asking, skipped = [], []
+    for url in urls:
+        known = known_hub_id(url)
+        if known and known in blocked:
+            skipped.append({"hub": known, "reason": "blocked on this hub: not asked, and nothing of ours sent to it"})
+        else:
+            asking.append(url)
+    profiles = await asyncio.gather(*[_profile(url, transport, lookups) for url in asking])
+    peers = []
+    for url, profile in zip(asking, profiles, strict=False):
         if profile is None:
+            # Unknown identity fails closed, and that is the policy rather than an accident: a peer
+            # whose discovery document cannot be read has neither a hub id to check against the
+            # blocklist nor keys to verify its cards with. Unknown is never treated as trusted.
             skipped.append({"hub": url, "reason": "no key registry: its cards could not be verified here"})
+        elif profile["hub_id"] in blocked:
+            skipped.append(
+                {
+                    "hub": profile["hub_id"],
+                    "reason": "blocked on this hub: it named itself on the only call made to it, and the query"
+                    " was not forwarded",
+                }
+            )
         elif profile["hub_id"] not in seen:
             peers.append((url, profile, reputation.hub_trust(profile["hub_id"], profile)["trust"]))
     peers.sort(key=lambda peer: peer[2], reverse=True)  # stable, so configured order breaks a tie
@@ -418,6 +464,40 @@ def _dedup(arrivals: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return list(best.values())
 
 
+def _screen(
+    arrivals: list[dict[str, Any]], excluded: list[dict[str, Any]], report: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Drop every blocked entity and every blocked carrier chain, from the matches and the exclusions alike.
+
+    `hive.discover` already keeps a blocked entity out of the *local* answer. This is the other
+    direction — what arrived from a peer — plus the one thing that only exists out here, the chain of
+    hubs a result travelled: a card is refused when *any* hub that carried it is blocked, so blocking
+    a hub that merely relays for a blocked one still achieves something.
+
+    Both lists are screened, because an exclusion is not harmless. It names a business and says why it
+    missed the ask, which is most of what a match says; leaving a blocked entity in `excluded` would
+    publish exactly what the block was meant to withhold.
+
+    Called before `_dedup`, so an alternate route through a blocked hub is gone before it can be
+    folded into a kept result's `also_reached_by`. A business reachable both through a blocked hub and
+    through an allowed one therefore survives on the allowed route alone, which is what blocking a
+    *hub* rather than an entity means.
+    """
+    refused = blocklist.screener()
+
+    def kept(row: dict[str, Any], where: str) -> bool:
+        path = [str(h) for h in ((row.get("provenance") or {}).get("path") or [])]
+        reason = refused(str(row.get("id") or ""), path)
+        if reason:
+            report["blocked"].append({"id": row.get("id"), "where": where, "path": path, "reason": reason})
+        return not reason
+
+    return (
+        [a for a in arrivals if kept(a, "matches")],
+        [e for e in excluded if kept(e, "excluded")],
+    )
+
+
 async def _verified(
     out: dict[str, Any],
     carrier: dict[str, Any],
@@ -504,6 +584,8 @@ async def search(
         "asked": [],
         "dropped": [],
         "rejected": [],
+        # What an administrative block refused, named so "why is this missing" has an answer.
+        "blocked": [],
         "hub_trust": {},
     }
 
@@ -541,6 +623,7 @@ async def search(
             arrivals += found
             excluded += left_out
 
+    arrivals, excluded = _screen(arrivals, excluded, report)
     matches = _dedup(arrivals)
     matches.sort(key=lambda m: (-m["federated_score"], m["hops"], m["id"]))
     for hub_id in {h for m in matches for h in m["provenance"]["path"] if h != hub} | {
