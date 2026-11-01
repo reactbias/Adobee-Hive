@@ -226,6 +226,17 @@ describe("traveller agent", () => {
     expect(screen.queryByRole("heading", { name: "Hotel Rheinblick" })).not.toBeInTheDocument();
   });
 
+  it("brings the chat into view when Details opens below the fold, on a wide screen too", async () => {
+    vi.spyOn(api, "agent").mockReturnValue(new Promise<AgentResult>(() => {}));
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled as unknown as typeof Element.prototype.scrollIntoView;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({ top: window.innerHeight * 0.7 } as DOMRect);
+    const user = setup();
+    await user.click(screen.getByRole("button", { name: en["agent.send"] }));
+    await user.click(await screen.findByRole("button", { name: en["card.details"] }));
+    expect(scrolled).toHaveBeenCalled();
+  });
+
   it("closes and reopens details while the agent is still working, asking it only once", async () => {
     // The old guard refused to open while busy, without saying so: one click closed the panel and
     // the next did nothing at all, which is what made the button look broken.
