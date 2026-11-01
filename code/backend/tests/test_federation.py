@@ -6,6 +6,7 @@ way the REST endpoint does. No sockets, no network, so the suite still runs with
 
 import asyncio
 import base64
+import time
 from datetime import UTC, datetime, timedelta
 from unittest import mock
 
@@ -16,6 +17,7 @@ from mcp import Client
 
 from app import config, federation, hive, reputation
 from app.mcp_server import server
+from tests.mcp_result import tool_result
 
 ASK = {"kind": "hotel", "features": ["dog-friendly"], "check_in": "2027-03-10", "check_out": "2027-03-12"}
 
@@ -192,7 +194,7 @@ def net(monkeypatch):
 def _mcp(tool: str, args: dict) -> dict:
     async def go():
         async with Client(server) as c:
-            return (await c.call_tool(tool, args)).structured_content
+            return tool_result(await c.call_tool(tool, args))
 
     return asyncio.run(go())
 
@@ -462,14 +464,26 @@ def test_a_peer_already_in_seen_is_never_asked(client, net):
 # ---------------------------------------------------------------- budgets and breadth
 
 
-def test_a_slow_peer_is_dropped_without_failing_the_query(client, net):
-    # The local search spends part of the budget first, over 100 ms on a slow CI runner, so the budget
-    # leaves room for it and the slow peer is slower than the whole budget rather than just past it.
-    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=2000)
+def test_a_slow_peer_is_dropped_without_failing_the_query(client, net, monkeypatch):
+    slow = FakeHive("slow", cards=[_card("hotel-slow", "Hotel Slow (fictional)")], delay_ms=400)
     quick = FakeHive("quick", cards=[_card("hotel-quick", "Hotel Quick (fictional)")])
     net(slow, quick)
 
-    found = hive.discover(**ASK, radius=1, budget_ms=1000)
+    # This test is about the peers' deadline, but the budget also pays for the local search: of 250 ms, MIN_FORWARD_MS
+    # has to be left, so a local search over 100 ms means no peer is asked at all. On a loaded machine that read as the
+    # quick peer failing (#140). So the local search is slow on purpose and the clock charging for it is stopped, which
+    # leaves the machine's speed out of it. Without the stopped clock this fails every run, not one run in ten. The
+    # peers' own deadline is still real time: `wait_for` runs on the loop's clock, not this one.
+    local_search = federation._local
+
+    def on_a_loaded_machine(ask, hub):
+        time.sleep(0.2)
+        return local_search(ask, hub)
+
+    monkeypatch.setattr(federation, "_local", on_a_loaded_machine)
+    monkeypatch.setattr(federation, "perf_counter", lambda: 0.0)
+
+    found = hive.discover(**ASK, radius=1, budget_ms=250)
     assert _ids(hive.discover(**ASK, radius=0)) <= _ids(found), "the local answer survives a dead peer"
     assert "hotel-quick" in _ids(found) and "hotel-slow" not in _ids(found)
     dropped = {d["hub"]: d["reason"] for d in found["federation"]["dropped"]}

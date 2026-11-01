@@ -1,5 +1,8 @@
 # Adobee Hive Recruitment Portal
 
+> A separate experimental app. It is not part of the rehearsed Adobee Hive demo, needs an API key, and is not covered
+> by the main CI. See [LIMITS.md](../documentation/LIMITS.md#not-built).
+
 Dockerized recruitment portal with a React frontend, FastAPI CV analysis backend, PostgreSQL
 persistence, asynchronous CV processing, natural-language candidate filtering, and PostgreSQL-backed
 recruiter chat sessions.
@@ -14,8 +17,8 @@ Docker users do not need to install Node.js or Python.
 ## First-time setup
 
 ```bash
-git clone <repository-url>
-cd adobee-hiver
+git clone https://github.com/reactbias/Adobee-Hive.git
+cd "Adobee-Hive/Hiring Hub"
 cp .env.example .env
 cp backend/.env.example backend/.env
 ```
